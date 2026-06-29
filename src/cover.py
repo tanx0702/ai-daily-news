@@ -45,11 +45,17 @@ def _generate_simple_cover(
     draw = ImageDraw.Draw(img)
 
     # 渐变覆盖
+    def hex_to_rgb(c):
+        c = c.lstrip("#")
+        return tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+
+    r0, g0, b0 = hex_to_rgb(palette[0])
+    r1, g1, b1 = hex_to_rgb(palette[1])
     for y in range(height):
         ratio = y / height
-        r = int(palette[0][:2], 16) + int(int(palette[1][:2], 16) - int(palette[0][:2], 16)) * ratio
-        g = int(palette[0][2:4], 16) + int(int(palette[1][2:4], 16) - int(palette[0][2:4], 16)) * ratio
-        b = int(palette[0][4:6], 16) + int(int(palette[1][4:6], 16) - int(palette[0][4:6], 16)) * ratio
+        r = int(r0 + (r1 - r0) * ratio)
+        g = int(g0 + (g1 - g0) * ratio)
+        b = int(b0 + (b1 - b0) * ratio)
         draw.rectangle([(0, y), (width, y + 1)], fill=f"#{r:02x}{g:02x}{b:02x}")
 
     # 标题文字
@@ -120,10 +126,14 @@ def generate_cover_from_news(
     prompt = _build_cover_prompt(headlines, date_str)
 
     # 2. 调用 Agnes Image API
+    # 确保 base_url 不以 / 结尾
+    base_url = base_url.rstrip("/")
+    # Images API 固定使用 /v1/images/generations，不与 chat completions 共享路径
+    image_base = base_url.replace("/v1", "") if base_url.endswith("/v1") else base_url
     try:
         logger.info("Generating cover image with prompt: %s", prompt[:80])
         resp = requests.post(
-            f"{base_url}/v1/images/generations",
+            f"{image_base}/v1/images/generations",
             headers={"Authorization": f"Bearer {api_key}"},
             json={
                 "model": "agnes-image-2.1-flash",
