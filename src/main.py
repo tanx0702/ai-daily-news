@@ -124,7 +124,6 @@ def main():
         import subprocess
         result = subprocess.run(
             ["git", "add", "docs/"],
-            cwd=os.path.dirname(__file__),
         )
         if result.returncode == 0:
             logger.info("docs/ staged for commit")

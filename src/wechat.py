@@ -57,10 +57,12 @@ def _upload_thumb_image(
         if source_type == "url":
             img_resp = requests.get(image_source, timeout=30)
             img_resp.raise_for_status()
-            files = {"media": ("thumb.jpg", io.BytesIO(img_resp.content), "image/jpeg")}
+            image_data = img_resp.content
         else:
             with open(image_source, "rb") as f:
-                files = {"media": ("thumb.jpg", f, "image/jpeg")}
+                image_data = f.read()
+
+        files = {"media": ("thumb.jpg", image_data, "image/jpeg")}
         resp = requests.post(url, files=files, timeout=10)
         resp.raise_for_status()
         data = resp.json()
