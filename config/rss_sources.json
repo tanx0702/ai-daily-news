@@ -1,0 +1,29 @@
+{
+    "sources": [
+        {
+            "name": "Hacker News AI",
+            "url": "https://hnrss.org/frontpage?q=AI+OR+ML+OR+LLM",
+            "region": "overseas"
+        },
+        {
+            "name": "TechCrunch AI",
+            "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+            "region": "overseas"
+        },
+        {
+            "name": "VentureBeat AI",
+            "url": "https://venturebeat.com/category/ai/feed/",
+            "region": "overseas"
+        },
+        {
+            "name": "MIT Technology Review AI",
+            "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+            "region": "overseas"
+        },
+        {
+            "name": "Wired AI",
+            "url": "https://www.wired.com/feed/tag/ai/latest/rss",
+            "region": "overseas"
+        }
+    ]
+}

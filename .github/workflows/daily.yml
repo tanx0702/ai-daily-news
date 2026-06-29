@@ -1,0 +1,55 @@
+name: Daily AI News
+
+on:
+  schedule:
+    # 每天 8:00 北京时间 = UTC 0:00
+    - cron: "0 0 * * *"
+  workflow_dispatch:  # 支持手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  daily-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily report
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          DAILY_TOP_N: 15
+          DAILY_WECHAT_TOP_N: 5
+          DAILY_RSS_TIMEOUT: 30
+          DAILY_LLM_TIMEOUT: 15
+          WECHAT_COVER_IMAGE_PATH: ${{ secrets.WECHAT_COVER_IMAGE_PATH }}
+        run: python -m src.main
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add docs/
+          if ! git diff --cached --quiet; then
+            git commit -m "📰 AI Daily News $(date +%Y-%m-%d)"
+            git push
+          else
+            echo "No changes to commit"
+          fi
