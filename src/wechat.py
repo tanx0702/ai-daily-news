@@ -4,6 +4,7 @@
 调用微信公众号 API 群发图文消息。
 """
 
+import io
 import logging
 import os
 from typing import Optional
@@ -34,14 +35,16 @@ def _get_access_token(app_id: str, app_secret: str) -> Optional[str]:
 
 def _upload_thumb_image(
     access_token: str,
-    image_path: str,
+    image_source: str,
+    source_type: str = "path",
 ) -> Optional[str]:
     """
     上传封面图素材，返回 thumb_media_id。
 
     Args:
         access_token: 微信 access_token
-        image_path: 本地封面图片路径
+        image_source: 封面图片来源，可以是本地路径或 URL
+        source_type: 来源类型 — "path"（本地文件）或 "url"（网络链接）
 
     Returns:
         thumb_media_id，失败返回 None
@@ -51,17 +54,22 @@ def _upload_thumb_image(
         f"?access_token={access_token}&type=image"
     )
     try:
-        with open(image_path, "rb") as f:
-            files = {"media": ("thumb.jpg", f, "image/jpeg")}
-            resp = requests.post(url, files=files, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()
-            if "media_id" in data:
-                return data["media_id"]
-            logger.error("Failed to upload thumb image: %s", data)
-            return None
+        if source_type == "url":
+            img_resp = requests.get(image_source, timeout=30)
+            img_resp.raise_for_status()
+            files = {"media": ("thumb.jpg", io.BytesIO(img_resp.content), "image/jpeg")}
+        else:
+            with open(image_source, "rb") as f:
+                files = {"media": ("thumb.jpg", f, "image/jpeg")}
+        resp = requests.post(url, files=files, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        if "media_id" in data:
+            return data["media_id"]
+        logger.error("Failed to upload thumb image: %s", data)
+        return None
     except FileNotFoundError:
-        logger.warning("Cover image not found at %s, using placeholder", image_path)
+        logger.warning("Cover image not found at %s, using placeholder", image_source)
         return None
     except Exception as e:
         logger.error("Failed to upload thumb image: %s", e)
@@ -159,6 +167,7 @@ def send_daily_news(
     app_secret: Optional[str] = None,
     thumb_media_id: str = "",
     cover_image_path: str = "",
+    cover_image_url: str = "",
     retry: int = 2,
 ) -> dict:
     """
@@ -172,6 +181,7 @@ def send_daily_news(
         app_secret: 公众号 AppSecret
         thumb_media_id: 封面图 media_id（公众号后台上传获取）
         cover_image_path: 本地封面图片路径（用于自动上传）
+        cover_image_url: 封面图 URL（从 Agnes Image API 生成）
         retry: 失败重试次数
 
     Returns:
@@ -191,7 +201,11 @@ def send_daily_news(
 
     # 处理封面图
     if not thumb_media_id and cover_image_path:
-        thumb_media_id = _upload_thumb_image(access_token, cover_image_path)
+        thumb_media_id = _upload_thumb_image(access_token, cover_image_path, source_type="path")
+        if not thumb_media_id:
+            logger.warning("No valid thumb_media_id from local path, trying URL")
+    if not thumb_media_id and cover_image_url:
+        thumb_media_id = _upload_thumb_image(access_token, cover_image_url, source_type="url")
         if not thumb_media_id:
             logger.warning("No valid thumb_media_id, push may fail")
 

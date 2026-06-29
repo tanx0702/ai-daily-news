@@ -30,7 +30,9 @@ jobs:
 
       - name: Run daily report
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          AGNES_MODEL: ${{ secrets.AGNES_MODEL }}
+          AGNES_API_BASE: ${{ secrets.AGNES_API_BASE }}
           WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
           WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
           GITHUB_USERNAME: ${{ github.repository_owner }}

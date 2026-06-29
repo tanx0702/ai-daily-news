@@ -50,8 +50,8 @@ def main():
     logger.info("[2/5] 生成 LLM 摘要...")
     from src.summarizer import summarize_news
 
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    model = os.environ.get("AGNES_MODEL", os.environ.get("OPENAI_MODEL", "agnes-2.0-flash"))
     llm_timeout = int(os.environ.get("DAILY_LLM_TIMEOUT", "15"))
 
     if api_key:
@@ -62,7 +62,7 @@ def main():
             timeout=llm_timeout,
         )
     else:
-        logger.info("OPENAI_API_KEY not set, skipping LLM summary")
+        logger.info("AGNES_API_KEY not set, skipping LLM summary")
 
     # === 3. 生成 HTML 日报 ===
     logger.info("[3/5] 生成 HTML 日报...")
@@ -94,8 +94,30 @@ def main():
 
     pages_url = f"https://{os.environ.get('GITHUB_USERNAME', '')}.github.io/{os.environ.get('GITHUB_REPO', '')}/"
 
-    # === 4. 部署到 GitHub Pages ===
-    logger.info("[4/5] 部署到 GitHub Pages...")
+    # === 4. 生成封面图 ===
+    logger.info("[4/6] 生成封面图...")
+    from src.cover import generate_cover_from_news
+
+    cover_image_path = ""
+    cover_image_url = ""
+    cover_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    cover_base_url = os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com")
+    cover_save_path = os.path.join(docs_dir, "cover.jpg")
+
+    if cover_key:
+        cover_image_path = generate_cover_from_news(
+            news_list,
+            date_str,
+            output_path=cover_save_path,
+            api_key=cover_key,
+            base_url=cover_base_url,
+        )
+        logger.info("Cover image saved to %s", cover_image_path)
+    else:
+        logger.info("No API key for cover generation, skipping")
+
+    # === 5. 部署到 GitHub Pages ===
+    logger.info("[5/6] 部署到 GitHub Pages...")
     # GitHub Actions 会自动检测 docs/ 目录变化并提交
     # 本地运行时跳过自动提交
     if os.environ.get("CI") == "true":
@@ -110,15 +132,16 @@ def main():
         logger.info("Local run, skipping git commit")
         logger.info("HTML saved to docs/index.html")
 
-    # === 5. 微信推送 ===
-    logger.info("[5/5] 微信推送...")
+    # === 6. 微信推送 ===
+    logger.info("[6/6] 微信推送...")
     from src.wechat import send_daily_news
 
     wechat_result = send_daily_news(
         news_list,
         date_str,
         pages_url,
-        cover_image_path=os.environ.get("WECHAT_COVER_IMAGE_PATH", ""),
+        cover_image_path=cover_image_path,
+        cover_image_url=cover_image_url,
     )
     logger.info("WeChat push result: %s", wechat_result)
 

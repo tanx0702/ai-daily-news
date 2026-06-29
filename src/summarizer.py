@@ -13,31 +13,39 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
+# Agnes API 配置
+AGNES_BASE_URL = os.environ.get(
+    "AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"
+)
+DEFAULT_MODEL = "agnes-2.0-flash"
+
 
 def summarize_news(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_MODEL,
     timeout: int = 15,
+    base_url: str = AGNES_BASE_URL,
 ) -> list[dict]:
     """
     为新闻列表生成中文摘要。
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
-        api_key: OpenAI API Key，默认从 OPENAI_API_KEY 环境变量读取
-        model: 模型名称，默认 gpt-4o-mini
+        api_key: Agnes API Key，默认从 AGNES_API_KEY 环境变量读取
+        model: 模型名称，默认 agnes-2.0-flash
         timeout: 单次调用超时秒数
+        base_url: API 基础地址，默认 Agnes hub
 
     Returns:
         补充了 summary 的新闻列表（原 summary 为空时才会生成）
     """
-    api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        logger.warning("OPENAI_API_KEY not set, skipping LLM summary")
+        logger.warning("AGNES_API_KEY not set, skipping LLM summary")
         return news_list
 
-    client = OpenAI(api_key=api_key, timeout=timeout)
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
     for i, news in enumerate(news_list):
         # 已有摘要的跳过
@@ -78,28 +86,30 @@ def summarize_news(
 def summarize_for_wechat(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_MODEL,
     top_n: int = 5,
+    base_url: str = AGNES_BASE_URL,
 ) -> str:
     """
     为微信推送生成摘要文本。
 
     Args:
         news_list: 新闻列表
-        api_key: OpenAI API Key
+        api_key: Agnes API Key
         model: 模型名称
         top_n: 取前 N 条新闻生成摘要
+        base_url: API 基础地址
 
     Returns:
         格式化后的微信推送摘要文本
     """
-    api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         # 没有 API Key，直接用标题
         items = news_list[:top_n]
         return "\n".join(f"  {i+1}. {item['title']}" for i, item in enumerate(items))
 
-    client = OpenAI(api_key=api_key, timeout=15)
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=15)
 
     # 取前 top_n 条新闻标题
     headlines = "\n".join(
