@@ -217,15 +217,15 @@ def send_daily_news(
 
     # 摘要：前 5 条新闻标题
     highlights = news_list[:5]
-    digest_parts = [f"{i+1}. {item['title']}" for i, item in enumerate(highlights)]
+    digest_parts = [f"{i+1}. {item.get('chinese_title') or item['title']}" for i, item in enumerate(highlights)]
     digest = " ".join(digest_parts)[:100]
 
     # 正文 HTML
     content_items = []
     for i, item in enumerate(news_list[:10]):  # 正文最多展示 10 条
-        summary = item.get("summary", "") or item["title"]
-        content_items.append(f"<p><strong>{i+1}. {item['title']}</strong></p>")
-        if summary and summary != item["title"]:
+        summary = item.get("summary", "") or item.get("chinese_title") or item["title"]
+        content_items.append(f"<p><strong>{i+1}. {item.get('chinese_title') or item['title']}</strong></p>")
+        if summary and summary != item.get("chinese_title") and summary != item["title"]:
             content_items.append(f"<p>{summary}</p>")
         content_items.append(f'<p><a href="{item["url"]}" target="_blank">阅读原文 →</a></p>')
         content_items.append("<hr style='border:1px solid #eee;margin:12px 0;'>")

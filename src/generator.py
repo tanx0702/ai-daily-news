@@ -288,7 +288,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                 <div class="news-item">
                     <div class="news-title">
                         <span class="news-num">{{ loop.index }}</span>
-                        <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+                        <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.chinese_title or item.title }}</a>
                     </div>
                     <div class="news-meta">
                         <span class="news-source-tag">{{ item.source }}</span>

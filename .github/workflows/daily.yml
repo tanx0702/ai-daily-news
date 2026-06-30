@@ -40,7 +40,7 @@ jobs:
           DAILY_TOP_N: 15
           DAILY_WECHAT_TOP_N: 5
           DAILY_RSS_TIMEOUT: 30
-          DAILY_LLM_TIMEOUT: 15
+          DAILY_LLM_TIMEOUT: 30
           WECHAT_COVER_IMAGE_PATH: ${{ secrets.WECHAT_COVER_IMAGE_PATH }}
         run: python -m src.main
 

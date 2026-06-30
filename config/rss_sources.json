@@ -2,7 +2,7 @@
     "sources": [
         {
             "name": "Hacker News AI",
-            "url": "https://hnrss.org/frontpage?q=AI+OR+ML+OR+LLM",
+            "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude",
             "region": "overseas"
         },
         {
@@ -11,19 +11,24 @@
             "region": "overseas"
         },
         {
-            "name": "VentureBeat AI",
-            "url": "https://venturebeat.com/category/ai/feed/",
+            "name": "The Verge AI",
+            "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
             "region": "overseas"
         },
         {
-            "name": "MIT Technology Review AI",
-            "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed",
+            "name": "Ars Technica AI",
+            "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
             "region": "overseas"
         },
         {
-            "name": "Wired AI",
-            "url": "https://www.wired.com/feed/tag/ai/latest/rss",
-            "region": "overseas"
+            "name": "36氪 AI",
+            "url": "https://36kr.com/feed",
+            "region": "china"
+        },
+        {
+            "name": "机器之心",
+            "url": "https://www.jiqizhixin.com/rss",
+            "region": "china"
         }
     ]
 }

@@ -1,7 +1,7 @@
 """
 LLM 摘要模块
 
-为每条新闻生成中文摘要。
+为每条新闻生成中文翻译标题 + 中文摘要。
 """
 
 import logging
@@ -28,7 +28,7 @@ def summarize_news(
     base_url: str = AGNES_BASE_URL,
 ) -> list[dict]:
     """
-    为新闻列表生成中文摘要。
+    为新闻列表生成中文翻译标题和摘要。
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
@@ -38,7 +38,7 @@ def summarize_news(
         base_url: API 基础地址，默认 Agnes hub
 
     Returns:
-        补充了 summary 的新闻列表（原 summary 为空时才会生成）
+        补充了 chinese_title 和 summary 的新闻列表
     """
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
@@ -48,8 +48,8 @@ def summarize_news(
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
     for i, news in enumerate(news_list):
-        # 已有摘要的跳过
-        if news.get("summary"):
+        # 已有中文标题的跳过
+        if news.get("chinese_title"):
             continue
 
         try:
@@ -60,8 +60,9 @@ def summarize_news(
                         "role": "system",
                         "content": (
                             "你是一个专业的 AI 新闻编辑。"
-                            "请用中文为以下新闻标题生成一句简洁的摘要，不超过 100 字。"
-                            "只输出摘要内容，不要输出标题或其他多余信息。"
+                            "请将以下英文新闻标题翻译成中文，并为它生成一句摘要。"
+                            "请按 JSON 格式回复，不要有其他内容："
+                            '{"chinese_title": "翻译后的标题", "summary": "摘要内容"}'
                         ),
                     },
                     {
@@ -70,15 +71,27 @@ def summarize_news(
                     },
                 ],
                 temperature=0.3,
-                max_tokens=150,
+                max_tokens=200,
             )
-            summary = response.choices[0].message.content.strip()
-            news["summary"] = summary
-            logger.info("Generated summary for news #%d: %s", i + 1, news["title"][:30])
+            content = response.choices[0].message.content.strip()
+            # 解析 JSON 响应
+            import json as _json
+            try:
+                result = _json.loads(content)
+                news["chinese_title"] = result.get("chinese_title", news["title"])
+                news["summary"] = result.get("summary", "")[:200]
+            except _json.JSONDecodeError:
+                # 降级：如果不是合法 JSON，尝试提取
+                lines = content.split("\n")
+                news["chinese_title"] = lines[0] if lines else news["title"]
+                news["summary"] = lines[1] if len(lines) > 1 else ""[:200]
+
+            logger.info("Translated & summarized news #%d: %s", i + 1, news["title"][:30])
         except Exception as e:
             logger.warning("Failed to generate summary for '%s': %s", news["title"][:30], e)
-            # 降级：保留原标题作为摘要
-            news["summary"] = news["title"]
+            # 降级：保留原标题
+            news["chinese_title"] = news["title"]
+            news["summary"] = ""
 
     return news_list
 
@@ -105,15 +118,14 @@ def summarize_for_wechat(
     """
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        # 没有 API Key，直接用标题
         items = news_list[:top_n]
-        return "\n".join(f"  {i+1}. {item['title']}" for i, item in enumerate(items))
+        titles = [item.get("chinese_title") or item["title"] for item in items]
+        return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=15)
 
-    # 取前 top_n 条新闻标题
     headlines = "\n".join(
-        f"{i+1}. {item['title']}（来源：{item['source']}）"
+        f"{i+1}. {item.get('chinese_title') or item['title']}（来源：{item['source']}）"
         for i, item in enumerate(news_list[:top_n])
     )
 
@@ -139,4 +151,5 @@ def summarize_for_wechat(
         return response.choices[0].message.content.strip()
     except Exception as e:
         logger.warning("Failed to generate WeChat summary: %s", e)
-        return headlines
+        titles = [item.get("chinese_title") or item["title"] for item in news_list[:top_n]]
+        return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))
