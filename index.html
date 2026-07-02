@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI 日报 2026-07-02</title>
+    <style>
+        /* --- Reset & Base --- */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",
+                         "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* --- CSS Variables (Light / Dark) --- */
+        :root {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --fg: #1a1a2e;
+            --muted: #6b7280;
+            --accent: #6366f1;
+            --accent-light: #e0e7ff;
+            --border: #e5e7eb;
+            --tag-bg: #f3f4f6;
+            --tag-fg: #374151;
+            --header-start: #6366f1;
+            --header-end: #8b5cf6;
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --card: #1e293b;
+                --fg: #e2e8f0;
+                --muted: #94a3b8;
+                --accent: #818cf8;
+                --accent-light: #1e1b4b;
+                --border: #334155;
+                --tag-bg: #334155;
+                --tag-fg: #cbd5e1;
+                --header-start: #4f46e5;
+                --header-end: #7c3aed;
+                --shadow: 0 1px 3px rgba(0,0,0,0.3);
+                --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+            }
+        }
+        /* Force dark mode via data attribute */
+        body[data-theme="dark"] {
+            --bg: #0f172a; --card: #1e293b; --fg: #e2e8f0;
+            --muted: #94a3b8; --accent: #818cf8; --accent-light: #1e1b4b;
+            --border: #334155; --tag-bg: #334155; --tag-fg: #cbd5e1;
+            --header-start: #4f46e5; --header-end: #7c3aed;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3); --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        body[data-theme="light"] {
+            --bg: #f0f2f5; --card: #ffffff; --fg: #1a1a2e;
+            --muted: #6b7280; --accent: #6366f1; --accent-light: #e0e7ff;
+            --border: #e5e7eb; --tag-bg: #f3f4f6; --tag-fg: #374151;
+            --header-start: #6366f1; --header-end: #8b5cf6;
+            --shadow: 0 1px 3px rgba(0,0,0,0.06); --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* --- Layout --- */
+        .wrapper {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        @media (min-width: 768px) {
+            .wrapper { padding: 24px; }
+        }
+
+        /* --- Header --- */
+        .header {
+            background: linear-gradient(135deg, var(--header-start) 0%, var(--header-end) 100%);
+            color: #fff;
+            padding: 28px 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .header h1 {
+            font-size: 1.6em;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+        }
+        .header .date {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        .header .count {
+            font-size: 0.85em;
+            opacity: 0.75;
+            margin-top: 6px;
+            background: rgba(255,255,255,0.2);
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .theme-toggle:hover { background: rgba(255,255,255,0.35); }
+
+        /* --- Section (grouped by source) --- */
+        .section {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 12px 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-light);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-header .flag {
+            font-size: 1.1em;
+        }
+
+        /* --- News Item --- */
+        .news-list { padding: 4px 0; }
+        .news-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+        .news-item:hover { background: var(--bg); }
+        .news-item:last-child { border-bottom: none; }
+
+        .news-num {
+            color: var(--accent);
+            font-weight: 700;
+            margin-right: 6px;
+            font-size: 0.85em;
+            flex-shrink: 0;
+        }
+        .news-title {
+            font-size: 0.95em;
+            font-weight: 600;
+            line-height: 1.5;
+            display: flex;
+            gap: 4px;
+        }
+        .news-title a {
+            color: var(--fg);
+            text-decoration: none;
+            word-break: break-word;
+        }
+        .news-title a:hover { color: var(--accent); }
+
+        .news-meta {
+            font-size: 0.78em;
+            color: var(--muted);
+            margin-top: 6px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .news-source-tag {
+            background: var(--tag-bg);
+            color: var(--tag-fg);
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .news-summary {
+            font-size: 0.88em;
+            color: var(--muted);
+            margin-top: 6px;
+            line-height: 1.55;
+            word-break: break-word;
+        }
+
+        /* --- Footer --- */
+        .footer {
+            padding: 20px;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            margin-top: 8px;
+        }
+        .archive-label {
+            font-size: 0.85em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .archive-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+        }
+        .archive-links a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.82em;
+            background: var(--accent-light);
+            padding: 3px 10px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .archive-links a:hover { opacity: 0.8; }
+
+        .powered {
+            margin-top: 14px;
+            font-size: 0.75em;
+            color: var(--muted);
+        }
+        .powered a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
+            <h1>🤖 AI 日报</h1>
+            <div class="date">2026-07-02</div>
+            <div class="count">今日 15 条 AI 新闻</div>
+        </div>
+
+        
+        <div class="section">
+            <div class="section-header">
+                
+                <span class="flag">🌍</span> 海外源
+                
+                <span style="margin-left:auto; opacity:0.7;">15 条</span>
+            </div>
+            <div class="news-list">
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">1</span>
+                        <a href="https://www.ycombinator.com/companies/liva-ai/jobs/gvtc3Ep-founding-operations-lead" target="_blank" rel="noopener">```json</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">Hacker News AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">{</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">2</span>
+                        <a href="https://www.ycombinator.com/companies/besimple-ai/jobs/yWfhhOR-strategic-projects-lead-audio-data" target="_blank" rel="noopener">Besimple AI（YC P25）正在招聘</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">Hacker News AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">由 Y Combinator 支持的 Besimple AI 现正开放职位，诚邀优秀人才加入其团队。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">3</span>
+                        <a href="https://techcrunch.com/2026/07/01/indian-tech-tycoon-bets-30m-to-build-an-ai-alternative-to-microsoft-office/" target="_blank" rel="noopener">```json</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">{</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">4</span>
+                        <a href="https://techcrunch.com/2026/07/01/spacex-has-an-ai-device-prototype-and-it-sure-sounds-phone-ish/" target="_blank" rel="noopener">SpaceX推出AI设备原型，听起来颇具手机风范</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">SpaceX正在开发一款具有AI功能的硬件原型，其形态和功能设计让人联想到智能手机。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">5</span>
+                        <a href="https://techcrunch.com/2026/07/01/ashton-kutcher-leaving-sound-ventures-to-launch-new-vc-firm-with-morgan-beller/" target="_blank" rel="noopener">阿什顿·库彻退出 Sound Ventures，与摩根·贝勒联合创立新风投公司</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">演员兼投资人阿什顿·库彻宣布离开其共同创办的 Sound Ventures，并与摩根·贝勒携手推出新的风险投资基金，继续深耕科技投资领域。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">6</span>
+                        <a href="https://techcrunch.com/2026/07/01/cloudflares-new-policy-pushes-ai-companies-to-pay-for-publishers-content/" target="_blank" rel="noopener">Cloudflare新政策要求AI公司为出版商的内容付费</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">Cloudflare推出新政策，旨在促使人工智能公司为其使用的出版商内容支付费用，以支持内容创作者并解决版权争议。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">7</span>
+                        <a href="https://techcrunch.com/2026/07/01/venice-ai-becomes-a-unicorn-with-65m-series-a-as-its-privacy-first-ai-platform-takes-off/" target="_blank" rel="noopener">隐私优先的AI平台Venice AI完成6500万美元A轮融资，估值突破10亿美元</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">Venice AI凭借其在隐私保护方面的技术优势获得市场认可，成功完成6500万美元A轮融资，成为最新一家独角兽企业。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">8</span>
+                        <a href="https://techcrunch.com/2026/07/01/gemini-spark-googles-agentic-assistant-is-now-available-on-mac/" target="_blank" rel="noopener">谷歌智能代理助手 Gemini Spark 现已登陆 Mac 平台</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">Google 正式推出面向 Mac 用户的 AI 代理助手 Gemini Spark，标志着其智能代理功能在桌面端的进一步扩展。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">9</span>
+                        <a href="https://techcrunch.com/2026/07/01/meta-like-spacex-looks-to-turn-excess-ai-compute-into-cash/" target="_blank" rel="noopener">```json</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">{</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">10</span>
+                        <a href="https://techcrunch.com/2026/06/30/wayve-launches-85m-employee-tender-offer-at-8-5b-valuation/" target="_blank" rel="noopener">Wayve 以 85 亿美元估值启动 8500 万美元员工股份回购要约</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">自动驾驶公司 Wayve 宣布以 85 亿美元的估值启动一项价值 8500 万美元的员工股份回购计划，旨在为内部员工提供退出渠道并巩固其市场地位。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">11</span>
+                        <a href="https://techcrunch.com/2026/06/30/openclaw-is-finally-available-on-android-and-ios/" target="_blank" rel="noopener">```json</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">{</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">12</span>
+                        <a href="https://techcrunch.com/2026/06/30/the-deepmind-trio-who-built-a-poker-ai-are-now-making-money-for-quant-hedge-funds/" target="_blank" rel="noopener">```json</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">{</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">13</span>
+                        <a href="https://techcrunch.com/2026/06/30/google-introduces-a-faster-cheaper-image-generator-with-nano-banana-2-lite/" target="_blank" rel="noopener">谷歌推出更快更便宜的图像生成器 Nano Banana 2 Lite</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">谷歌发布新一代图像生成模型 Nano Banana 2 Lite，在提升生成速度的同时显著降低成本，旨在为开发者和用户提供更高效、经济的AI图像创作工具。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">14</span>
+                        <a href="https://techcrunch.com/2026/06/30/nvidia-competitor-etched-hits-5b-valuation-1b-in-sales-for-ai-chip/" target="_blank" rel="noopener">英伟达竞争对手Etched估值达50亿美元，AI芯片销售额突破10亿美元</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">作为英伟达的有力竞争者，芯片初创公司Etched在AI芯片领域取得重大进展，其估值已攀升至50亿美元，年销售额达到10亿美元，显示出强劲的市场竞争力。</div>
+                    
+                </div>
+                
+                <div class="news-item">
+                    <div class="news-title">
+                        <span class="news-num">15</span>
+                        <a href="https://techcrunch.com/2026/06/30/anthropic-launches-claude-sonnet-5-as-a-cheaper-way-to-run-agents/" target="_blank" rel="noopener">Anthropic 推出 Claude Sonnet 5，以更低成本运行智能体</a>
+                    </div>
+                    <div class="news-meta">
+                        <span class="news-source-tag">TechCrunch AI</span>
+                        
+                    </div>
+                    
+                    <div class="news-summary">Anthropic 发布新一代模型 Claude Sonnet 5，旨在降低 AI 智能体的运行成本，提升大规模部署的经济可行性。</div>
+                    
+                </div>
+                
+            </div>
+        </div>
+        
+
+        <div class="footer">
+            <div class="archive-label">📅 历史日报：</div>
+            <div class="archive-links">
+                
+            </div>
+            <div class="powered">
+                Powered by <a href="https://github.com/ai-daily-news" target="_blank">AI Daily News Agent</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const current = body.getAttribute('data-theme');
+            body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+            localStorage.setItem('theme', current === 'dark' ? 'light' : 'dark');
+        }
+        // Restore saved theme
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved) document.body.setAttribute('data-theme', saved);
+        })();
+    </script>
+</body>
+</html>
