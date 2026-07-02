@@ -44,14 +44,8 @@ jobs:
           WECHAT_COVER_IMAGE_PATH: ${{ secrets.WECHAT_COVER_IMAGE_PATH }}
         run: python -m src.main
 
-      - name: Commit and push if changed
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git add docs/
-          if ! git diff --cached --quiet; then
-            git commit -m "📰 AI Daily News $(date +%Y-%m-%d)"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
