@@ -1,0 +1,18 @@
+tankex.xyz {
+    # 微信回调
+    handle /wechat* {
+        reverse_proxy web:5000
+    }
+
+    # 健康检查 + 新闻 API
+    handle /health* {
+        reverse_proxy web:5000
+    }
+    handle /api/* {
+        reverse_proxy web:5000
+    }
+
+    # 静态文件（日报 HTML、封面图、归档）
+    root * /usr/share/caddy/html
+    file_server
+}

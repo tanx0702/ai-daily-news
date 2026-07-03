@@ -1,0 +1,12 @@
+.env
+.git
+.gitignore
+.dockerignore
+__pycache__
+*.pyc
+.venv
+.claude
+CLAUDE.md
+*.md
+!README.md
+personMdDosc/

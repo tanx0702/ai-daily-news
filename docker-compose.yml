@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    container_name: ai-news-web
+    restart: always
+    volumes:
+      - ./docs:/app/docs
+    env_file:
+      - .env
+
+  caddy:
+    image: caddy:alpine
+    container_name: ai-news-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docs:/usr/share/caddy/html:ro
+      - caddy_data:/data
+    depends_on:
+      - web
+
+volumes:
+  caddy_data:

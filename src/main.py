@@ -5,10 +5,11 @@ AI 每日新闻推送 Agent - 主程序
 1. 采集 RSS 新闻
 2. LLM 生成摘要
 3. 渲染 HTML 日报
-4. 部署到 GitHub Pages
-5. 微信推送图文消息
+4. AI 封面图生成
+5. 保存 latest.json（供 Flask 微信服务读取）
 """
 
+import json
 import logging
 import os
 import sys
@@ -29,7 +30,7 @@ def main():
     logger.info("=" * 50)
 
     # === 1. 采集新闻 ===
-    logger.info("[1/7] 采集新闻...")
+    logger.info("[1/5] 采集 RSS 新闻...")
     from src.collector import collect_news
 
     top_n = int(os.environ.get("DAILY_TOP_N", "15"))
@@ -47,7 +48,7 @@ def main():
     logger.info("Collected %d news items", len(news_list))
 
     # === 2. LLM 摘要 ===
-    logger.info("[2/7] 生成 LLM 摘要...")
+    logger.info("[2/5] 生成 LLM 摘要...")
     from src.summarizer import summarize_news
 
     api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
@@ -65,96 +66,73 @@ def main():
         logger.info("AGNES_API_KEY not set, skipping LLM summary")
 
     # === 3. 生成 HTML 日报 ===
-    logger.info("[3/7] 生成 HTML 日报...")
+    logger.info("[3/5] 生成 HTML 日报...")
     from src.generator import render_daily_html, save_html
 
-    # 尝试加载历史归档链接
+    pages_url = os.environ.get(
+        "PAGES_URL",
+        f"https://{os.environ.get('DOMAIN', 'tankex.xyz')}",
+    )
+
+    # 扫描历史归档链接
     archive_links = []
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     if os.path.isdir(docs_dir):
-        for fname in os.listdir(docs_dir):
-            if fname.endswith(".html") and fname != "index.html":
-                archive_links.append(f"https://{os.environ.get('GITHUB_USERNAME', '')}.github.io/{os.environ.get('GITHUB_REPO', '')}/{fname}")
+        archive_dir = os.path.join(docs_dir, "archive")
+        if os.path.isdir(archive_dir):
+            for fname in sorted(os.listdir(archive_dir), reverse=True):
+                if fname.endswith(".html"):
+                    archive_links.append(f"{pages_url}/archive/{fname}")
 
     html = render_daily_html(
         news_list,
         date_str,
         archive_links,
-        github_repo=os.environ.get("GITHUB_REPO", "unknown/ai-daily-news"),
+        github_repo=os.environ.get("GITHUB_REPO", "tankex/ai-daily-news"),
     )
 
     # 保存 HTML
-    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     os.makedirs(docs_dir, exist_ok=True)
     save_html(html, os.path.join(docs_dir, "index.html"))
 
     # 保存归档
-    archive_path = os.path.join(docs_dir, "archive", f"{date_str}.html")
-    save_html(html, archive_path)
-
-    pages_url = f"https://{os.environ.get('GITHUB_USERNAME', '')}.github.io/{os.environ.get('GITHUB_REPO', '')}/"
+    archive_dir = os.path.join(docs_dir, "archive")
+    os.makedirs(archive_dir, exist_ok=True)
+    save_html(html, os.path.join(archive_dir, f"{date_str}.html"))
 
     # === 4. 生成封面图 ===
-    logger.info("[4/7] 生成封面图...")
+    logger.info("[4/5] 生成封面图...")
     from src.cover import generate_cover_from_news
 
-    cover_image_path = ""
-    cover_image_url = ""
     cover_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     cover_base_url = os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com")
     cover_save_path = os.path.join(docs_dir, "cover.jpg")
 
     if cover_key:
-        cover_image_path = generate_cover_from_news(
+        generate_cover_from_news(
             news_list,
             date_str,
             output_path=cover_save_path,
             api_key=cover_key,
             base_url=cover_base_url,
         )
-        logger.info("Cover image saved to %s", cover_image_path)
+        logger.info("Cover image saved to %s", cover_save_path)
     else:
         logger.info("No API key for cover generation, skipping")
 
-    # === 5. 部署到 GitHub Pages ===
-    logger.info("[5/7] 部署到 GitHub Pages...")
-    # GitHub Actions 会自动检测 docs/ 目录变化并提交
-    # 本地运行时跳过自动提交
-    if os.environ.get("CI") == "true":
-        import subprocess
-        result = subprocess.run(
-            ["git", "add", "docs/"],
-        )
-        if result.returncode == 0:
-            logger.info("docs/ staged for commit")
-    else:
-        logger.info("Local run, skipping git commit")
-        logger.info("HTML saved to docs/index.html")
-
-    # === 6. 推送到腾讯云 SCF（微信个人推送） ===
-    logger.info("[6/7] 推送到腾讯云 SCF...")
-    from src.tencent_push import push_to_tencent_scf
-
-    scf_result = push_to_tencent_scf(
-        news_list,
-        date_str,
-        pages_url,
-        cover_image_url=cover_image_url,
-    )
-    logger.info("Tencent SCF push result: %s", scf_result)
-
-    # === 7. 微信群发推送（可选，保留原有逻辑） ===
-    logger.info("[7/7] 微信群发推送...")
-    from src.wechat import send_daily_news
-
-    wechat_result = send_daily_news(
-        news_list,
-        date_str,
-        pages_url,
-        cover_image_path=cover_image_path,
-        cover_image_url=cover_image_url,
-    )
-    logger.info("WeChat push result: %s", wechat_result)
+    # === 5. 保存新闻数据（供 Flask 微信服务读取） ===
+    logger.info("[5/5] 保存新闻数据...")
+    latest_data = {
+        "date": date_str,
+        "news": news_list,
+        "pages_url": pages_url,
+        "cover_image_url": f"{pages_url}/cover.jpg",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    latest_path = os.path.join(docs_dir, "latest.json")
+    with open(latest_path, "w", encoding="utf-8") as f:
+        json.dump(latest_data, f, ensure_ascii=False, indent=2)
+    logger.info("News data saved to %s", latest_path)
 
     logger.info("=" * 50)
     logger.info("Done! Today's report: %s", pages_url)
