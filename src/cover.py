@@ -78,8 +78,8 @@ def _generate_simple_cover(
     _, _, cw, _ = draw.textbbox((0, 0), count_text, font=font_count)
 
     draw.text(((width - tw) // 2, 160), title_text, fill="#ffffff", font=font_title)
-    draw.text(((width - dw) // 2, 220), date_text, fill="rgba(255,255,255,0.8)", font=font_date)
-    draw.text(((width - cw) // 2, 270), count_text, fill="rgba(255,255,255,0.6)", font=font_count)
+    draw.text(((width - dw) // 2, 220), date_text, fill="#cccccc", font=font_date)
+    draw.text(((width - cw) // 2, 270), count_text, fill="#999999", font=font_count)
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
