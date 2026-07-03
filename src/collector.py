@@ -17,14 +17,40 @@ import requests
 logger = logging.getLogger(__name__)
 
 # AI 相关关键词，用于过滤非 AI 新闻
-AI_KEYWORDS = [
-    "ai", "artificial intelligence", "machine learning", "ml", "llm",
-    "large language model", "nlp", "natural language processing",
-    "computer vision", "cv", "deep learning", "dl", "generative ai",
-    "genai", "transformer", "gpt", "claude", "gemini", "llama",
-    "multimodal", "agentic", "autonomous", "foundation model",
+# 分为高权重（标题中出现直接命中）和低权重（需在标题+摘要中综合判断）
+AI_HIGH_KEYWORDS = [
+    # 英文核心词
+    "artificial intelligence", "machine learning", "deep learning",
+    "large language model", "foundation model", "generative ai",
+    "natural language processing", "computer vision", "multimodal",
+    "llm", "gpt", "claude", "gemini", "llama", "mixtral", "phi",
+    "transformer", "diffusion", "stable diffusion", "midjourney",
+    "dall-e", "dalle", "sora", "kling", "runway",
+    "agentic", "agent framework", "reasoning", "chain of thought",
+    "rlhf", "reinforcement learning", "alignment", "safety",
+    "openai", "anthropic", "google deepmind", "meta ai", "microsoft ai",
+    "perplexity", "cursor", "copilot", "mistral", "grok", "xai",
+    "fireworks", "together ai", "replicate", "hugging face",
+    "huggingface", "langchain", "llamaindex", "rag", "retrieval",
+    "embeddin", "vector database", "knowledge graph",
+    "speech recognition", "text to speech", "tts", "voice synthesis",
+    "video generation", "image generation", "image synthesis",
+    # 中文核心词
     "大模型", "人工智能", "机器学习", "深度学习", "自然语言处理",
-    "计算机视觉", "多模态", "生成式", "智能",
+    "计算机视觉", "多模态", "生成式", "语音识别", "文本生成",
+    "图像生成", "视频生成", "智能体", "强化学习", "对齐",
+    "提示词", "prompt", "微调", "推理", "预训练",
+]
+
+AI_LOW_KEYWORDS = [
+    # 英文辅助词（必须与高权重词搭配才生效）
+    "ai startup", "ai funding", "ai investment", "ai company", "ai tool",
+    "ai platform", "ai model", "ai research", "ai product",
+    "chatbot", "conversational ai",
+    "neural network", "nlp", "cv", "ai-powered", "ai-driven",
+    # 中文辅助词
+    "ai工具", "ai平台", "ai模型", "ai研究", "ai创业",
+    "智能助手", "对话系统", "推荐系统",
 ]
 
 
@@ -104,11 +130,40 @@ def _strip_html(text: str) -> str:
 
 
 def _is_ai_related(title: str, summary: str) -> bool:
-    """判断新闻是否与 AI 相关。"""
-    combined = (title + " " + summary).lower()
-    for keyword in AI_KEYWORDS:
-        if keyword in combined:
+    """
+    判断新闻是否与 AI 相关。
+
+    规则：
+    1. 标题中包含高权重关键词 → 直接命中
+    2. 标题中包含低权重关键词 + 摘要中也包含任意关键词 → 命中
+    3. 摘要中包含高权重关键词 → 命中
+    """
+    title_lower = title.lower()
+    summary_lower = summary.lower()
+    combined = title_lower + " " + summary_lower
+
+    # 规则 1: 标题中有高权重关键词 → 直接命中
+    for kw in AI_HIGH_KEYWORDS:
+        if kw in title_lower:
             return True
+
+    # 规则 2: 标题有低权重词 + 摘要也有任何 AI 词 → 命中
+    title_low_match = False
+    for kw in AI_LOW_KEYWORDS:
+        if kw in title_lower:
+            title_low_match = True
+            break
+
+    if title_low_match:
+        for kw in AI_HIGH_KEYWORDS + AI_LOW_KEYWORDS:
+            if kw in summary_lower:
+                return True
+
+    # 规则 3: 摘要中有高权重关键词 → 命中
+    for kw in AI_HIGH_KEYWORDS:
+        if kw in summary_lower:
+            return True
+
     return False
 
 
@@ -167,14 +222,66 @@ def _fetch_single(name: str, url: str, timeout: int) -> list[dict]:
 
 
 def _title_similarity(a: str, b: str) -> float:
-    """计算两个标题的相似度（基于字符集合重叠度）。"""
+    """
+    计算两个标题的相似度，综合多种方法提高准确性。
+
+    1. 完全相同 URL → 1.0
+    2. 完全相同标题（忽略大小写）→ 1.0
+    3. 中文：基于分词后的词级重叠（jieba 或字符级 bigram）
+    4. 英文：基于单词级 Jaccard
+    5. 子串匹配：一个包含另一个 → 高相似度
+    """
     if not a or not b:
         return 0.0
-    set_a = set(a.lower())
-    set_b = set(b.lower())
+
+    a_clean = a.strip().lower()
+    b_clean = b.strip().lower()
+
+    # 完全相同
+    if a_clean == b_clean:
+        return 1.0
+
+    # 一个包含另一个
+    if a_clean in b_clean or b_clean in a_clean:
+        shorter = min(len(a_clean), len(b_clean))
+        longer = max(len(a_clean), len(b_clean))
+        # 短标题被长标题包含，比例越高越相似
+        return shorter / longer if longer > 0 else 0.0
+
+    # 判断是否主要包含中文
+    has_chinese_a = any('一' <= c <= '鿿' for c in a_clean)
+    has_chinese_b = any('一' <= c <= '鿿' for c in b_clean)
+
+    if has_chinese_a or has_chinese_b:
+        # 中文标题：使用字符级 bigram 重叠
+        return _chinese_bigram_similarity(a_clean, b_clean)
+    else:
+        # 英文标题：使用单词级 Jaccard
+        return _english_word_jaccard(a_clean, b_clean)
+
+
+def _chinese_bigram_similarity(a: str, b: str) -> float:
+    """中文标题的 bigram 重叠度。"""
+    if len(a) < 2 or len(b) < 2:
+        return 0.0
+    set_a = {a[i:i+2] for i in range(len(a)-1)}
+    set_b = {b[i:i+2] for i in range(len(b)-1)}
+    if not set_a or not set_b:
+        return 0.0
     intersection = set_a & set_b
     union = set_a | set_b
-    return len(intersection) / len(union) if union else 0.0
+    return len(intersection) / len(union)
+
+
+def _english_word_jaccard(a: str, b: str) -> float:
+    """英文标题的单词级 Jaccard 相似度。"""
+    words_a = set(a.split())
+    words_b = set(b.split())
+    if not words_a or not words_b:
+        return 0.0
+    intersection = words_a & words_b
+    union = words_a | words_b
+    return len(intersection) / len(union)
 
 
 def collect_news(
@@ -206,7 +313,7 @@ def collect_news(
 
     logger.info("Total fetched: %d items from %d sources", len(all_items), len(sources))
 
-    # 去重：按 URL
+    # 去重：按 URL（完全相同 URL 直接跳过）
     seen_urls = set()
     deduped = []
     for item in all_items:
@@ -215,10 +322,10 @@ def collect_news(
             continue
         seen_urls.add(url)
 
-        # 去重：标题相似度 > 0.85 视为重复
+        # 去重：标题相似度 > 0.7 视为重复（降低阈值，bigram 更精确）
         is_dup = False
         for existing in deduped:
-            if _title_similarity(item["title"], existing["title"]) > 0.85:
+            if _title_similarity(item["title"], existing["title"]) > 0.7:
                 is_dup = True
                 break
         if is_dup:

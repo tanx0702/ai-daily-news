@@ -2,7 +2,7 @@
     "sources": [
         {
             "name": "Hacker News AI",
-            "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude",
+            "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude+OR+Agent+OR+Foundation+Model",
             "region": "overseas"
         },
         {
@@ -16,18 +16,33 @@
             "region": "overseas"
         },
         {
-            "name": "Ars Technica AI",
-            "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "name": "OpenAI Blog",
+            "url": "https://openai.com/blog",
+            "region": "overseas"
+        },
+        {
+            "name": "Google DeepMind",
+            "url": "https://blog.google/technology/ai/",
+            "region": "overseas"
+        },
+        {
+            "name": "MIT Technology Review AI",
+            "url": "https://www.technologyreview.com/topic/artificial-intelligence/",
             "region": "overseas"
         },
         {
             "name": "36氪 AI",
-            "url": "https://36kr.com/feed",
+            "url": "https://36kr.com/information/AI_news/",
             "region": "china"
         },
         {
             "name": "机器之心",
             "url": "https://www.jiqizhixin.com/rss",
+            "region": "china"
+        },
+        {
+            "name": "量子位",
+            "url": "https://www.qbitai.com/feed",
             "region": "china"
         }
     ]

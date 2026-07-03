@@ -1,11 +1,13 @@
 """
 LLM 摘要模块
 
-为每条新闻生成中文翻译标题 + 中文摘要。
+批量为新闻生成中文翻译标题 + 中文摘要。
 """
 
+import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -19,22 +21,57 @@ AGNES_BASE_URL = os.environ.get(
 )
 DEFAULT_MODEL = "agnes-2.0-flash"
 
+# 批量处理：每次最多处理 5 条新闻
+BATCH_SIZE = 5
+
+
+def _extract_json(text: str) -> Optional[dict]:
+    """从 LLM 响应中提取 JSON 对象。"""
+    text = text.strip()
+
+    # 尝试直接解析
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # 尝试提取 ```json ... ``` 块
+    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # 尝试提取第一个 { } 块
+    match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
 
 def summarize_news(
     news_list: list[dict],
     api_key: Optional[str] = None,
     model: str = DEFAULT_MODEL,
-    timeout: int = 15,
+    timeout: int = 30,
     base_url: str = AGNES_BASE_URL,
 ) -> list[dict]:
     """
-    为新闻列表生成中文翻译标题和摘要。
+    批量为新闻列表生成中文翻译标题和摘要。
+
+    采用分批处理策略：每 BATCH_SIZE 条新闻合并为一次 LLM 调用，
+    大幅降低 API 调用次数和超时概率。
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
         api_key: Agnes API Key，默认从 AGNES_API_KEY 环境变量读取
         model: 模型名称，默认 agnes-2.0-flash
-        timeout: 单次调用超时秒数
+        timeout: 单次调用超时秒数（建议 >= 30）
         base_url: API 基础地址，默认 Agnes hub
 
     Returns:
@@ -47,51 +84,96 @@ def summarize_news(
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
+    # 找出需要处理的新闻索引
+    need_summarize = []
     for i, news in enumerate(news_list):
-        # 已有中文标题的跳过
         if news.get("chinese_title"):
             continue
+        need_summarize.append(i)
+
+    if not need_summarize:
+        logger.info("All news already have summaries, skipping LLM")
+        return news_list
+
+    # 分批处理
+    for batch_start in range(0, len(need_summarize), BATCH_SIZE):
+        batch_indices = need_summarize[batch_start:batch_start + BATCH_SIZE]
+        batch_news = [news_list[i] for i in batch_indices]
+
+        logger.info("Processing batch %d-%d (%d items)",
+                     batch_start + 1, batch_start + len(batch_indices), len(batch_indices))
+
+        # 构建批量 prompt
+        headlines = "\n".join(
+            f"{idx+1}. {news['title']}"
+            for idx, news in enumerate(batch_news, start=batch_start)
+        )
+
+        system_prompt = (
+            "你是一个专业的 AI 新闻编辑。"
+            "请将以下每条英文新闻标题翻译成中文，并为它生成一句中文摘要。"
+            "严格按以下 JSON 数组格式回复，不要有其他内容："
+            "[{\"index\": 1, \"chinese_title\": \"翻译后的标题\", \"summary\": \"摘要内容\"}]"
+            "index 字段对应原始序号（从 1 开始）。"
+        )
 
         try:
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "你是一个专业的 AI 新闻编辑。"
-                            "请将以下英文新闻标题翻译成中文，并为它生成一句摘要。"
-                            "请按 JSON 格式回复，不要有其他内容："
-                            '{"chinese_title": "翻译后的标题", "summary": "摘要内容"}'
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": news["title"],
-                    },
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": headlines},
                 ],
                 temperature=0.3,
-                max_tokens=200,
+                max_tokens=1000,
             )
             content = response.choices[0].message.content.strip()
-            # 解析 JSON 响应
-            import json as _json
-            try:
-                result = _json.loads(content)
-                news["chinese_title"] = result.get("chinese_title", news["title"])
-                news["summary"] = result.get("summary", "")[:200]
-            except _json.JSONDecodeError:
-                # 降级：如果不是合法 JSON，尝试提取
-                lines = content.split("\n")
-                news["chinese_title"] = lines[0] if lines else news["title"]
-                news["summary"] = lines[1] if len(lines) > 1 else ""[:200]
+            results = _extract_json(content)
 
-            logger.info("Translated & summarized news #%d: %s", i + 1, news["title"][:30])
+            if isinstance(results, list):
+                for item in results:
+                    orig_idx = item.get("index", 0) - 1
+                    if 0 <= orig_idx < len(batch_news):
+                        batch_news[orig_idx]["chinese_title"] = item.get("chinese_title", batch_news[orig_idx]["title"])
+                        batch_news[orig_idx]["summary"] = item.get("summary", "")[:200]
+                        logger.info("  Batch summary #%d: %s", orig_idx + 1,
+                                    batch_news[orig_idx]["chinese_title"][:40])
+            else:
+                raise ValueError(f"Expected list, got {type(results).__name__}")
+
         except Exception as e:
-            logger.warning("Failed to generate summary for '%s': %s", news["title"][:30], e)
-            # 降级：保留原标题
-            news["chinese_title"] = news["title"]
-            news["summary"] = ""
+            logger.warning("Batch failed for items %d-%d: %s",
+                           batch_start + 1, batch_start + len(batch_indices), e)
+            # 降级：逐条处理这批
+            for news in batch_news:
+                try:
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": (
+                                    "请将以下英文新闻标题翻译成中文，并为它生成一句摘要。"
+                                    "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
+                                ),
+                            },
+                            {"role": "user", "content": news["title"]},
+                        ],
+                        temperature=0.3,
+                        max_tokens=200,
+                    )
+                    content = response.choices[0].message.content.strip()
+                    result = _extract_json(content)
+                    if result:
+                        news["chinese_title"] = result.get("chinese_title", news["title"])
+                        news["summary"] = result.get("summary", "")[:200]
+                    else:
+                        news["chinese_title"] = news["title"]
+                        news["summary"] = ""
+                except Exception as e2:
+                    logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e2)
+                    news["chinese_title"] = news["title"]
+                    news["summary"] = ""
 
     return news_list
 
