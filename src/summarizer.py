@@ -113,8 +113,8 @@ def summarize_news(
             "你是一个专业的 AI 新闻编辑。"
             "请将以下每条英文新闻标题翻译成中文，并为它生成一句中文摘要。"
             "严格按以下 JSON 数组格式回复，不要有其他内容："
-            "[{\"index\": 1, \"chinese_title\": \"翻译后的标题\", \"summary\": \"摘要内容\"}]"
-            "index 字段对应原始序号（从 1 开始）。"
+            "[{\"chinese_title\": \"翻译后的标题\", \"summary\": \"摘要内容\"}]"
+            "数组中每个元素的顺序对应输入的标题顺序（第一条对应第一个标题）。"
         )
 
         try:
@@ -131,13 +131,13 @@ def summarize_news(
             results = _extract_json(content)
 
             if isinstance(results, list):
-                for item in results:
-                    orig_idx = item.get("index", 0) - 1
-                    if 0 <= orig_idx < len(batch_news):
-                        batch_news[orig_idx]["chinese_title"] = item.get("chinese_title", batch_news[orig_idx]["title"])
-                        batch_news[orig_idx]["summary"] = item.get("summary", "")[:200]
-                        logger.info("  Batch summary #%d: %s", orig_idx + 1,
-                                    batch_news[orig_idx]["chinese_title"][:40])
+                # 按顺序映射，不依赖 LLM 返回的 index（LLM 可能返回全局序号）
+                for pos, item in enumerate(results):
+                    if pos < len(batch_news):
+                        batch_news[pos]["chinese_title"] = item.get("chinese_title", batch_news[pos]["title"])
+                        batch_news[pos]["summary"] = item.get("summary", "")[:200]
+                        logger.info("  Batch summary #%d: %s", pos + 1,
+                                    batch_news[pos]["chinese_title"][:40])
             else:
                 raise ValueError(f"Expected list, got {type(results).__name__}")
 
