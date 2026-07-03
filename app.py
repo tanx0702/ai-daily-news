@@ -18,6 +18,9 @@ from datetime import datetime, timezone
 from functools import wraps
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 from flask import Flask, jsonify, request
 
 # ==================== 配置 ====================
