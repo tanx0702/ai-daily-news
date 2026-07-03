@@ -6,7 +6,8 @@ AI 每日新闻推送 Agent - 主程序
 2. LLM 生成摘要
 3. 渲染 HTML 日报
 4. AI 封面图生成
-5. 保存 latest.json（供 Flask 微信服务读取）
+5. 保存 latest.json（供 Flask 读取）
+6. 发布微信推文（草稿 → 群发）
 """
 
 import json
@@ -34,7 +35,7 @@ def main():
     logger.info("=" * 50)
 
     # === 1. 采集新闻 ===
-    logger.info("[1/5] 采集 RSS 新闻...")
+    logger.info("[1/6] 采集 RSS 新闻...")
     from src.collector import collect_news
 
     top_n = int(os.environ.get("DAILY_TOP_N", "15"))
@@ -52,7 +53,7 @@ def main():
     logger.info("Collected %d news items", len(news_list))
 
     # === 2. LLM 摘要 ===
-    logger.info("[2/5] 生成 LLM 摘要...")
+    logger.info("[2/6] 生成 LLM 摘要...")
     from src.summarizer import summarize_news
 
     api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
@@ -70,7 +71,7 @@ def main():
         logger.info("AGNES_API_KEY not set, skipping LLM summary")
 
     # === 3. 生成 HTML 日报 ===
-    logger.info("[3/5] 生成 HTML 日报...")
+    logger.info("[3/6] 生成 HTML 日报...")
     from src.generator import render_daily_html, save_html
 
     pages_url = os.environ.get(
@@ -105,7 +106,7 @@ def main():
     save_html(html, os.path.join(archive_dir, f"{date_str}.html"))
 
     # === 4. 生成封面图 ===
-    logger.info("[4/5] 生成封面图...")
+    logger.info("[4/6] 生成封面图...")
     from src.cover import generate_cover_from_news
 
     cover_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
@@ -125,7 +126,7 @@ def main():
         logger.info("No API key for cover generation, skipping")
 
     # === 5. 保存新闻数据（供 Flask 微信服务读取） ===
-    logger.info("[5/5] 保存新闻数据...")
+    logger.info("[5/6] 保存新闻数据...")
     latest_data = {
         "date": date_str,
         "news": news_list,
@@ -137,6 +138,19 @@ def main():
     with open(latest_path, "w", encoding="utf-8") as f:
         json.dump(latest_data, f, ensure_ascii=False, indent=2)
     logger.info("News data saved to %s", latest_path)
+
+    # === 6. 发布微信推文 ===
+    logger.info("[6/6] 发布微信推文...")
+    from src.wechat import publish_daily_article
+
+    cover_path = os.path.join(docs_dir, "cover.jpg")
+    wechat_result = publish_daily_article(
+        news_list,
+        date_str,
+        pages_url,
+        cover_path=cover_path if os.path.isfile(cover_path) else "",
+    )
+    logger.info("WeChat publish result: %s", wechat_result)
 
     logger.info("=" * 50)
     logger.info("Done! Today's report: %s", pages_url)

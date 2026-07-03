@@ -1,21 +1,52 @@
 """
-微信公众号推送模块
+微信公众号发布模块
 
-调用微信公众号 API 群发图文消息。
+流程（微信官方 free-publish API）：
+1. 获取 access_token
+2. 上传封面图到永久素材库 → thumb_media_id
+3. 创建草稿（draft/add）→ draft_media_id
+4. 发布草稿（freepublish/submit）→ 推送给所有关注者
+
+注意：个人订阅号也支持此接口，每天限发 1 次。
 """
 
-import io
 import logging
 import os
+import time
 from typing import Optional
 
 import requests
 
 logger = logging.getLogger(__name__)
 
+# access_token 缓存文件（Docker 容器内 /tmp 可写）
+TOKEN_CACHE = "/tmp/.wx_token_cache"
+TOKEN_CACHE_TS = "/tmp/.wx_token_ts"
 
-def _get_access_token(app_id: str, app_secret: str) -> Optional[str]:
-    """获取微信 access_token。"""
+
+def _get_access_token(
+    app_id: Optional[str] = None,
+    app_secret: Optional[str] = None,
+) -> Optional[str]:
+    """获取微信 access_token，带文件缓存（5500 秒）。"""
+    app_id = app_id or os.environ.get("WECHAT_APP_ID", "")
+    app_secret = app_secret or os.environ.get("WECHAT_APP_SECRET", "")
+
+    if not app_id or not app_secret:
+        logger.warning("WECHAT_APP_ID or WECHAT_APP_SECRET not set")
+        return None
+
+    # 读取缓存
+    try:
+        if os.path.exists(TOKEN_CACHE_TS):
+            with open(TOKEN_CACHE_TS) as f:
+                cached_ts = int(f.read().strip())
+            if time.time() - cached_ts < 5500:
+                with open(TOKEN_CACHE) as f:
+                    return f.read().strip()
+    except Exception:
+        pass
+
     url = (
         "https://api.weixin.qq.com/cgi-bin/token"
         f"?grant_type=client_credential&appid={app_id}&secret={app_secret}"
@@ -25,234 +56,197 @@ def _get_access_token(app_id: str, app_secret: str) -> Optional[str]:
         resp.raise_for_status()
         data = resp.json()
         if "access_token" in data:
-            return data["access_token"]
-        logger.error("Failed to get access_token: %s", data)
+            token = data["access_token"]
+            with open(TOKEN_CACHE, "w") as f:
+                f.write(token)
+            with open(TOKEN_CACHE_TS, "w") as f:
+                f.write(str(int(time.time())))
+            logger.info("Got WeChat access_token, expires in %ds", data.get("expires_in", 0))
+            return token
+        logger.error("WeChat token API error: %s", data)
         return None
     except Exception as e:
         logger.error("Failed to get access_token: %s", e)
         return None
 
 
-def _upload_thumb_image(
+def _upload_permanent_image(
     access_token: str,
-    image_source: str,
-    source_type: str = "path",
+    image_path: str,
 ) -> Optional[str]:
     """
-    上传封面图素材，返回 thumb_media_id。
-
-    Args:
-        access_token: 微信 access_token
-        image_source: 封面图片来源，可以是本地路径或 URL
-        source_type: 来源类型 — "path"（本地文件）或 "url"（网络链接）
+    上传图片到微信永久素材库。
 
     Returns:
-        thumb_media_id，失败返回 None
+        media_id，失败返回 None
     """
     url = (
         "https://api.weixin.qq.com/cgi-bin/material/add_material"
         f"?access_token={access_token}&type=image"
     )
     try:
-        if source_type == "url":
-            img_resp = requests.get(image_source, timeout=30)
-            img_resp.raise_for_status()
-            image_data = img_resp.content
-        else:
-            with open(image_source, "rb") as f:
-                image_data = f.read()
-
-        files = {"media": ("thumb.jpg", image_data, "image/jpeg")}
-        resp = requests.post(url, files=files, timeout=10)
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+        files = {"media": ("cover.jpg", image_data, "image/jpeg")}
+        resp = requests.post(url, files=files, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         if "media_id" in data:
+            logger.info("Uploaded cover image, media_id=%s", data["media_id"])
             return data["media_id"]
-        logger.error("Failed to upload thumb image: %s", data)
+        logger.error("Upload image failed: %s", data)
         return None
     except FileNotFoundError:
-        logger.warning("Cover image not found at %s, using placeholder", image_source)
+        logger.warning("Cover image not found at %s", image_path)
         return None
     except Exception as e:
-        logger.error("Failed to upload thumb image: %s", e)
+        logger.error("Upload image failed: %s", e)
         return None
 
 
-def _upload_news(
+def _create_draft(
     access_token: str,
     title: str,
-    author: str,
-    digest: str,
     content: str,
-    url: str,
     thumb_media_id: str,
+    digest: str = "",
+    source_url: str = "",
 ) -> Optional[str]:
     """
-    上传图文消息素材，返回 media_id。
+    创建微信草稿。
 
-    Args:
-        access_token: 微信 access_token
-        title: 标题
-        author: 作者
-        digest: 摘要（100字以内）
-        content: 正文 HTML
-        url: 阅读原文链接
-        thumb_media_id: 封面图 media_id
+    API: POST /cgi-bin/draft/add
 
     Returns:
-        发布任务的 media_id，失败返回 None
+        草稿 media_id，失败返回 None
     """
-    publish_url = f"https://api.weixin.qq.com/cgi-bin/freepublish/submit?access_token={access_token}"
+    url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={access_token}"
 
     payload = {
-        "title": title,
-        "thumb_media_id": thumb_media_id,
-        "author": author,
-        "digest": digest,
-        "content": content,
-        "show_cover_pic": 1,
-        "url": url,
+        "articles": [{
+            "title": title,
+            "author": "AI Daily News",
+            "digest": digest or title,
+            "content": content,
+            "content_source_url": source_url,
+            "thumb_media_id": thumb_media_id,
+            "need_open_comment": 0,
+            "only_fans_can_comment": 0,
+        }]
     }
 
     try:
-        resp = requests.post(publish_url, json=payload, timeout=10)
+        resp = requests.post(url, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         if "media_id" in data:
+            logger.info("Draft created, media_id=%s", data["media_id"])
             return data["media_id"]
-        logger.error("Failed to upload news: %s", data)
+        logger.error("Create draft failed: %s", data)
         return None
     except Exception as e:
-        logger.error("Failed to upload news: %s", e)
+        logger.error("Create draft failed: %s", e)
         return None
 
 
-def _mass_send(
-    access_token: str,
-    media_id: str,
-) -> dict:
+def _publish_draft(access_token: str, media_id: str) -> dict:
     """
-    群发图文消息给所有关注者。
+    发布草稿，推送给所有关注者。
 
-    Args:
-        access_token: 微信 access_token
-        media_id: 图文消息 media_id
+    API: POST /cgi-bin/freepublish/submit
 
     Returns:
-        群发结果
+        发布结果，成功包含 publish_id
     """
-    send_url = (
-        "https://api.weixin.qq.com/cgi-bin/message/mass/sendall"
-        f"?access_token={access_token}"
-    )
-
-    payload = {
-        "filter": {"is_to_all": True},
-        "mpnews": {"media_id": media_id},
-        "msgtype": "mpnews",
-    }
+    url = f"https://api.weixin.qq.com/cgi-bin/freepublish/submit?access_token={access_token}"
 
     try:
-        resp = requests.post(send_url, json=payload, timeout=10)
+        resp = requests.post(url, json={"media_id": media_id}, timeout=30)
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        if "errcode" not in data or data["errcode"] == 0:
+            logger.info("Published successfully, publish_id=%s", data.get("publish_id"))
+            return {"status": "success", "data": data}
+        logger.error("Publish failed: %s", data)
+        return {"status": "failed", "error": data}
     except Exception as e:
-        logger.error("Failed to mass send: %s", e)
-        return {"error": str(e)}
+        logger.error("Publish failed: %s", e)
+        return {"status": "failed", "error": str(e)}
 
 
-def send_daily_news(
+def publish_daily_article(
     news_list: list[dict],
     date_str: str,
     pages_url: str,
-    app_id: Optional[str] = None,
-    app_secret: Optional[str] = None,
-    thumb_media_id: str = "",
-    cover_image_path: str = "",
-    cover_image_url: str = "",
+    cover_path: str = "",
     retry: int = 2,
 ) -> dict:
     """
-    发送每日新闻图文消息。
+    发布每日 AI 新闻推文。
 
     Args:
-        news_list: 新闻列表
+        news_list: 新闻列表（已含 chinese_title 和 summary）
         date_str: 日期字符串
-        pages_url: GitHub Pages 日报页面 URL
-        app_id: 公众号 AppID
-        app_secret: 公众号 AppSecret
-        thumb_media_id: 封面图 media_id（公众号后台上传获取）
-        cover_image_path: 本地封面图片路径（用于自动上传）
-        cover_image_url: 封面图 URL（从 Agnes Image API 生成）
+        pages_url: 完整日报页面 URL
+        cover_path: 本地封面图路径
         retry: 失败重试次数
 
     Returns:
-        推送结果字典
+        发布结果字典
     """
-    app_id = app_id or os.environ.get("WECHAT_APP_ID", "")
-    app_secret = app_secret or os.environ.get("WECHAT_APP_SECRET", "")
+    app_id = os.environ.get("WECHAT_APP_ID", "")
+    app_secret = os.environ.get("WECHAT_APP_SECRET", "")
 
     if not app_id or not app_secret:
-        logger.warning("WECHAT_APP_ID or WECHAT_APP_SECRET not set, skipping push")
+        logger.info("WECHAT not configured, skipping article publish")
         return {"status": "skipped", "reason": "credentials not set"}
 
-    # 获取 access_token
+    # 1. 获取 token
     access_token = _get_access_token(app_id, app_secret)
     if not access_token:
         return {"status": "failed", "reason": "cannot_get_access_token"}
 
-    # 处理封面图
-    if not thumb_media_id and cover_image_path:
-        thumb_media_id = _upload_thumb_image(access_token, cover_image_path, source_type="path")
-        if not thumb_media_id:
-            logger.warning("No valid thumb_media_id from local path, trying URL")
-    if not thumb_media_id and cover_image_url:
-        thumb_media_id = _upload_thumb_image(access_token, cover_image_url, source_type="url")
-        if not thumb_media_id:
-            logger.warning("No valid thumb_media_id, push may fail")
+    # 2. 上传封面图
+    thumb_media_id = ""
+    if cover_path and os.path.isfile(cover_path):
+        thumb_media_id = _upload_permanent_image(access_token, cover_path) or ""
+    if not thumb_media_id:
+        logger.warning("No cover image media_id, article will have no cover")
 
-    # 构造图文内容
+    # 3. 生成微信推文 HTML
+    from src.generator import render_wechat_article
+    content = render_wechat_article(news_list, date_str, pages_url)
+
+    # 4. 构建标题和摘要
     title = f"🤖 AI 日报 {date_str}"
-    author = "AI Daily News Agent"
-
-    # 摘要：前 5 条新闻标题
     highlights = news_list[:5]
-    digest_parts = [f"{i+1}. {item.get('chinese_title') or item['title']}" for i, item in enumerate(highlights)]
-    digest = " ".join(digest_parts)[:100]
+    digest_parts = [
+        f"{i+1}. {item.get('chinese_title') or item['title']}"
+        for i, item in enumerate(highlights)
+    ]
+    digest = " · ".join(digest_parts)[:120]
 
-    # 正文 HTML
-    content_items = []
-    for i, item in enumerate(news_list[:10]):  # 正文最多展示 10 条
-        summary = item.get("summary", "") or item.get("chinese_title") or item["title"]
-        content_items.append(f"<p><strong>{i+1}. {item.get('chinese_title') or item['title']}</strong></p>")
-        if summary and summary != item.get("chinese_title") and summary != item["title"]:
-            content_items.append(f"<p>{summary}</p>")
-        content_items.append(f'<p><a href="{item["url"]}" target="_blank">阅读原文 →</a></p>')
-        content_items.append("<hr style='border:1px solid #eee;margin:12px 0;'>")
-
-    content = "".join(content_items) + f'<p style="text-align:center;color:#888;">' \
-             f'<a href="{pages_url}" target="_blank">👉 查看完整日报（含全部 {len(news_list)} 条新闻）</a></p>'
-
-    # 上传图文并群发（重试）
+    # 5. 创建草稿 + 发布（带重试）
     for attempt in range(retry + 1):
-        media_id = _upload_news(access_token, title, author, digest, content, pages_url, thumb_media_id)
-        if not media_id:
-            logger.warning("Upload news failed, attempt %d/%d", attempt + 1, retry + 1)
+        draft_media_id = _create_draft(
+            access_token, title, content,
+            thumb_media_id=thumb_media_id,
+            digest=digest,
+            source_url=pages_url,
+        )
+        if not draft_media_id:
+            logger.warning("Create draft attempt %d/%d failed", attempt + 1, retry + 1)
             if attempt < retry:
-                import time
                 time.sleep(5)
-                # 重新获取 access_token
                 access_token = _get_access_token(app_id, app_secret)
             continue
 
-        result = _mass_send(access_token, media_id)
-        if "errcode" not in result or result["errcode"] == 0:
-            logger.info("WeChat push successful: %s", result)
-            return {"status": "success", "data": result}
-        else:
-            logger.warning("Mass send failed: %s", result)
-            if attempt < retry:
-                import time
-                time.sleep(5)
+        result = _publish_draft(access_token, draft_media_id)
+        if result.get("status") == "success":
+            return result
+
+        logger.warning("Publish attempt %d/%d failed", attempt + 1, retry + 1)
+        if attempt < retry:
+            time.sleep(5)
 
     return {"status": "failed", "reason": "all_retries_exhausted"}

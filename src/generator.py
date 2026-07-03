@@ -389,6 +389,119 @@ def render_daily_html(
     )
 
 
+def render_wechat_article(
+    news_list: list[dict],
+    date_str: Optional[str] = None,
+    pages_url: Optional[str] = None,
+) -> str:
+    """
+    生成微信推文兼容的 HTML 内容。
+
+    WeChat 文章限制：
+    - 不支持 JS（会被过滤）
+    - 仅支持内联样式，不支持外部 CSS
+    - 使用 <section> 标签兼容性更好
+    - 图片必须使用微信素材 URL
+
+    Args:
+        news_list: 新闻列表
+        date_str: 日期字符串
+        pages_url: 完整日报页面 URL（用于底部"阅读原文"链接）
+
+    Returns:
+        微信兼容的 HTML 字符串
+    """
+    if date_str is None:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if pages_url is None:
+        pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
+
+    # 按来源分组
+    grouped: dict[str, list[dict]] = {}
+    for item in news_list:
+        source = item.get("source", "Unknown")
+        region = _guess_region(source)
+        grouped.setdefault(region, []).append(item)
+
+    parts = []
+
+    # —— 头部 ——
+    parts.append(f"""
+    <section style="padding: 16px 0; text-align: center;">
+        <h1 style="font-size: 22px; color: #6366f1; margin: 0 0 6px;">🤖 AI 日报</h1>
+        <p style="font-size: 14px; color: #999; margin: 0 0 8px;">{date_str} · 共 {len(news_list)} 条</p>
+        <hr style="border: 0; border-top: 2px solid #6366f1; width: 40px; margin: 0 auto;">
+    </section>
+    """)
+
+    # —— 新闻列表 ——
+    global_index = 0
+    for region, items in grouped.items():
+        flag = "🌍 海外源" if region == "overseas" or region != "china" else "🇨🇳 国内源"
+        parts.append(f"""
+        <section style="margin-bottom: 10px;">
+            <p style="font-size: 14px; color: #6366f1; font-weight: bold; margin: 12px 0 6px;
+                      padding: 4px 10px; background: #f0eeff; border-radius: 4px;">
+                {flag} &nbsp;<span style="font-weight: normal; font-size: 12px; color: #999;">{len(items)} 条</span>
+            </p>
+        </section>
+        """)
+
+        for item in items:
+            global_index += 1
+            title = item.get("chinese_title") or item.get("title", "")
+            summary = item.get("summary", "")
+            source_name = item.get("source", "")
+            url = item.get("url", "")
+
+            parts.append(f"""
+            <section style="margin: 0 0 16px; padding: 12px 14px;
+                          border-left: 3px solid #6366f1; background: #fafbff;
+                          border-radius: 0 6px 6px 0;">
+                <p style="margin: 0 0 6px; font-size: 15px; font-weight: bold; line-height: 1.5;
+                          color: #1a1a2e;">
+                    {global_index}. {title}
+                </p>
+            """)
+
+            if summary:
+                parts.append(f"""
+                <p style="margin: 0 0 6px; font-size: 13px; color: #555; line-height: 1.6;">
+                    {summary}
+                </p>
+                """)
+
+            parts.append(f"""
+                <p style="margin: 0; font-size: 12px; color: #999;">
+                    <span style="background: #eee; padding: 1px 6px; border-radius: 3px;">{source_name}</span>
+            """)
+
+            if url:
+                parts.append(f"""
+                    &nbsp;<a href="{url}" style="color: #6366f1; text-decoration: none;">阅读原文 →</a>
+                </p>
+                """)
+            else:
+                parts.append("</p>")
+
+            parts.append("</section>")
+
+    # —— 尾部 ——
+    parts.append(f"""
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+    <section style="text-align: center; padding: 10px 0;">
+        <p style="margin: 0 0 6px; font-size: 14px; color: #6366f1;">
+            👉 <a href="{pages_url}" style="color: #6366f1;">查看完整日报（精美排版 + 暗色模式）</a>
+        </p>
+        <p style="margin: 0; font-size: 12px; color: #bbb;">
+            Powered by AI Daily News Agent
+        </p>
+    </section>
+    """)
+
+    return "".join(parts)
+
+
 def _guess_region(source: str) -> str:
     """根据来源名称猜测地区分类。"""
     china_keywords = ["机器之心", "量子位", "36氪", "虎嗅", "钛媒体", "品玩"]
