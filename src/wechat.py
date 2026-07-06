@@ -226,7 +226,7 @@ def publish_daily_article(
     ]
     digest = (" · ".join(digest_parts))[:40]
 
-    # 5. 创建草稿 + 发布（带重试）
+    # 5. 创建草稿（个人订阅号不支持 API 发布，需手动去后台点发布）
     for attempt in range(retry + 1):
         draft_media_id = _create_draft(
             access_token, title, content,
@@ -234,19 +234,13 @@ def publish_daily_article(
             digest=digest,
             source_url=pages_url,
         )
-        if not draft_media_id:
-            logger.warning("Create draft attempt %d/%d failed", attempt + 1, retry + 1)
-            if attempt < retry:
-                time.sleep(5)
-                access_token = _get_access_token(app_id, app_secret)
-            continue
+        if draft_media_id:
+            logger.info("Draft ready! Go to mp.weixin.qq.com → 草稿箱 → 发布")
+            return {"status": "draft_created", "media_id": draft_media_id}
 
-        result = _publish_draft(access_token, draft_media_id)
-        if result.get("status") == "success":
-            return result
-
-        logger.warning("Publish attempt %d/%d failed", attempt + 1, retry + 1)
+        logger.warning("Create draft attempt %d/%d failed", attempt + 1, retry + 1)
         if attempt < retry:
             time.sleep(5)
+            access_token = _get_access_token(app_id, app_secret)
 
     return {"status": "failed", "reason": "all_retries_exhausted"}
