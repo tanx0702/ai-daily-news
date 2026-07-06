@@ -217,14 +217,14 @@ def publish_daily_article(
     from src.generator import render_wechat_article
     content = render_wechat_article(news_list, date_str, pages_url)
 
-    # 4. 构建标题和摘要
+    # 4. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
     title = f"🤖 AI 日报 {date_str}"
-    highlights = news_list[:5]
+    highlights = news_list[:3]
     digest_parts = [
         f"{i+1}. {item.get('chinese_title') or item['title']}"
         for i, item in enumerate(highlights)
     ]
-    digest = " · ".join(digest_parts)[:120]
+    digest = (" · ".join(digest_parts))[:40]
 
     # 5. 创建草稿 + 发布（带重试）
     for attempt in range(retry + 1):
