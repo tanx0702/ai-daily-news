@@ -10,6 +10,7 @@
 注意：个人订阅号也支持此接口，每天限发 1 次。
 """
 
+import json
 import logging
 import os
 import time
@@ -136,7 +137,12 @@ def _create_draft(
     }
 
     try:
-        resp = requests.post(url, json=payload, timeout=30)
+        resp = requests.post(
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            timeout=30,
+        )
         resp.raise_for_status()
         data = resp.json()
         if "media_id" in data:
