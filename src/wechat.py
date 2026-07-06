@@ -13,7 +13,9 @@
 import json
 import logging
 import os
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 import requests
@@ -74,12 +76,12 @@ def _get_access_token(
 def _upload_permanent_image(
     access_token: str,
     image_path: str,
-) -> Optional[str]:
+) -> Optional[dict]:
     """
     上传图片到微信永久素材库。
 
     Returns:
-        media_id，失败返回 None
+        {"media_id": "...", "url": "..."} ，失败返回 None
     """
     url = (
         "https://api.weixin.qq.com/cgi-bin/material/add_material"
@@ -93,8 +95,9 @@ def _upload_permanent_image(
         resp.raise_for_status()
         data = resp.json()
         if "media_id" in data:
-            logger.info("Uploaded cover image, media_id=%s", data["media_id"])
-            return data["media_id"]
+            logger.info("Uploaded cover image, media_id=%s, url=%s",
+                        data["media_id"], data.get("url", "")[:60])
+            return {"media_id": data["media_id"], "url": data.get("url", "")}
         logger.error("Upload image failed: %s", data)
         return None
     except FileNotFoundError:
@@ -180,6 +183,140 @@ def _publish_draft(access_token: str, media_id: str) -> dict:
         return {"status": "failed", "error": str(e)}
 
 
+def _fetch_og_image(article_url: str, timeout: int = 6) -> Optional[str]:
+    """
+    抓取文章页面的 og:image 或 twitter:image。
+
+    只读前 100KB HTML，不下载整页。
+    """
+    try:
+        resp = requests.get(
+            article_url,
+            timeout=timeout,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
+                    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+            },
+            allow_redirects=True,
+        )
+        if resp.status_code != 200:
+            return None
+
+        html = resp.text[:100000]
+
+        # og:image（优先）
+        m = re.search(
+            r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+            html, re.IGNORECASE,
+        )
+        if not m:
+            # twitter:image（备选）
+            m = re.search(
+                r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']',
+                html, re.IGNORECASE,
+            )
+        if m:
+            img_url = m.group(1)
+            # 过滤掉明显太小的图标/logo
+            if any(kw in img_url.lower() for kw in ["favicon", "icon-32", "logo-"]):
+                return None
+            return img_url
+    except Exception:
+        pass
+    return None
+
+
+def _upload_image_from_url(
+    access_token: str,
+    image_url: str,
+    timeout: int = 10,
+    max_size_mb: int = 5,
+) -> Optional[str]:
+    """
+    下载外部图片并上传到微信素材库。
+
+    Returns:
+        微信图片 URL，失败返回 None
+    """
+    try:
+        resp = requests.get(image_url, timeout=timeout, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)",
+        })
+        resp.raise_for_status()
+
+        content = resp.content
+        if len(content) > max_size_mb * 1024 * 1024:
+            logger.warning("Image too large (%d bytes), skipping", len(content))
+            return None
+        if len(content) < 1024:
+            logger.warning("Image too small (%d bytes), likely invalid", len(content))
+            return None
+
+        # 判断文件类型
+        ct = resp.headers.get("Content-Type", "").lower()
+        ext = "jpg"
+        if "png" in ct:
+            ext = "png"
+        elif "webp" in ct:
+            ext = "webp"
+        elif "gif" in ct:
+            ext = "gif"
+
+        upload_url = (
+            "https://api.weixin.qq.com/cgi-bin/material/add_material"
+            f"?access_token={access_token}&type=image"
+        )
+        files = {"media": (f"article.{ext}", content, f"image/{ext}")}
+        upload_resp = requests.post(upload_url, files=files, timeout=30)
+        data = upload_resp.json()
+
+        if "url" in data:
+            logger.info("Uploaded article image: %s", data["url"][:60])
+            return data["url"]
+        logger.warning("Upload article image failed: %s", data)
+        return None
+    except Exception as e:
+        logger.warning("Failed to process image %s: %s", image_url[:60], e)
+        return None
+
+
+def _enrich_news_with_images(
+    access_token: str,
+    news_list: list[dict],
+    max_workers: int = 5,
+) -> list[dict]:
+    """
+    为每条新闻尝试获取配图（og:image → 下载 → 上传微信）。
+
+    并发处理，单条失败不影响其他。
+    """
+    def _process_one(item: dict) -> None:
+        url = item.get("url", "")
+        if not url or item.get("article_image_url"):
+            return
+        og_img = _fetch_og_image(url)
+        if og_img:
+            wx_url = _upload_image_from_url(access_token, og_img)
+            if wx_url:
+                item["article_image_url"] = wx_url
+                logger.info("Enriched image for: %s", item.get("chinese_title") or item["title"][:40])
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_process_one, item): item for item in news_list}
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logger.warning("Image enrichment failed: %s", e)
+
+    img_count = sum(1 for item in news_list if item.get("article_image_url"))
+    logger.info("Enriched %d/%d news items with images", img_count, len(news_list))
+    return news_list
+
+
 def publish_daily_article(
     news_list: list[dict],
     date_str: str,
@@ -212,18 +349,25 @@ def publish_daily_article(
     if not access_token:
         return {"status": "failed", "reason": "cannot_get_access_token"}
 
-    # 2. 上传封面图
+    # 2. 上传封面图，同时拿到 media_id（缩略图）和 url（文章内嵌）
     thumb_media_id = ""
+    cover_url = ""
     if cover_path and os.path.isfile(cover_path):
-        thumb_media_id = _upload_permanent_image(access_token, cover_path) or ""
+        upload_result = _upload_permanent_image(access_token, cover_path)
+        if upload_result:
+            thumb_media_id = upload_result.get("media_id", "")
+            cover_url = upload_result.get("url", "")
     if not thumb_media_id:
         logger.warning("No cover image media_id, article will have no cover")
 
-    # 3. 生成微信推文 HTML
-    from src.generator import render_wechat_article
-    content = render_wechat_article(news_list, date_str, pages_url)
+    # 3. 为每条新闻抓取原文配图（og:image → 下载 → 上传微信，并发+降级）
+    news_list = _enrich_news_with_images(access_token, news_list)
 
-    # 4. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
+    # 4. 生成微信推文 HTML（含封面 hero + 每篇文章配图）
+    from src.generator import render_wechat_article
+    content = render_wechat_article(news_list, date_str, pages_url, cover_url)
+
+    # 5. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
     title = f"🤖 AI 日报 {date_str}"
     highlights = news_list[:3]
     digest_parts = [
@@ -232,7 +376,7 @@ def publish_daily_article(
     ]
     digest = (" · ".join(digest_parts))[:40]
 
-    # 5. 创建草稿（个人订阅号不支持 API 发布，需手动去后台点发布）
+    # 6. 创建草稿（个人订阅号不支持 API 发布，需手动去后台点发布）
     for attempt in range(retry + 1):
         draft_media_id = _create_draft(
             access_token, title, content,

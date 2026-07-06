@@ -393,22 +393,19 @@ def render_wechat_article(
     news_list: list[dict],
     date_str: Optional[str] = None,
     pages_url: Optional[str] = None,
+    cover_image_url: str = "",
 ) -> str:
     """
     生成微信推文兼容的 HTML 内容。
 
-    设计原则：
-    - 纯内联样式（微信会过滤外部 CSS 和 JS）
-    - 卡片式布局，移动端优先（微信内嵌浏览器）
-    - 仅使用微信支持的 HTML 标签和 CSS 属性
+    微信限制：不支持 JS、外部 CSS、flexbox 不可靠。
+    移动端优先（微信内置浏览器，375-414px 视口）。
 
     Args:
         news_list: 新闻列表
         date_str: 日期字符串
-        pages_url: 完整日报页面 URL（用于底部"阅读原文"链接）
-
-    Returns:
-        微信兼容的 HTML 字符串
+        pages_url: 完整日报页面 URL
+        cover_image_url: 封面图 URL（微信素材库），嵌入文章顶部
     """
     if date_str is None:
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -422,159 +419,163 @@ def render_wechat_article(
         region = _guess_region(source)
         grouped.setdefault(region, []).append(item)
 
-    # 颜色常量（复制到每个内联样式，微信不支持 CSS 变量）
-    C_PRIMARY = "#4F46E5"
-    C_TITLE = "#1F2937"
-    C_BODY = "#4B5563"
-    C_MUTED = "#9CA3AF"
-    C_BG_CARD = "#FFFFFF"
-    C_BG_ACCENT = "#F5F3FF"
-    C_BORDER = "#E5E7EB"
-    C_TAG_BG = "#F3F4F6"
-    C_TAG_FG = "#6B7280"
+    # ── 语义色板（Semantic Color Tokens）──
+    # 表面
+    SURFACE = "#FFFFFF"
+    SURFACE_ALT = "#F8F9FA"
+    # 文字
+    TEXT_PRIMARY = "#1A1A1A"
+    TEXT_SECONDARY = "#555555"
+    TEXT_MUTED = "#888888"
+    # 强调
+    ACCENT = "#2563EB"
+    ACCENT_MUTED = "#DBEAFE"
+    # 分割
+    DIVIDER = "#EAEAEA"
 
-    parts: list[str] = []
+    p: list[str] = []
 
-    # ═══════════════════════════════════════════
-    # 头部
-    # ═══════════════════════════════════════════
-    parts.append(f"""
-    <section style="text-align: center; padding: 24px 8px 16px;">
-        <h1 style="font-size: 22px; font-weight: 800; color: {C_PRIMARY};
-                   letter-spacing: 1px; margin: 0 0 8px;">
-            🤖 AI 日报
-        </h1>
-        <p style="font-size: 14px; color: {C_MUTED}; margin: 0 0 10px;">
-            {date_str}  ·  今日精选 {len(news_list)} 条
-        </p>
-        <div style="width: 36px; height: 3px; background: {C_PRIMARY};
-                    border-radius: 2px; margin: 0 auto;">
-        </div>
-    </section>
-    """)
+    # ══════════════════════════════════════
+    # Hero 封面图
+    # ══════════════════════════════════════
+    if cover_image_url:
+        p.append(
+            f'<section style="margin:0;padding:0;">'
+            f'<img src="{cover_image_url}" '
+            f'style="display:block;width:100%;height:auto;margin:0;padding:0;" '
+            f'alt="AI 日报封面" />'
+            f'</section>'
+        )
 
-    # ═══════════════════════════════════════════
+    # ══════════════════════════════════════
+    # 头部 — 大量留白，突出标题
+    # ══════════════════════════════════════
+    p.append(
+        f'<section style="text-align:center;padding:40px 16px 28px;'
+        f'background:{SURFACE};">'
+        f'<p style="margin:0 0 12px;font-size:32px;font-weight:700;'
+        f'color:{TEXT_PRIMARY};letter-spacing:0.5px;">'
+        f'AI 日报</p>'
+        f'<p style="margin:0;font-size:15px;color:{TEXT_MUTED};'
+        f'line-height:1.5;">'
+        f'{date_str}  ·  今日精选 {len(news_list)} 条'
+        f'</p>'
+        f'<div style="width:40px;height:3px;background:{ACCENT};'
+        f'margin:16px auto 0;border-radius:2px;"></div>'
+        f'</section>'
+    )
+
+    # ══════════════════════════════════════
     # 新闻列表（按地区分组）
-    # ═══════════════════════════════════════════
+    # ══════════════════════════════════════
     global_index = 0
+    region_order = [r for r in ["china", "overseas"] if r in grouped]
+    region_order += [r for r in grouped if r not in region_order]
 
-    # 确定分组顺序：国内源在前
-    ordered_regions = []
-    for region in ["china", "overseas"]:
-        if region in grouped:
-            ordered_regions.append(region)
-    for region in grouped:
-        if region not in ordered_regions:
-            ordered_regions.append(region)
-
-    for region in ordered_regions:
+    is_first_section = True
+    for region in region_order:
         items = grouped[region]
         if not items:
             continue
 
-        # 分组标题
+        # 分组标题 — 小标签风格，不用 emoji flag
         if region == "china":
-            flag_emoji = "🇨🇳"
-            flag_label = "国内精选"
+            label = "国内精选"
         elif region == "overseas":
-            flag_emoji = "🌍"
-            flag_label = "海外精选"
+            label = "海外精选"
         else:
-            flag_emoji = "📡"
-            flag_label = region
+            label = region
 
-        parts.append(f"""
-        <section style="margin: 0 0 6px; padding: 8px 12px;
-                      background: {C_BG_ACCENT}; border-radius: 6px;">
-            <p style="margin: 0; font-size: 14px; font-weight: 700; color: {C_PRIMARY};">
-                {flag_emoji}  {flag_label}
-                <span style="font-weight: 400; font-size: 12px; color: {C_MUTED};
-                             margin-left: 4px;">
-                    {len(items)} 条
-                </span>
-            </p>
-        </section>
-        """)
+        margin_top = "32px" if is_first_section else "28px"
+        is_first_section = False
 
-        # 每条新闻的卡片
+        p.append(
+            f'<section style="margin:{margin_top} 16px 12px;">'
+            f'<p style="margin:0;font-size:13px;font-weight:600;'
+            f'color:{ACCENT};letter-spacing:1px;">'
+            f'{label}  ·  {len(items)} 条</p>'
+            f'</section>'
+        )
+
         for item in items:
             global_index += 1
             title = item.get("chinese_title") or item.get("title", "")
             summary = item.get("summary", "")
             source_name = item.get("source", "")
             url = item.get("url", "")
+            article_img = item.get("article_image_url", "")
 
-            # 序号颜色：前 3 名用主题色高亮
-            num_color = C_PRIMARY if global_index <= 3 else C_MUTED
+            # 序号：前3名用强调色，其余灰
+            num_color = ACCENT if global_index <= 3 else TEXT_MUTED
+            num_weight = "700" if global_index <= 3 else "600"
 
-            parts.append(f"""
-            <section style="margin: 0 0 12px; padding: 14px 14px 12px;
-                          background: {C_BG_CARD}; border-radius: 8px;
-                          border-left: 3px solid {C_PRIMARY};
-                          box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            p.append(
+                f'<section style="margin:0 16px 24px;">'
+            )
 
-                <!-- 标题行：序号 + 标题 -->
-                <p style="margin: 0 0 8px; line-height: 1.55;">
-                    <span style="display: inline-block; min-width: 22px;
-                                 font-size: 13px; font-weight: 800; color: {num_color};">
-                        {global_index:02d}
-                    </span>
-                    <span style="font-size: 15px; font-weight: 700; color: {C_TITLE};
-                                 letter-spacing: 0.01em;">
-                        {title}
-                    </span>
-                </p>
-            """)
+            # 文章配图（如果有的话）
+            if article_img:
+                p.append(
+                    f'<img src="{article_img}" '
+                    f'style="display:block;width:100%;height:auto;'
+                    f'margin:0 0 10px;border-radius:4px;" '
+                    f'alt="" />'
+                )
+
+            p.append(
+                # 标题行
+                f'<p style="margin:0 0 6px;line-height:1.5;">'
+                f'<span style="font-size:14px;font-weight:{num_weight};'
+                f'color:{num_color};margin-right:6px;">'
+                f'{global_index:02d}</span>'
+                f'<span style="font-size:16px;font-weight:600;'
+                f'color:{TEXT_PRIMARY};line-height:1.5;">'
+                f'{title}</span>'
+                f'</p>'
+            )
 
             # 摘要
             if summary:
-                parts.append(f"""
-                <p style="margin: 0 0 10px; font-size: 13px; color: {C_BODY};
-                          line-height: 1.65; padding-left: 22px;">
-                    {summary}
-                </p>
-                """)
+                p.append(
+                    f'<p style="margin:0 0 8px;font-size:15px;'
+                    f'color:{TEXT_SECONDARY};line-height:1.65;'
+                    f'padding-left:22px;">'
+                    f'{summary}</p>'
+                )
 
-            # 底部元信息：来源标签 + 阅读原文
-            parts.append(f"""
-                <p style="margin: 0; padding-left: 22px; font-size: 12px;
-                          display: flex; align-items: center; gap: 8px;">
-                    <span style="display: inline-block; background: {C_TAG_BG};
-                                 color: {C_TAG_FG}; padding: 2px 8px;
-                                 border-radius: 3px; font-size: 11px;">
-                        {source_name}
-                    </span>
-            """)
-
+            # 来源 + 链接行
+            p.append(
+                f'<p style="margin:0;padding-left:22px;font-size:13px;'
+                f'color:{TEXT_MUTED};">'
+                f'{source_name}'
+            )
             if url:
-                parts.append(f"""
-                    <a href="{url}" style="color: {C_PRIMARY}; text-decoration: none;
-                          font-weight: 500; font-size: 12px;">
-                        阅读原文 →
-                    </a>
-                """)
+                p.append(
+                    f' &nbsp;·&nbsp; '
+                    f'<a href="{url}" style="color:{ACCENT};'
+                    f'text-decoration:none;font-size:13px;">'
+                    f'阅读原文</a>'
+                )
+            p.append('</p></section>')
 
-            parts.append("</p></section>")
-
-    # ═══════════════════════════════════════════
+    # ══════════════════════════════════════
     # 尾部
-    # ═══════════════════════════════════════════
-    parts.append(f"""
-    <section style="margin-top: 20px; padding: 16px 12px; text-align: center;
-                  border-top: 1px solid {C_BORDER};">
-        <p style="margin: 0 0 8px; font-size: 14px;">
-            <a href="{pages_url}" style="color: {C_PRIMARY}; font-weight: 600;
-                  text-decoration: none;">
-                👉 查看完整日报（精美排版 + 暗色模式）
-            </a>
-        </p>
-        <p style="margin: 0; font-size: 11px; color: {C_MUTED};">
-            AI Daily News Agent · 每日自动生成
-        </p>
-    </section>
-    """)
+    # ══════════════════════════════════════
+    p.append(
+        f'<section style="margin:32px 16px 24px;padding:24px 0 0;'
+        f'text-align:center;border-top:1px solid {DIVIDER};">'
+        f'<p style="margin:0 0 8px;font-size:15px;">'
+        f'<a href="{pages_url}" style="color:{ACCENT};font-weight:600;'
+        f'text-decoration:none;">'
+        f'查看完整日报（精美排版 + 暗色模式）</a>'
+        f'</p>'
+        f'<p style="margin:0;font-size:12px;color:{TEXT_MUTED};">'
+        f'AI Daily News Agent  ·  每日自动生成'
+        f'</p>'
+        f'</section>'
+    )
 
-    return "".join(parts)
+    return "".join(p)
 
 
 def _guess_region(source: str) -> str:
