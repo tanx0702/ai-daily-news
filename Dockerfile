@@ -2,9 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Pillow 依赖
+# Pillow + 中文字体依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo \
+    fonts-wqy-microhei \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
