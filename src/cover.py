@@ -173,30 +173,41 @@ def _build_cover_prompt(news_list: list[dict], date_str: str) -> str:
     """
     if not news_list:
         return (
-            "A modern minimalist tech magazine cover, abstract AI concepts, "
-            "neural networks, digital data streams, glowing nodes, "
-            "deep blue and purple gradient, cinematic lighting, "
-            "no text or typography, 16:9 aspect ratio"
+            "A modern tech magazine cover, abstract AI neural network visualization, "
+            "glowing data nodes connected by fine lines, deep blue and indigo gradient, "
+            "cinematic lighting, clean composition, NO text NO letters NO typography, "
+            "16:9 aspect ratio, professional quality."
         )
 
     top = news_list[0]
-    # 优先用中文标题（已翻译），其次原文标题
-    topic = top.get("chinese_title") or top.get("title", "")
-    summary = top.get("summary", "")
 
-    # 用标题+摘要给图像模型一个具体的视觉方向
-    topic_hint = topic if topic else "artificial intelligence breakthrough"
-    context_hint = f"Context: {summary}" if summary else ""
+    # 用英文标题作为主题线索（海外源英文标题，国内源 chinese_title 是中文 → 过滤掉）
+    english_title = top.get("title", "")
+    # 标题是否包含中文（图像模型看不懂中文，会乱画）
+    has_chinese = any('一' <= c <= '鿿' for c in english_title)
+    if has_chinese:
+        # 国内源：从摘要提取英文关键词，或使用通用 AI 主题
+        summary = top.get("summary", "")
+        # 简单提取英文单词
+        import re as _re
+        en_words = _re.findall(r'[A-Za-z][a-z]{3,}', english_title + " " + summary)
+        english_title = " ".join(en_words[:8]) if en_words else "artificial intelligence technology"
+
+    # 确保纯英文 prompt，图像模型不会试图画中文字
+    topic_line = (
+        f"Visual theme inspired by today's top AI headline: \"{english_title[:150]}\". "
+        if english_title else ""
+    )
 
     return (
-        f"A modern tech magazine cover illustration inspired by today's headline AI news: "
-        f"\"{topic_hint}\". "
-        f"{context_hint} "
+        f"A modern tech magazine cover illustration. "
+        f"{topic_line}"
         f"Style: clean minimalist composition, cinematic lighting, "
         f"deep navy blue and indigo purple gradient background, "
-        f"abstract tech elements subtly related to the headline topic, "
+        f"abstract geometric tech elements subtly related to the theme, "
         f"professional and eye-catching, suitable for a daily AI newsletter cover. "
-        f"no text, no letters, no typography, no watermarks. "
+        f"CRITICAL: absolutely NO text, NO letters, NO typography, NO characters, "
+        f"NO words, NO watermarks anywhere in the image. "
         f"16:9 aspect ratio, high quality."
     )
 
