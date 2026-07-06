@@ -38,7 +38,7 @@ def main():
     logger.info("[1/6] 采集 RSS 新闻...")
     from src.collector import collect_news
 
-    top_n = int(os.environ.get("DAILY_TOP_N", "15"))
+    top_n = int(os.environ.get("DAILY_TOP_N", "10"))
     rss_timeout = int(os.environ.get("DAILY_RSS_TIMEOUT", "30"))
     news_list = collect_news(top_n=top_n, rss_timeout=rss_timeout)
 

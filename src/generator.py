@@ -397,11 +397,10 @@ def render_wechat_article(
     """
     生成微信推文兼容的 HTML 内容。
 
-    WeChat 文章限制：
-    - 不支持 JS（会被过滤）
-    - 仅支持内联样式，不支持外部 CSS
-    - 使用 <section> 标签兼容性更好
-    - 图片必须使用微信素材 URL
+    设计原则：
+    - 纯内联样式（微信会过滤外部 CSS 和 JS）
+    - 卡片式布局，移动端优先（微信内嵌浏览器）
+    - 仅使用微信支持的 HTML 标签和 CSS 属性
 
     Args:
         news_list: 新闻列表
@@ -423,30 +422,81 @@ def render_wechat_article(
         region = _guess_region(source)
         grouped.setdefault(region, []).append(item)
 
-    parts = []
+    # 颜色常量（复制到每个内联样式，微信不支持 CSS 变量）
+    C_PRIMARY = "#4F46E5"
+    C_TITLE = "#1F2937"
+    C_BODY = "#4B5563"
+    C_MUTED = "#9CA3AF"
+    C_BG_CARD = "#FFFFFF"
+    C_BG_ACCENT = "#F5F3FF"
+    C_BORDER = "#E5E7EB"
+    C_TAG_BG = "#F3F4F6"
+    C_TAG_FG = "#6B7280"
 
-    # —— 头部 ——
+    parts: list[str] = []
+
+    # ═══════════════════════════════════════════
+    # 头部
+    # ═══════════════════════════════════════════
     parts.append(f"""
-    <section style="padding: 16px 0; text-align: center;">
-        <h1 style="font-size: 22px; color: #6366f1; margin: 0 0 6px;">🤖 AI 日报</h1>
-        <p style="font-size: 14px; color: #999; margin: 0 0 8px;">{date_str} · 共 {len(news_list)} 条</p>
-        <hr style="border: 0; border-top: 2px solid #6366f1; width: 40px; margin: 0 auto;">
+    <section style="text-align: center; padding: 24px 8px 16px;">
+        <h1 style="font-size: 22px; font-weight: 800; color: {C_PRIMARY};
+                   letter-spacing: 1px; margin: 0 0 8px;">
+            🤖 AI 日报
+        </h1>
+        <p style="font-size: 14px; color: {C_MUTED}; margin: 0 0 10px;">
+            {date_str}  ·  今日精选 {len(news_list)} 条
+        </p>
+        <div style="width: 36px; height: 3px; background: {C_PRIMARY};
+                    border-radius: 2px; margin: 0 auto;">
+        </div>
     </section>
     """)
 
-    # —— 新闻列表 ——
+    # ═══════════════════════════════════════════
+    # 新闻列表（按地区分组）
+    # ═══════════════════════════════════════════
     global_index = 0
-    for region, items in grouped.items():
-        flag = "🌍 海外源" if region == "overseas" or region != "china" else "🇨🇳 国内源"
+
+    # 确定分组顺序：国内源在前
+    ordered_regions = []
+    for region in ["china", "overseas"]:
+        if region in grouped:
+            ordered_regions.append(region)
+    for region in grouped:
+        if region not in ordered_regions:
+            ordered_regions.append(region)
+
+    for region in ordered_regions:
+        items = grouped[region]
+        if not items:
+            continue
+
+        # 分组标题
+        if region == "china":
+            flag_emoji = "🇨🇳"
+            flag_label = "国内精选"
+        elif region == "overseas":
+            flag_emoji = "🌍"
+            flag_label = "海外精选"
+        else:
+            flag_emoji = "📡"
+            flag_label = region
+
         parts.append(f"""
-        <section style="margin-bottom: 10px;">
-            <p style="font-size: 14px; color: #6366f1; font-weight: bold; margin: 12px 0 6px;
-                      padding: 4px 10px; background: #f0eeff; border-radius: 4px;">
-                {flag} &nbsp;<span style="font-weight: normal; font-size: 12px; color: #999;">{len(items)} 条</span>
+        <section style="margin: 0 0 6px; padding: 8px 12px;
+                      background: {C_BG_ACCENT}; border-radius: 6px;">
+            <p style="margin: 0; font-size: 14px; font-weight: 700; color: {C_PRIMARY};">
+                {flag_emoji}  {flag_label}
+                <span style="font-weight: 400; font-size: 12px; color: {C_MUTED};
+                             margin-left: 4px;">
+                    {len(items)} 条
+                </span>
             </p>
         </section>
         """)
 
+        # 每条新闻的卡片
         for item in items:
             global_index += 1
             title = item.get("chinese_title") or item.get("title", "")
@@ -454,47 +504,72 @@ def render_wechat_article(
             source_name = item.get("source", "")
             url = item.get("url", "")
 
+            # 序号颜色：前 3 名用主题色高亮
+            num_color = C_PRIMARY if global_index <= 3 else C_MUTED
+
             parts.append(f"""
-            <section style="margin: 0 0 16px; padding: 12px 14px;
-                          border-left: 3px solid #6366f1; background: #fafbff;
-                          border-radius: 0 6px 6px 0;">
-                <p style="margin: 0 0 6px; font-size: 15px; font-weight: bold; line-height: 1.5;
-                          color: #1a1a2e;">
-                    {global_index}. {title}
+            <section style="margin: 0 0 12px; padding: 14px 14px 12px;
+                          background: {C_BG_CARD}; border-radius: 8px;
+                          border-left: 3px solid {C_PRIMARY};
+                          box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+
+                <!-- 标题行：序号 + 标题 -->
+                <p style="margin: 0 0 8px; line-height: 1.55;">
+                    <span style="display: inline-block; min-width: 22px;
+                                 font-size: 13px; font-weight: 800; color: {num_color};">
+                        {global_index:02d}
+                    </span>
+                    <span style="font-size: 15px; font-weight: 700; color: {C_TITLE};
+                                 letter-spacing: 0.01em;">
+                        {title}
+                    </span>
                 </p>
             """)
 
+            # 摘要
             if summary:
                 parts.append(f"""
-                <p style="margin: 0 0 6px; font-size: 13px; color: #555; line-height: 1.6;">
+                <p style="margin: 0 0 10px; font-size: 13px; color: {C_BODY};
+                          line-height: 1.65; padding-left: 22px;">
                     {summary}
                 </p>
                 """)
 
+            # 底部元信息：来源标签 + 阅读原文
             parts.append(f"""
-                <p style="margin: 0; font-size: 12px; color: #999;">
-                    <span style="background: #eee; padding: 1px 6px; border-radius: 3px;">{source_name}</span>
+                <p style="margin: 0; padding-left: 22px; font-size: 12px;
+                          display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; background: {C_TAG_BG};
+                                 color: {C_TAG_FG}; padding: 2px 8px;
+                                 border-radius: 3px; font-size: 11px;">
+                        {source_name}
+                    </span>
             """)
 
             if url:
                 parts.append(f"""
-                    &nbsp;<a href="{url}" style="color: #6366f1; text-decoration: none;">阅读原文 →</a>
-                </p>
+                    <a href="{url}" style="color: {C_PRIMARY}; text-decoration: none;
+                          font-weight: 500; font-size: 12px;">
+                        阅读原文 →
+                    </a>
                 """)
-            else:
-                parts.append("</p>")
 
-            parts.append("</section>")
+            parts.append("</p></section>")
 
-    # —— 尾部 ——
+    # ═══════════════════════════════════════════
+    # 尾部
+    # ═══════════════════════════════════════════
     parts.append(f"""
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-    <section style="text-align: center; padding: 10px 0;">
-        <p style="margin: 0 0 6px; font-size: 14px; color: #6366f1;">
-            👉 <a href="{pages_url}" style="color: #6366f1;">查看完整日报（精美排版 + 暗色模式）</a>
+    <section style="margin-top: 20px; padding: 16px 12px; text-align: center;
+                  border-top: 1px solid {C_BORDER};">
+        <p style="margin: 0 0 8px; font-size: 14px;">
+            <a href="{pages_url}" style="color: {C_PRIMARY}; font-weight: 600;
+                  text-decoration: none;">
+                👉 查看完整日报（精美排版 + 暗色模式）
+            </a>
         </p>
-        <p style="margin: 0; font-size: 12px; color: #bbb;">
-            Powered by AI Daily News Agent
+        <p style="margin: 0; font-size: 11px; color: {C_MUTED};">
+            AI Daily News Agent · 每日自动生成
         </p>
     </section>
     """)

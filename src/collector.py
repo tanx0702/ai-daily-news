@@ -53,6 +53,29 @@ AI_LOW_KEYWORDS = [
     "智能助手", "对话系统", "推荐系统",
 ]
 
+# 来源权威度权重（0-10），知名来源获得更高基础分
+SOURCE_AUTHORITY: dict[str, int] = {
+    "openai": 10, "anthropic": 10, "google deepmind": 10, "deepmind": 10,
+    "meta ai": 9, "microsoft": 9, "nvidia": 9,
+    "techcrunch": 9, "the verge": 9, "mit technology review": 9,
+    "wired": 8, "arstechnica": 8, "venturebeat": 8,
+    "hacker news": 6, "hn": 6,
+    "机器之心": 9, "量子位": 9, "36氪": 8, "虎嗅": 8, "钛媒体": 8, "品玩": 7,
+}
+
+# 热度关键词 — 标题中出现这些词加分（表示重要性/热度）
+HOT_KEYWORDS: list[str] = [
+    # 英文
+    "breakthrough", "launch", "release", "announce", "unveil",
+    "revolutionary", "new model", "funding", "raise", "billion",
+    "acquisition", "partnership", "research", "paper", "benchmark",
+    "open source", "open-source", "state of the art", "sota",
+    "update", "major", "first", "biggest",
+    # 中文
+    "发布", "推出", "突破", "融资", "收购", "开源", "重磅",
+    "首次", "重大", "最新", "万亿", "亿", "千万",
+]
+
 
 def _load_sources(config_path: str = None) -> list[dict]:
     """加载 RSS 源配置。"""
@@ -165,6 +188,53 @@ def _is_ai_related(title: str, summary: str) -> bool:
             return True
 
     return False
+
+
+def _score_item(item: dict, all_items: list[dict]) -> float:
+    """
+    为新闻条目计算热度/重要性评分。
+
+    评分维度：
+    1. 来源权威度（0-10）
+    2. 交叉引用加分 — 同一话题被多个来源覆盖 = 热度高（每个相似项 +3）
+    3. 热度关键词加分（每个匹配 +2）
+    4. 摘要质量（>50 字 +2）
+    """
+    score = 0.0
+    source = item.get("source", "").lower()
+    title = item.get("title", "").lower()
+    summary = item.get("summary", "")
+
+    # 1. 来源权威度
+    authority = 5  # 默认中等
+    for name, weight in SOURCE_AUTHORITY.items():
+        if name in source:
+            authority = weight
+            break
+    score += authority
+
+    # 2. 交叉引用：同一话题被多个来源报道 → 热度高
+    cross_refs = 0
+    for other in all_items:
+        if other is item:
+            continue
+        sim = _title_similarity(item["title"], other["title"])
+        if sim > 0.25:  # 中等以上相似度
+            cross_refs += 1
+    score += cross_refs * 3
+
+    # 3. 热度关键词
+    hot_matches = 0
+    for kw in HOT_KEYWORDS:
+        if kw.lower() in title:
+            hot_matches += 1
+    score += min(hot_matches, 5) * 2  # 上限 10 分
+
+    # 4. 摘要质量
+    if len(summary) > 50:
+        score += 2
+
+    return score
 
 
 def _fetch_source(source: dict, timeout: int = 30) -> list[dict]:
@@ -345,8 +415,21 @@ def collect_news(
 
     logger.info("After filtering: %d items", len(filtered))
 
-    # 按发布时间倒序
-    filtered.sort(key=lambda x: x.get("published_at") or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    # 评分：综合来源权威度 + 交叉引用 + 热度关键词
+    for item in filtered:
+        item["_score"] = _score_item(item, filtered)
 
-    # 取 top_n
+    # 按评分降序（同分按时间降序）
+    filtered.sort(
+        key=lambda x: (
+            x.get("_score", 0),
+            x.get("published_at") or datetime.min.replace(tzinfo=timezone.utc),
+        ),
+        reverse=True,
+    )
+
+    # 打印 top 评分供调试
+    for i, item in enumerate(filtered[:top_n]):
+        logger.info("  #%d [score=%.1f] %s (%s)", i + 1, item.get("_score", 0), item["title"][:60], item.get("source", ""))
+
     return filtered[:top_n]
