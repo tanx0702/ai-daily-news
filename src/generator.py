@@ -578,6 +578,217 @@ def render_wechat_article(
     return "".join(p)
 
 
+def _news_to_markdown(
+    news_list: list[dict],
+    date_str: str,
+    pages_url: str,
+) -> str:
+    """将新闻列表转换为 Markdown，供 md2wechat AI prompt 使用。"""
+    grouped: dict[str, list[dict]] = {}
+    for item in news_list:
+        source = item.get("source", "Unknown")
+        region = _guess_region(source)
+        grouped.setdefault(region, []).append(item)
+
+    lines: list[str] = []
+    lines.append("# AI 日报")
+    lines.append("")
+    lines.append(f"{date_str} · 今日精选 {len(news_list)} 条")
+    lines.append("")
+
+    region_order = [r for r in ["overseas", "china"] if r in grouped]
+    region_order += [r for r in grouped if r not in region_order]
+
+    for region in region_order:
+        items = grouped[region]
+        if region == "china":
+            label = "国内精选"
+        elif region == "overseas":
+            label = "海外精选"
+        else:
+            label = region
+
+        lines.append(f"## {label}")
+        lines.append("")
+
+        for item in items:
+            title = item.get("chinese_title") or item.get("title", "")
+            summary = item.get("summary", "")
+            source_name = item.get("source", "")
+            url = item.get("url", "")
+            img = item.get("article_image_url", "")
+
+            lines.append(f"### {title}")
+            lines.append("")
+            if summary:
+                lines.append(summary)
+                lines.append("")
+            meta = f"{source_name}"
+            if url:
+                meta += f" · [阅读原文]({url})"
+            lines.append(meta)
+            lines.append("")
+            if img:
+                lines.append(f"![配图]({img})")
+                lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append(f"👉 [查看完整日报（精美排版 + 暗色模式）]({pages_url})")
+    lines.append("")
+    lines.append("AI Daily News Agent · 每日自动生成")
+
+    return "\n".join(lines)
+
+
+# md2wechat Ocean Calm AI prompt 模板（精简核心部分）
+# 来自 md2wechat v2.9.0 AI mode --theme ocean-calm
+_MD2WECHAT_OCEAN_CALM_PROMPT = """【微信公众号排版指令】
+
+你是一位顶级网页设计师，专精微信公众号兼容排版。请将以下 Markdown 转换为纯内联样式的 HTML。
+
+## 核心规则（违反会导致微信显示异常）
+
+1. 必须在 <body> 之后立即创建一个主 <div> 包裹所有内容
+2. 所有全局样式（background-color, padding 等）应用在这个主 <div> 上
+3. 必须为每一个 <p> 标签明确添加 color 样式，防止微信强制重置为黑色
+4. 仅使用纯 HTML 内联样式，禁止 <style> 标签和外部 CSS
+5. 仅使用安全标签：section, p, span, strong, em, a, h2, h3, blockquote, img, br, hr
+
+## 色彩方案
+
+- 主容器背景: #f0f4f8
+- 正文文字: #3a4150（深蓝灰）
+- 主强调色: #4a7c9b（深海蔚蓝）
+- 副强调色: #3d6a8a（静谧石蓝）
+- 卡片/引用背景: #e8f0f8
+
+## 卡片布局
+
+- 每个 <section> 是一张卡片
+- 卡片间距: 40px
+- 卡片背景: #ffffff + 淡蓝网格纹理:
+  background-image: linear-gradient(rgba(74,124,155,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(74,124,155,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+- 卡片边框: 1px solid rgba(74,124,155,0.08)
+- 卡片阴影: box-shadow: 0 8px 28px rgba(58,65,80,0.06), 0 0 16px rgba(74,124,155,0.15)
+- 卡片圆角: border-radius: 14px
+- 卡片内边距: padding: 25px
+- 卡片最大宽度: max-width: 800px
+
+## 排版规范
+
+- 字体: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif
+- 正文: font-size: 16px, line-height: 1.8, letter-spacing: 0.2px
+- h2（大标题）: 由两个 span 组成——◆ 符号 span（color: #4a7c9b, text-shadow: 0 0 10px rgba(74,124,155,0.4)）+ 标题文字 span（color: #3d6a8a），底部 border-bottom: 1px dashed rgba(74,124,155,0.3)
+- h3（小标题）: color: #3d6a8a, border-bottom: 2px solid #4a7c9b（短实线，长度与文字对齐）
+- 加粗 strong: color: #3d6a8a（无 text-shadow）
+- 引用 blockquote: background: #e8f0f8, border-left: 5px solid #4a7c9b
+- 分割线 hr: border: none; height: 1px; background: linear-gradient(90deg, transparent, rgba(74,124,155,0.25), transparent)
+- 链接 a: color: #4a7c9b, text-decoration: none, border-bottom: 1px dashed rgba(74,124,155,0.25)
+
+## 输出要求
+
+返回完整 HTML，用 Markdown 代码块包裹（```html ... ```）。
+不要任何解释文字，只返回代码块。
+
+---
+
+以下是需要转换的 Markdown 内容：
+
+{markdown_content}"""
+
+
+def render_wechat_article_ai(
+    news_list: list[dict],
+    date_str: Optional[str] = None,
+    pages_url: Optional[str] = None,
+    cover_image_url: str = "",
+    api_key: Optional[str] = None,
+    model: str = "",
+    base_url: str = "",
+    timeout: int = 60,
+) -> str:
+    """
+    使用 md2wechat Ocean Calm 主题 + LLM 生成微信推文 HTML。
+
+    流程：news_list → Markdown → md2wechat AI prompt → LLM → HTML
+
+    Args:
+        news_list: 新闻列表
+        date_str: 日期
+        pages_url: 日报 URL
+        cover_image_url: 封面图 URL
+        api_key: Agnes API Key
+        model: LLM 模型名
+        base_url: API 地址
+        timeout: LLM 超时秒数
+
+    Returns:
+        微信兼容的 HTML 字符串，失败返回空字符串
+    """
+    import re as _re
+
+    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        logger.warning("No API key for AI HTML generation, falling back")
+        return ""
+
+    if date_str is None:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if pages_url is None:
+        pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
+
+    # 1. 生成 Markdown
+    md_content = _news_to_markdown(news_list, date_str, pages_url)
+
+    # 2. 注入封面图（如果有的话）到 Markdown 头部
+    if cover_image_url:
+        md_content = f"![封面]({cover_image_url})\n\n{md_content}"
+
+    # 3. 拼接完整 prompt
+    prompt = _MD2WECHAT_OCEAN_CALM_PROMPT.format(markdown_content=md_content)
+
+    # 4. 调用 LLM
+    model = model or os.environ.get("AGNES_MODEL", "agnes-2.0-flash")
+    base_url = base_url or os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+
+        logger.info("Calling LLM for WeChat HTML generation (%d chars prompt, model=%s)",
+                     len(prompt), model)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=4096,
+        )
+        content = response.choices[0].message.content.strip()
+
+        # 5. 提取 HTML 代码块
+        match = _re.search(r'```(?:html)?\s*\n?(.*?)\n?```', content, _re.DOTALL)
+        if match:
+            html = match.group(1).strip()
+        else:
+            # 可能 LLM 直接返回了 HTML（没包裹代码块）
+            if content.startswith('<'):
+                html = content
+            else:
+                logger.warning("LLM response not HTML: %s...", content[:200])
+                return ""
+
+        logger.info("LLM generated WeChat HTML: %d chars", len(html))
+        return html
+
+    except Exception as e:
+        logger.warning("AI HTML generation failed: %s, falling back to manual template", e)
+        return ""
+
+
 def _guess_region(source: str) -> str:
     """根据来源名称猜测地区分类。"""
     china_keywords = ["机器之心", "量子位", "36氪", "虎嗅", "钛媒体", "品玩"]
