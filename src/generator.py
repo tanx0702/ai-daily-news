@@ -396,16 +396,12 @@ def render_wechat_article(
     cover_image_url: str = "",
 ) -> str:
     """
-    生成微信推文兼容的 HTML 内容。
+    生成微信推文 HTML，遵循 md2wechat 专业排版规范。
 
-    微信限制：不支持 JS、外部 CSS、flexbox 不可靠。
-    移动端优先（微信内置浏览器，375-414px 视口）。
-
-    Args:
-        news_list: 新闻列表
-        date_str: 日期字符串
-        pages_url: 完整日报页面 URL
-        cover_image_url: 封面图 URL（微信素材库），嵌入文章顶部
+    关键规则（来自 md2wechat skill）：
+    - 所有全局样式在 wrapper <div> 上，非 <body>
+    - 每个 <p> 必须显式 color，防止微信编辑器重置为黑色
+    - 海洋静谧主题：深邃蓝灰色调，理性专业
     """
     if date_str is None:
         date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -419,49 +415,52 @@ def render_wechat_article(
         region = _guess_region(source)
         grouped.setdefault(region, []).append(item)
 
-    # ── 语义色板（Semantic Color Tokens）──
-    # 表面
-    SURFACE = "#FFFFFF"
-    SURFACE_ALT = "#F8F9FA"
-    # 文字
-    TEXT_PRIMARY = "#1A1A1A"
-    TEXT_SECONDARY = "#555555"
-    TEXT_MUTED = "#888888"
-    # 强调
-    ACCENT = "#2563EB"
-    ACCENT_MUTED = "#DBEAFE"
-    # 分割
-    DIVIDER = "#EAEAEA"
+    # ── Ocean Calm 色板（来自 md2wechat 主题规范）──
+    BG = "#ffffff"
+    TEXT = "#3a4150"
+    TITLE_C = "#2c3e50"
+    ACCENT = "#3d6a8a"
+    ACCENT_LIGHT = "#edf3f8"
+    MUTED = "#8a94a0"
+    DIVIDER = "rgba(58,65,80,0.12)"
+    GLOW = "0 0 10px rgba(74,124,155,0.35)"
 
     p: list[str] = []
+
+    # ══════════════════════════════════════
+    # Wrapper — md2wechat 规范：全局样式必须在此
+    # 精致网格纹理背景（ocean-calm 风格）
+    # ══════════════════════════════════════
+    p.append(
+        f'<div style="background-color:{BG};'
+        f'background-image:linear-gradient(rgba(74,124,155,0.03) 1px,transparent 1px),'
+        f'linear-gradient(90deg,rgba(74,124,155,0.03) 1px,transparent 1px);'
+        f'background-size:24px 24px;padding:0;">'
+    )
 
     # ══════════════════════════════════════
     # Hero 封面图
     # ══════════════════════════════════════
     if cover_image_url:
         p.append(
-            f'<section style="margin:0;padding:0;">'
             f'<img src="{cover_image_url}" '
             f'style="display:block;width:100%;height:auto;margin:0;padding:0;" '
             f'alt="AI 日报封面" />'
-            f'</section>'
         )
 
     # ══════════════════════════════════════
-    # 头部 — 大量留白，突出标题
+    # 头部 — 居中标题 + 下方短装饰线
     # ══════════════════════════════════════
     p.append(
-        f'<section style="text-align:center;padding:40px 16px 28px;'
-        f'background:{SURFACE};">'
-        f'<p style="margin:0 0 12px;font-size:32px;font-weight:700;'
-        f'color:{TEXT_PRIMARY};letter-spacing:0.5px;">'
+        f'<section style="text-align:center;padding:44px 16px 32px;">'
+        f'<p style="margin:0 0 8px;font-size:30px;font-weight:700;'
+        f'color:{TITLE_C};letter-spacing:1px;">'
         f'AI 日报</p>'
-        f'<p style="margin:0;font-size:15px;color:{TEXT_MUTED};'
-        f'line-height:1.5;">'
-        f'{date_str}  ·  今日精选 {len(news_list)} 条'
-        f'</p>'
-        f'<div style="width:40px;height:3px;background:{ACCENT};'
-        f'margin:16px auto 0;border-radius:2px;"></div>'
+        f'<p style="margin:0 0 16px;font-size:14px;color:{MUTED};">'
+        f'{date_str}  ·  今日精选 {len(news_list)} 条</p>'
+        f'<span style="display:inline-block;width:36px;'
+        f'border-bottom:3px solid {ACCENT};border-radius:2px;">'
+        f'</span>'
         f'</section>'
     )
 
@@ -478,7 +477,6 @@ def render_wechat_article(
         if not items:
             continue
 
-        # 分组标题 — 小标签风格，不用 emoji flag
         if region == "china":
             label = "国内精选"
         elif region == "overseas":
@@ -486,15 +484,19 @@ def render_wechat_article(
         else:
             label = region
 
-        margin_top = "32px" if is_first_section else "28px"
+        margin_top = "36px" if is_first_section else "32px"
         is_first_section = False
 
+        # 分组标题 — ◆ 符号 + text-shadow 发光效果
         p.append(
-            f'<section style="margin:{margin_top} 16px 12px;">'
+            f'<section style="margin:{margin_top} 20px 14px;">'
             f'<p style="margin:0;font-size:13px;font-weight:600;'
-            f'color:{ACCENT};letter-spacing:1px;">'
-            f'{label}  ·  {len(items)} 条</p>'
-            f'</section>'
+            f'color:{ACCENT};letter-spacing:2px;">'
+            f'<span style="color:{ACCENT};text-shadow:{GLOW};">◆</span>'
+            f'  {label}'
+            f'<span style="font-weight:400;font-size:12px;color:{MUTED};">'
+            f'  ·  {len(items)} 条</span>'
+            f'</p></section>'
         )
 
         for item in items:
@@ -505,56 +507,53 @@ def render_wechat_article(
             url = item.get("url", "")
             article_img = item.get("article_image_url", "")
 
-            # 序号：前3名用强调色，其余灰
-            num_color = ACCENT if global_index <= 3 else TEXT_MUTED
-            num_weight = "700" if global_index <= 3 else "600"
+            # 序号：前3名用强调色 + 发光，其余灰色
+            if global_index <= 3:
+                num_style = f'color:{ACCENT};font-weight:700;text-shadow:{GLOW};'
+            else:
+                num_style = f'color:{MUTED};font-weight:600;'
 
             p.append(
-                f'<section style="margin:0 16px 24px;">'
+                f'<section style="margin:0 20px 28px;">'
             )
 
-            # 文章配图（如果有的话）
+            # 文章配图
             if article_img:
                 p.append(
                     f'<img src="{article_img}" '
                     f'style="display:block;width:100%;height:auto;'
-                    f'margin:0 0 10px;border-radius:4px;" '
+                    f'margin:0 0 12px;border-radius:4px;" '
                     f'alt="" />'
                 )
 
+            # 标题行
             p.append(
-                # 标题行
-                f'<p style="margin:0 0 6px;line-height:1.5;">'
-                f'<span style="font-size:14px;font-weight:{num_weight};'
-                f'color:{num_color};margin-right:6px;">'
-                f'{global_index:02d}</span>'
+                f'<p style="margin:0 0 8px;line-height:1.5;">'
+                f'<span style="font-size:14px;{num_style}'
+                f'margin-right:8px;">{global_index:02d}</span>'
                 f'<span style="font-size:16px;font-weight:600;'
-                f'color:{TEXT_PRIMARY};line-height:1.5;">'
-                f'{title}</span>'
+                f'color:{TITLE_C};">{title}</span>'
                 f'</p>'
             )
 
             # 摘要
             if summary:
                 p.append(
-                    f'<p style="margin:0 0 8px;font-size:15px;'
-                    f'color:{TEXT_SECONDARY};line-height:1.65;'
-                    f'padding-left:22px;">'
-                    f'{summary}</p>'
+                    f'<p style="margin:0 0 8px;font-size:14px;'
+                    f'color:{TEXT};line-height:1.7;'
+                    f'padding-left:24px;">{summary}</p>'
                 )
 
-            # 来源 + 链接行
+            # 来源 + 链接
             p.append(
-                f'<p style="margin:0;padding-left:22px;font-size:13px;'
-                f'color:{TEXT_MUTED};">'
-                f'{source_name}'
+                f'<p style="margin:0;padding-left:24px;font-size:13px;'
+                f'color:{MUTED};">{source_name}'
             )
             if url:
                 p.append(
-                    f' &nbsp;·&nbsp; '
+                    f' <span style="color:{MUTED};">·</span> '
                     f'<a href="{url}" style="color:{ACCENT};'
-                    f'text-decoration:none;font-size:13px;">'
-                    f'阅读原文</a>'
+                    f'text-decoration:none;font-size:13px;">阅读原文</a>'
                 )
             p.append('</p></section>')
 
@@ -562,18 +561,19 @@ def render_wechat_article(
     # 尾部
     # ══════════════════════════════════════
     p.append(
-        f'<section style="margin:32px 16px 24px;padding:24px 0 0;'
+        f'<section style="margin:32px 20px 24px;padding:24px 0 0;'
         f'text-align:center;border-top:1px solid {DIVIDER};">'
-        f'<p style="margin:0 0 8px;font-size:15px;">'
+        f'<p style="margin:0 0 8px;font-size:14px;color:{TEXT};">'
         f'<a href="{pages_url}" style="color:{ACCENT};font-weight:600;'
-        f'text-decoration:none;">'
-        f'查看完整日报（精美排版 + 暗色模式）</a>'
+        f'text-decoration:none;">查看完整日报（精美排版 + 暗色模式）</a>'
         f'</p>'
-        f'<p style="margin:0;font-size:12px;color:{TEXT_MUTED};">'
+        f'<p style="margin:0;font-size:12px;color:{MUTED};">'
         f'AI Daily News Agent  ·  每日自动生成'
-        f'</p>'
-        f'</section>'
+        f'</p></section>'
     )
+
+    # 关闭 wrapper div
+    p.append('</div>')
 
     return "".join(p)
 
