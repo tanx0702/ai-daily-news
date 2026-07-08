@@ -5,6 +5,9 @@ services:
     restart: always
     volumes:
       - ./docs:/app/docs
+      - ./src:/app/src
+      - ./app.py:/app/app.py
+      - ./config:/app/config
     env_file:
       - .env
 
