@@ -959,6 +959,10 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     while len(selected) < top_n and reserves:
         selected.append(reserves.pop(0))
 
+    # ── 多样性后处理：小 top_n 时检查同实体分布 ──
+    if top_n <= 10:
+        selected = _ensure_diversity(selected, reserves, top_n)
+
     type_dist = {st: c for st, c in type_counts.items()}
     company_dist = {e: c for e, c in company_counts.items() if c >= 2}
     rss_pct = type_dist.get("rss", 0) / max(len(selected), 1) * 100
@@ -969,6 +973,62 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     )
     if company_dist:
         logger.info("  Companies (>=2): %s", company_dist)
+
+    return selected
+
+
+def _ensure_diversity(selected: list[dict], reserves: list[dict], top_n: int) -> list[dict]:
+    """
+    多样性保障：确保同一实体不过度充斥榜单。
+
+    当 top_n <= 5 时，同一公司/产品最多 2 条（已在主循环中保证）。
+    此函数进一步检查：如果单个实体 ≥3 条出现在 selected 中
+    且仍有来自不同实体的高分 reserve 可替换，则执行替换。
+    """
+    if not reserves or len(selected) <= 1:
+        return selected
+
+    # 统计当前各实体出现次数
+    entity_map: dict[str, list[int]] = {}  # entity → [selected indices]
+    for i, item in enumerate(selected):
+        entities = _extract_entities(item.get("title", ""))
+        for ent in entities:
+            entity_map.setdefault(ent, []).append(i)
+
+    # 找出过度集中的实体（≥3 条）
+    over_entities = {ent: idxs for ent, idxs in entity_map.items() if len(idxs) >= 3}
+    if not over_entities:
+        return selected
+
+    # 尝试替换：保留最高分的 2 条，其余尝试从 reserves 中找不同实体的条目替换
+    replaced_count = 0
+    for ent, idxs in over_entities.items():
+        if len(idxs) <= 2:
+            continue
+        # 保留 score 最高的 2 条
+        sorted_idxs = sorted(idxs, key=lambda i: selected[i].get("_score", 0), reverse=True)
+        for idx in sorted_idxs[2:]:
+            if not reserves:
+                break
+            # 找 reserves 中与当前过度实体不重叠且与 replacement 当前 selected 不重复的条目
+            for ri, r_item in enumerate(reserves):
+                r_entities = _extract_entities(r_item.get("title", ""))
+                if ent not in r_entities:
+                    # 替换
+                    old_title = selected[idx].get("chinese_title") or selected[idx]["title"]
+                    new_title = r_item.get("chinese_title") or r_item["title"]
+                    logger.info(
+                        "Diversity: replacing '%s' [entity=%s] → '%s'",
+                        old_title[:40], ent, new_title[:40],
+                    )
+                    r_item["_diversity_swap"] = f"替补入选: 替换同实体'{ent}'过度集中"
+                    selected[idx] = r_item
+                    reserves.pop(ri)
+                    replaced_count += 1
+                    break
+
+    if replaced_count > 0:
+        logger.info("Diversity: %d items replaced for better entity balance", replaced_count)
 
     return selected
 

@@ -1,47 +1,21 @@
 [
   {
-    "title": "Show HN：Rowboat——Claude Desktop 的开源、本地优先替代方案",
-    "url": "https://github.com/rowboatlabs/rowboat",
-    "source": "Hacker News AI + Hacker News",
-    "source_type": "rss",
-    "published_at": "2026-07-07 16:10:44+00:00",
-    "scores": {
-      "freshness": 80.0,
-      "authority": 6,
-      "community": 16.0,
-      "technical": 0.0,
-      "china_relevance": 0.0,
-      "final": 68.0
-    },
-    "metrics": {
-      "hn_score": 108,
-      "hn_comments": 27,
-      "github_stars": 0,
-      "github_stars_recent": 0,
-      "hf_likes": 0,
-      "hf_downloads": 0,
-      "arxiv_signal": 0,
-      "cross_source_count": 1
-    },
-    "selected_reason": "RSS 权威源 | 新鲜度=80"
-  },
-  {
-    "title": "亲爱的，我们买下了一个 AI 故事",
-    "url": "https://www.bona-books.com/news/we-bought-an-ai-story",
+    "title": "GPT-5.6、Terra与Luna周四将公开亮相",
+    "url": "https://twitter.com/OpenAI/status/2074704958419792299",
     "source": "Hacker News",
     "source_type": "hn",
-    "published_at": "2026-07-08 00:01:18+00:00",
+    "published_at": "2026-07-08 04:12:13+00:00",
     "scores": {
       "freshness": 100.0,
       "authority": 6,
-      "community": 7.5,
+      "community": 11.7,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 63.5
+      "final": 69.7
     },
     "metrics": {
-      "hn_score": 28,
-      "hn_comments": 7,
+      "hn_score": 115,
+      "hn_comments": 44,
       "github_stars": 0,
       "github_stars_recent": 0,
       "hf_likes": 0,
@@ -49,50 +23,24 @@
       "arxiv_signal": 0,
       "cross_source_count": 0
     },
-    "selected_reason": "HN 高热度 (score=28) | 新鲜度=100"
+    "selected_reason": "HN 高热度 (score=115) | 新鲜度=100"
   },
   {
-    "title": "Microsoft 365 Copilot 采用率不足 4.5%，仅 1% 用户每周使用",
-    "url": "https://www.windowslatest.com/2026/07/07/microsoft-365-copilot-adoption-is-under-4-5-after-3-years-o",
+    "title": "Show HN：FactIQ，面向AI代理的实时金融数据库",
+    "url": "https://github.com/defog-ai/factiq-plugin",
     "source": "Hacker News",
     "source_type": "hn",
-    "published_at": "2026-07-07 22:11:01+00:00",
+    "published_at": "2026-07-08 01:39:06+00:00",
     "scores": {
       "freshness": 100.0,
       "authority": 6,
-      "community": 7.4,
+      "community": 4.0,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 63.4
+      "final": 65.0
     },
     "metrics": {
-      "hn_score": 17,
-      "hn_comments": 12,
-      "github_stars": 0,
-      "github_stars_recent": 0,
-      "hf_likes": 0,
-      "hf_downloads": 0,
-      "arxiv_signal": 0,
-      "cross_source_count": 0
-    },
-    "selected_reason": "HN 高热度 (score=17) | 新鲜度=100"
-  },
-  {
-    "title": "Ask HN：如何在使用 AI 生成代码时保持文档更新？",
-    "url": "https://news.ycombinator.com/item?id=48825447",
-    "source": "Hacker News",
-    "source_type": "hn",
-    "published_at": "2026-07-07 23:31:20+00:00",
-    "scores": {
-      "freshness": 100.0,
-      "authority": 6,
-      "community": 3.4,
-      "technical": 0.0,
-      "china_relevance": 0.0,
-      "final": 61.4
-    },
-    "metrics": {
-      "hn_score": 3,
+      "hn_score": 5,
       "hn_comments": 2,
       "github_stars": 0,
       "github_stars_recent": 0,
@@ -104,22 +52,22 @@
     "selected_reason": "HN 高讨论 (comments=2) | 新鲜度=100"
   },
   {
-    "title": "Kimi 和 MiniMax 模型免费赠送 1 亿 AI 令牌",
-    "url": "https://inference.dahl.global/",
+    "title": "GitLost：诱导GitHub AI代理泄露私有仓库",
+    "url": "https://noma.security/blog/gitlost-how-we-tricked-githubs-ai-agent-into-leaking-private-repos/",
     "source": "Hacker News",
     "source_type": "hn",
-    "published_at": "2026-07-07 23:45:03+00:00",
+    "published_at": "2026-07-08 05:25:35+00:00",
     "scores": {
       "freshness": 100.0,
       "authority": 6,
-      "community": 5.3,
+      "community": 5.0,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 61.3
+      "final": 64.0
     },
     "metrics": {
-      "hn_score": 7,
-      "hn_comments": 5,
+      "hn_score": 11,
+      "hn_comments": 2,
       "github_stars": 0,
       "github_stars_recent": 0,
       "hf_likes": 0,
@@ -127,51 +75,25 @@
       "arxiv_signal": 0,
       "cross_source_count": 0
     },
-    "selected_reason": "HN 高讨论 (comments=5) | 新鲜度=100"
+    "selected_reason": "HN 高热度 (score=11) | 新鲜度=100"
   },
   {
-    "title": "J-Space：Claude 在此静默执行推理步骤",
-    "url": "https://twitter.com/AnthropicAI/status/2074185358678364414",
+    "title": "特朗普政府解除对OpenAI GPT-5.6的限制",
+    "url": "https://www.axios.com/2026/07/08/openai-gpt-trump-ban-lifted",
     "source": "Hacker News",
     "source_type": "hn",
-    "published_at": "2026-07-07 23:16:14+00:00",
+    "published_at": "2026-07-08 03:42:39+00:00",
     "scores": {
       "freshness": 100.0,
       "authority": 6,
-      "community": 4.6,
+      "community": 4.9,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 60.6
-    },
-    "metrics": {
-      "hn_score": 6,
-      "hn_comments": 3,
-      "github_stars": 0,
-      "github_stars_recent": 0,
-      "hf_likes": 0,
-      "hf_downloads": 0,
-      "arxiv_signal": 0,
-      "cross_source_count": 0
-    },
-    "selected_reason": "HN 高讨论 (comments=3) | 新鲜度=100"
-  },
-  {
-    "title": "AI 巨头纷纷赠送大量免费算力以争夺初创企业市场份额",
-    "url": "https://www.wsj.com/tech/ai/ai-giants-are-handing-out-tons-of-free-computing-power-to-grab-startup-s",
-    "source": "Hacker News",
-    "source_type": "hn",
-    "published_at": "2026-07-07 22:19:53+00:00",
-    "scores": {
-      "freshness": 100.0,
-      "authority": 6,
-      "community": 4.6,
-      "technical": 0.0,
-      "china_relevance": 0.0,
-      "final": 60.6
+      "final": 60.9
     },
     "metrics": {
       "hn_score": 6,
-      "hn_comments": 3,
+      "hn_comments": 4,
       "github_stars": 0,
       "github_stars_recent": 0,
       "hf_likes": 0,
@@ -179,10 +101,10 @@
       "arxiv_signal": 0,
       "cross_source_count": 0
     },
-    "selected_reason": "HN 高讨论 (comments=3) | 新鲜度=100"
+    "selected_reason": "HN 高讨论 (comments=4) | 新鲜度=100"
   },
   {
-    "title": "我们每周收费 1 万美元删除 AI 生成的代码",
+    "title": "周薪万美元，专门删除AI生成的代码",
     "url": "https://odra.dev/slopfix/",
     "source": "Hacker News",
     "source_type": "hn",
@@ -190,14 +112,14 @@
     "scores": {
       "freshness": 80.0,
       "authority": 6,
-      "community": 14.2,
+      "community": 14.4,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 60.2
+      "final": 60.4
     },
     "metrics": {
-      "hn_score": 241,
-      "hn_comments": 140,
+      "hn_score": 260,
+      "hn_comments": 156,
       "github_stars": 0,
       "github_stars_recent": 0,
       "hf_likes": 0,
@@ -205,36 +127,114 @@
       "arxiv_signal": 0,
       "cross_source_count": 0
     },
-    "selected_reason": "HN 高热度 (score=241) | 新鲜度=80"
+    "selected_reason": "HN 高热度 (score=260) | 新鲜度=80"
   },
   {
-    "title": "为何开源 AI 的崛起尚未对 Anthropic 造成冲击",
-    "url": "https://techcrunch.com/2026/07/07/why-the-rise-of-open-source-ai-isnt-hurting-anthropic-yet/",
-    "source": "TechCrunch AI + Hacker News",
-    "source_type": "rss",
-    "published_at": "2026-07-07 20:04:32+00:00",
+    "title": "警惕AI代理数据注入攻击：新型安全威胁解析",
+    "url": "https://arxiv.org/abs/2607.05120",
+    "source": "Hacker News",
+    "source_type": "hn",
+    "published_at": "2026-07-08 03:25:36+00:00",
     "scores": {
-      "freshness": 80.0,
-      "authority": 9,
-      "community": 7.1,
+      "freshness": 100.0,
+      "authority": 6,
+      "community": 4.0,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 60.1
+      "final": 60.0
     },
     "metrics": {
-      "hn_score": 3,
+      "hn_score": 5,
+      "hn_comments": 2,
+      "github_stars": 0,
+      "github_stars_recent": 0,
+      "hf_likes": 0,
+      "hf_downloads": 0,
+      "arxiv_signal": 0,
+      "cross_source_count": 0
+    },
+    "selected_reason": "HN 高讨论 (comments=2) | 新鲜度=100"
+  },
+  {
+    "title": "缅因州图书馆员挺身而出：协助读者抵御AI与科技巨头的侵蚀",
+    "url": "https://www.bangordailynews.com/2026/07/02/midcoast/midcoast-culture/maine-librarians-are-helping-pa",
+    "source": "Hacker News",
+    "source_type": "hn",
+    "published_at": "2026-07-08 03:23:25+00:00",
+    "scores": {
+      "freshness": 100.0,
+      "authority": 6,
+      "community": 3.7,
+      "technical": 0.0,
+      "china_relevance": 0.0,
+      "final": 59.7
+    },
+    "metrics": {
+      "hn_score": 11,
       "hn_comments": 0,
       "github_stars": 0,
       "github_stars_recent": 0,
       "hf_likes": 0,
       "hf_downloads": 0,
       "arxiv_signal": 0,
-      "cross_source_count": 1
+      "cross_source_count": 0
+    },
+    "selected_reason": "HN 高热度 (score=11) | 新鲜度=100"
+  },
+  {
+    "title": "DeepSeek隐秘布局算力：一年前已启动自研芯片，专注推理场景",
+    "url": "https://www.qbitai.com/2026/07/445883.html",
+    "source": "量子位",
+    "source_type": "rss",
+    "published_at": "2026-07-08 04:47:04+00:00",
+    "scores": {
+      "freshness": 100.0,
+      "authority": 9,
+      "community": 0.0,
+      "technical": 0.0,
+      "china_relevance": 0.0,
+      "final": 59.0
+    },
+    "metrics": {
+      "hn_score": 0,
+      "hn_comments": 0,
+      "github_stars": 0,
+      "github_stars_recent": 0,
+      "hf_likes": 0,
+      "hf_downloads": 0,
+      "arxiv_signal": 0,
+      "cross_source_count": 0
+    },
+    "selected_reason": "RSS 权威源 | 新鲜度=100"
+  },
+  {
+    "title": "开源AI狂飙，为何Anthropic暂未受冲击？",
+    "url": "https://techcrunch.com/2026/07/07/why-the-rise-of-open-source-ai-isnt-hurting-anthropic-yet/",
+    "source": "TechCrunch AI",
+    "source_type": "rss",
+    "published_at": "2026-07-07 20:04:32+00:00",
+    "scores": {
+      "freshness": 80.0,
+      "authority": 9,
+      "community": 0.0,
+      "technical": 0.0,
+      "china_relevance": 0.0,
+      "final": 53.0
+    },
+    "metrics": {
+      "hn_score": 0,
+      "hn_comments": 0,
+      "github_stars": 0,
+      "github_stars_recent": 0,
+      "hf_likes": 0,
+      "hf_downloads": 0,
+      "arxiv_signal": 0,
+      "cross_source_count": 0
     },
     "selected_reason": "RSS 权威源 | 新鲜度=80"
   },
   {
-    "title": "Meta 新推出的 Muse 图像模型可将其他 Instagram 用户融入 AI 照片",
+    "title": "Meta发布Muse图像模型：一键将Instagram好友拉入AI合成照",
     "url": "https://www.theverge.com/tech/962485/meta-muse-image-ai-model-instagram",
     "source": "The Verge AI",
     "source_type": "rss",
@@ -260,70 +260,18 @@
     "selected_reason": "RSS 权威源 | 新鲜度=80"
   },
   {
-    "title": "ELSA3D：用于统一3D理解与生成的弹性语义锚定 [Tianjiao Yu 等]",
-    "url": "https://arxiv.org/abs/2607.06565v1",
-    "source": "arXiv",
-    "source_type": "arxiv",
-    "published_at": "2026-07-07 17:59:50+00:00",
-    "scores": {
-      "freshness": 80.0,
-      "authority": 5,
-      "community": 0.0,
-      "technical": 8,
-      "china_relevance": 0.0,
-      "final": 51.0
-    },
-    "metrics": {
-      "hn_score": 0,
-      "hn_comments": 0,
-      "github_stars": 0,
-      "github_stars_recent": 0,
-      "hf_likes": 0,
-      "hf_downloads": 0,
-      "arxiv_signal": 8,
-      "cross_source_count": 0
-    },
-    "selected_reason": "arXiv 论文 (signal=8) | 关键词:3d,generation,understanding | 分类:cs.CV | 新鲜度=80"
-  },
-  {
-    "title": "Lift3D-VLA：将VLA模型提升至具备3D几何与动力学感知的操作能力 [Jiaming Liu 等]",
-    "url": "https://arxiv.org/abs/2607.06564v1",
-    "source": "arXiv",
-    "source_type": "arxiv",
-    "published_at": "2026-07-07 17:59:47+00:00",
-    "scores": {
-      "freshness": 80.0,
-      "authority": 5,
-      "community": 0.0,
-      "technical": 8,
-      "china_relevance": 0.0,
-      "final": 51.0
-    },
-    "metrics": {
-      "hn_score": 0,
-      "hn_comments": 0,
-      "github_stars": 0,
-      "github_stars_recent": 0,
-      "hf_likes": 0,
-      "hf_downloads": 0,
-      "arxiv_signal": 8,
-      "cross_source_count": 0
-    },
-    "selected_reason": "arXiv 论文 (signal=8) | 关键词:vla,3d | 分类:cs.RO | 新鲜度=80"
-  },
-  {
-    "title": "让Skill“有图可依”：openJiuwen首发多模态Skill范式Skill-Omni",
-    "url": "https://www.qbitai.com/2026/07/445229.html",
-    "source": "量子位",
+    "title": "Anthropic推出Claude Cowork：移动端与网页端同步上线",
+    "url": "https://www.theverge.com/ai-artificial-intelligence/961978/anthropic-claude-cowork-mobile-web",
+    "source": "The Verge AI | TechCrunch AI",
     "source_type": "rss",
-    "published_at": "2026-07-07 05:03:09+00:00",
+    "published_at": "2026-07-07 17:46:59+00:00",
     "scores": {
       "freshness": 60.0,
       "authority": 9,
       "community": 0.0,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 39.0
+      "final": 46.0
     },
     "metrics": {
       "hn_score": 0,
@@ -333,12 +281,64 @@
       "hf_likes": 0,
       "hf_downloads": 0,
       "arxiv_signal": 0,
-      "cross_source_count": 0
+      "cross_source_count": 1
     },
     "selected_reason": "RSS 权威源 | 新鲜度=60"
   },
   {
-    "title": "在最新iOS 27测试版中，你现在可以自定义Siri的语速和表现力",
+    "title": "ELSA3D：弹性语义锚点实现统一3D理解与生成",
+    "url": "https://arxiv.org/abs/2607.06565v1",
+    "source": "arXiv",
+    "source_type": "arxiv",
+    "published_at": "2026-07-07 17:59:50+00:00",
+    "scores": {
+      "freshness": 60.0,
+      "authority": 5,
+      "community": 0.0,
+      "technical": 8,
+      "china_relevance": 0.0,
+      "final": 41.0
+    },
+    "metrics": {
+      "hn_score": 0,
+      "hn_comments": 0,
+      "github_stars": 0,
+      "github_stars_recent": 0,
+      "hf_likes": 0,
+      "hf_downloads": 0,
+      "arxiv_signal": 8,
+      "cross_source_count": 0
+    },
+    "selected_reason": "arXiv 论文 (signal=8) | 关键词:3d,generation,understanding | 分类:cs.CV | 新鲜度=60"
+  },
+  {
+    "title": "Lift3D-VLA：赋予VLA模型3D几何与动力学感知能力",
+    "url": "https://arxiv.org/abs/2607.06564v1",
+    "source": "arXiv",
+    "source_type": "arxiv",
+    "published_at": "2026-07-07 17:59:47+00:00",
+    "scores": {
+      "freshness": 60.0,
+      "authority": 5,
+      "community": 0.0,
+      "technical": 8,
+      "china_relevance": 0.0,
+      "final": 41.0
+    },
+    "metrics": {
+      "hn_score": 0,
+      "hn_comments": 0,
+      "github_stars": 0,
+      "github_stars_recent": 0,
+      "hf_likes": 0,
+      "hf_downloads": 0,
+      "arxiv_signal": 8,
+      "cross_source_count": 0
+    },
+    "selected_reason": "arXiv 论文 (signal=8) | 关键词:vla,3d | 分类:cs.RO | 新鲜度=60"
+  },
+  {
+    "title": "iOS 27测试版上线：Siri语速与表现力可自定义",
     "url": "https://techcrunch.com/2026/07/06/you-can-now-customize-siris-pace-and-expressivity-in-the-latest-io",
     "source": "TechCrunch AI",
     "source_type": "rss",
@@ -364,18 +364,18 @@
     "selected_reason": "RSS 权威源 | 新鲜度=35"
   },
   {
-    "title": "Reddit利用大语言模型解决大语言模型主要引发的问题",
-    "url": "https://techcrunch.com/2026/07/06/reddit-is-using-llms-to-solve-a-problem-llms-largely-created/",
-    "source": "TechCrunch AI",
+    "title": "openJiuwen发布Skill-Omni：让技能具备多模态依据",
+    "url": "https://www.qbitai.com/2026/07/445229.html",
+    "source": "量子位",
     "source_type": "rss",
-    "published_at": "2026-07-06 15:22:08+00:00",
+    "published_at": "2026-07-07 05:03:09+00:00",
     "scores": {
       "freshness": 35.0,
       "authority": 9,
       "community": 0.0,
       "technical": 0.0,
       "china_relevance": 0.0,
-      "final": 28.5
+      "final": 26.5
     },
     "metrics": {
       "hn_score": 0,

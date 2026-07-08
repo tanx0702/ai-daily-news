@@ -425,6 +425,18 @@ def render_wechat_article(
     def esc(s: str) -> str:
         return _html.escape(s, quote=True)
 
+    def _clean_source(raw: str) -> str:
+        """简化来源名称。跨源合并时取主源，去掉 '+ ...' 后缀。"""
+        if not raw:
+            return ""
+        # 取第一个 "+" 之前的部分作为主源
+        main = raw.split(" + ")[0].strip()
+        # 常见冗余后缀清理
+        for suffix in [" AI", " News", " - AI", " - Tech"]:
+            if main.endswith(suffix):
+                main = main[:-len(suffix)]
+        return main
+
     parts: list[str] = []
 
     # ── Wrapper ──
@@ -450,20 +462,23 @@ def render_wechat_article(
         f'</section>'
     )
 
-    # ── 今日速览（前 3 条要点）──
+    # ── 今日重点（前 3 条编辑摘要）──
     highlights = news_list[:3]
     if highlights:
         parts.append(
             f'<section style="margin:0 16px 20px;padding:16px 18px;'
             f'background:{ACCENT_BG};border-radius:8px;">'
             f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
-            f'font-weight:600;line-height:1.4;">今日速览</p>'
+            f'font-weight:600;line-height:1.4;">📌 今日重点</p>'
         )
         for i, item in enumerate(highlights):
-            title = item.get("chinese_title") or item.get("title", "")
+            # 优先使用 LLM 生成的编辑摘要，降级用中文标题
+            highlight_text = item.get("highlight_text", "")
+            if not highlight_text:
+                highlight_text = item.get("chinese_title") or item.get("title", "")
             parts.append(
                 f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
-                f'line-height:1.6;">{esc(str(i + 1))}. {esc(title)}</p>'
+                f'line-height:1.6;">{esc(str(i + 1))}. {esc(highlight_text)}</p>'
             )
         parts.append('</section>')
 
@@ -480,12 +495,12 @@ def render_wechat_article(
             f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};">'
         )
 
-        # 文章配图
+        # 文章配图（控制高度避免占据过多屏幕）
         if article_img:
             parts.append(
                 f'<img src="{esc(article_img)}" '
-                f'style="display:block;width:100%;height:auto;'
-                f'margin:0 0 12px;border-radius:4px;" alt="" />'
+                f'style="display:block;width:100%;max-height:240px;'
+                f'object-fit:cover;margin:0 0 12px;border-radius:4px;" alt="" />'
             )
 
         # 编号
@@ -508,9 +523,10 @@ def render_wechat_article(
             )
 
         # 来源 + 阅读原文
+        clean_source = _clean_source(source_name)
         parts.append(
             f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-            f'来源：{esc(source_name)}'
+            f'{esc(clean_source)}'
         )
         if url:
             parts.append(

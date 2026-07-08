@@ -70,6 +70,26 @@ def main():
     else:
         logger.info("AGNES_API_KEY not set, skipping LLM summary")
 
+    # === 2.5 生成今日重点编辑摘要 ===
+    cover_title = "AI 日报"
+    if api_key and news_list:
+        logger.info("[2.5/6] 生成今日重点编辑摘要 + 封面标题...")
+        from src.summarizer import generate_highlights, generate_cover_title
+
+        highlights = generate_highlights(
+            news_list, api_key=api_key, model=model, timeout=llm_timeout,
+        )
+        for i, item in enumerate(news_list[:3]):
+            if i < len(highlights):
+                item["highlight_text"] = highlights[i]
+
+        cover_title = generate_cover_title(
+            news_list, api_key=api_key, model=model, timeout=llm_timeout,
+        )
+        logger.info("Cover title: %s", cover_title)
+    else:
+        logger.info("Skipping highlights/cover title (no API key)")
+
     # === 3. 生成 HTML 日报 ===
     logger.info("[3/6] 生成 HTML 日报...")
     from src.generator import render_daily_html, save_html
@@ -120,6 +140,7 @@ def main():
             output_path=cover_save_path,
             api_key=cover_key,
             base_url=cover_base_url,
+            cover_title=cover_title,
         )
         logger.info("Cover image saved to %s", cover_save_path)
     else:
@@ -292,6 +313,8 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         scores = item.get("scores", {})
         metrics = item.get("metrics", {})
         reason = item.get("selected_reason", "")
+        highlight = item.get("highlight_text", "")
+        diversity = item.get("_diversity_swap", "")
 
         lines.append(f"### {i}. {title}")
         lines.append(f"")
@@ -299,6 +322,10 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         lines.append(f"- **Score**: final={scores.get('final', 0):.1f}, fresh={scores.get('freshness', 0):.0f}, comm={scores.get('community', 0):.1f}")
         lines.append(f"- **Metrics**: HN={metrics.get('hn_score',0) or 0}/{metrics.get('hn_comments',0) or 0}c, GH={metrics.get('github_stars',0) or 0}*, HF={metrics.get('hf_likes',0) or 0}L/{metrics.get('hf_downloads',0) or 0}D, arxiv={metrics.get('arxiv_signal',0) or 0}")
         lines.append(f"- **Why**: {reason}")
+        if highlight:
+            lines.append(f"- **编辑摘要**: {highlight}")
+        if diversity:
+            lines.append(f"- **⚠️ {diversity}**")
         lines.append(f"")
 
     with open(ranking_path, "w", encoding="utf-8") as f:

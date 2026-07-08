@@ -16,16 +16,70 @@ from PIL import Image, ImageDraw, ImageFont
 logger = logging.getLogger(__name__)
 
 
+def _draw_cover_text(
+    img: Image.Image,
+    cover_title: str,
+    date_str: str,
+    news_count: int,
+) -> Image.Image:
+    """在封面图上叠加中文标题、日期和条数。"""
+    draw = ImageDraw.Draw(img)
+    width, height = img.size
+
+    # 根据图片宽度自适应字号
+    base_size = max(width // 18, 28)
+
+    # 尝试加载中文字体
+    font_paths = ["msyh.ttc", "msyhbd.ttc", "simhei.ttf", "C:\\Windows\\Fonts\\msyh.ttc",
+                  "C:\\Windows\\Fonts\\simhei.ttf", "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"]
+    font_title = None
+    for fp in font_paths:
+        try:
+            font_title = ImageFont.truetype(fp, base_size)
+            break
+        except (IOError, OSError):
+            continue
+    if font_title is None:
+        font_title = ImageFont.load_default()
+
+    font_date = ImageFont.truetype(font_title.path, max(base_size // 2, 16)) if hasattr(font_title, 'path') else font_title
+    font_count = font_title
+
+    # 半透明背景条（提升文字可读性）
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    # 底部渐变遮罩
+    for y in range(height // 2, height):
+        alpha = int(120 * (y - height // 2) / (height // 2))
+        overlay_draw.rectangle([(0, y), (width, y + 1)], fill=(0, 0, 0, min(alpha, 120)))
+
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    # 标题文字（底部居中）
+    _, _, tw, th = draw.textbbox((0, 0), cover_title, font=font_title)
+    title_y = height - th - 80
+    draw.text(((width - tw) // 2, title_y), cover_title, fill="#ffffff", font=font_title)
+
+    # 日期 + 条数
+    date_text = f"{date_str} · 今日 {news_count} 条 AI 新闻"
+    _, _, dw, dh = draw.textbbox((0, 0), date_text, font=font_date)
+    draw.text(((width - dw) // 2, title_y + th + 12), date_text, fill="#cccccc", font=font_date)
+
+    return img
+
+
 def _generate_simple_cover(
     news_list: list[dict],
     date_str: str,
     output_path: str,
     width: int = 900,
     height: int = 500,
+    cover_title: str = "AI 日报",
 ) -> str:
     """
     降级方案：用 Pillow 生成纯色背景封面图。
-    取第一条新闻的主色调关键词决定背景色。
+    使用动态中文封面标题。
     """
     # 配色方案
     PALETTES = [
@@ -58,28 +112,8 @@ def _generate_simple_cover(
         b = int(b0 + (b1 - b0) * ratio)
         draw.rectangle([(0, y), (width, y + 1)], fill=f"#{r:02x}{g:02x}{b:02x}")
 
-    # 标题文字
-    try:
-        font_title = ImageFont.truetype("msyh.ttc", 48)
-        font_date = ImageFont.truetype("msyh.ttc", 28)
-        font_count = ImageFont.truetype("msyh.ttc", 22)
-    except IOError:
-        font_title = ImageFont.load_default()
-        font_date = font_title
-        font_count = font_title
-
-    title_text = "AI 日报"
-    date_text = date_str
-    count_text = f"今日 {len(news_list)} 条 AI 新闻"
-
-    # 居中计算
-    _, _, tw, _ = draw.textbbox((0, 0), title_text, font=font_title)
-    _, _, dw, _ = draw.textbbox((0, 0), date_text, font=font_date)
-    _, _, cw, _ = draw.textbbox((0, 0), count_text, font=font_count)
-
-    draw.text(((width - tw) // 2, 160), title_text, fill="#ffffff", font=font_title)
-    draw.text(((width - dw) // 2, 220), date_text, fill="#cccccc", font=font_date)
-    draw.text(((width - cw) // 2, 270), count_text, fill="#999999", font=font_count)
+    # 叠加文字
+    img = _draw_cover_text(img, cover_title, date_str, len(news_list))
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
@@ -93,6 +127,7 @@ def generate_cover_from_news(
     output_path: str = None,
     api_key: Optional[str] = None,
     base_url: str = "https://apihub.agnes-ai.com",
+    cover_title: str = "",
 ) -> Optional[str]:
     """
     根据新闻标题生成封面图。
@@ -100,7 +135,7 @@ def generate_cover_from_news(
     流程：
     1. 从新闻标题提取关键词
     2. 构建 prompt 调用 Agnes Image API
-    3. 下载生成的图片保存到 output_path
+    3. 下载生成的图片，叠加中文封面标题
     4. 如果 API 失败，降级为 Pillow 生成
 
     Args:
@@ -109,14 +144,17 @@ def generate_cover_from_news(
         output_path: 输出图片路径
         api_key: Agnes API Key
         base_url: Agnes API 基础地址
+        cover_title: 中文封面标题（12-20 字），为空则使用 "AI 日报"
 
     Returns:
         封面图路径，失败返回 None
     """
+    cover_title = cover_title or "AI 日报"
+
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         logger.warning("No API key for cover generation, falling back to simple cover")
-        return _fallback_cover(news_list, date_str, output_path)
+        return _fallback_cover(news_list, date_str, output_path, cover_title)
 
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
@@ -153,15 +191,18 @@ def generate_cover_from_news(
         img_resp.raise_for_status()
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-        with open(output_path, "wb") as f:
-            f.write(img_resp.content)
+
+        # 4. 叠加中文标题
+        img = Image.open(io.BytesIO(img_resp.content))
+        img = _draw_cover_text(img, cover_title, date_str, len(news_list))
+        img.save(output_path, "JPEG", quality=90)
 
         logger.info("Cover image generated and saved to %s", output_path)
         return output_path
 
     except Exception as e:
         logger.warning("Agnes Image API failed: %s, falling back to simple cover", e)
-        return _fallback_cover(news_list, date_str, output_path)
+        return _fallback_cover(news_list, date_str, output_path, cover_title)
 
 
 def _build_cover_prompt(news_list: list[dict], date_str: str) -> str:
@@ -170,30 +211,38 @@ def _build_cover_prompt(news_list: list[dict], date_str: str) -> str:
 
     思路：取评分最高的第 1 条新闻作为画面主题，让每天的封面
     都贴合当日最重要的 AI 事件，而不是千篇一律的抽象图案。
+
+    注意：图像模型只理解英文，prompt 必须全英文。
+    中文标题通过 Pillow 后期叠加到图片上。
     """
     if not news_list:
         return (
             "A modern tech magazine cover, abstract AI neural network visualization, "
             "glowing data nodes connected by fine lines, deep blue and indigo gradient, "
-            "cinematic lighting, clean composition, NO text NO letters NO typography, "
+            "cinematic lighting, clean composition, "
+            "leave top third of image dark/empty for text overlay, "
             "16:9 aspect ratio, professional quality."
         )
 
     top = news_list[0]
 
-    # 用英文标题作为主题线索（海外源英文标题，国内源 chinese_title 是中文 → 过滤掉）
+    # 提取主题关键词（优先英文标题，中文稿从 summary 提取英文词）
     english_title = top.get("title", "")
-    # 标题是否包含中文（图像模型看不懂中文，会乱画）
     has_chinese = any('一' <= c <= '鿿' for c in english_title)
     if has_chinese:
-        # 国内源：从摘要提取英文关键词，或使用通用 AI 主题
-        summary = top.get("summary", "")
-        # 简单提取英文单词
         import re as _re
-        en_words = _re.findall(r'[A-Za-z][a-z]{3,}', english_title + " " + summary)
-        english_title = " ".join(en_words[:8]) if en_words else "artificial intelligence technology"
+        summary = top.get("summary", "")
+        # 提取英文专有名词和长单词
+        en_words = _re.findall(r'[A-Z][a-z]+|[A-Z]{2,}|[a-z]{4,}', english_title + " " + summary)
+        # 去重并过滤常见停用词
+        stop = {'this', 'that', 'with', 'from', 'have', 'been', 'they', 'them', 'their',
+                'your', 'will', 'would', 'could', 'about', 'which', 'when', 'where'}
+        en_words = [w for w in en_words if w.lower() not in stop]
+        english_title = " ".join(en_words[:10]) if en_words else "AI technology innovation"
+        if not english_title.strip():
+            english_title = "AI technology innovation"
 
-    # 确保纯英文 prompt，图像模型不会试图画中文字
+    # 确保纯英文 prompt
     topic_line = (
         f"Visual theme inspired by today's top AI headline: \"{english_title[:150]}\". "
         if english_title else ""
@@ -206,8 +255,9 @@ def _build_cover_prompt(news_list: list[dict], date_str: str) -> str:
         f"deep navy blue and indigo purple gradient background, "
         f"abstract geometric tech elements subtly related to the theme, "
         f"professional and eye-catching, suitable for a daily AI newsletter cover. "
-        f"CRITICAL: absolutely NO text, NO letters, NO typography, NO characters, "
-        f"NO words, NO watermarks anywhere in the image. "
+        f"Leave the bottom third of the image dark or gradient-fade for text overlay. "
+        f"Do NOT put any text, letters, typography, characters, words, or watermarks "
+        f"anywhere in the image — text will be added separately. "
         f"16:9 aspect ratio, high quality."
     )
 
@@ -216,8 +266,9 @@ def _fallback_cover(
     news_list: list[dict],
     date_str: str,
     output_path: str = None,
+    cover_title: str = "AI 日报",
 ) -> str:
     """降级：生成 Pillow 封面图。"""
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
-    return _generate_simple_cover(news_list, date_str, output_path)
+    return _generate_simple_cover(news_list, date_str, output_path, cover_title=cover_title)
