@@ -18,6 +18,32 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# 布尔环境变量真值/假值（大小写不敏感）
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+_FALSY = frozenset({"0", "false", "no", "off"})
+
+
+def _env_enabled(name: str, default: bool = True) -> bool:
+    """
+    解析布尔环境变量。
+
+    支持 1/true/yes/on（视为 True）和 0/false/no/off（视为 False），
+    大小写不敏感。未设置时返回 default。
+    """
+    raw = os.environ.get(name, "").strip().lower()
+    if raw in _TRUTHY:
+        return True
+    if raw in _FALSY:
+        return False
+    # 未设置或无法识别 → 使用默认值
+    if raw == "":
+        return default
+    logger.warning(
+        "Env var %s has unrecognized value %r, falling back to default=%s",
+        name, os.environ.get(name, ""), default,
+    )
+    return default
+
 # AI 相关关键词，用于过滤非 AI 新闻
 # 分为高权重（标题中出现直接命中）和低权重（需在标题+摘要中综合判断）
 AI_HIGH_KEYWORDS = [
@@ -739,7 +765,7 @@ def collect_news(
     """
     if hours is None:
         hours = int(os.environ.get("DAILY_NEWS_HOURS", "36"))
-    allow_undated = os.environ.get("DAILY_ALLOW_UNDATED", "0") == "1"
+    allow_undated = _env_enabled("DAILY_ALLOW_UNDATED", default=False)
 
     sources = _load_sources(config_path)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -756,7 +782,7 @@ def collect_news(
 
     # ---- 3. HN 采集（ENABLE_HN_COLLECTOR=1，默认开启） ----
     hn_candidates = []
-    if os.environ.get("ENABLE_HN_COLLECTOR", "1") == "1":
+    if _env_enabled("ENABLE_HN_COLLECTOR"):
         hn_candidates = _fetch_hn(rss_timeout)
         logger.info("HN fetched: %d candidates", len(hn_candidates))
     else:
@@ -764,7 +790,7 @@ def collect_news(
 
     # ---- 4. GitHub 采集（ENABLE_GITHUB_COLLECTOR=1，默认开启） ----
     gh_candidates = []
-    if os.environ.get("ENABLE_GITHUB_COLLECTOR", "1") == "1":
+    if _env_enabled("ENABLE_GITHUB_COLLECTOR"):
         gh_candidates = _fetch_github(rss_timeout)
         logger.info("GitHub fetched: %d candidates", len(gh_candidates))
     else:
@@ -772,7 +798,7 @@ def collect_news(
 
     # ---- 5. Hugging Face 采集（ENABLE_HF_COLLECTOR=1，默认开启） ----
     hf_candidates = []
-    if os.environ.get("ENABLE_HF_COLLECTOR", "1") == "1":
+    if _env_enabled("ENABLE_HF_COLLECTOR"):
         hf_candidates = _fetch_hf(rss_timeout)
         logger.info("HF fetched: %d candidates", len(hf_candidates))
     else:
@@ -780,7 +806,7 @@ def collect_news(
 
     # ---- 6. arXiv 采集（ENABLE_ARXIV_COLLECTOR=1，默认开启） ----
     arxiv_candidates = []
-    if os.environ.get("ENABLE_ARXIV_COLLECTOR", "1") == "1":
+    if _env_enabled("ENABLE_ARXIV_COLLECTOR"):
         arxiv_candidates = _fetch_arxiv(rss_timeout)
         logger.info("arXiv fetched: %d candidates", len(arxiv_candidates))
     else:
