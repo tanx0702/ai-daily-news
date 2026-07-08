@@ -8,3 +8,11 @@ __pycache__/
 AGENTS.md
 CLAUDE.md
 personMdDosc
+
+# 运行产物 — 每天由管道重新生成，不入库
+docs/index.html
+docs/cover.jpg
+docs/wechat.html
+docs/latest.json
+docs/archive/
+docs/debug/
