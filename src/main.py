@@ -125,6 +125,13 @@ def main():
     else:
         logger.info("No API key for cover generation, skipping")
 
+    # 生成公众号推文预览
+    from src.generator import render_wechat_article
+    cover_url = f"{pages_url}/cover.jpg"
+    wechat_html = render_wechat_article(news_list, date_str, pages_url, cover_image_url=cover_url)
+    save_html(wechat_html, os.path.join(docs_dir, "wechat.html"))
+    logger.info("WeChat preview saved to docs/wechat.html")
+
     # === 5. 保存新闻数据（供 Flask 微信服务读取） ===
     logger.info("[5/6] 保存新闻数据...")
     latest_data = {
@@ -132,6 +139,7 @@ def main():
         "news": news_list,
         "pages_url": pages_url,
         "cover_image_url": f"{pages_url}/cover.jpg",
+        "wechat_preview_url": f"{pages_url}/wechat.html",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     latest_path = os.path.join(docs_dir, "latest.json")

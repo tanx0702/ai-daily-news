@@ -363,12 +363,15 @@ def publish_daily_article(
     # 3. 为每条新闻抓取原文配图（og:image → 下载 → 上传微信，并发+降级）
     news_list = _enrich_news_with_images(access_token, news_list)
 
-    # 4. 生成微信推文 HTML（优先 AI + md2wechat 主题，失败降级到手动模板）
+    # 4. 生成微信推文 HTML（默认确定性模板，WECHAT_USE_AI_TEMPLATE=1 启用 AI 模板）
     from src.generator import render_wechat_article, render_wechat_article_ai
 
-    content = render_wechat_article_ai(news_list, date_str, pages_url, cover_url)
-    if not content:
-        logger.info("AI HTML generation failed or skipped, using manual template")
+    if os.environ.get("WECHAT_USE_AI_TEMPLATE", "0") == "1":
+        content = render_wechat_article_ai(news_list, date_str, pages_url, cover_url)
+        if not content:
+            logger.info("AI HTML generation failed, falling back to deterministic template")
+            content = render_wechat_article(news_list, date_str, pages_url, cover_url)
+    else:
         content = render_wechat_article(news_list, date_str, pages_url, cover_url)
 
     # 5. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
