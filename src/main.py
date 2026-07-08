@@ -76,12 +76,29 @@ def main():
         logger.info("[2.5/6] 生成今日重点编辑摘要 + 封面标题...")
         from src.summarizer import generate_highlights, generate_cover_title
 
+        # generate_highlights() 内部会跳过低置信度 item，
+        # 返回的列表长度等于 eligible items 数量（最多 3）
         highlights = generate_highlights(
             news_list, api_key=api_key, model=model, timeout=llm_timeout,
         )
-        for i, item in enumerate(news_list[:3]):
-            if i < len(highlights):
-                item["highlight_text"] = highlights[i]
+        # 将 highlights 按顺序映射回符合条件的 news_list items
+        hi = 0
+        for item in news_list:
+            bc = item.get("_brand_claim", {})
+            is_low_conf = (
+                bc.get("confidence") == "low"
+                or item.get("_confidence_level") == "low"
+            )
+            if is_low_conf:
+                # 低置信度：不分配 highlight，记录原因
+                if not item.get("_highlight_excluded"):
+                    item["_highlight_excluded"] = "低置信度品牌声明"
+                continue
+            if hi < len(highlights):
+                item["highlight_text"] = highlights[hi]
+                hi += 1
+            if hi >= 3:
+                break
 
         cover_title = generate_cover_title(
             news_list, api_key=api_key, model=model, timeout=llm_timeout,
@@ -264,8 +281,17 @@ def _annotate_reasons(news_list: list[dict]):
             reasons.append("[HN-LQ 降权]")
         if item.get("_hf_low_quality"):
             reasons.append("[HF-LQ 降权]")
+        bc = item.get("_brand_claim", {})
+        if bc.get("confidence") == "low":
+            reasons.append(f"[低置信度品牌声明] {bc.get('reason', '')}")
+        elif bc.get("confidence") == "medium":
+            reasons.append(f"[品牌声明-中等置信度] {bc.get('reason', '')}")
         freshness = scores.get("freshness", 0)
         reasons.append(f"新鲜度={freshness:.0f}")
+
+        # 最终置信度
+        conf = item.get("_confidence_level", "high")
+        reasons.append(f"置信度={conf}")
 
         item["selected_reason"] = " | ".join(reasons) if reasons else "综合评分"
 
@@ -281,7 +307,7 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
     # 精简输出：只保留关键字段
     compact = []
     for item in news_list:
-        compact.append({
+        entry = {
             "title": (item.get("chinese_title") or item["title"])[:100],
             "url": item.get("url", "")[:100],
             "source": item.get("source", ""),
@@ -290,7 +316,23 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
             "scores": item.get("scores", {}),
             "metrics": item.get("metrics", {}),
             "selected_reason": item.get("selected_reason", ""),
-        })
+            "confidence_level": item.get("_confidence_level", "high"),
+        }
+        bc = item.get("_brand_claim", {})
+        if bc:
+            entry["brand_claim"] = {
+                "brand": bc.get("brand", ""),
+                "confidence": bc.get("confidence", ""),
+                "reason": bc.get("reason", ""),
+            }
+        if item.get("_highlight_excluded"):
+            entry["highlight_excluded"] = item["_highlight_excluded"]
+        if item.get("_diversity_swap"):
+            entry["diversity_swap"] = item["_diversity_swap"]
+        if item.get("_summary_flagged"):
+            entry["summary_flagged"] = True
+            entry["suspicious_terms"] = item.get("_suspicious_terms", [])
+        compact.append(entry)
 
     with open(candidates_path, "w", encoding="utf-8") as f:
         json.dump(compact, f, ensure_ascii=False, indent=2, default=str)
@@ -318,15 +360,22 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         reason = item.get("selected_reason", "")
         highlight = item.get("highlight_text", "")
         diversity = item.get("_diversity_swap", "")
+        conf = item.get("_confidence_level", "high")
+        bc = item.get("_brand_claim", {})
+        excluded = item.get("_highlight_excluded", "")
+        flagged = " ⚠️摘要可疑" if item.get("_summary_flagged") else ""
 
-        lines.append(f"### {i}. {title}")
+        lines.append(f"### {i}. {title}{flagged}")
         lines.append(f"")
         lines.append(f"- **Type**: {st} | **Source**: {source}")
         lines.append(f"- **Score**: final={scores.get('final', 0):.1f}, fresh={scores.get('freshness', 0):.0f}, comm={scores.get('community', 0):.1f}")
         lines.append(f"- **Metrics**: HN={metrics.get('hn_score',0) or 0}/{metrics.get('hn_comments',0) or 0}c, GH={metrics.get('github_stars',0) or 0}*, HF={metrics.get('hf_likes',0) or 0}L/{metrics.get('hf_downloads',0) or 0}D, arxiv={metrics.get('arxiv_signal',0) or 0}")
+        lines.append(f"- **置信度**: {conf}{' — ' + bc.get('reason', '') if bc.get('reason') else ''}")
         lines.append(f"- **Why**: {reason}")
         if highlight:
             lines.append(f"- **编辑摘要**: {highlight}")
+        if excluded:
+            lines.append(f"- **⚠️ 未入今日重点**: {excluded}")
         if diversity:
             lines.append(f"- **⚠️ {diversity}**")
         lines.append(f"")

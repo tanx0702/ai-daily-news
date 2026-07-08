@@ -425,17 +425,83 @@ def render_wechat_article(
     def esc(s: str) -> str:
         return _html.escape(s, quote=True)
 
-    def _clean_source(raw: str) -> str:
-        """简化来源名称。跨源合并时取主源，去掉 '+ ...' 后缀。"""
+    # 来源名称标准化表
+    _source_name_map: dict[str, str] = {
+        "hacker": "Hacker News",
+        "hackernews": "Hacker News",
+        "hn": "Hacker News",
+    }
+
+    def _normalize_source(raw: str, source_type: str = "") -> tuple[str, str]:
+        """
+        标准化来源名称，返回 (display_name, display_label)。
+
+        规则：
+        - 跨源合并取主源（+ 之前的部分）
+        - 裁剪冗余后缀
+        - 映射常见缩写到完整名称
+        - label 用于显示格式 "来源：XXX · 阅读原文"
+        """
         if not raw:
-            return ""
+            if source_type == "hn":
+                return "Hacker News", "来源：Hacker News"
+            if source_type == "github":
+                return "GitHub", "来源：GitHub"
+            if source_type == "huggingface":
+                return "Hugging Face", "来源：Hugging Face"
+            if source_type == "arxiv":
+                return "arXiv", "来源：arXiv"
+            return "", ""
+
         # 取第一个 "+" 之前的部分作为主源
         main = raw.split(" + ")[0].strip()
         # 常见冗余后缀清理
-        for suffix in [" AI", " News", " - AI", " - Tech"]:
-            if main.endswith(suffix):
+        for suffix in [" AI", " News", " - AI", " - Tech", "-ai", ".ai"]:
+            if main.lower().endswith(suffix.lower()):
                 main = main[:-len(suffix)]
-        return main
+
+        # 小写标准化映射
+        main_lower = main.lower().strip()
+        if main_lower in _source_name_map:
+            main = _source_name_map[main_lower]
+
+        # 来源类型兜底
+        if not main or len(main) < 2:
+            type_map = {"hn": "Hacker News", "github": "GitHub",
+                       "huggingface": "Hugging Face", "arxiv": "arXiv", "rss": "RSS"}
+            main = type_map.get(source_type, main)
+
+        label = f"来源：{main}"
+        return main, label
+
+    # ── 常见错别字/怪词修正 ──
+    _typo_fixes: dict[str, str] = {
+        "特朗普通": "特朗普",
+        "特朗普通政府": "特朗普政府",
+    }
+
+    def _fix_typos(text: str) -> str:
+        """修正常见错别字/怪词。"""
+        for wrong, correct in _typo_fixes.items():
+            text = text.replace(wrong, correct)
+        return text
+
+    # ── 生成 short insight（看点）──
+    def _make_insight(item: dict) -> str:
+        """
+        从新闻数据中提取一条短「看点」文字（15-30 字）。
+        优先级：highlight_text > summary 首句 > 空
+        """
+        highlight = item.get("highlight_text", "")
+        if highlight:
+            return f"看点：{highlight[:35]}"
+        summary = item.get("summary", "")
+        if summary:
+            # 取第一个句号/换行之前的部分
+            first_sentence = summary.split("。")[0].split("\n")[0].strip()
+            if len(first_sentence) >= 10:
+                return f"看点：{first_sentence[:35]}"
+        return ""
 
     parts: list[str] = []
 
@@ -485,10 +551,22 @@ def render_wechat_article(
     # ── 新闻列表 ──
     for idx, item in enumerate(news_list):
         title = item.get("chinese_title") or item.get("title", "")
+        # 错别字修正
+        title = _fix_typos(title)
         summary = item.get("summary", "")
+        summary = _fix_typos(summary)
         source_name = item.get("source", "")
+        source_type = item.get("source_type", "")
         url = item.get("url", "")
         article_img = item.get("article_image_url", "")
+
+        # 标准化来源名
+        clean_source, source_label = _normalize_source(source_name, source_type)
+
+        # 短看点
+        insight = _make_insight(item)
+        # 错别字修正
+        insight = _fix_typos(insight)
 
         parts.append(
             f'<section style="margin:0 16px 16px;padding:18px 16px;'
@@ -518,15 +596,21 @@ def render_wechat_article(
         # 摘要
         if summary:
             parts.append(
-                f'<p style="margin:0 0 12px;color:{TEXT_BODY};font-size:15px;'
+                f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:15px;'
                 f'line-height:1.8;">{esc(summary)}</p>'
             )
 
+        # 看点（短 insight）
+        if insight:
+            parts.append(
+                f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
+                f'line-height:1.6;">🔍 {esc(insight)}</p>'
+            )
+
         # 来源 + 阅读原文
-        clean_source = _clean_source(source_name)
         parts.append(
             f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-            f'{esc(clean_source)}'
+            f'{esc(source_label)}'
         )
         if url:
             parts.append(

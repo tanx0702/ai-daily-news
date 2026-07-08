@@ -383,6 +383,21 @@ def _score_item(item: dict, all_items: list[dict]) -> float:
     if arxiv_signal > 0:
         score += arxiv_signal * 0.5  # arXiv 基准 8 分 → 贡献 4 分
         item.setdefault("scores", {})["technical"] = arxiv_signal
+
+    # 8. 大厂品牌声明可信度门禁
+    brand_check = _check_brand_claim(
+        item.get("title", ""), item.get("url", ""),
+        item.get("source", ""), source_type, metrics,
+    )
+    item["_brand_claim"] = brand_check
+    if brand_check["is_brand_claim"] and brand_check["confidence"] == "low":
+        # 低置信度品牌声明：降权（扣减相当于 30-50% 最终分）
+        penalty = score * 0.4
+        score -= penalty
+        item["_brand_penalty"] = round(penalty, 1)
+        item.setdefault("scores", {})["brand_penalty"] = round(penalty, 1)
+    item["_confidence_level"] = brand_check["confidence"] if brand_check["is_brand_claim"] else "high"
+
     item["_community"] = round(community, 1)
     item.setdefault("scores", {})["community"] = round(community, 1)
     item["scores"]["final"] = round(score, 1)
@@ -622,6 +637,154 @@ def _merge_candidates(candidates: list[dict]) -> list[dict]:
         len(candidates), len(merged), len(final), cross_count,
     )
     return final
+
+
+# ── 头条可信度门禁：大厂品牌声明检测 ──
+
+# 大厂名称（用于检测"官方发布"类声明）
+_MAJOR_BRANDS = [
+    "openai", "anthropic", "google deepmind", "deepmind",
+    "microsoft", "meta", "xai", "nvidia", "apple",
+    "tesla", "amazon", "intel", "amd", "ibm",
+]
+
+# 大厂产品名 → 品牌名映射（产品名 + 动作词 → 触发品牌声明检测）
+_PRODUCT_TO_BRAND: dict[str, str] = {
+    "gpt": "openai", "chatgpt": "openai", "dall-e": "openai",
+    "dalle": "openai", "sora": "openai",
+    "claude": "anthropic",
+    "gemini": "google deepmind", "bard": "google deepmind",
+    "llama": "meta",
+    "copilot": "microsoft",
+    "grok": "xai",
+    "midjourney": "midjourney",
+    "mistral": "mistral", "mixtral": "mistral",
+    "deepseek": "deepseek",
+    "qwen": "alibaba",
+}
+
+# 大厂官方域名映射（brand_name → [official domains]）
+_OFFICIAL_BRAND_DOMAINS: dict[str, list[str]] = {
+    "openai": ["openai.com"],
+    "anthropic": ["anthropic.com"],
+    "google deepmind": ["deepmind.google", "blog.google", "research.google"],
+    "deepmind": ["deepmind.google", "blog.google"],
+    "microsoft": ["microsoft.com", "azure.microsoft.com", "blogs.microsoft.com"],
+    "meta": ["ai.meta.com", "about.fb.com", "meta.com"],
+    "xai": ["x.ai"],
+    "nvidia": ["nvidia.com", "blogs.nvidia.com", "research.nvidia.com"],
+    "apple": ["apple.com", "machinelearning.apple.com"],
+    "tesla": ["tesla.com"],
+    "amazon": ["amazon.com", "aws.amazon.com"],
+    "intel": ["intel.com"],
+    "amd": ["amd.com"],
+}
+
+# 品牌声明动作词（中英文）—— 标题中出现这些词 + 大厂名 → 高风险声明
+_BRAND_CLAIM_ACTIONS_ZH = [
+    "发布", "推出", "上线", "公开", "解除限制", "收购", "合并",
+    "开源", "开放", "免费", "下架", "关闭", "停止", "裁员",
+    "融资", "估值", "上市", "ipo", "投资",
+]
+_BRAND_CLAIM_ACTIONS_EN = [
+    "launch", "release", "announce", "unveil", "reveal", "roll out",
+    "acquire", "merge", "open source", "open-source", "shut down",
+    "discontinue", "deprecate", "lay off", "layoff", "funding", "raise",
+    "valuation", "ipo", "invest", "partnership", "partner",
+]
+
+
+def _check_brand_claim(title: str, url: str, source: str,
+                       source_type: str, metrics: dict) -> dict:
+    """
+    检测标题是否包含大厂品牌声明，返回置信度评估。
+
+    Returns:
+        {
+            "is_brand_claim": bool,       # 是否涉及大厂官方动作
+            "confidence": "high" | "medium" | "low",
+            "brand": str,                  # 匹配到的品牌名
+            "reason": str,                 # 详细原因
+        }
+    """
+    title_lower = title.lower()
+    url_lower = url.lower()
+
+    # 1. 检查是否涉及大厂或大厂产品
+    matched_brand = None
+    for brand in _MAJOR_BRANDS:
+        if brand in title_lower:
+            matched_brand = brand
+            break
+    if not matched_brand:
+        # 检查产品名 → 映射到品牌
+        for product, brand in _PRODUCT_TO_BRAND.items():
+            # 使用词边界匹配避免误匹配（如 "gpt" 不应匹配 "gpt-4" 可匹配）
+            if product in title_lower:
+                matched_brand = brand
+                break
+    if not matched_brand:
+        return {"is_brand_claim": False, "confidence": "high", "brand": "", "reason": ""}
+
+    # 2. 检查是否包含声明动作词
+    has_action = False
+    matched_actions = []
+    for kw in _BRAND_CLAIM_ACTIONS_ZH:
+        if kw in title_lower:
+            has_action = True
+            matched_actions.append(kw)
+    for kw in _BRAND_CLAIM_ACTIONS_EN:
+        if kw in title_lower:
+            has_action = True
+            matched_actions.append(kw)
+
+    if not has_action:
+        # 只提到大厂但不是"发布/推出"类声明 → 正常报道
+        return {"is_brand_claim": False, "confidence": "high", "brand": matched_brand, "reason": ""}
+
+    # 3. 检查来源是否是官方域名
+    official_domains = _OFFICIAL_BRAND_DOMAINS.get(matched_brand, [])
+    is_official_source = any(d in url_lower for d in official_domains)
+
+    # 4. 检查跨源确认
+    cross_count = metrics.get("cross_source_count", 0) or 0
+    has_cross_source = cross_count > 0
+
+    # 5. 检查是否来自高权威 RSS 源（而非纯 HN/GitHub/HF/arXiv 社区讨论）
+    is_community_only = source_type in ("hn", "github", "huggingface", "arxiv")
+    has_rss_authority = source_type == "rss"
+
+    # ── 判定置信度 ──
+    if is_official_source:
+        return {
+            "is_brand_claim": True, "confidence": "high",
+            "brand": matched_brand,
+            "reason": f"官方源确认: {url_lower[:60]}",
+        }
+
+    if has_cross_source and (has_rss_authority or cross_count >= 2):
+        return {
+            "is_brand_claim": True, "confidence": "medium",
+            "brand": matched_brand,
+            "reason": f"跨源确认 (cross={cross_count}, type={source_type})",
+        }
+
+    if has_cross_source and is_community_only:
+        return {
+            "is_brand_claim": True, "confidence": "medium",
+            "brand": matched_brand,
+            "reason": f"社区跨源讨论 (cross={cross_count}, 非官方)",
+        }
+
+    # 纯社区来源 + 无跨源 → 低置信度
+    return {
+        "is_brand_claim": True, "confidence": "low",
+        "brand": matched_brand,
+        "reason": (
+            f"低置信度: 仅{source_type}来源, 无官方域名确认, "
+            f"动作词={','.join(matched_actions[:3])}"
+        ),
+    }
 
 
 # 已知 AI 公司/产品名称 — 用于 topic clustering
