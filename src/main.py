@@ -132,8 +132,16 @@ def main():
     save_html(wechat_html, os.path.join(docs_dir, "wechat.html"))
     logger.info("WeChat preview saved to docs/wechat.html")
 
-    # === 5. 保存新闻数据（供 Flask 微信服务读取） ===
+    # === 5. 保存新闻数据 + debug 报告 ===
     logger.info("[5/6] 保存新闻数据...")
+    _annotate_reasons(news_list)
+
+    def _json_serial(obj):
+        """JSON 序列化辅助：datetime → ISO 字符串。"""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError(f"Type {type(obj)} not serializable")
+
     latest_data = {
         "date": date_str,
         "news": news_list,
@@ -142,10 +150,13 @@ def main():
         "wechat_preview_url": f"{pages_url}/wechat.html",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
     latest_path = os.path.join(docs_dir, "latest.json")
     with open(latest_path, "w", encoding="utf-8") as f:
-        json.dump(latest_data, f, ensure_ascii=False, indent=2)
+        json.dump(latest_data, f, ensure_ascii=False, indent=2, default=_json_serial)
     logger.info("News data saved to %s", latest_path)
+
+    _generate_debug_reports(news_list, date_str, docs_dir)
 
     # === 6. 发布微信推文 ===
     logger.info("[6/6] 发布微信推文...")
@@ -163,6 +174,136 @@ def main():
     logger.info("=" * 50)
     logger.info("Done! Today's report: %s", pages_url)
     logger.info("=" * 50)
+
+
+def _annotate_reasons(news_list: list[dict]):
+    """为每条新闻生成 selected_reason（解释为什么入选）。"""
+    for item in news_list:
+        reasons = []
+        st = item.get("source_type", "?")
+        scores = item.get("scores", {})
+        metrics = item.get("metrics", {})
+
+        if st == "rss":
+            reasons.append("RSS 权威源")
+        elif st == "hn":
+            hn_s = metrics.get("hn_score", 0) or 0
+            hn_c = metrics.get("hn_comments", 0) or 0
+            cross = metrics.get("cross_source_count", 0) or 0
+            if cross > 0:
+                reasons.append(f"HN 跨源 (cross={cross})")
+            elif hn_s >= 10:
+                reasons.append(f"HN 高热度 (score={hn_s})")
+            elif hn_c >= 2:
+                reasons.append(f"HN 高讨论 (comments={hn_c})")
+            else:
+                reasons.append("HN 精选")
+        elif st == "huggingface":
+            likes = metrics.get("hf_likes", 0) or 0
+            downloads = metrics.get("hf_downloads", 0) or 0
+            fallback = item.get("_hf_fallback")
+            if fallback:
+                reasons.append(f"HF 边缘 (likes={likes}<10, dl={downloads})")
+            else:
+                reasons.append(f"HF 模型 (likes={likes}, dl={downloads})")
+            # 检查模型名称是否命中强主题
+            title_lower = item.get("title", "").lower()
+            strong_topics = []
+            for kw in ["qwen", "llama", "mistral", "deepseek", "phi", "coder",
+                        "agent", "rag", "multimodal", "vision", "diffusion"]:
+                if kw in title_lower:
+                    strong_topics.append(kw)
+            if strong_topics:
+                reasons.append(f"主题:{','.join(strong_topics)}")
+        elif st == "arxiv":
+            arxiv_signal = metrics.get("arxiv_signal", 0) or 0
+            reasons.append(f"arXiv 论文 (signal={arxiv_signal})")
+            # 检测核心 AI 关键词
+            title_lower = item.get("title", "").lower()
+            paper_kws = []
+            for kw in ["llm", "agent", "multimodal", "rag", "diffusion",
+                        "transformer", "vla", "3d", "reinforcement",
+                        "alignment", "vision", "language model",
+                        "generation", "understanding", "reasoning"]:
+                if kw in title_lower:
+                    paper_kws.append(kw)
+            if paper_kws:
+                reasons.append(f"关键词:{','.join(paper_kws[:4])}")
+            arxiv_cat = (item.get("tags", []) or [])
+            if arxiv_cat:
+                reasons.append(f"分类:{arxiv_cat[0]}")
+        elif st == "github":
+            stars = metrics.get("github_stars", 0) or 0
+            reasons.append(f"GitHub 项目 (stars={stars})")
+
+        if item.get("_hn_low_quality"):
+            reasons.append("[HN-LQ 降权]")
+        if item.get("_hf_low_quality"):
+            reasons.append("[HF-LQ 降权]")
+        freshness = scores.get("freshness", 0)
+        reasons.append(f"新鲜度={freshness:.0f}")
+
+        item["selected_reason"] = " | ".join(reasons) if reasons else "综合评分"
+
+
+def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str):
+    """生成 debug 报告：candidates.json 和 ranking.md。"""
+    debug_dir = os.path.join(docs_dir, "debug")
+    os.makedirs(debug_dir, exist_ok=True)
+
+    # ---- candidates.json ----
+    candidates_path = os.path.join(debug_dir, f"{date_str}-candidates.json")
+
+    # 精简输出：只保留关键字段
+    compact = []
+    for item in news_list:
+        compact.append({
+            "title": (item.get("chinese_title") or item["title"])[:100],
+            "url": item.get("url", "")[:100],
+            "source": item.get("source", ""),
+            "source_type": item.get("source_type", ""),
+            "published_at": item.get("published_at"),
+            "scores": item.get("scores", {}),
+            "metrics": item.get("metrics", {}),
+            "selected_reason": item.get("selected_reason", ""),
+        })
+
+    with open(candidates_path, "w", encoding="utf-8") as f:
+        json.dump(compact, f, ensure_ascii=False, indent=2, default=str)
+    logger.info("Debug candidates saved to %s", candidates_path)
+
+    # ---- ranking.md: 人类可读的排名解释 ----
+    ranking_path = os.path.join(debug_dir, f"{date_str}-ranking.md")
+
+    lines = [
+        f"# AI Daily News — Ranking Report ({date_str})",
+        f"",
+        f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"Total selected: {len(news_list)} items",
+        f"",
+        f"## Final Rankings",
+        f"",
+    ]
+
+    for i, item in enumerate(news_list, 1):
+        title = (item.get("chinese_title") or item["title"])[:80]
+        st = item.get("source_type", "?")
+        source = item.get("source", "")
+        scores = item.get("scores", {})
+        metrics = item.get("metrics", {})
+        reason = item.get("selected_reason", "")
+
+        lines.append(f"### {i}. {title}")
+        lines.append(f"")
+        lines.append(f"- **Type**: {st} | **Source**: {source}")
+        lines.append(f"- **Score**: final={scores.get('final', 0):.1f}, fresh={scores.get('freshness', 0):.0f}, comm={scores.get('community', 0):.1f}")
+        lines.append(f"- **Metrics**: HN={metrics.get('hn_score',0) or 0}/{metrics.get('hn_comments',0) or 0}c, GH={metrics.get('github_stars',0) or 0}*, HF={metrics.get('hf_likes',0) or 0}L/{metrics.get('hf_downloads',0) or 0}D, arxiv={metrics.get('arxiv_signal',0) or 0}")
+        lines.append(f"- **Why**: {reason}")
+        lines.append(f"")
+
+    with open(ranking_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    logger.info("Debug ranking saved to %s", ranking_path)
 
 
 if __name__ == "__main__":

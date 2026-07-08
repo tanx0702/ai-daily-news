@@ -6,9 +6,11 @@ RSS 新闻采集模块
 
 import json
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from html import unescape
+from math import log1p
 from typing import Optional
 
 import feedparser
@@ -94,9 +96,7 @@ def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
         return None
 
     link = entry.get("link", "").strip()
-    published_raw = entry.get("published", "") or entry.get("updated", "")
-    pub_parsed = _parse_date(published_raw)
-    pub_time = _parse_published(pub_parsed)
+    pub_time, pub_source = _parse_published_multi(entry, link)
 
     # 摘要：优先取 summary，其次取 description
     summary_raw = entry.get("summary", "") or entry.get("description", "")
@@ -119,31 +119,68 @@ def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
         "url": link,
         "source": source,
         "published_at": pub_time,
+        "published_source": pub_source,
         "summary": summary[:200],  # 截断过长摘要
     }
 
 
-def _parse_date(raw: str):
-    """解析 RSS 发布时间字符串为 time.struct_time。"""
-    if not raw:
-        return None
-    try:
-        return feedparser._parse_date(raw)
-    except Exception:
-        return None
+def _parse_published_multi(entry: dict, url: str = "") -> tuple[Optional[datetime], str]:
+    """
+    多策略解析发布时间，返回 (datetime, source_label)。
 
+    优先级：
+    1. feedparser 预解析的 struct_time：published_parsed > updated_parsed > created_parsed
+    2. 原始字符串字段：published > updated > created（feedparser._parse_date）
+    3. URL 中提取日期（兜底）
+    """
+    import calendar
+    import re
 
-def _parse_published(parsed_struct) -> Optional[datetime]:
-    """将 feedparser 返回的 struct_time 转为 UTC datetime。"""
-    if parsed_struct is None:
-        return None
-    try:
-        # feedparser 返回的是 UTC 时间的 struct_time
-        import calendar
-        epoch = calendar.timegm(parsed_struct[:9])
-        return datetime.fromtimestamp(epoch, tz=timezone.utc)
-    except Exception:
-        return None
+    # 策略 1: feedparser 预解析的 struct_time（最可靠）
+    for key, label in [("published_parsed", "published_parsed"),
+                       ("updated_parsed", "updated_parsed"),
+                       ("created_parsed", "created_parsed")]:
+        parsed = entry.get(key)
+        if parsed is not None:
+            try:
+                epoch = calendar.timegm(parsed[:9])
+                return datetime.fromtimestamp(epoch, tz=timezone.utc), label
+            except Exception:
+                continue
+
+    # 策略 2: 原始字符串字段 + feedparser._parse_date
+    for key, label in [("published", "published"),
+                       ("updated", "updated"),
+                       ("created", "created")]:
+        raw = entry.get(key, "")
+        if raw:
+            try:
+                struct = feedparser._parse_date(raw)
+                if struct is not None:
+                    epoch = calendar.timegm(struct[:9])
+                    return datetime.fromtimestamp(epoch, tz=timezone.utc), label
+            except Exception:
+                continue
+
+    # 策略 3: URL 日期兜底，例如 /2026/07/08/ 或 ?date=2026-07-08
+    if url:
+        m = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", url)
+        if not m:
+            m = re.search(r"[?&]date=(\d{4}-\d{2}-\d{2})", url)
+            if m:
+                try:
+                    return (datetime.strptime(m.group(1), "%Y-%m-%d")
+                            .replace(tzinfo=timezone.utc)), "url_date"
+                except ValueError:
+                    pass
+        else:
+            try:
+                return (datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                 tzinfo=timezone.utc), "url_date")
+            except ValueError:
+                pass
+
+    return None, "missing"
 
 
 def _strip_html(text: str) -> str:
@@ -190,30 +227,95 @@ def _is_ai_related(title: str, summary: str) -> bool:
     return False
 
 
+def _freshness_score(published_at: Optional[datetime], now: datetime = None) -> float:
+    """
+    根据发布时间计算新鲜度分数。
+
+    0-6 小时：100
+    6-12 小时：80
+    12-24 小时：60
+    24-36 小时：35
+    36 小时以上：0
+    无时间：0
+    """
+    if published_at is None:
+        return 0.0
+    if now is None:
+        now = datetime.now(timezone.utc)
+    age_hours = (now - published_at).total_seconds() / 3600
+    if age_hours <= 6:
+        return 100.0
+    elif age_hours <= 12:
+        return 80.0
+    elif age_hours <= 24:
+        return 60.0
+    elif age_hours <= 36:
+        return 35.0
+    else:
+        return 0.0
+
+
 def _score_item(item: dict, all_items: list[dict]) -> float:
     """
     为新闻条目计算热度/重要性评分。
 
     评分维度：
-    1. 来源权威度（0-10）
-    2. 交叉引用加分 — 同一话题被多个来源覆盖 = 热度高（每个相似项 +3）
-    3. 热度关键词加分（每个匹配 +2）
-    4. 摘要质量（>50 字 +2）
+    1. 新鲜度（0-100）
+    2. 来源权威度（0-10）
+    3. 交叉引用加分 — 同一话题被多个来源覆盖 = 热度高（每个相似项 +3）
+    4. 热度关键词加分（每个匹配 +2）
+    5. 摘要质量（>50 字 +2）
+    6. 社区热度（HN/GitHub 信号）
+    7. HN 质量门槛 — 纯 HN 低互动内容降权
     """
     score = 0.0
     source = item.get("source", "").lower()
     title = item.get("title", "").lower()
     summary = item.get("summary", "")
+    source_type = item.get("source_type", "rss")
+    metrics = item.get("metrics", {})
 
-    # 1. 来源权威度
+    # 预取社区信号（用于新鲜度权重判断）
+    hn_s = metrics.get("hn_score", 0) or 0
+    hn_c = metrics.get("hn_comments", 0) or 0
+    cross_source = metrics.get("cross_source_count", 0) or 0
+
+    # 1. 新鲜度：时间越近分越高
+    # HN-only（无跨源 + 无 AI 域名 + 低社区热度）→ 降权
+    # HF-only（低 likes + 无跨源）→ 降权
+    freshness = _freshness_score(item.get("published_at"))
+    freshness_weight = 0.5  # 默认权重
+
+    if source_type == "hn":
+        url_is_official = _is_official_ai_org(item.get("url", ""))
+        # HN-only 低质量门槛：hn_score < 10 且 hn_comments < 2 且无跨源且非官方 AI 组织
+        # github.com 等通用平台 NOT 自动免罚!
+        if cross_source == 0 and not url_is_official and hn_s < 10 and hn_c < 2:
+            freshness_weight = 0.2
+            item["_hn_low_quality"] = True
+
+    if source_type == "huggingface":
+        hf_likes = metrics.get("hf_likes", 0) or 0
+        hf_downloads = metrics.get("hf_downloads", 0) or 0
+        # HF-only 低质量门槛：likes < 20 且 downloads < 1000 且无跨源
+        if cross_source == 0 and hf_likes < 20 and hf_downloads < 1000:
+            freshness_weight = 0.2
+            item["_hf_low_quality"] = True
+
+    score += freshness * freshness_weight
+    item["_freshness"] = freshness
+    item.setdefault("scores", {})["freshness"] = freshness
+
+    # 2. 来源权威度
     authority = 5  # 默认中等
     for name, weight in SOURCE_AUTHORITY.items():
         if name in source:
             authority = weight
             break
     score += authority
+    item.setdefault("scores", {})["authority"] = authority
 
-    # 2. 交叉引用：同一话题被多个来源报道 → 热度高
+    # 3. 交叉引用：同一话题被多个来源报道 → 热度高
     cross_refs = 0
     for other in all_items:
         if other is item:
@@ -223,18 +325,68 @@ def _score_item(item: dict, all_items: list[dict]) -> float:
             cross_refs += 1
     score += cross_refs * 3
 
-    # 3. 热度关键词
+    # 4. 热度关键词
     hot_matches = 0
     for kw in HOT_KEYWORDS:
         if kw.lower() in title:
             hot_matches += 1
     score += min(hot_matches, 5) * 2  # 上限 10 分
 
-    # 4. 摘要质量
+    # 5. 摘要质量
     if len(summary) > 50:
         score += 2
 
+    # 6. 社区热度（HN / GitHub / HF 信号）
+    community = 0.0
+    if hn_s > 0 or hn_c > 0:
+        community += log1p(hn_s) * 1.5 + log1p(hn_c) * 1.2
+    gh_stars = metrics.get("github_stars", 0) or 0
+    if gh_stars > 0:
+        community += log1p(gh_stars) * 1.0
+    hf_likes = metrics.get("hf_likes", 0) or 0
+    hf_downloads = metrics.get("hf_downloads", 0) or 0
+    if hf_likes > 0:
+        community += log1p(hf_likes) * 2.0
+    if hf_downloads > 100:
+        community += log1p(hf_downloads / 100) * 0.5
+    community += cross_source * 5  # 跨源出现是强信号
+    score += community
+
+    # 7. 技术价值（arXiv 论文信号）
+    arxiv_signal = metrics.get("arxiv_signal", 0) or 0
+    if arxiv_signal > 0:
+        score += arxiv_signal * 0.5  # arXiv 基准 8 分 → 贡献 4 分
+        item.setdefault("scores", {})["technical"] = arxiv_signal
+    item["_community"] = round(community, 1)
+    item.setdefault("scores", {})["community"] = round(community, 1)
+    item["scores"]["final"] = round(score, 1)
+
     return score
+
+
+def _is_official_ai_org(url: str) -> bool:
+    """
+    检查 URL 是否来自官方 AI 组织（非 github.com 等通用平台）。
+
+    只匹配：OpenAI, Anthropic, DeepMind, Meta AI, NVIDIA, Microsoft Research,
+    Google Research, Stability AI, Midjourney, Runway, HuggingFace 官方博客等。
+    """
+    url_lower = url.lower()
+    OFFICIAL_ORGS = [
+        "openai.com", "anthropic.com", "deepmind.google",
+        "ai.meta.com", "research.google", "microsoft.com/en-us/research",
+        "nvidia.com/en-us/research", "nvidia.com/blog",
+        "stability.ai", "midjourney.com", "runwayml.com",
+        "huggingface.co/blog", "huggingface.co/papers",
+        "arxiv.org", "paperswithcode.com",
+        "replicate.com/blog", "together.ai/blog", "fireworks.ai/blog",
+        "perplexity.ai/blog", "mistral.ai",
+        "x.ai", "langchain.com/blog", "llamaindex.ai/blog",
+    ]
+    for d in OFFICIAL_ORGS:
+        if d in url_lower:
+            return True
+    return False
 
 
 def _fetch_source(source: dict, timeout: int = 30) -> list[dict]:
@@ -354,9 +506,222 @@ def _english_word_jaccard(a: str, b: str) -> float:
     return len(intersection) / len(union)
 
 
+def _normalize_rss_item(item: dict) -> dict:
+    """将旧版 RSS item 转为统一 candidate 格式。"""
+    from src.collectors import BaseCollector
+
+    url = item.get("url", "")
+    title = item.get("title", "")
+
+    # 稳定 ID：URL hash 或 title hash
+    id_str = url or title
+    id_ = f"rss-{abs(hash(id_str))}"
+
+    return BaseCollector.make_candidate(
+        id_=id_,
+        title=title,
+        url=url,
+        source=item.get("source", ""),
+        source_type="rss",
+        published_at=item.get("published_at"),
+        published_source=item.get("published_source", "missing"),
+        summary=item.get("summary", ""),
+    )
+
+
+def _merge_candidates(candidates: list[dict]) -> list[dict]:
+    """
+    跨源合并候选：同 URL → 合并 metrics；标题相似 → 合并 + 提升 cross_source_count。
+
+    合并策略：
+    1. 完全相同 URL → 保留最早时间、最多 metrics
+    2. 标题高度相似 (>0.7) → 合并，cross_source_count++
+    """
+    if len(candidates) <= 1:
+        return candidates
+
+    # 第一轮：按 URL 去重
+    by_url: dict[str, dict] = {}
+    for c in candidates:
+        url = c.get("url", "").strip().lower().split("?")[0]  # canonical: strip query params
+        if not url:
+            url = c.get("id", "")
+        if url in by_url:
+            existing = by_url[url]
+            # 合并 metrics
+            for key in existing["metrics"]:
+                existing["metrics"][key] = max(
+                    existing["metrics"].get(key, 0),
+                    c["metrics"].get(key, 0),
+                )
+            # 保留更早的发布时间
+            if c.get("published_at") and (
+                not existing.get("published_at")
+                or c["published_at"] < existing["published_at"]
+            ):
+                existing["published_at"] = c["published_at"]
+                existing["published_source"] = c.get("published_source", "merged")
+            # 记录跨源
+            if c.get("source_type") != existing.get("source_type"):
+                existing["metrics"]["cross_source_count"] += 1
+                existing["source"] = existing["source"] + " + " + c["source"]
+        else:
+            by_url[url] = c
+
+    merged = list(by_url.values())
+
+    # 第二轮：标题相似度合并
+    final = []
+    for c in merged:
+        is_dup = False
+        for existing in final:
+            if _title_similarity(c["title"], existing["title"]) > 0.7:
+                # 合并到 existing
+                for key in existing["metrics"]:
+                    existing["metrics"][key] = max(
+                        existing["metrics"].get(key, 0),
+                        c["metrics"].get(key, 0),
+                    )
+                existing["metrics"]["cross_source_count"] += 1
+                if c.get("source") not in existing.get("source", ""):
+                    existing["source"] = existing["source"] + " + " + c["source"]
+                is_dup = True
+                break
+        if not is_dup:
+            final.append(c)
+
+    cross_count = sum(1 for c in final if c["metrics"]["cross_source_count"] > 0)
+    logger.info(
+        "Merge: %d candidates → %d after URL dedup → %d after title dedup (%d cross-source)",
+        len(candidates), len(merged), len(final), cross_count,
+    )
+    return final
+
+
+# 已知 AI 公司/产品名称 — 用于 topic clustering
+_KNOWN_ENTITIES = [
+    "openai", "anthropic", "claude", "gpt", "chatgpt", "dall-e",
+    "google", "deepmind", "gemini", "bard", "meta", "llama",
+    "microsoft", "copilot", "nvidia", "intel", "amd",
+    "apple", "siri", "amazon", "alexa", "tesla", "elon musk",
+    "stability ai", "stable diffusion", "midjourney", "runway",
+    "hugging face", "huggingface", "mistral", "mixtral",
+    "perplexity", "replicate", "langchain", "llamaindex",
+    "cursor", "windsurf", "rowboat", "factiq", "backlog",
+    "cowork", "fable", "grok", "xai", "sora", "kling",
+    "nexa", "qualcomm", "kimi", "minimax", "qwen",
+    "jiuqian", "jiqizhixin", "qbitai", "36kr",
+    "muse", "instagram",
+]
+
+
+def _extract_entities(title: str) -> set[str]:
+    """从标题中提取已知公司/产品实体名称。"""
+    title_lower = title.lower()
+    entities = set()
+    for entity in _KNOWN_ENTITIES:
+        if entity in title_lower:
+            entities.add(entity)
+    return entities
+
+
+def _cluster_by_topic(items: list[dict]) -> tuple[list[dict], dict]:
+    """
+    主题聚类：合并同公司同产品的重复条目。
+
+    规则：
+    - 共享同一实体名称 + 标题相似度 > 0.4 → 合并
+    - 合并后保留最高分、所有来源、所有 metrics
+    - 同公司不同产品不合并（如 GPT + DALL-E）
+    """
+    if len(items) <= 1:
+        return items, {"merged": 0}
+
+    merged_count = 0
+    # 按评分排序，高分优先作为保留项
+    sorted_items = sorted(items, key=lambda x: x.get("_score", 0), reverse=True)
+
+    clusters = []  # [(keeper, [merged_items])]
+
+    for item in sorted_items:
+        matched = False
+        item_entities = _extract_entities(item.get("title", ""))
+
+        for keeper, absorbed in clusters:
+            keeper_entities = _extract_entities(keeper.get("title", ""))
+            shared = item_entities & keeper_entities
+
+            # 有共享实体 + 标题相似 → 同一 topic
+            sim = _title_similarity(item["title"], keeper["title"])
+            if shared and sim > 0.4:
+                # 合并到 keeper
+                absorbed.append(item)
+                keeper["source"] = keeper.get("source", "") + " | " + item.get("source", "")
+                for mk in keeper.get("metrics", {}):
+                    keeper["metrics"][mk] = max(
+                        keeper["metrics"].get(mk, 0),
+                        item.get("metrics", {}).get(mk, 0),
+                    )
+                keeper["metrics"]["cross_source_count"] += 1
+                merged_count += 1
+                matched = True
+                break
+
+        if not matched:
+            clusters.append((item, []))
+
+    result = [keeper for keeper, _ in clusters]
+    logger.info("Clustered: merged %d duplicate-topic items", merged_count)
+    return result, {"merged": merged_count}
+
+
+def _fetch_hn(timeout: int = 30) -> list[dict]:
+    """从 Hacker News 采集 AI 相关新闻（带异常保护）。"""
+    try:
+        from src.collectors.hackernews import HackerNewsCollector
+        collector = HackerNewsCollector(timeout=timeout)
+        return collector.fetch()
+    except Exception as e:
+        logger.warning("HN collector failed: %s", e)
+        return []
+
+
+def _fetch_github(timeout: int = 30) -> list[dict]:
+    """从 GitHub 采集 AI 热门项目（带异常保护）。"""
+    try:
+        from src.collectors.github import GitHubCollector
+        collector = GitHubCollector(timeout=timeout)
+        return collector.fetch()
+    except Exception as e:
+        logger.warning("GitHub collector failed: %s", e)
+        return []
+
+
+def _fetch_hf(timeout: int = 30) -> list[dict]:
+    """从 Hugging Face 采集近期热门模型（带异常保护）。"""
+    try:
+        from src.collectors.huggingface import HuggingFaceCollector
+        collector = HuggingFaceCollector(timeout=timeout)
+        return collector.fetch()
+    except Exception as e:
+        logger.warning("HF collector failed: %s", e)
+        return []
+
+
+def _fetch_arxiv(timeout: int = 30) -> list[dict]:
+    """从 arXiv 采集近期 AI 论文（带异常保护）。"""
+    try:
+        from src.collectors.arxiv import ArxivCollector
+        collector = ArxivCollector(timeout=timeout)
+        return collector.fetch()
+    except Exception as e:
+        logger.warning("arXiv collector failed: %s", e)
+        return []
+
+
 def collect_news(
     config_path: str = None,
-    hours: int = 24,
+    hours: int = None,
     top_n: int = 20,
     rss_timeout: int = 30,
 ) -> list[dict]:
@@ -365,57 +730,112 @@ def collect_news(
 
     Args:
         config_path: RSS 源配置文件路径
-        hours: 时间窗口（小时），默认 24
+        hours: 时间窗口（小时），默认从 DAILY_NEWS_HOURS 读取（36）
         top_n: 输出新闻数量，默认 20
         rss_timeout: 单个 RSS 源超时秒数
 
     Returns:
-        结构化新闻列表，按发布时间倒序排列
+        结构化新闻列表，按评分倒序排列
     """
+    if hours is None:
+        hours = int(os.environ.get("DAILY_NEWS_HOURS", "36"))
+    allow_undated = os.environ.get("DAILY_ALLOW_UNDATED", "0") == "1"
+
     sources = _load_sources(config_path)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
-    # 并行抓取所有源
-    all_items = []
+    # ---- 1. RSS 采集 ----
+    rss_items = []
     for source in sources:
         items = _fetch_source(source, rss_timeout)
-        all_items.extend(items)
+        rss_items.extend(items)
+    logger.info("RSS fetched: %d items from %d sources", len(rss_items), len(sources))
 
-    logger.info("Total fetched: %d items from %d sources", len(all_items), len(sources))
+    # ---- 2. 归一化 RSS → 统一 candidate ----
+    rss_candidates = [_normalize_rss_item(item) for item in rss_items]
 
-    # 去重：按 URL（完全相同 URL 直接跳过）
-    seen_urls = set()
-    deduped = []
-    for item in all_items:
-        url = item["url"]
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
+    # ---- 3. HN 采集（ENABLE_HN_COLLECTOR=1，默认开启） ----
+    hn_candidates = []
+    if os.environ.get("ENABLE_HN_COLLECTOR", "1") == "1":
+        hn_candidates = _fetch_hn(rss_timeout)
+        logger.info("HN fetched: %d candidates", len(hn_candidates))
+    else:
+        logger.info("HN collector disabled (ENABLE_HN_COLLECTOR=0)")
 
-        # 去重：标题相似度 > 0.7 视为重复（降低阈值，bigram 更精确）
-        is_dup = False
-        for existing in deduped:
-            if _title_similarity(item["title"], existing["title"]) > 0.7:
-                is_dup = True
-                break
-        if is_dup:
-            continue
+    # ---- 4. GitHub 采集（ENABLE_GITHUB_COLLECTOR=1，默认开启） ----
+    gh_candidates = []
+    if os.environ.get("ENABLE_GITHUB_COLLECTOR", "1") == "1":
+        gh_candidates = _fetch_github(rss_timeout)
+        logger.info("GitHub fetched: %d candidates", len(gh_candidates))
+    else:
+        logger.info("GitHub collector disabled (ENABLE_GITHUB_COLLECTOR=0)")
 
-        deduped.append(item)
+    # ---- 5. Hugging Face 采集（ENABLE_HF_COLLECTOR=1，默认开启） ----
+    hf_candidates = []
+    if os.environ.get("ENABLE_HF_COLLECTOR", "1") == "1":
+        hf_candidates = _fetch_hf(rss_timeout)
+        logger.info("HF fetched: %d candidates", len(hf_candidates))
+    else:
+        logger.info("HF collector disabled (ENABLE_HF_COLLECTOR=0)")
 
-    # 筛选：近 hours 小时 + AI 相关
+    # ---- 6. arXiv 采集（ENABLE_ARXIV_COLLECTOR=1，默认开启） ----
+    arxiv_candidates = []
+    if os.environ.get("ENABLE_ARXIV_COLLECTOR", "1") == "1":
+        arxiv_candidates = _fetch_arxiv(rss_timeout)
+        logger.info("arXiv fetched: %d candidates", len(arxiv_candidates))
+    else:
+        logger.info("arXiv collector disabled (ENABLE_ARXIV_COLLECTOR=0)")
+
+    # ---- 7. 多源合并（URL dedup + 标题去重 + cross_source 标记） ----
+    all_candidates = (rss_candidates + hn_candidates + gh_candidates +
+                      hf_candidates + arxiv_candidates)
+    merged = _merge_candidates(all_candidates)
+
+    # ---- 过滤统计 ----
+    stats = {
+        "total_fetched": len(all_candidates),
+        "duplicates": len(all_candidates) - len(merged),  # 被合并的
+        "no_date": 0,
+        "too_old": 0,
+        "not_ai": 0,
+        "final": 0,
+    }
+
+    logger.info("Total candidates: %d, after merge: %d", len(all_candidates), len(merged))
+
+    # ---- 筛选：时间窗口 + 无日期过滤 + AI 相关 ----
     filtered = []
-    for item in deduped:
+    for item in merged:
         pub = item.get("published_at")
-        if pub and pub < cutoff:
+
+        # 无日期：默认拒绝（DAILY_ALLOW_UNDATED=1 放行）
+        if pub is None:
+            if not allow_undated:
+                stats["no_date"] += 1
+                continue
+        elif pub < cutoff:
+            stats["too_old"] += 1
             continue
-        if not _is_ai_related(item["title"], item.get("summary", "")):
-            continue
+
+        # AI 相关性（对非 RSS 源放宽：HN/GitHub 自带 AI 过滤）
+        source_type = item.get("source_type", "rss")
+        if source_type == "rss":
+            if not _is_ai_related(item["title"], item.get("summary", "")):
+                stats["not_ai"] += 1
+                continue
+        # HN/GitHub: 已由各自 collector 过滤，跳过 AI 检查
         filtered.append(item)
 
-    logger.info("After filtering: %d items", len(filtered))
+    stats["final"] = len(filtered)
 
-    # 评分：综合来源权威度 + 交叉引用 + 热度关键词
+    # 过滤统计日志
+    logger.info(
+        "Filter stats: total=%d, dup=%d, no_date=%d, too_old=%d (cutoff=%dh), not_ai=%d, final=%d",
+        stats["total_fetched"], stats["duplicates"], stats["no_date"],
+        stats["too_old"], hours, stats["not_ai"], stats["final"],
+    )
+
+    # 评分：综合新鲜度 + 来源权威度 + 交叉引用 + 热度关键词
     for item in filtered:
         item["_score"] = _score_item(item, filtered)
 
@@ -428,8 +848,127 @@ def collect_news(
         reverse=True,
     )
 
-    # 打印 top 评分供调试
-    for i, item in enumerate(filtered[:top_n]):
-        logger.info("  #%d [score=%.1f] %s (%s)", i + 1, item.get("_score", 0), item["title"][:60], item.get("source", ""))
+    # 选题聚类：合并同主题/同公司/同产品的重复条目
+    clustered, cluster_stats = _cluster_by_topic(filtered)
+    logger.info(
+        "Topic clustering: %d items → %d (merged %d duplicate topics)",
+        len(filtered), len(clustered), cluster_stats["merged"],
+    )
 
-    return filtered[:top_n]
+    # 选题平衡：限制单一 source_type + 同公司/同产品上限
+    balanced = _apply_source_balance(clustered, top_n)
+
+    # 打印 Top N（最终日报）
+    logger.info("--- Final Top %d (DAILY_TOP_N=%d) ---", top_n, top_n)
+    for i, item in enumerate(balanced[:top_n]):
+        st = item.get("source_type", "rss")
+        community = item.get("_community", 0)
+        penalty = " [LQ]" if item.get("_hn_low_quality") else ""
+        logger.info(
+            "  #%d [score=%.1f, fresh=%.0f, comm=%.1f, type=%s%s] %s (%s)",
+            i + 1, item.get("_score", 0), item.get("_freshness", 0),
+            community, st, penalty, item["title"][:60], item.get("source", ""),
+        )
+
+    # 打印 Debug Top 15（额外上下文）
+    if top_n < 15 and len(balanced) > top_n:
+        logger.info("--- Debug Top 15 (for verification) ---")
+        for i, item in enumerate(balanced[:15]):
+            if i < top_n:
+                continue  # 已在上面打印过
+            st = item.get("source_type", "rss")
+            community = item.get("_community", 0)
+            logger.info(
+                "  #%d [score=%.1f, fresh=%.0f, comm=%.1f, type=%s] %s (%s)",
+                i + 1, item.get("_score", 0), item.get("_freshness", 0),
+                community, st, item["title"][:60], item.get("source", ""),
+            )
+
+    return balanced[:top_n]
+
+
+def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
+    """
+    选题平衡：多维度限制确保榜单多样性。
+
+    规则：
+    - HN max 50%（上限），RSS/官方/媒体 min 40%（下限）
+    - arXiv 硬上限 2，HuggingFace 硬上限 2
+    - 同一公司/产品最多 2 条
+    - 超限项放入 reserve，不足时补充
+    """
+    if not items:
+        return items
+
+    hn_cap = max(int(top_n * 0.5), 4)     # HN 最多 50%
+    rss_min = max(int(top_n * 0.4), 3)    # RSS/官方 最少 40%
+    general_cap = hn_cap                    # 其他类型默认上限
+
+    HARD_CAPS = {
+        "arxiv": 2,
+        "huggingface": 2,
+        "hn": hn_cap,
+    }
+
+    type_counts: dict[str, int] = {}
+    company_counts: dict[str, int] = {}
+    selected = []
+    reserves = []
+
+    for item in items:
+        st = item.get("source_type", "rss")
+        cap = HARD_CAPS.get(st, general_cap)
+
+        # 公司/产品上限检查
+        entities = _extract_entities(item.get("title", ""))
+        company_ok = True
+        for ent in entities:
+            if company_counts.get(ent, 0) >= 2:
+                company_ok = False
+                break
+
+        # 类型上限检查
+        type_ok = type_counts.get(st, 0) < cap
+
+        if type_ok and company_ok:
+            selected.append(item)
+            type_counts[st] = type_counts.get(st, 0) + 1
+            for ent in entities:
+                company_counts[ent] = company_counts.get(ent, 0) + 1
+        else:
+            reserves.append(item)
+
+    # RSS 下限保障：如果 RSS 不足 40%，从 reserves 升格 RSS 条目
+    rss_count = type_counts.get("rss", 0)
+    rss_promoted = 0
+    if rss_count < rss_min:
+        for item in reserves[:]:
+            if item.get("source_type") == "rss" and rss_count < rss_min:
+                selected.append(item)
+                reserves.remove(item)
+                type_counts["rss"] = type_counts.get("rss", 0) + 1
+                rss_count += 1
+                rss_promoted += 1
+        if rss_count < rss_min:
+            logger.info(
+                "Balance: RSS target %d not met — only %d RSS items passed filtering (need %d more)",
+                rss_min, rss_count, rss_min - rss_count,
+            )
+
+    # 如果 selected 不够 top_n，从 reserves 补充
+    while len(selected) < top_n and reserves:
+        selected.append(reserves.pop(0))
+
+    type_dist = {st: c for st, c in type_counts.items()}
+    company_dist = {e: c for e, c in company_counts.items() if c >= 2}
+    rss_pct = type_dist.get("rss", 0) / max(len(selected), 1) * 100
+    hn_pct = type_dist.get("hn", 0) / max(len(selected), 1) * 100
+    logger.info(
+        "Balance: top %d types=%s (RSS %.0f%% / HN %.0f%%, RSS promoted=%d)",
+        len(selected), type_dist, rss_pct, hn_pct, rss_promoted,
+    )
+    if company_dist:
+        logger.info("  Companies (>=2): %s", company_dist)
+
+    return selected
+
