@@ -15,6 +15,34 @@ from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
+# 中文字体候选列表（按优先级排序：Linux 容器 → Linux 通用 → Windows）
+_FONT_CANDIDATES = [
+    # Docker 容器 (fonts-noto-cjk)
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    # Docker 容器 (fonts-wqy-zenhei)
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    # Linux 通用
+    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    # Windows
+    "C:\\Windows\\Fonts\\msyh.ttc",
+    "C:\\Windows\\Fonts\\simhei.ttf",
+    "msyh.ttc",
+    "msyhbd.ttc",
+    "simhei.ttf",
+]
+
+
+def _load_font(size: int) -> ImageFont.FreeTypeFont:
+    """按优先级尝试加载中文字体，全部失败时返回默认字体（不抛异常）。"""
+    for path in _FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size)
+        except (IOError, OSError):
+            continue
+    # 所有路径都失败，使用 Pillow 内置默认字体
+    return ImageFont.load_default()
+
 
 def _draw_cover_text(
     img: Image.Image,
@@ -22,28 +50,30 @@ def _draw_cover_text(
     date_str: str,
     news_count: int,
 ) -> Image.Image:
-    """在封面图上叠加中文标题、日期和条数。"""
+    """在封面图上叠加中文标题、日期和条数。字体加载失败时静默降级。"""
+    try:
+        return _draw_cover_text_impl(img, cover_title, date_str, news_count)
+    except Exception as e:
+        logger.warning("Failed to draw cover text: %s, returning bare image", e)
+        return img
+
+
+def _draw_cover_text_impl(
+    img: Image.Image,
+    cover_title: str,
+    date_str: str,
+    news_count: int,
+) -> Image.Image:
+    """_draw_cover_text 的实际实现。"""
     draw = ImageDraw.Draw(img)
     width, height = img.size
 
     # 根据图片宽度自适应字号
     base_size = max(width // 18, 28)
 
-    # 尝试加载中文字体
-    font_paths = ["msyh.ttc", "msyhbd.ttc", "simhei.ttf", "C:\\Windows\\Fonts\\msyh.ttc",
-                  "C:\\Windows\\Fonts\\simhei.ttf", "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"]
-    font_title = None
-    for fp in font_paths:
-        try:
-            font_title = ImageFont.truetype(fp, base_size)
-            break
-        except (IOError, OSError):
-            continue
-    if font_title is None:
-        font_title = ImageFont.load_default()
-
-    font_date = ImageFont.truetype(font_title.path, max(base_size // 2, 16)) if hasattr(font_title, 'path') else font_title
-    font_count = font_title
+    font_title = _load_font(base_size)
+    font_date = _load_font(max(base_size // 2, 16))
+    font_count = _load_font(max(base_size // 3, 12))
 
     # 半透明背景条（提升文字可读性）
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -113,7 +143,10 @@ def _generate_simple_cover(
         draw.rectangle([(0, y), (width, y + 1)], fill=f"#{r:02x}{g:02x}{b:02x}")
 
     # 叠加文字
-    img = _draw_cover_text(img, cover_title, date_str, len(news_list))
+    try:
+        img = _draw_cover_text(img, cover_title, date_str, len(news_list))
+    except Exception as e:
+        logger.warning("Cover text overlay failed: %s, saving bare image", e)
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
@@ -192,10 +225,16 @@ def generate_cover_from_news(
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        # 4. 叠加中文标题
-        img = Image.open(io.BytesIO(img_resp.content))
-        img = _draw_cover_text(img, cover_title, date_str, len(news_list))
-        img.save(output_path, "JPEG", quality=90)
+        # 4. 叠加中文标题（失败时保留原图）
+        try:
+            img = Image.open(io.BytesIO(img_resp.content))
+            img = _draw_cover_text(img, cover_title, date_str, len(news_list))
+            img.save(output_path, "JPEG", quality=90)
+        except Exception as e:
+            logger.warning("Cover text overlay failed: %s, saving bare image", e)
+            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+            with open(output_path, "wb") as f:
+                f.write(img_resp.content)
 
         logger.info("Cover image generated and saved to %s", output_path)
         return output_path

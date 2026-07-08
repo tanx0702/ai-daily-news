@@ -134,15 +134,18 @@ def main():
     cover_save_path = os.path.join(docs_dir, "cover.jpg")
 
     if cover_key:
-        generate_cover_from_news(
-            news_list,
-            date_str,
-            output_path=cover_save_path,
-            api_key=cover_key,
-            base_url=cover_base_url,
-            cover_title=cover_title,
-        )
-        logger.info("Cover image saved to %s", cover_save_path)
+        try:
+            generate_cover_from_news(
+                news_list,
+                date_str,
+                output_path=cover_save_path,
+                api_key=cover_key,
+                base_url=cover_base_url,
+                cover_title=cover_title,
+            )
+            logger.info("Cover image saved to %s", cover_save_path)
+        except Exception as e:
+            logger.warning("Cover generation failed (non-fatal): %s", e)
     else:
         logger.info("No API key for cover generation, skipping")
 
