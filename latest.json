@@ -1,12 +1,12 @@
 {
-  "date": "2026-07-08",
+  "date": "2026-07-09",
   "news": [
     {
       "title": "Anthropic is launching Claude Cowork on mobile and web",
       "url": "https://www.theverge.com/ai-artificial-intelligence/961978/anthropic-claude-cowork-mobile-web",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "Anthropic 正式将其协作工具 Claude Cowork 扩展至移动设备和网页平台，以增强用户的多端使用体验。",
+      "summary": "Anthropic 宣布将其协作工具 Claude Cowork 扩展至移动设备和网页平台，以增强用户的多端使用体验。",
       "_score": 16.0,
       "chinese_title": "Anthropic 在移动端和网页端推出 Claude Cowork"
     },
@@ -15,120 +15,129 @@
       "url": "https://techcrunch.com/2026/07/07/the-coding-agent-wars-are-spilling-into-the-rest-of-the-office-claude-cowork/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Anthropic 的 AI 协作助手 Claude Cowork 现已支持手机和浏览器访问，进一步拓宽了其应用场景。",
+      "summary": "Anthropic 的 AI 协作助手 Claude Cowork 现已支持在移动应用和网页浏览器中使用，进一步扩大了其服务覆盖范围。",
       "_score": 14.0,
-      "chinese_title": "Claude Cowork 登陆移动端与网页端"
+      "chinese_title": "Claude Cowork 正式登陆移动端与网页端"
+    },
+    {
+      "title": "SpaceXAI releases Grok 4.5, which Elon describes as an ‘Opus-class model’",
+      "url": "https://techcrunch.com/2026/07/08/spacexai-releases-grok-4-5-which-elon-describes-as-an-opus-class-model/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "SpaceX 旗下 AI 部门发布了新一代模型 Grok 4.5，埃隆·马斯克评价其性能已达到与 Opus 相当的水平。",
+      "_score": 13.0,
+      "chinese_title": "SpaceX AI 发布 Grok 4.5，马斯克称其为‘Opus 级模型’"
+    },
+    {
+      "title": "OpenAI releases new voice models for more natural live conversations",
+      "url": "https://techcrunch.com/2026/07/08/openai-releases-new-voice-models-for-more-natural-live-conversations/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "OpenAI 推出了新的语音合成技术，能够生成更具自然感和情感色彩的语音，从而提升实时互动的流畅度。",
+      "_score": 13.0,
+      "chinese_title": "OpenAI 发布全新语音模型，旨在实现更自然的实时对话"
+    },
+    {
+      "title": "Prime Intellect raises $130M Series A to help enterprises build their own AI agents",
+      "url": "https://techcrunch.com/2026/07/08/prime-intellect-raises-130m-series-a-to-help-enterprises-build-their-own-ai-agents/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "AI 基础设施公司 Prime Intellect 获得 1.3 亿美元融资，资金将用于帮助企业客户开发和部署专属的 AI 智能体系统。",
+      "_score": 13.0,
+      "chinese_title": "Prime Intellect 完成 1.3 亿美元 A 轮融资，助力企业构建自有 AI 智能体"
+    },
+    {
+      "title": "Hot French startup ZML releases free product to speed inference across lots of AI chips",
+      "url": "https://techcrunch.com/2026/07/08/hot-french-startup-zml-releases-free-product-to-speed-inference-across-lots-of-ai-chips/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "ZML 推出了一款旨在提升多种 AI 硬件推理效率的免费工具，以优化模型部署性能。",
+      "_score": 13.0,
+      "chinese_title": "法国初创公司 ZML 发布免费产品，加速多款 AI 芯片上的推理过程"
     },
     {
       "title": "Why the rise of open source AI isn’t hurting Anthropic … yet",
       "url": "https://techcrunch.com/2026/07/07/why-the-rise-of-open-source-ai-isnt-hurting-anthropic-yet/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "尽管开源大模型发展迅速，但 Anthropic 凭借其独特的安全对齐技术和企业级优势，目前仍保持强劲竞争力。",
+      "summary": "尽管开源模型发展迅速，但 Anthropic 凭借其安全优先策略和独特优势，目前仍保持强劲竞争力。",
       "_score": 13.0,
       "chinese_title": "为何开源 AI 的崛起尚未对 Anthropic 造成冲击"
     },
     {
-      "title": "Show HN: Rowboat – Open-source, local-first alternative to Claude Desktop",
-      "url": "https://github.com/rowboatlabs/rowboat",
-      "source": "Hacker News AI",
-      "published_at": null,
-      "summary": "开发者发布了一款名为 Rowboat 的开源工具，旨在提供比官方 Claude Desktop 更注重隐私和本地运行的替代方案。",
-      "_score": 12.0,
-      "chinese_title": "Show HN: Rowboat——开源、本地优先的 Claude Desktop 替代品"
-    },
-    {
-      "title": "You can now customize Siri’s pace and expressivity in the latest iOS 27 beta",
-      "url": "https://techcrunch.com/2026/07/06/you-can-now-customize-siris-pace-and-expressivity-in-the-latest-ios-27-beta/",
+      "title": "This startup thinks robotics is about to have its ChatGPT moment",
+      "url": "https://techcrunch.com/2026/07/08/this-startup-thinks-robotics-is-about-to-have-its-chatgpt-moment/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "苹果在 iOS 27 测试版中新增功能，让用户能够调整 Siri 的说话速度和情感表达方式，以提升交互自然度。",
+      "summary": "该初创企业预测，随着大模型技术的融合，机器人领域将迎来类似生成式 AI 爆发的关键转折点。",
       "_score": 11.0,
-      "chinese_title": "最新 iOS 27 测试版允许自定义 Siri 的语速和表现力"
+      "chinese_title": "这家初创公司认为机器人技术即将迎来其“ChatGPT 时刻”"
     },
     {
-      "title": "Reddit is using LLMs to solve a problem LLMs largely created",
-      "url": "https://techcrunch.com/2026/07/06/reddit-is-using-llms-to-solve-a-problem-llms-largely-created/",
+      "title": "Why this CEO thinks video games make better training data than the internet",
+      "url": "https://techcrunch.com/video/why-this-ceo-thinks-video-games-make-better-training-data-than-the-internet/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Reddit 正在尝试使用大型语言模型来应对和缓解由其自身技术扩散所引发的社区挑战与内容治理难题。",
+      "summary": "CEO 指出，电子游戏环境能提供高质量、结构化且安全的交互数据，优于杂乱的网络抓取数据。",
       "_score": 11.0,
-      "chinese_title": "Reddit 利用大语言模型解决由大语言模型引发的问题"
+      "chinese_title": "为何这位 CEO 认为电子游戏比互联网数据更适合作为训练素材"
     },
     {
-      "title": "Midjourney wants Hollywood studios to reveal the details of their AI usage",
-      "url": "https://techcrunch.com/2026/07/04/midjourney-wants-hollywood-studios-to-reveal-the-details-of-their-ai-usage/",
+      "title": "These AI startups are growing  revenue at faster and faster rates",
+      "url": "https://techcrunch.com/2026/07/08/these-ai-startups-are-growing-revenue-at-faster-and-faster-rates/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "图像生成巨头 Midjourney 呼吁电影制片厂透明化其 AI 工具的使用细节，以推动行业规范与伦理讨论。",
+      "summary": "多家 AI 初创企业展现出强劲的营收增长势头，反映出市场对人工智能解决方案需求的持续攀升。",
       "_score": 11.0,
-      "chinese_title": "Midjourney 要求好莱坞工作室公开其人工智能使用情况"
+      "chinese_title": "这些 AI 初创公司的收入增长速度越来越快"
     },
     {
-      "title": "Alibaba reportedly bans employees from using Claude Code",
-      "url": "https://techcrunch.com/2026/07/04/alibaba-reportedly-bans-employees-from-using-claude-code/",
+      "title": "Your gaming data could be the secret to AGI, according to this Bezos-backed startup",
+      "url": "https://techcrunch.com/podcast/your-gaming-data-could-be-the-secret-to-agi-according-to-this-bezos-backed-startup/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "阿里巴巴内部出台新规，严禁员工使用 Anthropic 旗下的代码助手 Claude Code，旨在加强数据安全和知识产权保护。",
+      "summary": "一家由杰夫·贝索斯投资的初创公司提出，玩家在游戏过程中产生的行为数据可能成为训练通用人工智能（AGI）的重要秘密武器。",
       "_score": 11.0,
-      "chinese_title": "据报道阿里巴巴禁止员工使用 Claude Code"
+      "chinese_title": "贝索斯支持的初创公司称：游戏数据可能是通往通用人工智能的关键"
+    },
+    {
+      "title": "Former OpenAI exec Kevin Weil is now on the board of Stoke Space",
+      "url": "https://techcrunch.com/2026/07/08/former-openai-exec-kevin-weil-is-now-on-the-board-of-stoke-space/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "前OpenAI执行副总裁Kevin Weil已正式加入航天初创公司Stoke Space的董事会，为其太空探索计划提供战略指导。",
+      "_score": 11.0,
+      "chinese_title": "前OpenAI高管Kevin Weil加入Stoke Space董事会"
+    },
+    {
+      "title": "ChatGPT’s upgraded voice mode is better at shutting up",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/962856/chatgpt-upgraded-voice-mode-gpt-live",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "OpenAI对ChatGPT的语音模式进行了更新，新特性使其在对话中更能把握节奏，避免冗长废话，从而提升交互体验。",
+      "_score": 11.0,
+      "chinese_title": "ChatGPT升级后的语音模式更懂得适时沉默"
     },
     {
       "title": "Meta’s new Muse Image model can pull other Instagram users into AI photos",
       "url": "https://www.theverge.com/tech/962485/meta-muse-image-ai-model-instagram",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "Meta 发布全新图像生成模型 Muse，支持将 Instagram 上的其他用户形象无缝融入 AI 创作的照片场景中。",
+      "summary": "Meta发布了新的Muse图像生成模型，该功能允许用户将其他Instagram好友的照片元素智能整合到AI生成的图片中，增强社交互动性。",
       "_score": 11.0,
-      "chinese_title": "Meta 新推出的 Muse 图像模型可将其他 Instagram 用户拉入 AI 照片"
+      "chinese_title": "Meta推出全新Muse图像模型，可将Instagram用户融入AI照片"
     },
     {
       "title": "The fanfiction community is at war with AI — and itself",
       "url": "https://www.theverge.com/tech/960854/ai-fanfiction-ao3-claude-detector",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "同人创作圈内部因 AI 生成内容的冲击而分裂，创作者们既在抵制 AI 入侵，也在反思社区原有的版权与创作伦理边界。",
+      "summary": "随着AI生成内容的涌入，同人小说创作者群体内部产生了分歧，他们一方面抵制AI对创作生态的冲击，另一方面也在社区规范上陷入争论。",
       "_score": 11.0,
-      "chinese_title": "同人小说社区正与 AI 以及自身展开激烈斗争"
-    },
-    {
-      "title": "Anthropic wants to develop its own drugs",
-      "url": "https://www.theverge.com/ai-artificial-intelligence/961311/anthropic-claude-science-ai-drug-development",
-      "source": "The Verge AI",
-      "published_at": null,
-      "summary": "Anthropic 宣布计划利用其人工智能技术探索新药研发领域，旨在开发自主药物。",
-      "_score": 11.0,
-      "chinese_title": "Anthropic 希望开发自己的药物"
-    },
-    {
-      "title": "A behind-the-scenes look at Midjourney’s medical scanner leaves many questions unanswered",
-      "url": "https://www.theverge.com/ai-artificial-intelligence/961265/midjourney-medical-ultrasound-scanner-behind-the-scenes-video",
-      "source": "The Verge AI",
-      "published_at": null,
-      "summary": "关于 Midjourney 医疗扫描技术的幕后报道引发了广泛讨论，许多关键问题仍未得到解答。",
-      "_score": 11.0,
-      "chinese_title": "Midjourney 医疗扫描仪幕后揭秘留下诸多未解之谜"
-    },
-    {
-      "title": "让Skill“有图可依”：openJiuwen首发多模态Skill范式Skill-Omni",
-      "url": "https://www.qbitai.com/2026/07/445229.html",
-      "source": "量子位",
-      "published_at": null,
-      "summary": "openJiuwen 团队发布了全新的多模态 Skill 范式 Skill-Omni，旨在为技能执行提供图像依据。",
-      "_score": 9.0,
-      "chinese_title": "让 Skill “有图可依”：openJiuwen 首发多模态 Skill 范式 Skill-Omni"
-    },
-    {
-      "title": "Claude的脑子里，也长出了一块「意识」",
-      "url": "https://www.qbitai.com/2026/07/444741.html",
-      "source": "量子位",
-      "published_at": null,
-      "summary": "文章探讨 Anthropic 的 Claude 模型在架构或功能上是否出现了类似意识的特征或模块。",
-      "_score": 9.0,
-      "chinese_title": "Claude 的大脑中也长出了一块「意识」"
+      "chinese_title": "同人小说社区正与AI及自身展开激烈斗争"
     }
   ],
   "pages_url": "https://tankex.xyz",
   "cover_image_url": "https://tankex.xyz/cover.jpg",
-  "generated_at": "2026-07-08T02:53:59.761867+00:00"
+  "generated_at": "2026-07-09T03:42:19.753417+00:00"
 }
