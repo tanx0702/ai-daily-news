@@ -86,10 +86,11 @@ _STORY_TYPE_PALETTE: dict[str, dict[str, tuple]] = {
 
 
 _FONT_CANDIDATES = [
-    # Linux / Docker
-    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    # Linux / Docker (wqy-zenhei 是 Dockerfile 中安装的字体)
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     # Windows
     "C:/Windows/Fonts/msyh.ttc",
@@ -103,17 +104,23 @@ def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageF
     candidates = list(_FONT_CANDIDATES)
     if bold:
         candidates = [
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
             "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
             "C:/Windows/Fonts/msyhbd.ttc",
             "C:/Windows/Fonts/simhei.ttf",
         ] + candidates
+
     for path in candidates:
         try:
             if os.path.exists(path):
+                logger.debug("Using font: %s (size=%d, bold=%s)", path, size, bold)
                 return ImageFont.truetype(path, size=size)
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to load font %s: %s", path, e)
             continue
+
+    logger.warning("No suitable font found, falling back to PIL default (will show garbled Chinese)")
     return ImageFont.load_default()
 
 
@@ -518,29 +525,34 @@ def generate_cover_from_news(
                 cover_subject["cover_source"] = "related_article_image"
                 return cover_from_related
 
-    # 3. 默认不再调用 AI 生图；无图时使用标题排版封面。
+    # 3. AI 生图封面策略：
+    # - 如果 ENABLE_AI_COVER_GENERATION=1，优先尝试 AI 生图
+    # - 安全门禁（ENABLE_SAFE_COVER）在 mode=generic 时才拦截 AI 生图
+    # - 生成失败时降级到标题卡片封面
     ai_cover_enabled = _env_enabled_cover("ENABLE_AI_COVER_GENERATION", False)
+
     if not ai_cover_enabled:
         logger.info("AI cover generation disabled; using editorial title-card cover")
         if cover_subject is not None:
             cover_subject["cover_source"] = "editorial_title_card"
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
+    # 安全门禁：mode=generic 时跳过 AI 生图
     if safe_cover_enabled and cover_subject.get("mode") == "generic":
-        logger.info("Safe cover: no trusted candidate, using title-card cover")
+        logger.info("Safe cover: no trusted candidate, skipping AI generation, using title-card")
         cover_subject["cover_source"] = "editorial_title_card"
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
+    # 没有 API Key，降级
     if not api_key:
         logger.warning("No API key for AI cover generation, using title-card cover")
         if cover_subject is not None:
             cover_subject["cover_source"] = "editorial_title_card"
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
-    # 1. 构建 prompt
+    # 开始 AI 生图
+    logger.info("AI cover generation enabled, attempting to generate...")
     prompt = _build_cover_prompt(cover_subject)
-
-    # 2. 调用 Agnes Image API
     base_url = base_url.rstrip("/")
     image_base = base_url.replace("/v1", "") if base_url.endswith("/v1") else base_url
     ai_generated = False
@@ -564,13 +576,13 @@ def generate_cover_from_news(
         if not image_url:
             raise ValueError(f"No image URL in response: {data}")
 
-        # 3. 下载图片
+        # 下载图片
         img_resp = requests.get(image_url, timeout=30)
         img_resp.raise_for_status()
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        # 4. 检测图片质量
+        # 检测图片质量
         img = Image.open(io.BytesIO(img_resp.content))
         is_bad, bad_reason = _looks_like_bad_cover(img)
 
@@ -584,7 +596,7 @@ def generate_cover_from_news(
                 return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
             # 否则继续使用 AI 图，但记录 warning
 
-        # 5. 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
+        # 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
         img.save(output_path, "JPEG", quality=90)
         ai_generated = True
         if cover_subject is not None:
