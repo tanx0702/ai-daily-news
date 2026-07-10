@@ -190,16 +190,27 @@ def _fetch_og_image(article_url: str, timeout: int = 6) -> Optional[str]:
     只读前 100KB HTML，不下载整页。
     """
     try:
+        # 完整请求头，模拟真实浏览器，绕过防盗链
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Cache-Control": "max-age=0",
+        }
+
         resp = requests.get(
             article_url,
             timeout=timeout,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
-                    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-                ),
-                "Accept": "text/html,application/xhtml+xml",
-            },
+            headers=headers,
             allow_redirects=True,
         )
         if resp.status_code != 200:
@@ -242,9 +253,28 @@ def _upload_image_from_url(
         微信图片 URL，失败返回 None
     """
     try:
-        resp = requests.get(image_url, timeout=timeout, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)",
-        })
+        # 构造完整的请求头，绕过防盗链检测
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "image",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "cross-site",
+        }
+
+        # 尝试从 URL 中提取源站作为 Referer（绕过防盗链）
+        from urllib.parse import urlparse
+        parsed = urlparse(image_url)
+        if parsed.scheme and parsed.netloc:
+            headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
+
+        resp = requests.get(image_url, timeout=timeout, headers=headers)
         resp.raise_for_status()
 
         content = resp.content

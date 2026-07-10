@@ -17,22 +17,22 @@
         },
         {
             "name": "OpenAI Blog",
-            "url": "https://openai.com/blog",
+            "url": "https://openai.com/blog/rss.xml",
             "region": "overseas"
         },
         {
             "name": "Google DeepMind",
-            "url": "https://blog.google/technology/ai/",
+            "url": "https://deepmind.google/blog/rss.xml",
             "region": "overseas"
         },
         {
             "name": "MIT Technology Review AI",
-            "url": "https://www.technologyreview.com/topic/artificial-intelligence/",
+            "url": "https://www.technologyreview.com/feed/",
             "region": "overseas"
         },
         {
             "name": "36氪 AI",
-            "url": "https://36kr.com/information/AI_news/",
+            "url": "https://36kr.com/feed",
             "region": "china"
         },
         {

@@ -554,6 +554,42 @@ _LLM_QUALITY_SYSTEM_PROMPT = """你是 AI 科技日报的发布前质检编辑�
 只返回 JSON，不要输出解释性文本。"""
 
 
+def _extract_json_safe(text: str) -> Optional[dict]:
+    """
+    从 LLM 响应中安全提取 JSON 对象（容错逻辑）。
+
+    尝试顺序：
+    1. 直接解析整个响应
+    2. 提取 ```json ... ``` 代码块
+    3. 提取第一个 { } 对象
+    """
+    text = text.strip()
+
+    # 尝试直接解析
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # 尝试提取 ```json ... ``` 块
+    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # 尝试提取第一个 { } 块
+    match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
 def _run_llm_review(
     news_list: list[dict],
     *,
@@ -602,7 +638,10 @@ def _run_llm_review(
         )
         content = response.choices[0].message.content.strip()
 
-        result = json.loads(content)
+        # 使用容错 JSON 提取
+        result = _extract_json_safe(content)
+        if result is None:
+            raise ValueError(f"Failed to extract valid JSON from LLM response: {content[:200]}")
 
         if not isinstance(result, dict):
             raise ValueError(f"Expected dict, got {type(result).__name__}")
