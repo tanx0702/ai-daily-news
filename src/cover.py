@@ -41,46 +41,46 @@ def _env_enabled_cover(name: str, default: bool = True) -> bool:
 
 _STORY_TYPE_PALETTE: dict[str, dict[str, tuple]] = {
     "personnel": {
-        "bg": (26, 26, 46),         # deep navy
-        "primary": (196, 134, 58),   # warm amber
-        "secondary": (46, 40, 60),   # muted plum
-        "accent": (220, 180, 120),   # light amber
+        "bg": (38, 35, 58),          # 深紫蓝 (更明快)
+        "primary": (220, 160, 90),   # 暖橙金
+        "secondary": (65, 55, 85),   # 中紫
+        "accent": (255, 200, 120),   # 亮橙黄
     },
     "product": {
-        "bg": (26, 35, 50),          # dark slate
-        "primary": (58, 138, 138),   # cool teal
-        "secondary": (35, 50, 55),   # deep teal-gray
-        "accent": (140, 200, 200),   # light teal
+        "bg": (25, 45, 55),          # 深青蓝
+        "primary": (80, 180, 180),   # 明快青绿
+        "secondary": (45, 70, 80),   # 中青
+        "accent": (150, 230, 220),   # 亮青绿
     },
     "model": {
-        "bg": (26, 16, 51),          # dark indigo
-        "primary": (106, 74, 138),   # muted violet
-        "secondary": (40, 30, 60),   # deep violet
-        "accent": (170, 140, 200),   # light violet
+        "bg": (40, 30, 65),          # 深靛紫
+        "primary": (140, 100, 180),  # 明快紫
+        "secondary": (60, 45, 90),   # 中紫
+        "accent": (200, 160, 240),   # 亮紫
     },
     "research": {
-        "bg": (22, 30, 22),          # dark charcoal-green
-        "primary": (58, 122, 90),    # emerald
-        "secondary": (30, 45, 35),   # deep green
-        "accent": (130, 190, 150),   # light sage
+        "bg": (28, 42, 35),          # 深绿灰
+        "primary": (90, 160, 120),   # 明快翠绿
+        "secondary": (45, 65, 55),   # 中绿
+        "accent": (160, 220, 180),   # 亮翠绿
     },
     "business": {
-        "bg": (26, 26, 48),          # dark navy
-        "primary": (184, 160, 74),   # brass
-        "secondary": (48, 42, 30),   # deep bronze
-        "accent": (210, 190, 130),   # light gold
+        "bg": (35, 35, 55),          # 深蓝灰
+        "primary": (220, 190, 100),  # 明快金色
+        "secondary": (60, 55, 75),   # 中蓝
+        "accent": (255, 230, 140),   # 亮金黄
     },
     "policy": {
-        "bg": (31, 31, 36),          # dark gray
-        "primary": (74, 106, 138),   # muted blue
-        "secondary": (40, 44, 52),   # deep blue-gray
-        "accent": (150, 170, 200),   # light steel
+        "bg": (40, 42, 48),          # 深灰蓝
+        "primary": (100, 140, 180),  # 明快天蓝
+        "secondary": (55, 60, 70),   # 中灰蓝
+        "accent": (170, 200, 235),   # 亮天蓝
     },
     "general": {
-        "bg": (26, 31, 36),          # dark graphite
-        "primary": (58, 122, 154),   # cyan
-        "secondary": (45, 50, 58),   # deep gray
-        "accent": (138, 106, 74),    # soft amber
+        "bg": (32, 40, 50),          # 深蓝灰 (更明快)
+        "primary": (90, 160, 200),   # 明快青蓝
+        "secondary": (55, 65, 80),   # 中灰蓝
+        "accent": (160, 220, 255),   # 亮天蓝
     },
 }
 
@@ -332,7 +332,11 @@ def _generate_title_card_cover(
     """
     降级方案：Pillow 生成标题排版型封面。
 
-    设计：新闻标题为主体，少量编辑型色块和纹理，不再画抽象科技占位图。
+    设计优化重点：
+    - 标题智能截断到 15-20 字，避免拥挤
+    - 使用更明快的配色（橙黄、青绿渐变）
+    - 增大字号和留白，提升可读性
+    - 简化元素，统一品牌为"今日AI要闻"
     """
     palette = _STORY_TYPE_PALETTE.get(story_type, _STORY_TYPE_PALETTE["general"])
     bg_color = palette["bg"]
@@ -342,79 +346,95 @@ def _generate_title_card_cover(
     bound_item = cover_subject.get("item") if cover_subject else None
     title = _cover_story_title(news_list, cover_subject)
 
+    # 标题智能截断：15-20 字最佳，超过则截断
+    if len(title) > 20:
+        title = _make_cover_headline(
+            bound_item or news_list[0] if news_list else {},
+            story_type
+        )
+
     img = Image.new("RGB", (width, height), bg_color)
     draw = ImageDraw.Draw(img, "RGBA")
 
-    # 背景：细腻纸感/光感，不再用节点网络。
+    # 背景：从深色到亮色的渐变，增加活力
     for y in range(height):
         ratio = y / height
-        blend = tuple(int(bg_color[i] * (1 - ratio * 0.22) + secondary[i] * ratio * 0.22) for i in range(3))
+        # 增强渐变对比度，从暗到中亮
+        blend = tuple(
+            int(bg_color[i] * (1 - ratio * 0.45) + secondary[i] * ratio * 0.45 + accent[i] * ratio * 0.15)
+            for i in range(3)
+        )
         draw.line([(0, y), (width, y)], fill=(*blend, 255))
 
-    # 编辑型大色块，靠边而非占据中心主体。
-    draw.rectangle([(0, 0), (18, height)], fill=(*accent, 230))
-    draw.rectangle([(width - 270, 0), (width, height)], fill=(*primary, 55))
+    # 左侧装饰条 - 更细，更克制
+    draw.rectangle([(0, 0), (12, height)], fill=(*accent, 200))
+
+    # 右上角柔和色块 - 增加视觉趣味但不喧宾夺主
     draw.polygon(
-        [(width - 360, height), (width, int(height * 0.38)), (width, height)],
-        fill=(*accent, 45),
+        [(width - 280, 0), (width, 0), (width, int(height * 0.42))],
+        fill=(*primary, 65),
     )
 
-    # 轻微散景质感，避免平板占位感。
+    # 柔和光晕质感
     texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     tdraw = ImageDraw.Draw(texture, "RGBA")
-    for i, (cx, cy, r, alpha) in enumerate([
-        (int(width * 0.78), int(height * 0.24), 150, 34),
-        (int(width * 0.18), int(height * 0.78), 180, 22),
-        (int(width * 0.58), int(height * 0.70), 95, 18),
-    ]):
-        tdraw.ellipse([(cx-r, cy-r), (cx+r, cy+r)], fill=(*primary, alpha))
-    texture = texture.filter(ImageFilter.GaussianBlur(34))
+    for cx, cy, r, alpha in [
+        (int(width * 0.82), int(height * 0.20), 140, 38),
+        (int(width * 0.15), int(height * 0.85), 160, 25),
+    ]:
+        tdraw.ellipse([(cx-r, cy-r), (cx+r, cy+r)], fill=(*accent, alpha))
+    texture = texture.filter(ImageFilter.GaussianBlur(40))
     img = Image.alpha_composite(img.convert("RGBA"), texture).convert("RGB")
     draw = ImageDraw.Draw(img, "RGBA")
 
-    # 文案区域。
-    margin_x = 64
-    kicker = _cover_kicker(date_str, bound_item)
-    story_label = {
-        "personnel": "人物与组织",
-        "product": "产品动态",
-        "model": "模型进展",
-        "research": "研究前沿",
-        "business": "产业观察",
-        "policy": "政策监管",
-        "general": "今日要闻",
-    }.get(story_type, "今日要闻")
+    # 文案区域 - 增大边距和字号
+    margin_x = 72
+    top_y = 85
 
-    label_font = _load_font(18, bold=False)
-    meta_font = _load_font(18, bold=False)
-    title_font = _fit_font(title, width - margin_x * 2 - 80, 52, 32, bold=True)
-    lines = _wrap_text(title, title_font, width - margin_x * 2 - 80, max_lines=3)
-    line_h = int(getattr(title_font, "size", 42) * 1.24)
-
-    top_y = 70
-    # 小标签
-    label_text = story_label
-    label_bbox = draw.textbbox((0, 0), label_text, font=label_font)
-    label_w = label_bbox[2] - label_bbox[0] + 28
-    draw.rounded_rectangle(
-        [(margin_x, top_y), (margin_x + label_w, top_y + 34)],
-        radius=17,
-        fill=(*accent, 210),
+    # 顶部品牌标识 - 统一为"今日AI要闻"
+    brand_font = _load_font(22, bold=True)
+    draw.text(
+        (margin_x, top_y),
+        "今日AI要闻",
+        font=brand_font,
+        fill=(255, 255, 255, 200)
     )
-    draw.text((margin_x + 14, top_y + 6), label_text, font=label_font, fill=(255, 255, 255, 238))
 
-    title_y = top_y + 66
+    # 日期标签
+    date_font = _load_font(16, bold=False)
+    draw.text(
+        (margin_x, top_y + 35),
+        date_str,
+        font=date_font,
+        fill=(*accent, 220)
+    )
+
+    # 主标题 - 更大字号，最多2行
+    title_y = top_y + 85
+    title_font = _fit_font(title, width - margin_x * 2 - 60, 62, 38, bold=True)
+    lines = _wrap_text(title, title_font, width - margin_x * 2 - 60, max_lines=2)
+    line_h = int(getattr(title_font, "size", 52) * 1.35)
+
     for line in lines:
-        draw.text((margin_x, title_y), line, font=title_font, fill=(248, 250, 252, 248))
+        draw.text((margin_x, title_y), line, font=title_font, fill=(255, 255, 255, 255))
         title_y += line_h
 
-    # 下方信息线。
-    meta_y = height - 78
-    draw.line([(margin_x, meta_y - 18), (margin_x + 88, meta_y - 18)], fill=(*accent, 230), width=3)
-    draw.text((margin_x, meta_y), kicker, font=meta_font, fill=(218, 226, 236, 210))
+    # 底部来源信息（如果有）
+    if bound_item:
+        source = bound_item.get("source") or bound_item.get("source_type") or ""
+        source = source.split(" + ")[0].strip()
+        if source:
+            meta_font = _load_font(17, bold=False)
+            meta_y = height - 68
+            draw.text(
+                (margin_x, meta_y),
+                f"来源: {source}",
+                font=meta_font,
+                fill=(200, 210, 220, 180)
+            )
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    img.save(output_path, "JPEG", quality=92)
+    img.save(output_path, "JPEG", quality=94)
     logger.info(
         "Generated editorial title-card cover (type=%s) at %s",
         story_type, output_path,
@@ -535,7 +555,6 @@ def generate_cover_from_news(
                 "model": "agnes-image-2.1-flash",
                 "prompt": prompt,
                 "size": "900x500",
-                "extra_body": {"response_format": "url"},
             },
             timeout=120,
         )
@@ -588,157 +607,110 @@ def generate_cover_from_news(
 
 _STORY_TYPE_VISUAL_BRIEF: dict[str, dict[str, str]] = {
     "personnel": {
-        "subject": (
-            "a professional figure in a modern tech office or boardroom — "
-            "seen from behind or in silhouette, facing a window or large display"
+        "scene": (
+            "Professional figure silhouette standing at floor-to-ceiling office window, "
+            "gazing at city skyline or glowing screens in distance. "
+            "Modern glass office interior, warm sunset light streaming through windows. "
+            "Subject positioned on left third of frame, facing right, leaving right side open for text."
         ),
-        "style": (
-            "editorial portrait photography style, soft directional window light, "
-            "shallow depth of field, muted navy and warm amber tones, subtle film grain"
-        ),
-        "composition": (
-            "off-center subject, generous negative space on one side, "
-            "architectural lines (glass walls, clean ceiling grid) framing the scene, "
-            "dark gradient at bottom"
-        ),
+        "mood": "Contemplative, sophisticated, corporate elegance. Warm amber and deep navy tones.",
+        "avoid": "No faces visible, no UI screens with text, no company logos.",
     },
     "product": {
-        "subject": (
-            "abstract close-up of a device screen or interface surface, "
-            "shallow depth of field, product design photography style — "
-            "no specific UI text, only abstract shapes suggesting an interface"
+        "scene": (
+            "Extreme close-up of sleek tech device edge - brushed metal surface with soft blue glow, "
+            "abstract curved lines suggesting premium product design. "
+            "Sharp focus on one corner, rest softly blurred. "
+            "Cool teal and slate gray palette, studio lighting."
         ),
-        "style": (
-            "clean product photography, matte surfaces, cool slate and teal tones, "
-            "soft studio lighting, premium tech product aesthetic"
-        ),
-        "composition": (
-            "asymmetric product detail shot, large blurred negative space, "
-            "sharp focus on one corner or edge, dark gradient at bottom"
-        ),
+        "mood": "Premium, minimalist, Apple-like design aesthetic. Clean and futuristic.",
+        "avoid": "No brand names, no interface elements, no readable screens.",
     },
     "model": {
-        "subject": (
-            "abstract visualization of a neural architecture — "
-            "layered translucent geometric planes, subtle data flow patterns, "
-            "not literal neurons or brains; more like architectural blueprints"
+        "scene": (
+            "Floating translucent geometric layers in deep space - layered glass panels with subtle light passing through, "
+            "forming abstract architectural structure. "
+            "Dark indigo and violet background, soft purple accent lighting on edges. "
+            "Isometric view, centered composition with generous margins."
         ),
-        "style": (
-            "architectural visualization style, dark indigo and violet tones, "
-            "clean geometric precision, matte render, isometric or top-down view"
-        ),
-        "composition": (
-            "layered depth with overlapping translucent forms, "
-            "center-weighted composition, dark gradient at bottom"
-        ),
+        "mood": "Futuristic, precise, scientific blueprint aesthetic. Cool and ethereal.",
+        "avoid": "No literal brain imagery, no glowing nodes/circuits, no data visualizations with numbers.",
     },
     "research": {
-        "subject": (
-            "abstract laboratory or research setting — "
-            "scientific instruments, optical elements, or 3D visualization "
-            "rendered as clean editorial graphics, not literal photos"
+        "scene": (
+            "Abstract laboratory workspace - clean white surface with geometric glass instruments, "
+            "prism refracting light into subtle rainbow, molecular structure models as minimalist wireframes. "
+            "Dark charcoal background with emerald accent lighting. "
+            "Overhead flat-lay angle, asymmetric arrangement leaving space for text."
         ),
-        "style": (
-            "scientific editorial illustration, dark charcoal and emerald tones, "
-            "clean line art quality, precision geometry, subtle texture"
-        ),
-        "composition": (
-            "diagram-like arrangement of abstract research elements, "
-            "off-center focal point, dark gradient at bottom"
-        ),
+        "mood": "Scientific precision, editorial elegance, discovery and innovation.",
+        "avoid": "No periodic table, no chemical formulas, no microscope images with labels.",
     },
     "business": {
-        "subject": (
-            "modern corporate architecture or financial district skyline at dusk — "
-            "glass towers, clean lines, abstracted to geometric forms"
+        "scene": (
+            "Modern glass skyscraper reflecting golden sunset sky, "
+            "shot from ground level looking up at geometric window patterns. "
+            "Warm gold and deep navy color palette, long exposure smooth clouds. "
+            "Vertical composition with sky gradient at top for text overlay."
         ),
-        "style": (
-            "architectural photography style, dark navy and warm gold/brass tones, "
-            "long exposure aesthetic, smooth gradients, premium feel"
-        ),
-        "composition": (
-            "low-angle or eye-level view of architecture, "
-            "strong vertical lines, dark gradient at bottom"
-        ),
+        "mood": "Ambitious, premium, corporate sophistication. Aspirational and powerful.",
+        "avoid": "No company signage, no street signs, no visible people.",
     },
     "policy": {
-        "subject": (
-            "government or institutional building facade — "
-            "classical or modern civic architecture, abstracted to geometric forms, "
-            "flags or institutional symbols rendered as subtle shapes"
+        "scene": (
+            "Government building facade abstracted into geometric forms - classical columns or modern civic architecture "
+            "rendered with clean lines and symmetry. "
+            "Muted steel blue and gray tones, overcast natural light, frontal symmetric view. "
+            "Strong horizontal lines with clear space at top or bottom."
         ),
-        "style": (
-            "editorial documentary style, dark gray and muted blue tones, "
-            "clean geometric composition, serious and authoritative mood"
-        ),
-        "composition": (
-            "symmetrical or near-symmetrical composition, "
-            "strong horizontal lines, dark gradient at bottom"
-        ),
+        "mood": "Authoritative, serious, institutional gravitas. Dignified and formal.",
+        "avoid": "No flags with text, no visible signage, no recognizable monuments.",
     },
     "general": {
-        "subject": (
-            "a curated daily briefing workspace — "
-            "clean desk surface with abstract editorial elements, "
-            "not literal news screens; more like design studio still life"
+        "scene": (
+            "Minimalist desk flatlay - clean white surface with abstract paper shapes, "
+            "geometric wooden or metal objects casting soft shadows, "
+            "subtle warm light from top-left creating depth. "
+            "60% negative space on right side for text overlay. "
+            "Warm beige and dark graphite color palette."
         ),
-        "style": (
-            "editorial still life photography, dark graphite and warm paper tones, "
-            "soft directional light, premium magazine aesthetic, subtle texture"
-        ),
-        "composition": (
-            "flat-lay or slight angle, asymmetric arrangement of abstract shapes, "
-            "generous negative space, dark gradient at bottom"
-        ),
+        "mood": "Editorial sophistication, curated daily briefing aesthetic, premium magazine quality.",
+        "avoid": "No newspapers, no readable documents, no laptop screens.",
     },
 }
 
-# 禁止词清单 — 每一条 prompt 都必须追加
-_AVOID_LIST = (
-    "Do NOT include: generic AI network, glowing nodes, glowing lines, "
-    "robot mascot, blue-purple gradient, cyber brain, circuit board, "
-    "fake UI text, fake headline, fake HUD, watermark, any text, any letters, "
-    "any numbers, any logos."
-)
+# 禁止词清单 — 简洁有效
+_AVOID_LIST = "No text, letters, words, numbers, characters, logos, or watermarks."
 
 
 def _build_cover_prompt(cover_subject: dict) -> str:
     """
-    构建封面图 prompt —— 按故事类型使用结构化视觉 brief。
+    构建封面图 prompt —— 简洁直观的画面描述。
 
-    结构：
-    - Primary story
-    - Story type
-    - Visual subject
-    - Editorial style
-    - Composition
-    - Avoid list
+    优化策略：
+    - 用具体画面代替摄影术语
+    - 纯英文 prompt，避免中文字符干扰
+    - 精简禁止词，避免过度强调
+    - 直接描述场景，不分段
     """
     mode = cover_subject.get("mode", "generic")
     story_type = cover_subject.get("story_type", "general")
     item = cover_subject.get("item")
 
-    # 选择 brief（trusted 模式用对应类型，generic 用 general）
+    # 选择对应类型的视觉 brief
     if mode == "trusted" and story_type in _STORY_TYPE_VISUAL_BRIEF:
         brief = _STORY_TYPE_VISUAL_BRIEF[story_type]
     else:
         brief = _STORY_TYPE_VISUAL_BRIEF["general"]
 
-    # Primary story
-    if item:
-        primary = (item.get("chinese_title") or item.get("title", ""))[:100]
-    else:
-        primary = "AI industry daily briefing"
+    # 构建精简单段 prompt
+    prompt = f"{brief['scene']} {brief['mood']} {brief['avoid']} {_AVOID_LIST}"
 
-    return (
-        f"Primary story: \"{primary}\"\n"
-        f"Story type: {story_type}\n"
-        f"Visual subject: {brief['subject']}\n"
-        f"Editorial style: {brief['style']}\n"
-        f"Composition: {brief['composition']}\n"
-        f"Avoid: {_AVOID_LIST}\n"
-        f"16:9 aspect ratio, high quality editorial illustration, no typography."
-    )
+    # 限制长度，避免 API 拒绝
+    if len(prompt) > 500:
+        prompt = prompt[:500]
+
+    return prompt
 
 
 def _fallback_cover(
