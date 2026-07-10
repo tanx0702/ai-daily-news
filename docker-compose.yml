@@ -10,6 +10,8 @@ services:
       - ./config:/app/config
     env_file:
       - .env
+    environment:                         
+    - TZ=Asia/Shanghai                
 
   nginx:
     image: nginx:alpine
