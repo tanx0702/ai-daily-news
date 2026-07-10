@@ -20,11 +20,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+# 初始化日志系统(必须在其他模块导入前)
+from src.logger_config import setup_logging
+setup_logging()
+
 logger = logging.getLogger(__name__)
 
 

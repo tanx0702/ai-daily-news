@@ -5,13 +5,15 @@ services:
     restart: always
     volumes:
       - ./docs:/app/docs
+      - ./logs:/app/logs
       - ./src:/app/src
       - ./app.py:/app/app.py
       - ./config:/app/config
     env_file:
       - .env
-    environment:                         
-    - TZ=Asia/Shanghai                
+    environment:
+      - TZ=Asia/Shanghai
+      - ENV=production                
 
   nginx:
     image: nginx:alpine
