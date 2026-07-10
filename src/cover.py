@@ -33,6 +33,56 @@ def _env_enabled_cover(name: str, default: bool = True) -> bool:
 # 日期和标题在 HTML 页面的 header 区域展示（不属于封面图片本体）。
 
 
+# ═══════════════════════════════════════════════════════════════════
+# 故事类型色板 — 用于本地 fallback 封面
+# ═══════════════════════════════════════════════════════════════════
+
+_STORY_TYPE_PALETTE: dict[str, dict[str, tuple]] = {
+    "personnel": {
+        "bg": (26, 26, 46),         # deep navy
+        "primary": (196, 134, 58),   # warm amber
+        "secondary": (46, 40, 60),   # muted plum
+        "accent": (220, 180, 120),   # light amber
+    },
+    "product": {
+        "bg": (26, 35, 50),          # dark slate
+        "primary": (58, 138, 138),   # cool teal
+        "secondary": (35, 50, 55),   # deep teal-gray
+        "accent": (140, 200, 200),   # light teal
+    },
+    "model": {
+        "bg": (26, 16, 51),          # dark indigo
+        "primary": (106, 74, 138),   # muted violet
+        "secondary": (40, 30, 60),   # deep violet
+        "accent": (170, 140, 200),   # light violet
+    },
+    "research": {
+        "bg": (22, 30, 22),          # dark charcoal-green
+        "primary": (58, 122, 90),    # emerald
+        "secondary": (30, 45, 35),   # deep green
+        "accent": (130, 190, 150),   # light sage
+    },
+    "business": {
+        "bg": (26, 26, 48),          # dark navy
+        "primary": (184, 160, 74),   # brass
+        "secondary": (48, 42, 30),   # deep bronze
+        "accent": (210, 190, 130),   # light gold
+    },
+    "policy": {
+        "bg": (31, 31, 36),          # dark gray
+        "primary": (74, 106, 138),   # muted blue
+        "secondary": (40, 44, 52),   # deep blue-gray
+        "accent": (150, 170, 200),   # light steel
+    },
+    "general": {
+        "bg": (26, 31, 36),          # dark graphite
+        "primary": (58, 122, 154),   # cyan
+        "secondary": (45, 50, 58),   # deep gray
+        "accent": (138, 106, 74),    # soft amber
+    },
+}
+
+
 def _generate_simple_cover(
     news_list: list[dict],
     date_str: str,
@@ -40,71 +90,137 @@ def _generate_simple_cover(
     width: int = 900,
     height: int = 500,
     cover_title: str = "AI 日报",
+    story_type: str = "general",
 ) -> str:
     """
     降级方案：Pillow 生成的编辑风程序化封面。
 
-    设计：深色背景 + 细网格 + 抽象节点连线 + 渐变光晕，
-    不随机切换配色，保持专业科技刊物的一致感。
+    设计：深色背景 + 非对称大色块 + 类型专属几何符号 + 杂志版式。
+    不使用网格、节点连线、发光点、机器人 emoji、AI Daily News 英文。
     """
-    import math
+    palette = _STORY_TYPE_PALETTE.get(story_type, _STORY_TYPE_PALETTE["general"])
+    bg_color = palette["bg"]
+    primary = palette["primary"]
+    secondary = palette["secondary"]
+    accent = palette["accent"]
 
-    img = Image.new("RGB", (width, height), "#0f172a")  # 深蓝黑底
-    draw = ImageDraw.Draw(img)
+    img = Image.new("RGB", (width, height), bg_color)
+    draw = ImageDraw.Draw(img, "RGBA")
 
-    # ── 细网格背景 ──
-    grid_spacing = 40
-    grid_color = (30, 41, 59)  # #1e293b 暗蓝灰
-    for x in range(0, width, grid_spacing):
-        draw.line([(x, 0), (x, height)], fill=grid_color, width=1)
-    for y in range(0, height, grid_spacing):
-        draw.line([(0, y), (width, y)], fill=grid_color, width=1)
+    # ── 1. 大色块层（非对称几何形状）──
+    # 主色块：右上角大矩形
+    block_w = int(width * 0.55)
+    block_h = int(height * 0.55)
+    draw.rectangle(
+        [(width - block_w, 0), (width, block_h)],
+        fill=(*primary, 80),
+    )
+    # 副色块：左下角矩形
+    block2_w = int(width * 0.40)
+    block2_h = int(height * 0.35)
+    draw.rectangle(
+        [(0, height - block2_h), (block2_w, height)],
+        fill=(*secondary, 100),
+    )
+    # 强调色块：中部偏左小矩形
+    draw.rectangle(
+        [(int(width * 0.08), int(height * 0.20)),
+         (int(width * 0.22), int(height * 0.38))],
+        fill=(*primary, 50),
+    )
 
-    # ── 抽象节点和连线（稳定布局，不随机） ──
-    nodes = [
-        (width * 0.15, height * 0.25),
-        (width * 0.35, height * 0.15),
-        (width * 0.60, height * 0.30),
-        (width * 0.75, height * 0.20),
-        (width * 0.20, height * 0.50),
-        (width * 0.55, height * 0.55),
-        (width * 0.80, height * 0.45),
-        (width * 0.40, height * 0.70),
-        (width * 0.65, height * 0.70),
-    ]
-
-    # 连线（淡青色半透明）
-    for i, (x1, y1) in enumerate(nodes):
-        for j, (x2, y2) in enumerate(nodes):
-            if i < j and ((x2 - x1)**2 + (y2 - y1)**2) < (width * 0.35)**2:
-                alpha = max(10, 40 - int(((x2 - x1)**2 + (y2 - y1)**2) ** 0.5 / 12))
-                draw.line([(x1, y1), (x2, y2)], fill=(56, 189, 248, alpha), width=1)
-
-    # 节点圆点（青蓝渐变光晕 + 白心）
-    halo_color = (56, 189, 248)  # cyan-400
-    for (nx, ny) in nodes:
-        # 外光晕
-        for r in range(8, 1, -2):
-            alpha = max(10, 60 - r * 5)
-            draw.ellipse(
-                [(nx - r, ny - r), (nx + r, ny + r)],
-                fill=(56, 189, 248, alpha),
-                outline=None,
+    # ── 2. 几何符号层（类型专属抽象图形）──
+    if story_type == "personnel":
+        # 圆形 — 象征肖像/人物
+        cx, cy = int(width * 0.30), int(height * 0.30)
+        r = int(height * 0.14)
+        draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)],
+                     fill=(*accent, 40), outline=(*accent, 120), width=2)
+        # 小圆 — 象征头部
+        draw.ellipse([(cx - r//2, cy - r), (cx + r//2, cy + r//3)],
+                     fill=(*accent, 60))
+    elif story_type == "product":
+        # 圆角矩形 — 象征设备/界面
+        rx0, ry0 = int(width * 0.58), int(height * 0.18)
+        rx1, ry1 = int(width * 0.82), int(height * 0.42)
+        draw.rounded_rectangle(
+            [(rx0, ry0), (rx1, ry1)], radius=12,
+            fill=(*accent, 35), outline=(*accent, 100), width=2,
+        )
+    elif story_type == "model":
+        # 层叠菱形 — 象征架构/层
+        for i, (dx, dy, s) in enumerate([
+            (0, 0, 1.0), (-12, 18, 0.7), (12, 36, 0.45),
+        ]):
+            cx_m = int(width * 0.65) + dx
+            cy_m = int(height * 0.28) + dy
+            half_w = int(width * 0.12 * s)
+            half_h = int(height * 0.10 * s)
+            alpha = int(100 * s)
+            draw.polygon([
+                (cx_m, cy_m - half_h),
+                (cx_m + half_w, cy_m),
+                (cx_m, cy_m + half_h),
+                (cx_m - half_w, cy_m),
+            ], fill=(*accent, min(alpha, 80)), outline=(*accent, alpha), width=1)
+    elif story_type == "research":
+        # 水平线 + 小圆 — 象征实验/数据
+        line_y = int(height * 0.30)
+        draw.line([(int(width * 0.52), line_y), (int(width * 0.82), line_y)],
+                  fill=(*accent, 120), width=1)
+        for dot_x in [width * 0.55, width * 0.65, width * 0.75]:
+            draw.ellipse([(int(dot_x) - 3, line_y - 3), (int(dot_x) + 3, line_y + 3)],
+                         fill=(*accent, 180))
+    elif story_type == "business":
+        # 垂直柱状 — 象征建筑/财务
+        for j, (bx, bh_ratio) in enumerate([
+            (width * 0.55, 0.30), (width * 0.63, 0.42), (width * 0.71, 0.24),
+        ]):
+            bh = int(height * bh_ratio)
+            by = int(height * 0.55) - bh
+            bw = int(width * 0.06)
+            draw.rectangle(
+                [(int(bx), by), (int(bx) + bw, int(height * 0.55))],
+                fill=(*accent, 70), outline=(*accent, 140), width=1,
             )
-        # 实心白点
-        draw.ellipse([(nx - 2, ny - 2), (nx + 2, ny + 2)], fill=(226, 232, 240))
+    elif story_type == "policy":
+        # 矩形框架 — 象征文件/机构
+        fx0, fy0 = int(width * 0.54), int(height * 0.16)
+        fx1, fy1 = int(width * 0.80), int(height * 0.44)
+        draw.rectangle(
+            [(fx0, fy0), (fx1, fy1)],
+            fill=(*accent, 25), outline=(*accent, 100), width=2,
+        )
+        # 内部横线（象征文字行）
+        for line_i in range(3):
+            ly = fy0 + int(height * 0.07) * (line_i + 1)
+            draw.line([(fx0 + 16, ly), (fx1 - 16, ly)],
+                      fill=(*accent, 80), width=1)
+    else:  # general
+        # 对角切分线 + 大圆
+        draw.line([(int(width * 0.40), 0), (int(width * 0.75), height)],
+                  fill=(*primary, 50), width=2)
+        gc_x, gc_y = int(width * 0.52), int(height * 0.30)
+        gc_r = int(height * 0.16)
+        draw.ellipse(
+            [(gc_x - gc_r, gc_y - gc_r), (gc_x + gc_r, gc_y + gc_r)],
+            fill=(*accent, 30), outline=(*accent, 100), width=2,
+        )
 
-    # ── 底部柔和渐变（纯视觉装饰，不叠加任何文字）──
-    for y_offset in range(int(height * 0.65), height):
-        alpha = int(60 * (y_offset - int(height * 0.65)) / (height - int(height * 0.65)))
+    # ── 3. 底部暗色渐变（为 HTML 标题留出干净区域）──
+    for y_offset in range(int(height * 0.60), height):
+        alpha = int(140 * (y_offset - int(height * 0.60)) / (height - int(height * 0.60)))
         draw.rectangle(
             [(0, y_offset), (width, y_offset + 1)],
-            fill=(15, 23, 42, min(alpha, 60)),
+            fill=(*bg_color, min(alpha, 140)),
         )
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    img.save(output_path, "JPEG", quality=90)
-    logger.info("Generated editorial simple cover (no text) at %s", output_path)
+    img.save(output_path, "JPEG", quality=92)
+    logger.info(
+        "Generated editorial fallback cover (type=%s, no text) at %s",
+        story_type, output_path,
+    )
     return output_path
 
 
@@ -161,11 +277,11 @@ def generate_cover_from_news(
     # 安全模式：无可信候选时直接使用程序化封面
     if safe_cover_enabled and cover_subject.get("mode") == "generic":
         logger.info("Safe cover: no trusted candidate, using local programmatic cover")
-        return _fallback_cover(news_list, date_str, output_path, cover_title)
+        return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
     if not api_key:
         logger.warning("No API key for cover generation, falling back to programmatic cover")
-        return _fallback_cover(news_list, date_str, output_path, cover_title)
+        return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
     # 1. 构建 prompt
     prompt = _build_cover_prompt(cover_subject)
@@ -210,7 +326,7 @@ def generate_cover_from_news(
             bad_ai = True
             if force_local_on_bad:
                 logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using programmatic cover")
-                return _fallback_cover(news_list, date_str, output_path, cover_title)
+                return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
             # 否则继续使用 AI 图，但记录 warning
 
         # 5. 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
@@ -223,48 +339,166 @@ def generate_cover_from_news(
 
     except Exception as e:
         logger.warning("Agnes Image API failed: %s, falling back to programmatic cover", e)
-        return _fallback_cover(news_list, date_str, output_path, cover_title)
+        return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 按故事类型的视觉 brief — 避免 generic AI network / glowing nodes
+# ═══════════════════════════════════════════════════════════════════
+
+_STORY_TYPE_VISUAL_BRIEF: dict[str, dict[str, str]] = {
+    "personnel": {
+        "subject": (
+            "a professional figure in a modern tech office or boardroom — "
+            "seen from behind or in silhouette, facing a window or large display"
+        ),
+        "style": (
+            "editorial portrait photography style, soft directional window light, "
+            "shallow depth of field, muted navy and warm amber tones, subtle film grain"
+        ),
+        "composition": (
+            "off-center subject, generous negative space on one side, "
+            "architectural lines (glass walls, clean ceiling grid) framing the scene, "
+            "dark gradient at bottom"
+        ),
+    },
+    "product": {
+        "subject": (
+            "abstract close-up of a device screen or interface surface, "
+            "shallow depth of field, product design photography style — "
+            "no specific UI text, only abstract shapes suggesting an interface"
+        ),
+        "style": (
+            "clean product photography, matte surfaces, cool slate and teal tones, "
+            "soft studio lighting, premium tech product aesthetic"
+        ),
+        "composition": (
+            "asymmetric product detail shot, large blurred negative space, "
+            "sharp focus on one corner or edge, dark gradient at bottom"
+        ),
+    },
+    "model": {
+        "subject": (
+            "abstract visualization of a neural architecture — "
+            "layered translucent geometric planes, subtle data flow patterns, "
+            "not literal neurons or brains; more like architectural blueprints"
+        ),
+        "style": (
+            "architectural visualization style, dark indigo and violet tones, "
+            "clean geometric precision, matte render, isometric or top-down view"
+        ),
+        "composition": (
+            "layered depth with overlapping translucent forms, "
+            "center-weighted composition, dark gradient at bottom"
+        ),
+    },
+    "research": {
+        "subject": (
+            "abstract laboratory or research setting — "
+            "scientific instruments, optical elements, or 3D visualization "
+            "rendered as clean editorial graphics, not literal photos"
+        ),
+        "style": (
+            "scientific editorial illustration, dark charcoal and emerald tones, "
+            "clean line art quality, precision geometry, subtle texture"
+        ),
+        "composition": (
+            "diagram-like arrangement of abstract research elements, "
+            "off-center focal point, dark gradient at bottom"
+        ),
+    },
+    "business": {
+        "subject": (
+            "modern corporate architecture or financial district skyline at dusk — "
+            "glass towers, clean lines, abstracted to geometric forms"
+        ),
+        "style": (
+            "architectural photography style, dark navy and warm gold/brass tones, "
+            "long exposure aesthetic, smooth gradients, premium feel"
+        ),
+        "composition": (
+            "low-angle or eye-level view of architecture, "
+            "strong vertical lines, dark gradient at bottom"
+        ),
+    },
+    "policy": {
+        "subject": (
+            "government or institutional building facade — "
+            "classical or modern civic architecture, abstracted to geometric forms, "
+            "flags or institutional symbols rendered as subtle shapes"
+        ),
+        "style": (
+            "editorial documentary style, dark gray and muted blue tones, "
+            "clean geometric composition, serious and authoritative mood"
+        ),
+        "composition": (
+            "symmetrical or near-symmetrical composition, "
+            "strong horizontal lines, dark gradient at bottom"
+        ),
+    },
+    "general": {
+        "subject": (
+            "a curated daily briefing workspace — "
+            "clean desk surface with abstract editorial elements, "
+            "not literal news screens; more like design studio still life"
+        ),
+        "style": (
+            "editorial still life photography, dark graphite and warm paper tones, "
+            "soft directional light, premium magazine aesthetic, subtle texture"
+        ),
+        "composition": (
+            "flat-lay or slight angle, asymmetric arrangement of abstract shapes, "
+            "generous negative space, dark gradient at bottom"
+        ),
+    },
+}
+
+# 禁止词清单 — 每一条 prompt 都必须追加
+_AVOID_LIST = (
+    "Do NOT include: generic AI network, glowing nodes, glowing lines, "
+    "robot mascot, blue-purple gradient, cyber brain, circuit board, "
+    "fake UI text, fake headline, fake HUD, watermark, any text, any letters, "
+    "any numbers, any logos."
+)
 
 
 def _build_cover_prompt(cover_subject: dict) -> str:
     """
-    构建封面图 prompt —— 不再直接使用 news_list[0]。
+    构建封面图 prompt —— 按故事类型使用结构化视觉 brief。
 
-    Args:
-        cover_subject: select_cover_subject() 的返回结果
-
-    要求：
-    - 无文字、无字母、无数字、无 logo、无水印
-    - 编辑插画风格，不是海报
-    - 底部留暗色空间给中文标题叠加
+    结构：
+    - Primary story
+    - Story type
+    - Visual subject
+    - Editorial style
+    - Composition
+    - Avoid list
     """
-    topic = cover_subject.get("visual_prompt_topic", "artificial intelligence")
     mode = cover_subject.get("mode", "generic")
+    story_type = cover_subject.get("story_type", "general")
+    item = cover_subject.get("item")
 
-    if mode == "generic":
-        return (
-            "A premium editorial technology illustration for a daily AI newsletter. "
-            "Style: clean abstract geometric composition, dark graphite and navy background, "
-            "subtle cyan and warm amber accent lines connecting scattered data nodes, "
-            "soft depth, realistic lighting, no typography at all. "
-            "Leave the bottom third dark and gradient-fade for text overlay. "
-            "No text, no letters, no numbers, no logos, no UI screenshots, no watermark. "
-            "Create an editorial abstract illustration, not a poster. "
-            "16:9 aspect ratio, high quality."
-        )
+    # 选择 brief（trusted 模式用对应类型，generic 用 general）
+    if mode == "trusted" and story_type in _STORY_TYPE_VISUAL_BRIEF:
+        brief = _STORY_TYPE_VISUAL_BRIEF[story_type]
     else:
-        return (
-            f"A premium editorial technology magazine cover illustration. "
-            f"Visual theme inspired by: \"{topic}\". "
-            f"Style: clean minimalist composition, dark graphite and deep navy background, "
-            f"subtle cyan and warm amber accents, abstract geometric elements softly "
-            f"referencing the topic without being literal, cinematic lighting, "
-            f"professional and elegant. "
-            f"No text, no letters, no numbers, no logos, no UI screenshots, no watermark. "
-            f"Create an editorial abstract illustration, not a poster. "
-            f"Leave clean dark space at the bottom for later Chinese title overlay. "
-            f"16:9 aspect ratio, high quality."
-        )
+        brief = _STORY_TYPE_VISUAL_BRIEF["general"]
+
+    # Primary story
+    if item:
+        primary = (item.get("chinese_title") or item.get("title", ""))[:100]
+    else:
+        primary = "AI industry daily briefing"
+
+    return (
+        f"Primary story: \"{primary}\"\n"
+        f"Story type: {story_type}\n"
+        f"Visual subject: {brief['subject']}\n"
+        f"Editorial style: {brief['style']}\n"
+        f"Composition: {brief['composition']}\n"
+        f"Avoid: {_AVOID_LIST}\n"
+        f"16:9 aspect ratio, high quality editorial illustration, no typography."
+    )
 
 
 def _fallback_cover(
@@ -272,11 +506,19 @@ def _fallback_cover(
     date_str: str,
     output_path: str = None,
     cover_title: str = "AI 日报",
+    cover_subject: Optional[dict] = None,
 ) -> str:
     """降级：生成 Pillow 封面图。"""
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
-    return _generate_simple_cover(news_list, date_str, output_path, cover_title=cover_title)
+    story_type = "general"
+    if cover_subject:
+        story_type = cover_subject.get("story_type", "general")
+    return _generate_simple_cover(
+        news_list, date_str, output_path,
+        cover_title=cover_title,
+        story_type=story_type,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -289,16 +531,82 @@ _RUMOR_KEYWORDS = [
 ]
 
 
+def _is_eligible_for_cover(item: dict) -> tuple[bool, str]:
+    """检查单条新闻是否可作为封面主题。返回 (eligible, reason)。"""
+    title = item.get("chinese_title") or item.get("title", "")
+    title_lower = title.lower()
+
+    if item.get("_cover_excluded"):
+        return False, f"cover_excluded: {item['_cover_excluded']}"
+    if item.get("_confidence_level") == "low":
+        return False, "low confidence"
+    bc = item.get("_brand_claim", {})
+    if bc.get("confidence") == "low":
+        return False, f"low confidence brand claim: {bc.get('brand', '')}"
+    st = item.get("source_type", "")
+    metrics = item.get("metrics", {}) or {}
+    if st == "hn" and metrics.get("cross_source_count", 0) == 0 and metrics.get("hn_score", 0) < 20:
+        return False, f"HN-only low heat (score={metrics.get('hn_score', 0)})"
+    if any(kw in title_lower for kw in _RUMOR_KEYWORDS):
+        return False, "rumor/speculation keyword in title"
+
+    # 检查是否有视觉价值：纯 HN 讨论、纯代码仓库、无实体的论文标题
+    # 如果标题是纯描述性/技术性的，没有实体（公司/产品/人物），视觉化难度高
+    return True, "ok"
+
+
+_NO_VISUAL_VALUE_PATTERNS = [
+    # 纯技术方法描述，没有故事性实体
+    "show hn", "ask hn", "tell hn",
+    "how to", "how i", "why i", "why we",
+    "a survey of", "a review of",
+]
+
+
+def _has_visual_value(item: dict) -> tuple[bool, str]:
+    """判断新闻是否有足够的视觉故事性来做封面。"""
+    title = item.get("chinese_title") or item.get("title", "")
+    title_lower = title.lower()
+    summary = item.get("summary", "")
+
+    # 无实体关键词的纯技术标题 → 无视觉价值
+    for pat in _NO_VISUAL_VALUE_PATTERNS:
+        if pat in title_lower:
+            return False, f"no visual story: matches '{pat}'"
+
+    # 检查是否包含实体关键词（公司/产品/人名/事件）
+    entity_signals = [
+        # 公司/品牌
+        "openai", "google", "meta", "microsoft", "apple", "anthropic",
+        "tesla", "nvidia", "amazon", "intel", "amd", "deepseek",
+        "阿里", "腾讯", "百度", "字节", "华为", "小米",
+        # 人物/职位
+        "ceo", "cto", "离职", "加入", "任命", "卸任", "辞职",
+        "resign", "hire", "appoint", "ceo",
+        # 产品/发布
+        "发布", "推出", "开源", "上线", "launch", "release",
+        # 事件
+        "融资", "收购", "上市", "诉讼", "版权", "监管",
+        "fund", "acquire", "ipo", "lawsuit", "regulation",
+    ]
+    text = title + " " + summary
+    has_entity = any(sig in text.lower() for sig in entity_signals)
+    if not has_entity:
+        return False, "no recognizable entity/product/event for visual storytelling"
+
+    return True, "ok"
+
+
 def select_cover_subject(news_list: list[dict]) -> dict:
     """
-    从可信候选池中选择封面主题。
+    从正文 Top 1-3 中选择封面主题。
 
-    过滤掉：
-    - _cover_excluded
-    - 低置信度
-    - 低置信度品牌声明
-    - HN-only低热度（无跨源 + score<20）
-    - 标题包含传闻关键词
+    规则（按用户要求）：
+    1. 默认绑定第 1 条新闻
+    2. 只有第 1 条被 _cover_excluded、low confidence、传闻、无视觉价值时，
+       才从 Top 2-3 中依次尝试
+    3. 不能从 Top 3 以外选封面主题
+    4. Top 3 全都不合格时使用 generic 中性封面
 
     Returns:
         {
@@ -306,109 +614,144 @@ def select_cover_subject(news_list: list[dict]) -> dict:
             "item": dict or None,
             "cover_title": str,
             "visual_prompt_topic": str,
+            "story_type": str,
             "reason": str,
+            "excluded": list,
         }
     """
     if not news_list:
         return {
             "mode": "generic",
             "item": None,
-            "cover_title": "今日 AI 热点速览",
+            "cover_title": "AI 日报",
             "visual_prompt_topic": "a curated daily briefing about artificial intelligence",
+            "story_type": "general",
             "reason": "empty news list",
         }
 
-    # 构建可信候选池
-    candidates = []
-    excluded = []
-    for item in news_list:
+    top3 = news_list[:3]
+    excluded_info: list[dict] = []
+
+    for i, item in enumerate(top3):
         title = item.get("chinese_title") or item.get("title", "")
-        title_lower = title.lower()
 
-        # 过滤条件
-        if item.get("_cover_excluded"):
-            excluded.append((title, f"cover_excluded: {item['_cover_excluded']}"))
-            continue
-        if item.get("_confidence_level") == "low":
-            excluded.append((title, "low confidence"))
-            continue
-        bc = item.get("_brand_claim", {})
-        if bc.get("confidence") == "low":
-            excluded.append((title, f"low confidence brand claim: {bc.get('brand', '')}"))
-            continue
-        st = item.get("source_type", "")
-        metrics = item.get("metrics", {}) or {}
-        if st == "hn" and metrics.get("cross_source_count", 0) == 0 and metrics.get("hn_score", 0) < 20:
-            excluded.append((title, f"HN-only low heat (score={metrics.get('hn_score', 0)})"))
-            continue
-        if any(kw in title_lower for kw in _RUMOR_KEYWORDS):
-            excluded.append((title, "rumor/speculation keyword in title"))
+        # 检查资格
+        eligible, reason = _is_eligible_for_cover(item)
+        if not eligible:
+            excluded_info.append({"title": title[:60], "reason": reason, "rank": i + 1})
+            logger.info("Cover #%d excluded: %s — %s", i + 1, title[:40], reason)
             continue
 
-        # 评分：RSS优先 + 有图优先 + 评分
-        priority = 0
-        if item.get("source_type") == "rss" or item.get("source_type") == "official":
-            priority += 100
-        if metrics.get("cross_source_count", 0) > 0:
-            priority += 50
-        if item.get("article_image_url"):
-            priority += 30
-        priority += item.get("_score", 0) or item.get("scores", {}).get("final", 0)
-        candidates.append((priority, item))
+        # 检查视觉价值
+        has_value, v_reason = _has_visual_value(item)
+        if not has_value:
+            excluded_info.append({"title": title[:60], "reason": v_reason, "rank": i + 1})
+            logger.info("Cover #%d no visual value: %s — %s", i + 1, title[:40], v_reason)
+            continue
 
-    # 排序：优先级从高到低
-    candidates.sort(key=lambda x: x[0], reverse=True)
-
-    if candidates:
-        best = candidates[0][1]
-        title = best.get("chinese_title") or best.get("title", "")
-
-        # 验证：封面主题必须和正文 Top 1-3 中的可见新闻一致
-        # 如果选中的条目不在 news_list 前 3 位，说明封面主题与正文主线错位
-        top3_ids = {id(item) for item in news_list[:3]}
-        if id(best) not in top3_ids:
-            logger.warning(
-                "Cover subject '%s' not in top 3 visible news, falling back to generic",
-                title[:50],
-            )
-            return {
-                "mode": "generic",
-                "item": None,
-                "cover_title": "今日 AI 热点速览",
-                "visual_prompt_topic": (
-                    "a curated daily briefing about artificial intelligence "
-                    "industry, research and developer tools"
-                ),
-                "reason": (
-                    f"top candidate not in top 3 visible news "
-                    f"(candidate: '{title[:40]}', excluded {len(excluded)} others)"
-                ),
-                "excluded": [{"title": t, "reason": r} for t, r in excluded],
-            }
-
+        # 合格！绑定此条为封面主题
+        story_type = _classify_story_type(item)
         logger.info(
-            "Cover subject: trusted — '%s' (excluded %d candidates)",
-            title[:50], len(excluded),
+            "Cover subject: #%d trusted (%s) — '%s'",
+            i + 1, story_type, title[:50],
         )
         return {
             "mode": "trusted",
-            "item": best,
+            "item": item,
             "cover_title": title[:20].rstrip("，。；：！？、"),
-            "visual_prompt_topic": _extract_topic_for_visual(best),
-            "reason": f"selected from {len(candidates)} trusted candidates, {len(excluded)} excluded",
-            "excluded": [{"title": t, "reason": r} for t, r in excluded],
+            "visual_prompt_topic": _extract_topic_for_visual(item),
+            "story_type": story_type,
+            "reason": f"#{(i + 1)} in top 3, story_type={story_type}",
+            "excluded": excluded_info,
         }
 
-    # 没有可靠候选 — 通用主题
-    logger.warning("Cover subject: generic — all %d items excluded", len(news_list))
+    # Top 3 全都不合格 — 使用中性抽象封面
+    logger.warning(
+        "Cover subject: generic — all top 3 excluded (%d reasons)",
+        len(excluded_info),
+    )
     return {
         "mode": "generic",
         "item": None,
-        "cover_title": "今日 AI 热点速览",
-        "visual_prompt_topic": "a curated daily briefing about artificial intelligence industry, research and developer tools",
-        "reason": f"no trusted candidate (all {len(excluded)} excluded)",
-        "excluded": [{"title": t, "reason": r} for t, r in excluded],
+        "cover_title": "AI 日报",
+        "visual_prompt_topic": (
+            "a curated daily briefing about artificial intelligence "
+            "industry, research and developer tools"
+        ),
+        "story_type": "general",
+        "reason": f"no eligible item in top 3 (all {len(excluded_info)} excluded)",
+        "excluded": excluded_info,
     }
+
+
+def _classify_story_type(item: dict) -> str:
+    """
+    根据新闻标题和摘要判断故事类型。
+
+    Returns one of:
+        personnel, product, model, research, business, policy, general
+    """
+    title = (item.get("chinese_title") or item.get("title", "")).lower()
+    summary = (item.get("summary", "")).lower()
+    combined = title + " " + summary
+
+    # 人物变动
+    personnel_kw = [
+        "离职", "卸任", "加入", "任命", "辞职", "跳槽", "裁员",
+        "ceo", "cto", "高管", "人事", "创始人",
+        "resign", "step down", "leave", "join", "appoint",
+        "hire", "chief", "executive", "depart",
+    ]
+    if any(kw in combined for kw in personnel_kw):
+        return "personnel"
+
+    # 模型发布
+    model_kw = [
+        "模型", "开源模型", "大模型", "参数", "权重",
+        "checkpoint", "weights", "gpt-", "claude", "gemini", "llama",
+        "deepseek", "qwen", "mistral", "diffusion",
+    ]
+    if any(kw in combined for kw in model_kw):
+        return "model"
+
+    # 产品发布
+    product_kw = [
+        "发布", "推出", "上线", "新功能", "更新", "升级", "插件",
+        "launch", "release", "new feature", "update", "roll out",
+        "app", "tool", "platform", "编辑器", "助手",
+    ]
+    if any(kw in combined for kw in product_kw):
+        return "product"
+
+    # 研究论文
+    research_kw = [
+        "论文", "arxiv", "研究", "实验", "benchmark", "基准",
+        "survey", "综述", "paper", "study", "method",
+        "approach", "framework", "novel",
+    ]
+    source_type = item.get("source_type", "")
+    if source_type == "arxiv" or any(kw in combined for kw in research_kw):
+        return "research"
+
+    # 公司商业
+    business_kw = [
+        "融资", "收购", "财报", "营收", "ipo", "上市", "估值",
+        "fund", "acquire", "revenue", "valuation", "invest",
+        "startup", "股价", "商业",
+    ]
+    if any(kw in combined for kw in business_kw):
+        return "business"
+
+    # 政策监管
+    policy_kw = [
+        "监管", "政策", "法律", "诉讼", "版权", "合规",
+        "regulation", "policy", "lawsuit", "copyright", "ban",
+        "隐私", "隐私", "安全", "欧盟", "国会", "政府",
+    ]
+    if any(kw in combined for kw in policy_kw):
+        return "policy"
+
+    return "general"
 
 
 def _extract_topic_for_visual(item: dict) -> str:
