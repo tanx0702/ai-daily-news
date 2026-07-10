@@ -144,7 +144,7 @@ def main():
         media_report = {}
 
     # === 2.6 生成今日重点编辑摘要 + 封面主题选择 ===
-    cover_title = "AI 日报"
+    cover_title = "今日AI要闻"
     cover_subject = None
     if api_key and news_list:
         logger.info("[2.6/6] 生成今日重点编辑摘要 + 封面标题...")
@@ -183,7 +183,7 @@ def main():
             if top_item.get("_cover_excluded"):
                 cover_excluded = True
         if cover_excluded:
-            cover_title = "今日 AI 热点速览"
+            cover_title = "今日AI要闻"
             logger.info("Cover title: top item excluded by quality gate, using generic title")
         else:
             cover_title = generate_cover_title(
@@ -292,7 +292,15 @@ def main():
         latest_data["cover_subject"] = {
             "mode": cover_subject.get("mode"),
             "title": cover_subject.get("cover_title", ""),
+            "headline": cover_subject.get("cover_headline", ""),
             "reason": cover_subject.get("reason", ""),
+            "story_type": cover_subject.get("story_type", ""),
+            "cover_source": cover_subject.get("cover_source", ""),
+            "matches_top1": bool(
+                cover_subject.get("item") is news_list[0]
+                if news_list and cover_subject.get("item")
+                else False
+            ),
         }
     if media_report:
         latest_data["media"] = {
@@ -306,7 +314,7 @@ def main():
         json.dump(latest_data, f, ensure_ascii=False, indent=2, default=_json_serial)
     logger.info("News data saved to %s", latest_path)
 
-    _generate_debug_reports(news_list, date_str, docs_dir)
+    _generate_debug_reports(news_list, date_str, docs_dir, cover_subject=cover_subject)
 
     # === 6. 发布微信推文 ===
     logger.info("[6/6] 发布微信推文...")
@@ -420,7 +428,12 @@ def _annotate_reasons(news_list: list[dict]):
         item["selected_reason"] = " | ".join(reasons) if reasons else "综合评分"
 
 
-def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str):
+def _generate_debug_reports(
+    news_list: list[dict],
+    date_str: str,
+    docs_dir: str,
+    cover_subject: dict | None = None,
+):
     """生成 debug 报告：candidates.json 和 ranking.md。"""
     debug_dir = os.path.join(docs_dir, "debug")
     os.makedirs(debug_dir, exist_ok=True)
@@ -480,9 +493,31 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         f"Total selected: {len(news_list)} items",
         f"",
-        f"## Final Rankings",
+        f"## Cover",
         f"",
     ]
+
+    if cover_subject:
+        cover_item = cover_subject.get("item") or {}
+        cover_title = cover_item.get("chinese_title") or cover_item.get("title") or cover_subject.get("cover_title", "")
+        matches_top1 = bool(cover_item is news_list[0]) if news_list and cover_item else False
+        lines.extend([
+            f"- **Source**: {cover_subject.get('cover_source', '') or 'unknown'}",
+            f"- **Mode**: {cover_subject.get('mode', '')}",
+            f"- **Story type**: {cover_subject.get('story_type', '')}",
+            f"- **Headline**: {cover_subject.get('cover_headline', '')}",
+            f"- **Story title**: {cover_title}",
+            f"- **Matches Top 1**: {str(matches_top1).lower()}",
+            f"- **Reason**: {cover_subject.get('reason', '')}",
+            f"",
+        ])
+    else:
+        lines.extend(["- No cover subject recorded.", ""])
+
+    lines.extend([
+        f"## Final Rankings",
+        f"",
+    ])
 
     for i, item in enumerate(news_list, 1):
         title = (item.get("chinese_title") or item["title"])[:80]

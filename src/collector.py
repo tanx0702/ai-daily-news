@@ -129,6 +129,7 @@ def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
     summary = unescape(summary_raw).strip() if summary_raw else ""
     # 纯文本化：去除 HTML 标签
     summary = _strip_html(summary)
+    image_candidates = _extract_rss_image_candidates(entry)
 
     source = entry.get("source", {}).get("title", "") or ""
     if not source:
@@ -147,7 +148,64 @@ def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
         "published_at": pub_time,
         "published_source": pub_source,
         "summary": summary[:200],  # 截断过长摘要
+        "image_candidates": image_candidates,
     }
+
+
+def _extract_rss_image_candidates(entry: dict) -> list[dict]:
+    """从 RSS entry 中提取可能的原文图候选。"""
+    candidates: list[dict] = []
+
+    def add(url: str, source: str):
+        if not url:
+            return
+        url = str(url).strip()
+        if not url or url.startswith("data:"):
+            return
+        if any(c.get("url") == url for c in candidates):
+            return
+        candidates.append({"url": url, "source": source})
+
+    # media:content / media:thumbnail
+    for key, source in [
+        ("media_content", "rss:media_content"),
+        ("media_thumbnail", "rss:media_thumbnail"),
+        ("links", "rss:link"),
+    ]:
+        values = entry.get(key) or []
+        if not isinstance(values, list):
+            continue
+        for obj in values:
+            if not isinstance(obj, dict):
+                continue
+            href = obj.get("url") or obj.get("href")
+            mime = str(obj.get("type", "")).lower()
+            rel = str(obj.get("rel", "")).lower()
+            if "image" in mime or key != "links" or rel in ("enclosure", "thumbnail"):
+                add(href, source)
+
+    # enclosure
+    for enc in entry.get("enclosures", []) or []:
+        if isinstance(enc, dict):
+            mime = str(enc.get("type", "")).lower()
+            if "image" in mime:
+                add(enc.get("href") or enc.get("url"), "rss:enclosure")
+
+    # summary/content HTML 内的第一张图
+    html_parts = []
+    for key in ("summary", "description"):
+        if entry.get(key):
+            html_parts.append(str(entry.get(key)))
+    for content in entry.get("content", []) or []:
+        if isinstance(content, dict) and content.get("value"):
+            html_parts.append(str(content.get("value")))
+
+    import re as _re
+    for html_part in html_parts:
+        for match in _re.finditer(r'<img[^>]+src=["\']([^"\']+)["\']', html_part, _re.I):
+            add(match.group(1), "rss:html_img")
+
+    return candidates
 
 
 def _parse_published_multi(entry: dict, url: str = "") -> tuple[Optional[datetime], str]:
@@ -558,7 +616,7 @@ def _normalize_rss_item(item: dict) -> dict:
     id_str = url or title
     id_ = f"rss-{abs(hash(id_str))}"
 
-    return BaseCollector.make_candidate(
+    candidate = BaseCollector.make_candidate(
         id_=id_,
         title=title,
         url=url,
@@ -568,6 +626,9 @@ def _normalize_rss_item(item: dict) -> dict:
         published_source=item.get("published_source", "missing"),
         summary=item.get("summary", ""),
     )
+    if item.get("image_candidates"):
+        candidate["image_candidates"] = item.get("image_candidates", [])
+    return candidate
 
 
 def _merge_candidates(candidates: list[dict]) -> list[dict]:
@@ -581,6 +642,20 @@ def _merge_candidates(candidates: list[dict]) -> list[dict]:
     if len(candidates) <= 1:
         return candidates
 
+    def _merge_image_candidates(target: dict, source: dict) -> None:
+        existing = target.setdefault("image_candidates", [])
+        seen = {
+            cand.get("url")
+            for cand in existing
+            if isinstance(cand, dict) and cand.get("url")
+        }
+        for cand in source.get("image_candidates", []) or []:
+            if isinstance(cand, dict):
+                url = cand.get("url")
+                if url and url not in seen:
+                    existing.append(cand)
+                    seen.add(url)
+
     # 第一轮：按 URL 去重
     by_url: dict[str, dict] = {}
     for c in candidates:
@@ -589,6 +664,7 @@ def _merge_candidates(candidates: list[dict]) -> list[dict]:
             url = c.get("id", "")
         if url in by_url:
             existing = by_url[url]
+            _merge_image_candidates(existing, c)
             # 合并 metrics
             for key in existing["metrics"]:
                 existing["metrics"][key] = max(
@@ -618,6 +694,7 @@ def _merge_candidates(candidates: list[dict]) -> list[dict]:
         for existing in final:
             if _title_similarity(c["title"], existing["title"]) > 0.7:
                 # 合并到 existing
+                _merge_image_candidates(existing, c)
                 for key in existing["metrics"]:
                     existing["metrics"][key] = max(
                         existing["metrics"].get(key, 0),

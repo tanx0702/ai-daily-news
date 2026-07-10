@@ -21,7 +21,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI 日报 {{ date }}</title>
+    <title>今日AI要闻 {{ date }}</title>
     <style>
         /* --- Reset & Base --- */
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -266,9 +266,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="wrapper">
         <div class="header">
             <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
-            <h1>🤖 AI 日报</h1>
+            <h1>今日AI要闻</h1>
             <div class="date">{{ date }}</div>
-            <div class="count">今日 {{ news|length }} 条 AI 新闻</div>
+            <div class="count">{{ news|length }} 条精选</div>
         </div>
 
         {% for source_name, items in grouped_news.items() %}
@@ -313,7 +313,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                 {% endfor %}
             </div>
             <div class="powered">
-                Powered by <a href="https://github.com/{{ github_repo }}" target="_blank">AI Daily News Agent</a>
+                Powered by <a href="https://github.com/{{ github_repo }}" target="_blank">News Agent</a>
             </div>
         </div>
     </div>
@@ -507,9 +507,9 @@ def render_wechat_article(
     parts.append(
         f'<section style="text-align:center;padding:32px 20px 24px;">'
         f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:22px;'
-        f'font-weight:700;line-height:1.4;">AI 日报</p>'
+        f'font-weight:700;line-height:1.4;">今日AI要闻</p>'
         f'<p style="margin:0;color:{TEXT_MUTED};font-size:14px;line-height:1.6;">'
-        f'{esc(date_str)}  ·  今日精选 {len(news_list)} 条</p>'
+        f'{esc(date_str)}  ·  {len(news_list)} 条精选</p>'
         f'</section>'
     )
 
@@ -652,7 +652,7 @@ def render_wechat_article(
         f'<a href="{esc(pages_url)}" style="color:{ACCENT};font-weight:600;'
         f'text-decoration:none;">查看完整日报</a></p>'
         f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
-        f'AI Daily News Agent  ·  每日自动生成</p>'
+        f'每日AI资讯整理</p>'
         f'</section>'
     )
 
@@ -675,9 +675,9 @@ def _news_to_markdown(
         grouped.setdefault(region, []).append(item)
 
     lines: list[str] = []
-    lines.append("# AI 日报")
+    lines.append("# 今日AI要闻")
     lines.append("")
-    lines.append(f"{date_str} · 今日精选 {len(news_list)} 条")
+    lines.append(f"{date_str} · {len(news_list)} 条精选")
     lines.append("")
 
     region_order = [r for r in ["overseas", "china"] if r in grouped]
@@ -720,7 +720,7 @@ def _news_to_markdown(
     lines.append("")
     lines.append(f"👉 [查看完整日报（精美排版 + 暗色模式）]({pages_url})")
     lines.append("")
-    lines.append("AI Daily News Agent · 每日自动生成")
+    lines.append("每日AI资讯整理")
 
     return "\n".join(lines)
 
