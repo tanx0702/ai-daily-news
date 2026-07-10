@@ -784,15 +784,32 @@ def _make_cover_headline(item: dict, story_type: str) -> str:
         return title
 
     # 对过长标题做保守压缩，不编造新事实。
-    for sep in ["：", ":", "，", ",", "；", ";", " - ", "｜", "|"]:
+    # 优先级1：寻找完整的前半段（冒号/逗号/分号分隔）
+    for sep in ["：", ":", "，", ",", "；", ";"]:
         if sep in title:
             first = title.split(sep)[0].strip()
             if 8 <= len(first) <= 24:
                 return first
 
-    # 如果是特定类型，尽量保留前部实体和动作。
-    limit = 22 if story_type in ("personnel", "business", "policy") else 24
-    return title[:limit].rstrip("，。；：！？、,. ") + "…"
+    # 优先级2：如果有破折号或竖线，尝试保留前部
+    for sep in [" - ", "｜", "|", " — "]:
+        if sep in title:
+            first = title.split(sep)[0].strip()
+            if 8 <= len(first) <= 24:
+                return first
+
+    # 优先级3：智能截断 - 在词边界处截断，避免截断在"的/与/和"等连接词
+    limit = 20 if story_type in ("personnel", "business", "policy") else 22
+    if len(title) > limit:
+        truncated = title[:limit]
+        # 回退到最后一个完整词边界（避免在"的/与/和/及"等连接词处截断）
+        for i in range(len(truncated) - 1, max(0, len(truncated) - 6), -1):
+            if truncated[i] in "，。；：！？、,. 的与和及":
+                truncated = truncated[:i]
+                break
+        return truncated.rstrip("，。；：！？、,. 的与和及") + "…"
+
+    return title
 
 
 _NO_VISUAL_VALUE_PATTERNS = [
