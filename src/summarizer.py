@@ -402,8 +402,10 @@ def generate_cover_title(
 
     # 可信度门禁：头条低置信度 → 使用通用标题
     bc = top.get("_brand_claim", {})
-    if bc.get("confidence") == "low" or top.get("_confidence_level") == "low":
-        logger.info("Cover title: top item low confidence, using generic title")
+    if (bc.get("confidence") == "low"
+            or top.get("_confidence_level") == "low"
+            or top.get("_cover_excluded")):
+        logger.info("Cover title: top item low confidence or excluded by quality gate, using generic title")
         return "今日 AI 热点速览"
 
     topic = top.get("chinese_title") or top.get("title", "")

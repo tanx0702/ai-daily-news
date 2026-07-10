@@ -28,8 +28,25 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _env_bool(name: str, default: bool = True) -> bool:
+    """解析布尔型环境变量：1/true/yes/on → True，0/false/no/off → False。"""
+    val = os.environ.get(name, "").strip().lower()
+    if not val:
+        return default
+    if val in ("1", "true", "yes", "on"):
+        return True
+    if val in ("0", "false", "no", "off"):
+        return False
+    return default
+
+
 def main():
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+    pages_url = os.environ.get(
+        "PAGES_URL",
+        f"https://{os.environ.get('DOMAIN', 'tankex.xyz')}",
+    )
     logger.info("=" * 50)
     logger.info("AI Daily News Agent - %s", date_str)
     logger.info("=" * 50)
@@ -70,10 +87,45 @@ def main():
     else:
         logger.info("AGNES_API_KEY not set, skipping LLM summary")
 
-    # === 2.5 生成今日重点编辑摘要 ===
+    # === 2.5 质检门禁 ===
+    quality_report = {}
+    blocked_publish = False
+
+    # 读取质检配置
+    qg_enabled = _env_bool("ENABLE_LLM_QUALITY_GATE", True)
+    qg_strict = _env_bool("QUALITY_GATE_STRICT", False)
+    qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(llm_timeout)))
+
+    if qg_enabled and news_list:
+        logger.info("[2.5/6] 发布前质检...")
+        from src.quality_gate import review_daily
+
+        news_list, quality_report = review_daily(
+            news_list,
+            api_key=api_key,
+            model=model,
+            base_url=os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"),
+            timeout=qg_timeout,
+            strict=qg_strict,
+            date_str=date_str,
+            docs_dir=docs_dir,
+        )
+        blocked_publish = quality_report.get("blocked_publish", False)
+        logger.info(
+            "Quality gate: pass=%s, risk=%s, blocked=%s",
+            quality_report.get("pass"),
+            quality_report.get("risk_level"),
+            blocked_publish,
+        )
+    elif not qg_enabled:
+        logger.info("[2.5/6] 质检已禁用 (ENABLE_LLM_QUALITY_GATE=0)")
+    else:
+        logger.info("[2.5/6] 跳过质检 (无新闻数据)")
+
+    # === 2.6 生成今日重点编辑摘要 ===
     cover_title = "AI 日报"
     if api_key and news_list:
-        logger.info("[2.5/6] 生成今日重点编辑摘要 + 封面标题...")
+        logger.info("[2.6/6] 生成今日重点编辑摘要 + 封面标题...")
         from src.summarizer import generate_highlights, generate_cover_title
 
         # generate_highlights() 内部会跳过低置信度 item，
@@ -84,13 +136,15 @@ def main():
         # 将 highlights 按顺序映射回符合条件的 news_list items
         hi = 0
         for item in news_list:
+            # 检查是否被 quality gate 或 brand claim 排除
+            is_excluded = bool(item.get("_highlight_excluded"))
             bc = item.get("_brand_claim", {})
             is_low_conf = (
                 bc.get("confidence") == "low"
                 or item.get("_confidence_level") == "low"
             )
-            if is_low_conf:
-                # 低置信度：不分配 highlight，记录原因
+            if is_excluded or is_low_conf:
+                # 低置信度/质量门禁排除：不分配 highlight
                 if not item.get("_highlight_excluded"):
                     item["_highlight_excluded"] = "低置信度品牌声明"
                 continue
@@ -100,9 +154,19 @@ def main():
             if hi >= 3:
                 break
 
-        cover_title = generate_cover_title(
-            news_list, api_key=api_key, model=model, timeout=llm_timeout,
-        )
+        # 封面标题：检查是否被 quality gate 排除
+        cover_excluded = False
+        if news_list:
+            top_item = news_list[0]
+            if top_item.get("_cover_excluded"):
+                cover_excluded = True
+        if cover_excluded:
+            cover_title = "今日 AI 热点速览"
+            logger.info("Cover title: top item excluded by quality gate, using generic title")
+        else:
+            cover_title = generate_cover_title(
+                news_list, api_key=api_key, model=model, timeout=llm_timeout,
+            )
         logger.info("Cover title: %s", cover_title)
     else:
         logger.info("Skipping highlights/cover title (no API key)")
@@ -111,14 +175,8 @@ def main():
     logger.info("[3/6] 生成 HTML 日报...")
     from src.generator import render_daily_html, save_html
 
-    pages_url = os.environ.get(
-        "PAGES_URL",
-        f"https://{os.environ.get('DOMAIN', 'tankex.xyz')}",
-    )
-
     # 扫描历史归档链接
     archive_links = []
-    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     if os.path.isdir(docs_dir):
         archive_dir = os.path.join(docs_dir, "archive")
         if os.path.isdir(archive_dir):
@@ -191,6 +249,14 @@ def main():
         "wechat_preview_url": f"{pages_url}/wechat.html",
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+    if quality_report:
+        latest_data["quality_gate"] = {
+            "pass": quality_report.get("pass"),
+            "risk_level": quality_report.get("risk_level"),
+            "blocked_publish": quality_report.get("blocked_publish"),
+            "issues_count": len(quality_report.get("issues", [])),
+            "fixes_count": len(quality_report.get("applied_fixes", [])),
+        }
 
     latest_path = os.path.join(docs_dir, "latest.json")
     with open(latest_path, "w", encoding="utf-8") as f:
@@ -201,15 +267,25 @@ def main():
 
     # === 6. 发布微信推文 ===
     logger.info("[6/6] 发布微信推文...")
-    from src.wechat import publish_daily_article
 
-    cover_path = os.path.join(docs_dir, "cover.jpg")
-    wechat_result = publish_daily_article(
-        news_list,
-        date_str,
-        pages_url,
-        cover_path=cover_path if os.path.isfile(cover_path) else "",
-    )
+    if blocked_publish:
+        logger.warning(
+            "QUALITY GATE BLOCKED: 严格模式下发现 high risk，跳过微信草稿发布。"
+        )
+        logger.warning(
+            "HTML/debug/latest.json 已生成，请人工审核后手动发布。"
+        )
+        wechat_result = {"status": "blocked", "reason": "quality_gate_high_risk"}
+    else:
+        from src.wechat import publish_daily_article
+
+        cover_path = os.path.join(docs_dir, "cover.jpg")
+        wechat_result = publish_daily_article(
+            news_list,
+            date_str,
+            pages_url,
+            cover_path=cover_path if os.path.isfile(cover_path) else "",
+        )
     logger.info("WeChat publish result: %s", wechat_result)
 
     logger.info("=" * 50)
@@ -286,6 +362,11 @@ def _annotate_reasons(news_list: list[dict]):
             reasons.append(f"[低置信度品牌声明] {bc.get('reason', '')}")
         elif bc.get("confidence") == "medium":
             reasons.append(f"[品牌声明-中等置信度] {bc.get('reason', '')}")
+        qg = item.get("_quality_gate", {})
+        if qg:
+            qg_risk = qg.get("risk_level", "")
+            if qg_risk:
+                reasons.append(f"[质检:{qg_risk}] {';'.join(qg.get('issues', []))}")
         freshness = scores.get("freshness", 0)
         reasons.append(f"新鲜度={freshness:.0f}")
 
@@ -332,6 +413,15 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         if item.get("_summary_flagged"):
             entry["summary_flagged"] = True
             entry["suspicious_terms"] = item.get("_suspicious_terms", [])
+        qg = item.get("_quality_gate", {})
+        if qg:
+            entry["quality_gate"] = {
+                "risk_level": qg.get("risk_level", ""),
+                "issues": qg.get("issues", []),
+                "fixes": qg.get("fixes", []),
+            }
+        if item.get("_cover_excluded"):
+            entry["cover_excluded"] = item["_cover_excluded"]
         compact.append(entry)
 
     with open(candidates_path, "w", encoding="utf-8") as f:
@@ -363,9 +453,12 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
         conf = item.get("_confidence_level", "high")
         bc = item.get("_brand_claim", {})
         excluded = item.get("_highlight_excluded", "")
+        cover_excluded = item.get("_cover_excluded", "")
+        qg = item.get("_quality_gate", {})
         flagged = " ⚠️摘要可疑" if item.get("_summary_flagged") else ""
+        qg_flag = f" 🔍质检:{qg.get('risk_level', '')}" if qg else ""
 
-        lines.append(f"### {i}. {title}{flagged}")
+        lines.append(f"### {i}. {title}{flagged}{qg_flag}")
         lines.append(f"")
         lines.append(f"- **Type**: {st} | **Source**: {source}")
         lines.append(f"- **Score**: final={scores.get('final', 0):.1f}, fresh={scores.get('freshness', 0):.0f}, comm={scores.get('community', 0):.1f}")
@@ -376,6 +469,10 @@ def _generate_debug_reports(news_list: list[dict], date_str: str, docs_dir: str)
             lines.append(f"- **编辑摘要**: {highlight}")
         if excluded:
             lines.append(f"- **⚠️ 未入今日重点**: {excluded}")
+        if cover_excluded:
+            lines.append(f"- **⚠️ 未入选封面**: {cover_excluded}")
+        if qg:
+            lines.append(f"- **🔍 质检**: risk={qg.get('risk_level', '')}, issues={qg.get('issues', [])}, fixes={qg.get('fixes', [])}")
         if diversity:
             lines.append(f"- **⚠️ {diversity}**")
         lines.append(f"")

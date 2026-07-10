@@ -528,17 +528,20 @@ def render_wechat_article(
         f'</section>'
     )
 
-    # ── 今日重点（前 3 条编辑摘要）──
-    highlights = news_list[:3]
-    if highlights:
+    # ── 今日重点（前 3 条编辑摘要，跳过低置信度/质检排除项）──
+    highlight_candidates = [
+        item for item in news_list
+        if not item.get("_highlight_excluded")
+        and item.get("highlight_text")
+    ][:3]
+    if highlight_candidates:
         parts.append(
             f'<section style="margin:0 16px 20px;padding:16px 18px;'
             f'background:{ACCENT_BG};border-radius:8px;">'
             f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
             f'font-weight:600;line-height:1.4;">📌 今日重点</p>'
         )
-        for i, item in enumerate(highlights):
-            # 优先使用 LLM 生成的编辑摘要，降级用中文标题
+        for i, item in enumerate(highlight_candidates):
             highlight_text = item.get("highlight_text", "")
             if not highlight_text:
                 highlight_text = item.get("chinese_title") or item.get("title", "")
