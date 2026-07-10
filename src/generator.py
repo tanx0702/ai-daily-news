@@ -486,22 +486,7 @@ def render_wechat_article(
             text = text.replace(wrong, correct)
         return text
 
-    # ── 生成 short insight（看点）──
-    def _make_insight(item: dict) -> str:
-        """
-        从新闻数据中提取一条短「看点」文字（15-30 字）。
-        优先级：highlight_text > summary 首句 > 空
-        """
-        highlight = item.get("highlight_text", "")
-        if highlight:
-            return f"看点：{highlight[:35]}"
-        summary = item.get("summary", "")
-        if summary:
-            # 取第一个句号/换行之前的部分
-            first_sentence = summary.split("。")[0].split("\n")[0].strip()
-            if len(first_sentence) >= 10:
-                return f"看点：{first_sentence[:35]}"
-        return ""
+    # NOTE: _make_insight() 已移除 — 用户要求删除正文"看点：..."渲染逻辑
 
     parts: list[str] = []
 
@@ -565,7 +550,6 @@ def render_wechat_article(
         url = item.get("url", "")
         article_img = item.get("article_image_url", "")
         image_type = item.get("image_type", "")
-        merged_count = item.get("merged_count", 0)
 
         # 判断是否为图文卡片。
         # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
@@ -579,10 +563,6 @@ def render_wechat_article(
 
         # 标准化来源名
         clean_source, source_label = _normalize_source(source_name, source_type)
-
-        # 短看点
-        insight = _make_insight(item)
-        insight = _fix_typos(insight)
 
         # 卡片样式选择
         if has_image:
@@ -612,18 +592,6 @@ def render_wechat_article(
                 parts.append(
                     f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
                     f'line-height:1.8;">{esc(summary)}</p>'
-                )
-            # 看点
-            if insight:
-                parts.append(
-                    f'<p style="margin:0 16px 10px;color:{ACCENT};font-size:13px;'
-                    f'line-height:1.6;">🔍 {esc(insight)}</p>'
-                )
-            # 合并信息
-            if merged_count > 0:
-                parts.append(
-                    f'<p style="margin:0 16px 6px;color:{TEXT_MUTED};font-size:12px;'
-                    f'line-height:1.4;">📎 已合并 {merged_count} 条相近报道</p>'
                 )
             # 来源
             parts.append(
@@ -663,18 +631,6 @@ def render_wechat_article(
                 parts.append(
                     f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
                     f'line-height:1.7;">{esc(summary)}</p>'
-                )
-            # 看点
-            if insight:
-                parts.append(
-                    f'<p style="margin:0 0 8px;color:{ACCENT};font-size:13px;'
-                    f'line-height:1.5;">🔍 {esc(insight)}</p>'
-                )
-            # 合并信息
-            if merged_count > 0:
-                parts.append(
-                    f'<p style="margin:0 0 4px;color:{TEXT_MUTED};font-size:12px;'
-                    f'line-height:1.4;">📎 已合并 {merged_count} 条相近报道</p>'
                 )
             # 来源
             parts.append(

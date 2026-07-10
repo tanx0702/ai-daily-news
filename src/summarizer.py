@@ -180,7 +180,8 @@ def summarize_news(
             "   - 不确定时使用弱表述：「据社区讨论」「有报道称」「开发者讨论」\n"
             "   - 如果原文没有给出具体版本号（如 GPT-5.6），绝对不要添加\n"
             "6. 不要为了吸引眼球改写事实\n"
-            "同时为每条新闻生成一句中文摘要（40-80 字）。"
+            "同时为每条新闻生成一段中文摘要（90-160 字，2-3 句），"
+            "说明发生了什么、为什么重要、后续值得关注什么。\n"
             "严格按以下 JSON 数组格式回复，不要有其他内容："
             "[{\"chinese_title\": \"中文标题\", \"summary\": \"摘要内容\"}]"
             "数组中每个元素的顺序对应输入的标题顺序（第一条对应第一个标题）。"
@@ -194,7 +195,7 @@ def summarize_news(
                     {"role": "user", "content": headlines},
                 ],
                 temperature=0.3,
-                max_tokens=1000,
+                max_tokens=2000,
             )
             content = response.choices[0].message.content.strip()
             results = _extract_json(content)
@@ -237,14 +238,15 @@ def summarize_news(
                                     "请将以下英文新闻标题改写成自然的中文公众号标题，"
                                     "避免生硬直译，保留核心事实不标题党。"
                                     "禁止编造原文没有的型号、版本号、时间、金额。"
-                                    "同时生成一句中文摘要（40-80 字）。"
+                                    "同时生成一段中文摘要（90-160 字，2-3 句），"
+                                    "说明发生了什么、为什么重要、后续值得关注什么。"
                                     "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
                                 ),
                             },
                             {"role": "user", "content": news["title"]},
                         ],
                         temperature=0.3,
-                        max_tokens=200,
+                        max_tokens=350,
                     )
                     content = response.choices[0].message.content.strip()
                     result = _extract_json(content)

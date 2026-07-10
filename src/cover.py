@@ -11,7 +11,7 @@ import os
 from typing import Optional
 
 import requests
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 logger = logging.getLogger(__name__)
 
@@ -27,88 +27,10 @@ def _env_enabled_cover(name: str, default: bool = True) -> bool:
     return default
 
 
-# 中文字体候选列表（按优先级排序：Linux 容器 → Linux 通用 → Windows）
-_FONT_CANDIDATES = [
-    # Docker 容器 (fonts-noto-cjk)
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    # Docker 容器 (fonts-wqy-zenhei)
-    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
-    # Linux 通用
-    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    # Windows
-    "C:\\Windows\\Fonts\\msyh.ttc",
-    "C:\\Windows\\Fonts\\simhei.ttf",
-    "msyh.ttc",
-    "msyhbd.ttc",
-    "simhei.ttf",
-]
-
-
-def _load_font(size: int) -> ImageFont.FreeTypeFont:
-    """按优先级尝试加载中文字体，全部失败时返回默认字体（不抛异常）。"""
-    for path in _FONT_CANDIDATES:
-        try:
-            return ImageFont.truetype(path, size)
-        except (IOError, OSError):
-            continue
-    # 所有路径都失败，使用 Pillow 内置默认字体
-    return ImageFont.load_default()
-
-
-def _draw_cover_text(
-    img: Image.Image,
-    cover_title: str,
-    date_str: str,
-    news_count: int,
-) -> Image.Image:
-    """在封面图上叠加中文标题、日期和条数。字体加载失败时静默降级。"""
-    try:
-        return _draw_cover_text_impl(img, cover_title, date_str, news_count)
-    except Exception as e:
-        logger.warning("Failed to draw cover text: %s, returning bare image", e)
-        return img
-
-
-def _draw_cover_text_impl(
-    img: Image.Image,
-    cover_title: str,
-    date_str: str,
-    news_count: int,
-) -> Image.Image:
-    """_draw_cover_text 的实际实现。"""
-    draw = ImageDraw.Draw(img)
-    width, height = img.size
-
-    # 根据图片宽度自适应字号
-    base_size = max(width // 18, 28)
-
-    font_title = _load_font(base_size)
-    font_date = _load_font(max(base_size // 2, 16))
-    font_count = _load_font(max(base_size // 3, 12))
-
-    # 半透明背景条（提升文字可读性）
-    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    overlay_draw = ImageDraw.Draw(overlay)
-    # 底部渐变遮罩
-    for y in range(height // 2, height):
-        alpha = int(120 * (y - height // 2) / (height // 2))
-        overlay_draw.rectangle([(0, y), (width, y + 1)], fill=(0, 0, 0, min(alpha, 120)))
-
-    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
-    draw = ImageDraw.Draw(img)
-
-    # 标题文字（底部居中）
-    _, _, tw, th = draw.textbbox((0, 0), cover_title, font=font_title)
-    title_y = height - th - 80
-    draw.text(((width - tw) // 2, title_y), cover_title, fill="#ffffff", font=font_title)
-
-    # 日期 + 条数
-    date_text = f"{date_str} · 今日 {news_count} 条 AI 新闻"
-    _, _, dw, dh = draw.textbbox((0, 0), date_text, font=font_date)
-    draw.text(((width - dw) // 2, title_y + th + 12), date_text, fill="#cccccc", font=font_date)
-
-    return img
+# NOTE: _FONT_CANDIDATES / _load_font / _draw_cover_text / _draw_cover_text_impl 已移除。
+# 封面图片本体必须是纯视觉图，不叠任何文字。
+# 封面图片本体必须是纯视觉图，不叠任何日期、条数、标题、Logo、水印。
+# 日期和标题在 HTML 页面的 header 区域展示（不属于封面图片本体）。
 
 
 def _generate_simple_cover(
@@ -172,23 +94,17 @@ def _generate_simple_cover(
         # 实心白点
         draw.ellipse([(nx - 2, ny - 2), (nx + 2, ny + 2)], fill=(226, 232, 240))
 
-    # ── 底部深色渐变遮罩（为文字做准备）──
-    for y_offset in range(height // 2, height):
-        alpha = int(180 * (y_offset - height // 2) / (height // 2))
+    # ── 底部柔和渐变（纯视觉装饰，不叠加任何文字）──
+    for y_offset in range(int(height * 0.65), height):
+        alpha = int(60 * (y_offset - int(height * 0.65)) / (height - int(height * 0.65)))
         draw.rectangle(
             [(0, y_offset), (width, y_offset + 1)],
-            fill=(15, 23, 42, min(alpha, 180)),
+            fill=(15, 23, 42, min(alpha, 60)),
         )
-
-    # ── 叠加中文标题 ──
-    try:
-        img = _draw_cover_text(img, cover_title, date_str, len(news_list))
-    except Exception as e:
-        logger.warning("Cover text overlay failed: %s, saving bare image", e)
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
-    logger.info("Generated editorial simple cover at %s", output_path)
+    logger.info("Generated editorial simple cover (no text) at %s", output_path)
     return output_path
 
 
@@ -297,15 +213,9 @@ def generate_cover_from_news(
                 return _fallback_cover(news_list, date_str, output_path, cover_title)
             # 否则继续使用 AI 图，但记录 warning
 
-        # 5. 叠加中文标题（失败时保留原图）
-        try:
-            img = _draw_cover_text(img, cover_title, date_str, len(news_list))
-            img.save(output_path, "JPEG", quality=90)
-            ai_generated = True
-        except Exception as e:
-            logger.warning("Cover text overlay failed: %s, saving bare image", e)
-            with open(output_path, "wb") as f:
-                f.write(img_resp.content)
+        # 5. 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
+        img.save(output_path, "JPEG", quality=90)
+        ai_generated = True
 
         logger.info("Cover image generated and saved to %s (ai=%s, bad=%s)",
                      output_path, ai_generated, bad_ai)
@@ -452,6 +362,30 @@ def select_cover_subject(news_list: list[dict]) -> dict:
     if candidates:
         best = candidates[0][1]
         title = best.get("chinese_title") or best.get("title", "")
+
+        # 验证：封面主题必须和正文 Top 1-3 中的可见新闻一致
+        # 如果选中的条目不在 news_list 前 3 位，说明封面主题与正文主线错位
+        top3_ids = {id(item) for item in news_list[:3]}
+        if id(best) not in top3_ids:
+            logger.warning(
+                "Cover subject '%s' not in top 3 visible news, falling back to generic",
+                title[:50],
+            )
+            return {
+                "mode": "generic",
+                "item": None,
+                "cover_title": "今日 AI 热点速览",
+                "visual_prompt_topic": (
+                    "a curated daily briefing about artificial intelligence "
+                    "industry, research and developer tools"
+                ),
+                "reason": (
+                    f"top candidate not in top 3 visible news "
+                    f"(candidate: '{title[:40]}', excluded {len(excluded)} others)"
+                ),
+                "excluded": [{"title": t, "reason": r} for t, r in excluded],
+            }
+
         logger.info(
             "Cover subject: trusted — '%s' (excluded %d candidates)",
             title[:50], len(excluded),
