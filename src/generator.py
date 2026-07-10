@@ -567,8 +567,15 @@ def render_wechat_article(
         image_type = item.get("image_type", "")
         merged_count = item.get("merged_count", 0)
 
-        # 判断是否为图文卡片
-        has_image = bool(article_img and image_type == "original")
+        # 判断是否为图文卡片。
+        # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
+        # image_type="original" 但 article_image_url 不可用时，wechat.py 的
+        # _enrich_news_with_images() 会将其降级为 text_only，此处再次兜底。
+        has_image = bool(
+            article_img
+            and image_type == "original"
+            and article_img.strip() != ""
+        )
 
         # 标准化来源名
         clean_source, source_label = _normalize_source(source_name, source_type)
@@ -639,14 +646,11 @@ def render_wechat_article(
                 f'border-bottom:1px solid {BORDER};'
                 f'border-radius:6px;background:{TEXT_ONLY_BG};">'
             )
-            # 标签行：编号 + 类型标记
-            news_label = "NEWS " if not image_type else ""
-            type_tag = "快讯" if image_type == "text_only" else ""
+            # 标签行：编号 + "快讯"（所有无图卡片统一标签）
             parts.append(
                 f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
                 f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
-                f'NEWS {idx + 1:02d}'
-                f'{f" · {esc(type_tag)}" if type_tag else ""}'
+                f'NEWS {idx + 1:02d} · 快讯'
                 f'</p>'
             )
             # 标题（略小于图文卡片）

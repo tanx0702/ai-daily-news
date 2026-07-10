@@ -289,36 +289,80 @@ def _enrich_news_with_images(
     max_workers: int = 5,
 ) -> list[dict]:
     """
-    为每条新闻尝试获取配图（og:image → 下载 → 上传微信）。
+    为每条新闻的配图下载并上传到微信素材库。
 
-    并发处理，单条失败不影响其他。
-    只对真实原文图片上传，text_only 条目跳过。
+    关键规则（按用户要求）：
+    1. 预览 HTML 可用外部 URL；正式草稿前必须全部上传到微信素材库
+    2. 已有微信素材 URL（mmbiz.qpic.cn）：跳过
+    3. 已有外部图片 URL：必须下载 → 上传微信 → 替换为微信 URL
+    4. 上传成功：替换 article_image_url 为微信素材 URL
+    5. 上传失败：降级为 image_type="text_only"，清空 article_image_url
+    6. 不能出现"卡片按有图样式渲染，但图片被微信吞掉"的情况
+    7. text_only 条目不上传占位图
     """
     def _process_one(item: dict) -> None:
-        # 已是 text_only 的条目不尝试上传占位图
+        title_short = (item.get("chinese_title") or item.get("title", ""))[:40]
+
+        # 已是 text_only：清空 URL，不尝试上传占位图
         if item.get("image_type") == "text_only":
             item["article_image_url"] = ""
             return
+
+        existing_url = item.get("article_image_url", "")
+
+        # 如果已经是微信素材 URL，无需再上传
+        if existing_url and "mmbiz.qpic.cn" in existing_url:
+            item["image_upload_status"] = "already_uploaded"
+            return
+
+        # 如果有外部图片 URL（非微信素材），必须下载并上传到微信
+        # 这是关键修复：不能因为"已有 URL"就跳过上传
+        if existing_url:
+            wx_url = _upload_image_from_url(access_token, existing_url)
+            if wx_url:
+                item["article_image_url"] = wx_url
+                item["image_type"] = "original"
+                item["image_upload_status"] = "uploaded"
+                logger.info("Re-uploaded external → wx for: %s", title_short)
+            else:
+                # 上传失败 → 降级，避免"有图卡片但图片被微信吞掉"
+                item["image_type"] = "text_only"
+                item["article_image_url"] = ""
+                item["image_upload_status"] = "upload_failed"
+                logger.warning(
+                    "Upload failed, downgraded to text_only: %s", title_short,
+                )
+            return
+
+        # 没有现有 URL，尝试从原文抓取 og:image
         url = item.get("url", "")
-        if not url or item.get("article_image_url"):
-            return
-        # 来源天然无图 → 跳过
         source_type = item.get("source_type", "")
-        if source_type in ("hn", "github", "huggingface", "arxiv"):
+
+        # 来源天然无图 → 标记 text_only
+        if not url or source_type in ("hn", "github", "huggingface", "arxiv"):
+            item["image_type"] = "text_only"
+            item["article_image_url"] = ""
+            item["image_reason"] = (
+                f"source usually text-only ({source_type or 'no-url'})"
+            )
             return
+
         og_img = _fetch_og_image(url)
         if og_img:
             wx_url = _upload_image_from_url(access_token, og_img)
             if wx_url:
                 item["article_image_url"] = wx_url
                 item["image_type"] = "original"
-                logger.info("Enriched image for: %s", item.get("chinese_title") or item["title"][:40])
+                item["image_upload_status"] = "uploaded"
+                logger.info("Enriched image for: %s", title_short)
             else:
                 item["image_type"] = "text_only"
                 item["article_image_url"] = ""
+                item["image_upload_status"] = "upload_failed"
         else:
             item["image_type"] = "text_only"
             item["article_image_url"] = ""
+            item["image_reason"] = "no og:image found"
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_process_one, item): item for item in news_list}
@@ -328,10 +372,28 @@ def _enrich_news_with_images(
             except Exception as e:
                 logger.warning("Image enrichment failed: %s", e)
 
-    img_count = sum(1 for item in news_list if item.get("article_image_url"))
-    text_only_count = sum(1 for item in news_list if item.get("image_type") == "text_only")
+    # 最终状态计数：只统计 image_type=="original" 且确实有微信 URL 的
+    img_count = sum(
+        1 for item in news_list
+        if item.get("image_type") == "original" and item.get("article_image_url")
+    )
+    text_only_count = sum(
+        1 for item in news_list
+        if item.get("image_type") == "text_only" or not item.get("article_image_url")
+    )
+    # 记录每条最终状态
+    for item in news_list:
+        status = item.get("image_upload_status", "unknown")
+        img_type = item.get("image_type", "?")
+        img_url = item.get("article_image_url", "")
+        title_short = (item.get("chinese_title") or item.get("title", ""))[:40]
+        logger.info(
+            "Final image state: type=%s status=%s url=%s title=%s",
+            img_type, status, img_url[:50] if img_url else "(none)", title_short,
+        )
+
     logger.info(
-        "Image enrichment: %d with images, %d text-only (total %d)",
+        "Image enrichment done: %d with WeChat images, %d text-only (total %d)",
         img_count, text_only_count, len(news_list),
     )
     return news_list
