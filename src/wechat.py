@@ -292,17 +292,33 @@ def _enrich_news_with_images(
     为每条新闻尝试获取配图（og:image → 下载 → 上传微信）。
 
     并发处理，单条失败不影响其他。
+    只对真实原文图片上传，text_only 条目跳过。
     """
     def _process_one(item: dict) -> None:
+        # 已是 text_only 的条目不尝试上传占位图
+        if item.get("image_type") == "text_only":
+            item["article_image_url"] = ""
+            return
         url = item.get("url", "")
         if not url or item.get("article_image_url"):
+            return
+        # 来源天然无图 → 跳过
+        source_type = item.get("source_type", "")
+        if source_type in ("hn", "github", "huggingface", "arxiv"):
             return
         og_img = _fetch_og_image(url)
         if og_img:
             wx_url = _upload_image_from_url(access_token, og_img)
             if wx_url:
                 item["article_image_url"] = wx_url
+                item["image_type"] = "original"
                 logger.info("Enriched image for: %s", item.get("chinese_title") or item["title"][:40])
+            else:
+                item["image_type"] = "text_only"
+                item["article_image_url"] = ""
+        else:
+            item["image_type"] = "text_only"
+            item["article_image_url"] = ""
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_process_one, item): item for item in news_list}
@@ -313,7 +329,11 @@ def _enrich_news_with_images(
                 logger.warning("Image enrichment failed: %s", e)
 
     img_count = sum(1 for item in news_list if item.get("article_image_url"))
-    logger.info("Enriched %d/%d news items with images", img_count, len(news_list))
+    text_only_count = sum(1 for item in news_list if item.get("image_type") == "text_only")
+    logger.info(
+        "Image enrichment: %d with images, %d text-only (total %d)",
+        img_count, text_only_count, len(news_list),
+    )
     return news_list
 
 

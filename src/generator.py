@@ -552,9 +552,11 @@ def render_wechat_article(
         parts.append('</section>')
 
     # ── 新闻列表 ──
+    ACCENT_BAR = "#3b82f6"  # 纯文字卡片左侧强调线颜色
+    TEXT_ONLY_BG = "#f8fafc"  # 纯文字卡片微背景
+
     for idx, item in enumerate(news_list):
         title = item.get("chinese_title") or item.get("title", "")
-        # 错别字修正
         title = _fix_typos(title)
         summary = item.get("summary", "")
         summary = _fix_typos(summary)
@@ -562,65 +564,125 @@ def render_wechat_article(
         source_type = item.get("source_type", "")
         url = item.get("url", "")
         article_img = item.get("article_image_url", "")
+        image_type = item.get("image_type", "")
+        merged_count = item.get("merged_count", 0)
+
+        # 判断是否为图文卡片
+        has_image = bool(article_img and image_type == "original")
 
         # 标准化来源名
         clean_source, source_label = _normalize_source(source_name, source_type)
 
         # 短看点
         insight = _make_insight(item)
-        # 错别字修正
         insight = _fix_typos(insight)
 
-        parts.append(
-            f'<section style="margin:0 16px 16px;padding:18px 16px;'
-            f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};">'
-        )
-
-        # 文章配图（控制高度避免占据过多屏幕）
-        if article_img:
+        # 卡片样式选择
+        if has_image:
+            # ── 图文卡片 ──
+            parts.append(
+                f'<section style="margin:0 16px 16px;padding:0 0 16px 0;'
+                f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};overflow:hidden;">'
+            )
+            # 顶部配图
             parts.append(
                 f'<img src="{esc(article_img)}" '
                 f'style="display:block;width:100%;max-height:240px;'
-                f'object-fit:cover;margin:0 0 12px;border-radius:4px;" alt="" />'
+                f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
             )
-
-        # 编号
-        parts.append(
-            f'<p style="margin:0 0 8px;color:{ACCENT};font-size:13px;'
-            f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d}</p>'
-        )
-
-        # 标题
-        parts.append(
-            f'<p style="margin:0 0 10px;color:{TEXT_MAIN};font-size:18px;'
-            f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
-        )
-
-        # 摘要
-        if summary:
+            # 编号（图片下方）
             parts.append(
-                f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:15px;'
-                f'line-height:1.8;">{esc(summary)}</p>'
+                f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
+                f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d}</p>'
             )
-
-        # 看点（短 insight）
-        if insight:
+            # 标题
             parts.append(
-                f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
-                f'line-height:1.6;">🔍 {esc(insight)}</p>'
+                f'<p style="margin:0 16px 10px;color:{TEXT_MAIN};font-size:18px;'
+                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
             )
-
-        # 来源 + 阅读原文
-        parts.append(
-            f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-            f'{esc(source_label)}'
-        )
-        if url:
+            # 摘要
+            if summary:
+                parts.append(
+                    f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
+                    f'line-height:1.8;">{esc(summary)}</p>'
+                )
+            # 看点
+            if insight:
+                parts.append(
+                    f'<p style="margin:0 16px 10px;color:{ACCENT};font-size:13px;'
+                    f'line-height:1.6;">🔍 {esc(insight)}</p>'
+                )
+            # 合并信息
+            if merged_count > 0:
+                parts.append(
+                    f'<p style="margin:0 16px 6px;color:{TEXT_MUTED};font-size:12px;'
+                    f'line-height:1.4;">📎 已合并 {merged_count} 条相近报道</p>'
+                )
+            # 来源
             parts.append(
-                f' · <a href="{esc(url)}" style="color:{ACCENT};text-decoration:none;">'
-                f'阅读原文</a>'
+                f'<p style="margin:0 16px 14px;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                f'{esc(source_label)}'
             )
-        parts.append('</p></section>')
+            if url:
+                parts.append(
+                    f' · <a href="{esc(url)}" style="color:{ACCENT};text-decoration:none;">'
+                    f'阅读原文</a>'
+                )
+            parts.append('</p></section>')
+
+        else:
+            # ── 纯文字卡片（无配图，紧凑布局，左侧强调线） ──
+            parts.append(
+                f'<section style="margin:0 16px 16px;padding:14px 16px 14px 20px;'
+                f'border-left:3px solid {ACCENT_BAR};'
+                f'border-top:1px solid {BORDER};border-right:1px solid {BORDER};'
+                f'border-bottom:1px solid {BORDER};'
+                f'border-radius:6px;background:{TEXT_ONLY_BG};">'
+            )
+            # 标签行：编号 + 类型标记
+            news_label = "NEWS " if not image_type else ""
+            type_tag = "快讯" if image_type == "text_only" else ""
+            parts.append(
+                f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
+                f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
+                f'NEWS {idx + 1:02d}'
+                f'{f" · {esc(type_tag)}" if type_tag else ""}'
+                f'</p>'
+            )
+            # 标题（略小于图文卡片）
+            parts.append(
+                f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:17px;'
+                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+            )
+            # 摘要（紧凑）
+            if summary:
+                parts.append(
+                    f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
+                    f'line-height:1.7;">{esc(summary)}</p>'
+                )
+            # 看点
+            if insight:
+                parts.append(
+                    f'<p style="margin:0 0 8px;color:{ACCENT};font-size:13px;'
+                    f'line-height:1.5;">🔍 {esc(insight)}</p>'
+                )
+            # 合并信息
+            if merged_count > 0:
+                parts.append(
+                    f'<p style="margin:0 0 4px;color:{TEXT_MUTED};font-size:12px;'
+                    f'line-height:1.4;">📎 已合并 {merged_count} 条相近报道</p>'
+                )
+            # 来源
+            parts.append(
+                f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                f'{esc(source_label)}'
+            )
+            if url:
+                parts.append(
+                    f' · <a href="{esc(url)}" style="color:{ACCENT};text-decoration:none;">'
+                    f'阅读原文</a>'
+                )
+            parts.append('</p></section>')
 
     # ── 尾部 ──
     parts.append(

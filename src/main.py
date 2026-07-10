@@ -122,8 +122,30 @@ def main():
     else:
         logger.info("[2.5/6] 跳过质检 (无新闻数据)")
 
-    # === 2.6 生成今日重点编辑摘要 ===
+    # === 2.55 正文媒体资源解析 ===
+    if _env_bool("ENABLE_ARTICLE_IMAGE_FETCH", True) and news_list:
+        logger.info("[2.55/6] 解析正文配图...")
+        from src.media_assets import resolve_article_media
+
+        img_timeout = int(os.environ.get("ARTICLE_IMAGE_TIMEOUT", "8"))
+        news_list, media_report = resolve_article_media(
+            news_list,
+            docs_dir=docs_dir,
+            pages_url=pages_url,
+            date_str=date_str,
+            timeout=img_timeout,
+        )
+        logger.info(
+            "Media: %d original images, %d text-only cards",
+            media_report.get("with_original_image", 0),
+            media_report.get("text_only", 0),
+        )
+    else:
+        media_report = {}
+
+    # === 2.6 生成今日重点编辑摘要 + 封面主题选择 ===
     cover_title = "AI 日报"
+    cover_subject = None
     if api_key and news_list:
         logger.info("[2.6/6] 生成今日重点编辑摘要 + 封面标题...")
         from src.summarizer import generate_highlights, generate_cover_title
@@ -202,11 +224,19 @@ def main():
 
     # === 4. 生成封面图 ===
     logger.info("[4/6] 生成封面图...")
-    from src.cover import generate_cover_from_news
+    from src.cover import generate_cover_from_news, select_cover_subject
 
     cover_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     cover_base_url = os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com")
     cover_save_path = os.path.join(docs_dir, "cover.jpg")
+
+    # 选择封面主题（从可信候选池中选择）
+    if cover_subject is None:
+        cover_subject = select_cover_subject(news_list)
+    logger.info(
+        "Cover subject: mode=%s, title=%s",
+        cover_subject.get("mode"), cover_subject.get("cover_title", ""),
+    )
 
     if cover_key:
         try:
@@ -217,6 +247,7 @@ def main():
                 api_key=cover_key,
                 base_url=cover_base_url,
                 cover_title=cover_title,
+                cover_subject=cover_subject,
             )
             logger.info("Cover image saved to %s", cover_save_path)
         except Exception as e:
@@ -256,6 +287,18 @@ def main():
             "blocked_publish": quality_report.get("blocked_publish"),
             "issues_count": len(quality_report.get("issues", [])),
             "fixes_count": len(quality_report.get("applied_fixes", [])),
+        }
+    if cover_subject:
+        latest_data["cover_subject"] = {
+            "mode": cover_subject.get("mode"),
+            "title": cover_subject.get("cover_title", ""),
+            "reason": cover_subject.get("reason", ""),
+        }
+    if media_report:
+        latest_data["media"] = {
+            "total": media_report.get("total", 0),
+            "with_original_image": media_report.get("with_original_image", 0),
+            "text_only": media_report.get("text_only", 0),
         }
 
     latest_path = os.path.join(docs_dir, "latest.json")

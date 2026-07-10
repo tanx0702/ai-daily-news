@@ -864,6 +864,248 @@ def _cluster_by_topic(items: list[dict]) -> tuple[list[dict], dict]:
     return result, {"merged": merged_count}
 
 
+# ── 人物词典（用于事件指纹提取） ──
+_PEOPLE_PATTERNS: list[str] = [
+    "Sam Altman", "Greg Brockman", "Ilya Sutskever", "Mira Murati",
+    "Fidji Simo", "Kevin Weil", "Dario Amodei", "Daniela Amodei",
+    "Demis Hassabis", "Sundar Pichai", "Satya Nadella", "Mark Zuckerberg",
+    "Elon Musk", "Jensen Huang", "Lisa Su", "Tim Cook", "Jeff Bezos",
+    "Andy Jassy", "Arthur Mensch", "Aravind Srinivas",
+    "Emmett Shear", "Jakub Pachocki", "John Schulman", "Jan Leike",
+    "Noam Shazeer", "Aidan Gomez", "Clem Delangue", "Yann LeCun",
+    "Geoffrey Hinton", "Andrew Ng", "Fei-Fei Li", "Andrej Karpathy",
+    "李开复", "王小川", "周鸿祎", "张一鸣",
+    "Hinton", "LeCun", "Bengio", "Karpathy",
+]
+
+# ── 动作词（中英文） ──
+_ACTION_WORDS_ZH: set[str] = {
+    "离职", "卸任", "加入", "任命", "发布", "推出", "开源", "收购", "融资",
+    "合作", "调整", "辞职", "上任", "下台", "跳槽", "投资", "估值", "上市",
+}
+_ACTION_WORDS_EN: set[str] = {
+    "resign", "step down", "leave", "join", "appoint", "launch", "release",
+    "open-source", "acquire", "raise", "partner", "restructure", "depart",
+    "quit", "hire", "promote",
+}
+
+
+def _event_fingerprint(item: dict) -> dict:
+    """
+    提取轻量事件指纹：公司、人物、产品、核心动作。
+
+    基于标题和摘要做模式匹配，用于判断两条新闻是否描述同一事件。
+    """
+    text = (item.get("title", "") + " " + str(item.get("summary", ""))).lower()
+
+    # 公司 — 复用 brand claim 中的品牌映射
+    companies: set[str] = set()
+    for brand in _MAJOR_BRANDS:
+        if brand in text:
+            companies.add(brand)
+
+    # 人物
+    people: set[str] = set()
+    text_original_case = item.get("title", "") + " " + str(item.get("summary", ""))
+    for person in _PEOPLE_PATTERNS:
+        if person.lower() in text or person in text_original_case:
+            people.add(person.lower())
+
+    # 产品（简化的型号/产品名匹配）
+    products: set[str] = set()
+    _product_kw = [
+        "gpt", "claude", "gemini", "llama", "grok", "mistral", "mixtral",
+        "deepseek", "qwen", "phi", "muse", "dall-e", "sora", "midjourney",
+        "copilot", "chatgpt", "diffusion", "whisper",
+    ]
+    for p in _product_kw:
+        if p in text:
+            products.add(p)
+
+    # 动作
+    actions: set[str] = set()
+    for w in _ACTION_WORDS_ZH:
+        if w in text:
+            actions.add(w)
+    for w in _ACTION_WORDS_EN:
+        if w in text:
+            actions.add(w)
+
+    return {
+        "companies": companies,
+        "people": people,
+        "products": products,
+        "actions": actions,
+    }
+
+
+def _fp_overlap(a: dict, b: dict) -> dict:
+    """计算两个指纹的重叠情况。"""
+    return {
+        "shared_companies": a["companies"] & b["companies"],
+        "shared_people": a["people"] & b["people"],
+        "shared_products": a["products"] & b["products"],
+        "shared_actions": a["actions"] & b["actions"],
+    }
+
+
+def _actions_same_category(actions_a: set[str], actions_b: set[str]) -> bool:
+    """判断两组动作是否属于同一类别（离开/加入/发布/融资等）。"""
+    _departure = {"离职", "卸任", "辞职", "下台", "跳槽", "resign", "step down", "leave", "depart", "quit"}
+    _join = {"加入", "任命", "上任", "join", "appoint", "hire", "promote"}
+    _release = {"发布", "推出", "开源", "launch", "release", "open-source"}
+    _fund = {"融资", "投资", "估值", "上市", "acquire", "raise", "partner"}
+
+    for category in (_departure, _join, _release, _fund):
+        hit_a = any(a in category for a in actions_a)
+        hit_b = any(b in category for b in actions_b)
+        if hit_a and hit_b:
+            return True
+    return False
+
+
+def _pick_keeper(a: dict, b: dict) -> dict:
+    """从两个重复条目中选择保留哪一条。"""
+    # 1. 官方源优先
+    a_official = a.get("source_type") == "rss"
+    b_official = b.get("source_type") == "rss"
+    if a_official and not b_official:
+        return a
+    if b_official and not a_official:
+        return b
+
+    # 2. cross_source_count 更高
+    a_cross = (a.get("metrics", {}) or {}).get("cross_source_count", 0) or 0
+    b_cross = (b.get("metrics", {}) or {}).get("cross_source_count", 0) or 0
+    if a_cross > b_cross:
+        return a
+    if b_cross > a_cross:
+        return b
+
+    # 3. _confidence_level 更高
+    a_conf = a.get("_confidence_level", "high")
+    b_conf = b.get("_confidence_level", "high")
+    conf_order = {"high": 3, "medium": 2, "low": 1}
+    if conf_order.get(a_conf, 0) > conf_order.get(b_conf, 0):
+        return a
+    if conf_order.get(b_conf, 0) > conf_order.get(a_conf, 0):
+        return b
+
+    # 4. 有图片的优先
+    a_has_img = bool(a.get("article_image_url"))
+    b_has_img = bool(b.get("article_image_url"))
+    if a_has_img and not b_has_img:
+        return a
+    if b_has_img and not a_has_img:
+        return b
+
+    # 5. 评分更高
+    if a.get("_score", 0) >= b.get("_score", 0):
+        return a
+    return b
+
+
+def apply_final_editorial_dedup(items: list[dict], top_n: int) -> tuple[list[dict], dict]:
+    """
+    最终入选后二次去重：合并描述同一事件的条目。
+
+    规则 A: 标题相似度 >= 0.58 → 合并
+    规则 B: 事件指纹重叠（共享公司/产品 + 共享人名/动作 + 综合相似度 >= 0.35）→ 合并
+    规则 C: 共享人名 + 同一家公司 + 同类动作 → 合并（人名事件强合并）
+
+    被合并条目写入 keeper 的 merged_related_items，不静默丢弃。
+
+    Args:
+        items: 最终入选列表（已排序、已做 source balance）
+        top_n: 目标数量，不足时从 reserve 补充
+
+    Returns:
+        (deduped_list, dedup_report)
+    """
+    if len(items) <= 1:
+        return items, {"merged_groups": 0, "details": []}
+
+    keepers: list[dict] = []
+    absorbed: list[dict] = []
+    dedup_details: list[dict] = []
+
+    for i, item in enumerate(items):
+        matched = False
+        fp_i = _event_fingerprint(item)
+
+        for j, keeper in enumerate(keepers):
+            fp_k = _event_fingerprint(keeper)
+            overlap = _fp_overlap(fp_i, fp_k)
+
+            title_sim = _title_similarity(
+                item.get("chinese_title") or item.get("title", ""),
+                keeper.get("chinese_title") or keeper.get("title", ""),
+            )
+
+            # 规则 A: 标题相似度 >= 0.58
+            if title_sim >= 0.58:
+                matched = True
+                reason = "title_similarity"
+
+            # 规则 C: 人名 + 公司 + 同类动作
+            elif (overlap["shared_people"] and overlap["shared_companies"]
+                  and _actions_same_category(fp_i["actions"], fp_k["actions"])):
+                matched = True
+                reason = "same_person_company_event"
+
+            # 规则 B: 事件指纹重叠 + 综合相似度 >= 0.35
+            elif ((overlap["shared_companies"] or overlap["shared_products"])
+                  and (overlap["shared_people"] or overlap["shared_actions"])
+                  and title_sim >= 0.35):
+                matched = True
+                reason = "event_fingerprint_overlap"
+
+            if matched:
+                keeper.setdefault("merged_related_items", []).append({
+                    "title": item.get("title", ""),
+                    "chinese_title": item.get("chinese_title", ""),
+                    "source": item.get("source", ""),
+                    "url": item.get("url", ""),
+                    "reason": reason,
+                })
+                keeper["merged_count"] = keeper.get("merged_count", 0) + 1
+
+                # 选择保留谁：pick_keeper 返回更优的
+                better = _pick_keeper(keeper, item)
+                if better is item:
+                    # item 更优，替换 keeper
+                    keepers[j] = item
+                    # 把原 keeper 的信息转移到 item 的 merged 中
+                    item["merged_related_items"] = keeper.get("merged_related_items", [])
+                    item["merged_count"] = keeper.get("merged_count", 0)
+                    # 原 keeper 进入 absorbed
+                    absorbed.append(keeper)
+                else:
+                    absorbed.append(item)
+
+                dedup_details.append({
+                    "keeper": (better.get("chinese_title") or better.get("title", ""))[:60],
+                    "merged": (item.get("chinese_title") or item.get("title", ""))[:60],
+                    "reason": reason,
+                })
+                break
+
+        if not matched:
+            keepers.append(item)
+
+    logger.info(
+        "Final editorial dedup: %d items → %d (merged %d)",
+        len(items), len(keepers), len(absorbed),
+    )
+
+    report = {
+        "merged_groups": len(dedup_details),
+        "details": dedup_details,
+    }
+
+    return keepers, report
+
+
 def _fetch_hn(timeout: int = 30) -> list[dict]:
     """从 Hacker News 采集 AI 相关新闻（带异常保护）。"""
     try:
@@ -1046,6 +1288,24 @@ def collect_news(
 
     # 选题平衡：限制单一 source_type + 同公司/同产品上限
     balanced = _apply_source_balance(clustered, top_n)
+
+    # 最终编辑去重：合并同一人物+公司+事件条目
+    final_candidates = balanced[:top_n]
+    reserves = balanced[top_n:]
+    dedup_result, dedup_report = apply_final_editorial_dedup(final_candidates, top_n)
+    # 不足 top_n 时从 reserve 补充
+    if len(dedup_result) < top_n and reserves:
+        needed = top_n - len(dedup_result)
+        taken_urls = {item.get("url", "") for item in dedup_result}
+        for r in reserves:
+            if r.get("url", "") not in taken_urls:
+                dedup_result.append(r)
+                taken_urls.add(r.get("url", ""))
+                if len(dedup_result) >= top_n:
+                    break
+        logger.info("Dedup refilled: %d items from reserves", needed)
+
+    balanced = dedup_result
 
     # 打印 Top N（最终日报）
     logger.info("--- Final Top %d (DAILY_TOP_N=%d) ---", top_n, top_n)

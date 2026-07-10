@@ -15,6 +15,18 @@ from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
+def _env_enabled_cover(name: str, default: bool = True) -> bool:
+    """解析布尔型环境变量。"""
+    val = os.environ.get(name, "").strip().lower()
+    if not val:
+        return default
+    if val in ("1", "true", "yes", "on"):
+        return True
+    if val in ("0", "false", "no", "off"):
+        return False
+    return default
+
+
 # 中文字体候选列表（按优先级排序：Linux 容器 → Linux 通用 → Windows）
 _FONT_CANDIDATES = [
     # Docker 容器 (fonts-noto-cjk)
@@ -108,41 +120,67 @@ def _generate_simple_cover(
     cover_title: str = "AI 日报",
 ) -> str:
     """
-    降级方案：用 Pillow 生成纯色背景封面图。
-    使用动态中文封面标题。
+    降级方案：Pillow 生成的编辑风程序化封面。
+
+    设计：深色背景 + 细网格 + 抽象节点连线 + 渐变光晕，
+    不随机切换配色，保持专业科技刊物的一致感。
     """
-    # 配色方案
-    PALETTES = [
-        ("#6366f1", "#8b5cf6"),  # 紫蓝
-        ("#3b82f6", "#06b6d4"),  # 蓝青
-        ("#8b5cf6", "#ec4899"),  # 紫粉
-        ("#10b981", "#3b82f6"),  # 绿蓝
-        ("#f59e0b", "#ef4444"),  # 橙红
-        ("#14b8a6", "#6366f1"),  # 青紫
-    ]
+    import math
 
-    import hashlib
-    day_hash = int(hashlib.md5(date_str.encode()).hexdigest()[:8], 16)
-    palette = PALETTES[day_hash % len(PALETTES)]
-
-    img = Image.new("RGB", (width, height), palette[0])
+    img = Image.new("RGB", (width, height), "#0f172a")  # 深蓝黑底
     draw = ImageDraw.Draw(img)
 
-    # 渐变覆盖
-    def hex_to_rgb(c):
-        c = c.lstrip("#")
-        return tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+    # ── 细网格背景 ──
+    grid_spacing = 40
+    grid_color = (30, 41, 59)  # #1e293b 暗蓝灰
+    for x in range(0, width, grid_spacing):
+        draw.line([(x, 0), (x, height)], fill=grid_color, width=1)
+    for y in range(0, height, grid_spacing):
+        draw.line([(0, y), (width, y)], fill=grid_color, width=1)
 
-    r0, g0, b0 = hex_to_rgb(palette[0])
-    r1, g1, b1 = hex_to_rgb(palette[1])
-    for y in range(height):
-        ratio = y / height
-        r = int(r0 + (r1 - r0) * ratio)
-        g = int(g0 + (g1 - g0) * ratio)
-        b = int(b0 + (b1 - b0) * ratio)
-        draw.rectangle([(0, y), (width, y + 1)], fill=f"#{r:02x}{g:02x}{b:02x}")
+    # ── 抽象节点和连线（稳定布局，不随机） ──
+    nodes = [
+        (width * 0.15, height * 0.25),
+        (width * 0.35, height * 0.15),
+        (width * 0.60, height * 0.30),
+        (width * 0.75, height * 0.20),
+        (width * 0.20, height * 0.50),
+        (width * 0.55, height * 0.55),
+        (width * 0.80, height * 0.45),
+        (width * 0.40, height * 0.70),
+        (width * 0.65, height * 0.70),
+    ]
 
-    # 叠加文字
+    # 连线（淡青色半透明）
+    for i, (x1, y1) in enumerate(nodes):
+        for j, (x2, y2) in enumerate(nodes):
+            if i < j and ((x2 - x1)**2 + (y2 - y1)**2) < (width * 0.35)**2:
+                alpha = max(10, 40 - int(((x2 - x1)**2 + (y2 - y1)**2) ** 0.5 / 12))
+                draw.line([(x1, y1), (x2, y2)], fill=(56, 189, 248, alpha), width=1)
+
+    # 节点圆点（青蓝渐变光晕 + 白心）
+    halo_color = (56, 189, 248)  # cyan-400
+    for (nx, ny) in nodes:
+        # 外光晕
+        for r in range(8, 1, -2):
+            alpha = max(10, 60 - r * 5)
+            draw.ellipse(
+                [(nx - r, ny - r), (nx + r, ny + r)],
+                fill=(56, 189, 248, alpha),
+                outline=None,
+            )
+        # 实心白点
+        draw.ellipse([(nx - 2, ny - 2), (nx + 2, ny + 2)], fill=(226, 232, 240))
+
+    # ── 底部深色渐变遮罩（为文字做准备）──
+    for y_offset in range(height // 2, height):
+        alpha = int(180 * (y_offset - height // 2) / (height // 2))
+        draw.rectangle(
+            [(0, y_offset), (width, y_offset + 1)],
+            fill=(15, 23, 42, min(alpha, 180)),
+        )
+
+    # ── 叠加中文标题 ──
     try:
         img = _draw_cover_text(img, cover_title, date_str, len(news_list))
     except Exception as e:
@@ -150,7 +188,7 @@ def _generate_simple_cover(
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
-    logger.info("Generated simple cover at %s", output_path)
+    logger.info("Generated editorial simple cover at %s", output_path)
     return output_path
 
 
@@ -161,15 +199,18 @@ def generate_cover_from_news(
     api_key: Optional[str] = None,
     base_url: str = "https://apihub.agnes-ai.com",
     cover_title: str = "",
+    cover_subject: Optional[dict] = None,
 ) -> Optional[str]:
     """
     根据新闻标题生成封面图。
 
-    流程：
-    1. 从新闻标题提取关键词
+    流程（改进后）：
+    1. 从可信候选池选择封面主题（select_cover_subject）
     2. 构建 prompt 调用 Agnes Image API
-    3. 下载生成的图片，叠加中文封面标题
-    4. 如果 API 失败，降级为 Pillow 生成
+    3. 下载生成的图片
+    4. 检测图片是否疑似含文字（_looks_like_bad_cover）
+    5. 若 bad → 降级为程序化封面
+    6. 叠加中文封面标题
 
     Args:
         news_list: 新闻列表
@@ -177,29 +218,48 @@ def generate_cover_from_news(
         output_path: 输出图片路径
         api_key: Agnes API Key
         base_url: Agnes API 基础地址
-        cover_title: 中文封面标题（12-20 字），为空则使用 "AI 日报"
+        cover_title: 中文封面标题（12-20 字）
+        cover_subject: select_cover_subject() 的结果，为空则内部生成
 
     Returns:
         封面图路径，失败返回 None
     """
     cover_title = cover_title or "AI 日报"
 
+    # 0. 封面主题选择（如果未外部传入）
+    if cover_subject is None:
+        cover_subject = select_cover_subject(news_list)
+    if cover_subject.get("cover_title") and not cover_title.startswith("今日 AI 热点速览"):
+        # 使用 select_cover_subject 返回的标题（可信模式）
+        ct = cover_subject.get("cover_title", "")
+        if ct and len(ct) >= 4:
+            cover_title = ct
+
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
-    if not api_key:
-        logger.warning("No API key for cover generation, falling back to simple cover")
-        return _fallback_cover(news_list, date_str, output_path, cover_title)
+    safe_cover_enabled = _env_enabled_cover("ENABLE_SAFE_COVER", True)
+    force_local_on_bad = _env_enabled_cover("FORCE_LOCAL_COVER_ON_BAD_IMAGE", True)
 
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
 
-    # 1. 以头条新闻为主题构建 prompt
-    prompt = _build_cover_prompt(news_list, date_str)
+    # 安全模式：无可信候选时直接使用程序化封面
+    if safe_cover_enabled and cover_subject.get("mode") == "generic":
+        logger.info("Safe cover: no trusted candidate, using local programmatic cover")
+        return _fallback_cover(news_list, date_str, output_path, cover_title)
+
+    if not api_key:
+        logger.warning("No API key for cover generation, falling back to programmatic cover")
+        return _fallback_cover(news_list, date_str, output_path, cover_title)
+
+    # 1. 构建 prompt
+    prompt = _build_cover_prompt(cover_subject)
 
     # 2. 调用 Agnes Image API
-    # 确保 base_url 不以 / 结尾
     base_url = base_url.rstrip("/")
-    # Images API 固定使用 /v1/images/generations，不与 chat completions 共享路径
     image_base = base_url.replace("/v1", "") if base_url.endswith("/v1") else base_url
+    ai_generated = False
+    bad_ai = False
+
     try:
         logger.info("Generating cover image with prompt: %s", prompt[:80])
         resp = requests.post(
@@ -225,80 +285,76 @@ def generate_cover_from_news(
 
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        # 4. 叠加中文标题（失败时保留原图）
+        # 4. 检测图片质量
+        img = Image.open(io.BytesIO(img_resp.content))
+        is_bad, bad_reason = _looks_like_bad_cover(img)
+
+        if is_bad:
+            logger.warning("AI cover image looks bad: %s", bad_reason)
+            bad_ai = True
+            if force_local_on_bad:
+                logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using programmatic cover")
+                return _fallback_cover(news_list, date_str, output_path, cover_title)
+            # 否则继续使用 AI 图，但记录 warning
+
+        # 5. 叠加中文标题（失败时保留原图）
         try:
-            img = Image.open(io.BytesIO(img_resp.content))
             img = _draw_cover_text(img, cover_title, date_str, len(news_list))
             img.save(output_path, "JPEG", quality=90)
+            ai_generated = True
         except Exception as e:
             logger.warning("Cover text overlay failed: %s, saving bare image", e)
-            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
             with open(output_path, "wb") as f:
                 f.write(img_resp.content)
 
-        logger.info("Cover image generated and saved to %s", output_path)
+        logger.info("Cover image generated and saved to %s (ai=%s, bad=%s)",
+                     output_path, ai_generated, bad_ai)
         return output_path
 
     except Exception as e:
-        logger.warning("Agnes Image API failed: %s, falling back to simple cover", e)
+        logger.warning("Agnes Image API failed: %s, falling back to programmatic cover", e)
         return _fallback_cover(news_list, date_str, output_path, cover_title)
 
 
-def _build_cover_prompt(news_list: list[dict], date_str: str) -> str:
+def _build_cover_prompt(cover_subject: dict) -> str:
     """
-    以当天头条新闻为主题构建封面图 prompt。
+    构建封面图 prompt —— 不再直接使用 news_list[0]。
 
-    思路：取评分最高的第 1 条新闻作为画面主题，让每天的封面
-    都贴合当日最重要的 AI 事件，而不是千篇一律的抽象图案。
+    Args:
+        cover_subject: select_cover_subject() 的返回结果
 
-    注意：图像模型只理解英文，prompt 必须全英文。
-    中文标题通过 Pillow 后期叠加到图片上。
+    要求：
+    - 无文字、无字母、无数字、无 logo、无水印
+    - 编辑插画风格，不是海报
+    - 底部留暗色空间给中文标题叠加
     """
-    if not news_list:
+    topic = cover_subject.get("visual_prompt_topic", "artificial intelligence")
+    mode = cover_subject.get("mode", "generic")
+
+    if mode == "generic":
         return (
-            "A modern tech magazine cover, abstract AI neural network visualization, "
-            "glowing data nodes connected by fine lines, deep blue and indigo gradient, "
-            "cinematic lighting, clean composition, "
-            "leave top third of image dark/empty for text overlay, "
-            "16:9 aspect ratio, professional quality."
+            "A premium editorial technology illustration for a daily AI newsletter. "
+            "Style: clean abstract geometric composition, dark graphite and navy background, "
+            "subtle cyan and warm amber accent lines connecting scattered data nodes, "
+            "soft depth, realistic lighting, no typography at all. "
+            "Leave the bottom third dark and gradient-fade for text overlay. "
+            "No text, no letters, no numbers, no logos, no UI screenshots, no watermark. "
+            "Create an editorial abstract illustration, not a poster. "
+            "16:9 aspect ratio, high quality."
         )
-
-    top = news_list[0]
-
-    # 提取主题关键词（优先英文标题，中文稿从 summary 提取英文词）
-    english_title = top.get("title", "")
-    has_chinese = any('一' <= c <= '鿿' for c in english_title)
-    if has_chinese:
-        import re as _re
-        summary = top.get("summary", "")
-        # 提取英文专有名词和长单词
-        en_words = _re.findall(r'[A-Z][a-z]+|[A-Z]{2,}|[a-z]{4,}', english_title + " " + summary)
-        # 去重并过滤常见停用词
-        stop = {'this', 'that', 'with', 'from', 'have', 'been', 'they', 'them', 'their',
-                'your', 'will', 'would', 'could', 'about', 'which', 'when', 'where'}
-        en_words = [w for w in en_words if w.lower() not in stop]
-        english_title = " ".join(en_words[:10]) if en_words else "AI technology innovation"
-        if not english_title.strip():
-            english_title = "AI technology innovation"
-
-    # 确保纯英文 prompt
-    topic_line = (
-        f"Visual theme inspired by today's top AI headline: \"{english_title[:150]}\". "
-        if english_title else ""
-    )
-
-    return (
-        f"A modern tech magazine cover illustration. "
-        f"{topic_line}"
-        f"Style: clean minimalist composition, cinematic lighting, "
-        f"deep navy blue and indigo purple gradient background, "
-        f"abstract geometric tech elements subtly related to the theme, "
-        f"professional and eye-catching, suitable for a daily AI newsletter cover. "
-        f"Leave the bottom third of the image dark or gradient-fade for text overlay. "
-        f"Do NOT put any text, letters, typography, characters, words, or watermarks "
-        f"anywhere in the image — text will be added separately. "
-        f"16:9 aspect ratio, high quality."
-    )
+    else:
+        return (
+            f"A premium editorial technology magazine cover illustration. "
+            f"Visual theme inspired by: \"{topic}\". "
+            f"Style: clean minimalist composition, dark graphite and deep navy background, "
+            f"subtle cyan and warm amber accents, abstract geometric elements softly "
+            f"referencing the topic without being literal, cinematic lighting, "
+            f"professional and elegant. "
+            f"No text, no letters, no numbers, no logos, no UI screenshots, no watermark. "
+            f"Create an editorial abstract illustration, not a poster. "
+            f"Leave clean dark space at the bottom for later Chinese title overlay. "
+            f"16:9 aspect ratio, high quality."
+        )
 
 
 def _fallback_cover(
@@ -311,3 +367,176 @@ def _fallback_cover(
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
     return _generate_simple_cover(news_list, date_str, output_path, cover_title=cover_title)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 封面主题选择
+# ═══════════════════════════════════════════════════════════════════
+
+_RUMOR_KEYWORDS = [
+    "rumor", "ask hn", "speculation", "unconfirmed", "leak",
+    "传闻", "疑似", "爆料", "谣言", "辟谣", "别信谣",
+]
+
+
+def select_cover_subject(news_list: list[dict]) -> dict:
+    """
+    从可信候选池中选择封面主题。
+
+    过滤掉：
+    - _cover_excluded
+    - 低置信度
+    - 低置信度品牌声明
+    - HN-only低热度（无跨源 + score<20）
+    - 标题包含传闻关键词
+
+    Returns:
+        {
+            "mode": "trusted" | "generic",
+            "item": dict or None,
+            "cover_title": str,
+            "visual_prompt_topic": str,
+            "reason": str,
+        }
+    """
+    if not news_list:
+        return {
+            "mode": "generic",
+            "item": None,
+            "cover_title": "今日 AI 热点速览",
+            "visual_prompt_topic": "a curated daily briefing about artificial intelligence",
+            "reason": "empty news list",
+        }
+
+    # 构建可信候选池
+    candidates = []
+    excluded = []
+    for item in news_list:
+        title = item.get("chinese_title") or item.get("title", "")
+        title_lower = title.lower()
+
+        # 过滤条件
+        if item.get("_cover_excluded"):
+            excluded.append((title, f"cover_excluded: {item['_cover_excluded']}"))
+            continue
+        if item.get("_confidence_level") == "low":
+            excluded.append((title, "low confidence"))
+            continue
+        bc = item.get("_brand_claim", {})
+        if bc.get("confidence") == "low":
+            excluded.append((title, f"low confidence brand claim: {bc.get('brand', '')}"))
+            continue
+        st = item.get("source_type", "")
+        metrics = item.get("metrics", {}) or {}
+        if st == "hn" and metrics.get("cross_source_count", 0) == 0 and metrics.get("hn_score", 0) < 20:
+            excluded.append((title, f"HN-only low heat (score={metrics.get('hn_score', 0)})"))
+            continue
+        if any(kw in title_lower for kw in _RUMOR_KEYWORDS):
+            excluded.append((title, "rumor/speculation keyword in title"))
+            continue
+
+        # 评分：RSS优先 + 有图优先 + 评分
+        priority = 0
+        if item.get("source_type") == "rss" or item.get("source_type") == "official":
+            priority += 100
+        if metrics.get("cross_source_count", 0) > 0:
+            priority += 50
+        if item.get("article_image_url"):
+            priority += 30
+        priority += item.get("_score", 0) or item.get("scores", {}).get("final", 0)
+        candidates.append((priority, item))
+
+    # 排序：优先级从高到低
+    candidates.sort(key=lambda x: x[0], reverse=True)
+
+    if candidates:
+        best = candidates[0][1]
+        title = best.get("chinese_title") or best.get("title", "")
+        logger.info(
+            "Cover subject: trusted — '%s' (excluded %d candidates)",
+            title[:50], len(excluded),
+        )
+        return {
+            "mode": "trusted",
+            "item": best,
+            "cover_title": title[:20].rstrip("，。；：！？、"),
+            "visual_prompt_topic": _extract_topic_for_visual(best),
+            "reason": f"selected from {len(candidates)} trusted candidates, {len(excluded)} excluded",
+            "excluded": [{"title": t, "reason": r} for t, r in excluded],
+        }
+
+    # 没有可靠候选 — 通用主题
+    logger.warning("Cover subject: generic — all %d items excluded", len(news_list))
+    return {
+        "mode": "generic",
+        "item": None,
+        "cover_title": "今日 AI 热点速览",
+        "visual_prompt_topic": "a curated daily briefing about artificial intelligence industry, research and developer tools",
+        "reason": f"no trusted candidate (all {len(excluded)} excluded)",
+        "excluded": [{"title": t, "reason": r} for t, r in excluded],
+    }
+
+
+def _extract_topic_for_visual(item: dict) -> str:
+    """从新闻条目提取英文视觉主题关键词。"""
+    english_title = item.get("title", "")
+    has_chinese = any('一' <= c <= '鿿' for c in english_title)
+    if has_chinese:
+        import re as _re
+        en_words = _re.findall(r'[A-Z][a-z]+|[A-Z]{2,}|[a-z]{4,}',
+                               english_title + " " + str(item.get("summary", "")))
+        stop = {'this', 'that', 'with', 'from', 'have', 'been', 'they', 'them', 'their',
+                'your', 'will', 'would', 'could', 'about', 'which', 'when', 'where'}
+        en_words = [w for w in en_words if w.lower() not in stop]
+        return " ".join(en_words[:8]) if en_words else "artificial intelligence technology"
+    return english_title[:150]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 封面图片质量检测
+# ═══════════════════════════════════════════════════════════════════
+
+
+def _looks_like_bad_cover(img: Image.Image) -> tuple[bool, str]:
+    """
+    启发式检测 AI 生成封面是否疑似含文字/水印。
+
+    检测方法（无 OCR 依赖）：
+    - 尺寸过小/异常
+    - 整体过暗（平均亮度 < 25）
+    - 大面积高对比矩形（疑似文字区域）
+
+    Returns:
+        (is_bad: bool, reason: str)
+    """
+    w, h = img.size
+    if w < 400 or h < 200:
+        return True, f"image too small ({w}x{h})"
+    if w / h < 1.2 or w / h > 3.0:
+        return False, ""  # 非标准比例但可用
+
+    # 转灰度检测整体亮度
+    gray = img.convert("L")
+    pixels = list(gray.getdata())
+    avg_brightness = sum(pixels) / len(pixels)
+    if avg_brightness < 25:
+        return True, f"image too dark (avg brightness={avg_brightness:.0f})"
+
+    # 中央区域高对比检测（疑似文字/logo）
+    # 检查中央 60% 区域是否存在高对比度像素块
+    cx, cy = w // 2, h // 2
+    region_w, region_h = int(w * 0.5), int(h * 0.4)
+    x0, y0 = cx - region_w // 2, cy - region_h // 2
+    region = gray.crop((x0, y0, x0 + region_w, y0 + region_h))
+    rp = list(region.getdata())
+
+    if len(rp) > 0:
+        r_min, r_max = min(rp), max(rp)
+        if r_max - r_min > 200:
+            # 存在极高对比度 —— 进一步检查是否是分散的小块（文字）还是大面积渐变
+            high_contrast_pixels = sum(1 for p in rp if p > 230 or p < 25)
+            high_ratio = high_contrast_pixels / len(rp)
+            if high_ratio > 0.15:
+                return True, f"suspected text/logo in center (high contrast ratio={high_ratio:.2f})"
+
+    return False, ""
