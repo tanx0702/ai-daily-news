@@ -1,21 +1,12 @@
 {
-  "date": "2026-07-10",
+  "date": "2026-07-11",
   "news": [
     {
-      "title": "Popular open source AI developer tool Ollama raises $65M, grows to nearly 9M users",
-      "url": "https://techcrunch.com/2026/07/09/popular-open-source-ai-developer-tool-ollama-raises-65m-grows-to-nearly-9m-users/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "Ollama 宣布完成 6500 万美元融资，其用户规模已增长至近 900 万，显示出开源 AI 工具的强劲势头。",
-      "_score": 15.0,
-      "chinese_title": "热门开源 AI 开发工具 Ollama 融资 6500 万美元，用户数接近 900 万"
-    },
-    {
-      "title": "Fidji Simo steps down from OpenAI’s no. 2 role",
+      "title": "Fidji Simo steps down from OpenAI’s No. 2 role",
       "url": "https://techcrunch.com/2026/07/09/fidji-simo-steps-down-from-openais-no-2-role/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 前 COO Fidji Simo 正式卸任公司第二号职位，引发业界对其未来动向的关注。",
+      "summary": "OpenAI 联合创始人兼首席产品官 Fidji Simo 宣布辞去公司第二号领导职位。",
       "_score": 14.0,
       "chinese_title": "Fidji Simo 辞去 OpenAI 二号人物职务"
     },
@@ -24,16 +15,25 @@
       "url": "https://www.theverge.com/ai-artificial-intelligence/963738/openai-fidji-simo-steps-down-ceo-advisor",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "Fidji Simo 因个人健康原因离开 OpenAI 通用人工智能（AGI）项目的领导岗位。",
+      "summary": "Fidji Simo 透露因患病将不再负责 OpenAI 通用人工智能（AGI）的研发工作。",
       "_score": 14.0,
-      "chinese_title": "因健康原因，Fidji Simo 辞去 OpenAI AGI 领导工作"
+      "chinese_title": "因健康原因，Fidji Simo 卸任 OpenAI AGI 负责人"
+    },
+    {
+      "title": "Open source AI matters more than ever, according to Hugging Face’s Clem Delangue",
+      "url": "https://techcrunch.com/podcast/open-source-ai-matters-more-than-ever-according-to-hugging-faces-clem-delangue/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "Hugging Face 首席执行官 Clem Delangue 强调在 AI 发展中坚持开源模式的关键意义。",
+      "_score": 13.0,
+      "chinese_title": "Hugging Face CEO Clem Delangue：开源 AI 比以往任何时候都更重要"
     },
     {
       "title": "OpenAI launches its new family of models with GPT-5.6",
       "url": "https://techcrunch.com/2026/07/09/openai-launches-its-new-family-of-models-with-gpt-5-6/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 正式推出包含 GPT-5.6 在内的全新模型系列，旨在进一步提升 AI 性能与应用能力。",
+      "summary": "OpenAI 正式推出其最新模型系列，其中包括备受关注的 GPT-5.6 版本。",
       "_score": 13.0,
       "chinese_title": "OpenAI 发布新一代模型家族，推出 GPT-5.6"
     },
@@ -42,7 +42,7 @@
       "url": "https://techcrunch.com/2026/07/09/elon-musk-praises-mythos-fable-promises-not-to-cut-off-anthropic/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Elon Musk 公开赞扬 Anthropic 的 Mythos 和 Fable 项目，并明确表示不会终止与 Anthropic 的合作关系。",
+      "summary": "Elon Musk 公开赞扬 Anthropic 的 Mythos 和 Fable 项目，并保证将继续支持该公司。",
       "_score": 13.0,
       "chinese_title": "马斯克称赞 Mythos/Fable，承诺不会‘切断’ Anthropic"
     },
@@ -51,52 +51,70 @@
       "url": "https://techcrunch.com/2026/07/09/how-did-the-government-decide-openais-frontier-model-was-safe-to-release/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "本文探讨了监管机构在批准 OpenAI 最新前沿模型发布前所采用的安全评估流程与决策依据。",
+      "summary": "探讨监管机构在批准 OpenAI 最新前沿模型发布前所采用的安全评估流程与决策机制。",
       "_score": 13.0,
-      "chinese_title": "6. 政府如何判定 OpenAI 的前沿模型符合安全发布标准？"
+      "chinese_title": "政府如何判定 OpenAI 的前沿模型发布是安全的？"
     },
     {
       "title": "OpenAI rolls out GPT-5.6 after government greenlight — and announces ‘ChatGPT Work’",
       "url": "https://www.theverge.com/ai-artificial-intelligence/963464/openai-gpt-5-6-codex-chatgpt-work",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "OpenAI 在获得官方安全许可后正式发布了 GPT-5.6 模型，同时推出了面向企业用户的新服务 ChatGPT Work。",
+      "summary": "OpenAI 在获得官方安全许可后正式推出 GPT-5.6 版本，同时发布了面向企业用户的 ChatGPT Work 服务。",
       "_score": 13.0,
-      "chinese_title": "7. 获政府批准后，OpenAI 推出 GPT-5.6 并宣布‘ChatGPT Work’"
+      "chinese_title": "获政府批准后 OpenAI 推出 GPT-5.6，并宣布‘ChatGPT Work’"
+    },
+    {
+      "title": "Apple sues OpenAI over alleged trade secret theft",
+      "url": "https://techcrunch.com/2026/07/10/apple-sues-openai-over-alleged-trade-secret-theft/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "苹果公司正式对 OpenAI 提起诉讼，指控其在合作过程中非法获取并使用了受保护的商业机密。",
+      "_score": 11.0,
+      "chinese_title": "苹果起诉 OpenAI，指控其窃取商业机密"
+    },
+    {
+      "title": "Hugging Face’s CEO on why companies are done renting their AI",
+      "url": "https://techcrunch.com/2026/07/10/hugging-faces-ceo-on-why-companies-are-done-renting-their-ai/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "Hugging Face 首席执行官阐述企业界趋势的转变，解释为何越来越多的公司倾向于自建或拥有 AI 基础设施而非单纯租赁服务。",
+      "_score": 11.0,
+      "chinese_title": "Hugging Face CEO 解析企业为何不再‘租赁’AI"
     },
     {
       "title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter",
       "url": "https://techcrunch.com/2026/07/09/openai-says-gpt-5-6-is-the-preferred-model-for-microsoft-copilot-amid-breakup-chatter/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "尽管市场有关于 OpenAI 可能拆分的传闻，该公司仍确认 GPT-5.6 将是微软 Copilot 365 的核心首选模型。",
+      "summary": "在微软可能剥离 OpenAI 的传闻背景下，OpenAI 确认 GPT-5.6 将成为微软 Copilot 365 的核心首选模型。",
       "_score": 11.0,
-      "chinese_title": "8. OpenAI 称 GPT-5.6 为微软 Copilot 365 的‘首选模型’， amid 拆分传闻"
+      "chinese_title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter"
     },
     {
       "title": "OpenAI is shutting down Atlas, but its AI browser ambitions are still growing",
       "url": "https://techcrunch.com/2026/07/09/openai-is-shutting-down-atlas-but-its-ai-browser-ambitions-are-still-growing/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "虽然 OpenAI 停止了其独立浏览器项目 Atlas，但其向 AI 原生浏览器领域渗透的战略意图依然清晰且持续增强。",
+      "summary": "尽管停止了 Atlas 项目，OpenAI 在人工智能浏览器领域的战略部署并未停止，显示出其在该方向上的持续投入与扩张意图。",
       "_score": 11.0,
-      "chinese_title": "9. OpenAI 关闭 Atlas 项目，但 AI 浏览器野心仍在扩张"
+      "chinese_title": "OpenAI 关闭 Atlas，但其 AI 浏览器野心仍在增长"
     },
     {
       "title": "Meta enters the crowded AI coding battle with Muse Spark 1.1",
       "url": "https://techcrunch.com/2026/07/09/meta-enters-the-crowded-ai-coding-battle-with-muse-spark-1-1/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Meta 发布了新一代代码生成模型 Muse Spark 1.1，旨在加剧当前各大科技巨头在 AI 辅助编程领域的激烈竞争。",
+      "summary": "Meta 发布了新的 AI 编码工具 Muse Spark 1.1，旨在加剧当前激烈的 AI 辅助编程软件市场竞争。",
       "_score": 11.0,
-      "chinese_title": "10. Meta 携 Muse Spark 1.1 加入拥挤的 AI 编程竞赛"
+      "chinese_title": "Meta 携 Muse Spark 1.1 加入拥挤的 AI 编程竞争"
     },
     {
       "title": "New York Times says OpenAI hid evidence in ChatGPT copyright trial",
       "url": "https://techcrunch.com/2026/07/09/new-york-times-says-openai-hid-evidence-in-chatgpt-copyright-trial/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "据《纽约时报》报道，OpenAI 被指在涉及 ChatGPT 的版权纠纷案件中隐藏了关键证据。",
+      "summary": "《纽约时报》报道指出，OpenAI 在涉及 ChatGPT 的版权诉讼中被指控存在隐瞒关键证据的行为。",
       "_score": 11.0,
       "chinese_title": "《纽约时报》称 OpenAI 在 ChatGPT 版权诉讼中隐瞒证据"
     },
@@ -105,39 +123,21 @@
       "url": "https://techcrunch.com/2026/07/09/google-will-now-disclose-which-ads-are-made-with-ai/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "谷歌宣布新规，要求明确标识并使用人工智能技术制作的广告内容。",
+      "summary": "Google 宣布实施新政策，要求明确标识并披露使用人工智能技术生成的广告内容，以提高透明度。",
       "_score": 11.0,
-      "chinese_title": "Google 将披露哪些广告由人工智能生成"
+      "chinese_title": "Google 将披露哪些广告由 AI 生成"
     },
     {
-      "title": "Anthropic’s new Claude feature is quietly selling you on AI",
-      "url": "https://techcrunch.com/2026/07/09/anthropics-new-claude-feature-is-quietly-selling-you-on-ai/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "Anthropic 推出的最新 Claude 功能通过更自然的交互方式，让用户逐渐接受并依赖人工智能服务。",
-      "_score": 11.0,
-      "chinese_title": "Anthropic 的新 Claude 功能正在潜移默化地推广 AI"
-    },
-    {
-      "title": "Anthropic, OpenAI, and SpaceX are bigger than the last 25 years of tech exits",
-      "url": "https://techcrunch.com/2026/07/09/anthropic-openai-and-spacex-are-bigger-than-the-last-25-years-of-tech-exits/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "分析指出，Anthropic、OpenAI 和 SpaceX 这三家公司的估值或影响力已超越过去四分之一世纪内所有科技初创公司退出的累计规模。",
-      "_score": 11.0,
-      "chinese_title": "Anthropic、OpenAI 和 SpaceX 的规模超过过去 25 年所有科技退出的总和"
-    },
-    {
-      "title": "The ChatGPT browser is already dead",
-      "url": "https://www.theverge.com/ai-artificial-intelligence/963654/openai-chatgpt-atlas-ai-browser-shut-down-sunset",
+      "title": "Apple sues OpenAI for allegedly stealing hardware secrets",
+      "url": "https://www.theverge.com/tech/964350/apple-openai-lawsuit-trade-secrets",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "随着 ChatGPT 逐步整合进其他平台，其独立的浏览器功能正迅速失去用户关注和使用价值。",
+      "summary": "苹果公司正式对 OpenAI 提起诉讼，指控后者涉嫌非法获取苹果公司的硬件相关机密信息。",
       "_score": 11.0,
-      "chinese_title": "ChatGPT 浏览器功能已名存实亡"
+      "chinese_title": "苹果起诉 OpenAI，指控其窃取硬件机密"
     }
   ],
   "pages_url": "https://tankex.xyz",
   "cover_image_url": "https://tankex.xyz/cover.jpg",
-  "generated_at": "2026-07-10T03:34:50.279379+00:00"
+  "generated_at": "2026-07-11T02:50:03.940722+00:00"
 }
