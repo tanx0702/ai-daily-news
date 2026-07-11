@@ -555,62 +555,131 @@ def generate_cover_from_news(
     prompt = _build_cover_prompt(cover_subject)
     base_url = base_url.rstrip("/")
     image_base = base_url.replace("/v1", "") if base_url.endswith("/v1") else base_url
-    ai_generated = False
-    bad_ai = False
 
-    try:
-        logger.info("Generating cover image with prompt: %s", prompt[:80])
-        resp = requests.post(
-            f"{image_base}/v1/images/generations",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": "agnes-image-2.1-flash",
-                "prompt": prompt,
-                "size": "900x500",
-            },
-            timeout=120,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        image_url = data.get("data", [{}])[0].get("url")
-        if not image_url:
-            raise ValueError(f"No image URL in response: {data}")
+    # 免费 API 不稳定，带指数退避重试（1s → 2s → 4s ...）
+    max_retries = int(os.environ.get("AI_COVER_MAX_RETRIES", "5"))
+    img = _generate_ai_cover_image(image_base, api_key, prompt, max_retries)
 
-        # 下载图片
-        img_resp = requests.get(image_url, timeout=30)
-        img_resp.raise_for_status()
-
-        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-
-        # 检测图片质量
-        img = Image.open(io.BytesIO(img_resp.content))
-        is_bad, bad_reason = _looks_like_bad_cover(img)
-
-        if is_bad:
-            logger.warning("AI cover image looks bad: %s", bad_reason)
-            bad_ai = True
-            if force_local_on_bad:
-                logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using title-card cover")
-                if cover_subject is not None:
-                    cover_subject["cover_source"] = "editorial_title_card"
-                return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
-            # 否则继续使用 AI 图，但记录 warning
-
-        # 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
-        img.save(output_path, "JPEG", quality=90)
-        ai_generated = True
-        if cover_subject is not None:
-            cover_subject["cover_source"] = "ai_generated"
-
-        logger.info("Cover image generated and saved to %s (ai=%s, bad=%s)",
-                     output_path, ai_generated, bad_ai)
-        return output_path
-
-    except Exception as e:
-        logger.warning("Agnes Image API failed: %s, falling back to title-card cover", e)
+    if img is None:
+        logger.warning("AI cover generation failed after %d attempts, falling back to title-card cover", max_retries)
         if cover_subject is not None:
             cover_subject["cover_source"] = "editorial_title_card"
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
+
+    # 检测图片质量
+    is_bad, bad_reason = _looks_like_bad_cover(img)
+    if is_bad:
+        logger.warning("AI cover image looks bad: %s", bad_reason)
+        if force_local_on_bad:
+            logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using title-card cover")
+            if cover_subject is not None:
+                cover_subject["cover_source"] = "editorial_title_card"
+            return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
+        # 否则继续使用 AI 图，但记录 warning
+
+    # 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    img.save(output_path, "JPEG", quality=90)
+    if cover_subject is not None:
+        cover_subject["cover_source"] = "ai_generated"
+
+    logger.info("Cover image generated and saved to %s (ai=True, bad=%s)", output_path, is_bad)
+    return output_path
+
+
+def _generate_ai_cover_image(
+    image_base: str,
+    api_key: str,
+    prompt: str,
+    max_retries: int = 3,
+) -> Optional["Image.Image"]:
+    """
+    调用 Agnes Image API 生成封面图，带指数退避重试。
+
+    每次失败都记录具体原因（HTTP 状态码 + API error code + message），便于排查：
+    - content_policy_violation（关键词命中审核）→ 重试无效，立即放弃
+    - 超时 / 429 / 5xx 等临时故障 → 重试（最多 max_retries 次）
+
+    成功返回 PIL Image，全部失败返回 None。
+    """
+    import time
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(
+                "Generating cover image (attempt %d/%d) with prompt: %s",
+                attempt, max_retries, prompt[:80],
+            )
+            resp = requests.post(
+                f"{image_base}/v1/images/generations",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "agnes-image-2.1-flash",
+                    "prompt": prompt,
+                    "size": "900x500",
+                },
+                timeout=120,
+            )
+
+            # 非 2xx：解析错误体，区分「关键词拦截」和「临时故障」
+            if resp.status_code >= 400:
+                err_code, err_msg = _parse_api_error(resp)
+                logger.warning(
+                    "Agnes Image API attempt %d/%d failed: HTTP %d | code=%s | %s",
+                    attempt, max_retries, resp.status_code, err_code, err_msg,
+                )
+                # 内容审核拦截：重试无效（同样的 prompt 永远被拦），立即放弃
+                if err_code == "content_policy_violation":
+                    logger.warning(
+                        "Prompt 命中内容审核，重试无效。请检查 prompt 是否含敏感词"
+                        "（如 'skyscraper'）。prompt=%s",
+                        prompt,
+                    )
+                    return None
+                # 其他错误：走下面的重试逻辑
+                if attempt < max_retries:
+                    backoff = min(2 ** (attempt - 1), 8)  # 1s,2s,4s,8s,8s...
+                    logger.info("Retrying in %ds...", backoff)
+                    time.sleep(backoff)
+                continue
+
+            data = resp.json()
+            image_url = data.get("data", [{}])[0].get("url")
+            if not image_url:
+                raise ValueError(f"No image URL in response: {data}")
+
+            # 下载图片
+            img_resp = requests.get(image_url, timeout=30)
+            img_resp.raise_for_status()
+            return Image.open(io.BytesIO(img_resp.content))
+
+        except Exception as e:
+            logger.warning(
+                "Agnes Image API attempt %d/%d failed: %s: %s",
+                attempt, max_retries, type(e).__name__, e,
+            )
+            if attempt < max_retries:
+                backoff = min(2 ** (attempt - 1), 8)  # 1s,2s,4s,8s,8s...
+                logger.info("Retrying in %ds...", backoff)
+                time.sleep(backoff)
+
+    return None
+
+
+def _parse_api_error(resp: requests.Response) -> tuple[str, str]:
+    """
+    从 API 错误响应中解析出 error code 和 message，便于日志排查。
+
+    Returns:
+        (code, message)，解析失败时返回 ("unknown", 原始文本片段)
+    """
+    try:
+        err = resp.json().get("error", {})
+        if isinstance(err, dict):
+            return err.get("code", "unknown"), err.get("message", "")
+        return "unknown", str(err)
+    except Exception:
+        return "unknown", resp.text[:200]
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -660,7 +729,7 @@ _STORY_TYPE_VISUAL_BRIEF: dict[str, dict[str, str]] = {
     },
     "business": {
         "scene": (
-            "Modern glass skyscraper reflecting golden sunset sky, "
+            "Modern glass office tower reflecting golden sunset sky, "
             "shot from ground level looking up at geometric window patterns. "
             "Warm gold and deep navy color palette, long exposure smooth clouds. "
             "Vertical composition with sky gradient at top for text overlay."
