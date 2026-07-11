@@ -129,7 +129,7 @@ def _create_draft(
     payload = {
         "articles": [{
             "title": title,
-            "author": "AI Daily News",
+            "author": "今日AI要闻",
             "digest": digest or title,
             "content": content,
             "content_source_url": source_url,
@@ -487,7 +487,7 @@ def publish_daily_article(
         content = render_wechat_article(news_list, date_str, pages_url, cover_url)
 
     # 5. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
-    title = f"🤖 AI 日报 {date_str}"
+    title = f"今日AI要闻 · {date_str}"
     highlights = news_list[:3]
     digest_parts = [
         f"{i+1}. {item.get('chinese_title') or item['title']}"

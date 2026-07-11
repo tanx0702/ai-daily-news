@@ -159,7 +159,7 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
         return "暂无今日 AI 新闻，请稍后再试。"
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    lines = [f"🤖 AI 日报 {today}", f"共 {len(news_list)} 条新闻\n"]
+    lines = [f"今日AI要闻 · {today}", f"共 {len(news_list)} 条精选\n"]
 
     limit = min(len(news_list), 20) if full else min(len(news_list), 10)
     for i, item in enumerate(news_list[:limit], 1):
@@ -181,7 +181,7 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
         lines.append(f"\n... 还有 {len(news_list) - limit} 条新闻")
 
     pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
-    lines.append(f"\n👉 完整日报: {pages_url}")
+    lines.append(f"\n完整内容: {pages_url}")
     return "\n".join(lines)
 
 
@@ -238,7 +238,7 @@ def wechat_callback():
 
     # 默认回复
     help_text = (
-        "欢迎使用 AI 日报！\n\n"
+        "欢迎阅读今日AI要闻。\n\n"
         "发送「日报」获取今日 AI 新闻摘要\n"
         "发送「完整」获取完整新闻列表\n\n"
         "每天 8:00 自动更新。"
