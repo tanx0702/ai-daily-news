@@ -293,7 +293,7 @@ def _run_pipeline():
         )
         wechat_result = {"status": "blocked", "reason": "quality_gate_high_risk"}
     else:
-        from src.wechat import publish_daily_article
+        from src.wechat_draft import publish_daily_article
 
         cover_path = os.path.join(docs_dir, "cover.jpg")
         wechat_result = publish_daily_article(
