@@ -29,7 +29,7 @@ src.wechat_draft -> 创建微信公众号草稿，后台手动发布
 - 中文摘要：LLM 批量翻译标题并生成克制的中文新闻摘要
 - 发布前质检：对高风险品牌声明、传闻和不确定表述进行降级或拦截
 - 页面生成：生成 `docs/index.html`、历史归档和微信预览 HTML
-- 封面生成：优先调用 Agnes Image API，失败时可降级到本地封面
+- 封面生成：可信原文图优先；无可信原文图时调用 Agnes Image API；失败时降级为极简本地无字背景
 - 微信触达：`app.py` 处理客服消息；`src.wechat_draft` 创建公众号草稿
 
 ## 本地开发
@@ -92,6 +92,8 @@ docker compose up -d
 | `DAILY_LLM_TIMEOUT` | LLM 超时秒数 | `15` |
 | `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
 | `QUALITY_GATE_STRICT` | 高风险时是否阻止创建微信草稿 | `false` |
+| `ENABLE_AI_COVER_GENERATION` | 无可信原文图时是否使用 AI 生图封面 | `true` |
+| `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | AI 图疑似含错误文字/Logo 时是否改用极简无字背景 | `true` |
 | `DAILY_RUN_LOCK_PATH` | 定时任务锁文件路径 | `docs/.daily_run.lock` |
 
 ## 测试

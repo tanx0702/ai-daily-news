@@ -29,10 +29,10 @@ def _env_enabled_cover(name: str, default: bool = True) -> bool:
 
 
 # 封面策略：
-# 1. 优先使用正文头条/Top3 的真实原文图。
-# 2. 没有真实原文图时，使用程序化标题排版封面。
-# 3. AI 生图只作为显式开启的可选兜底，不作为默认封面来源。
-# 4. 如果封面里出现文字，必须由 Pillow 程序渲染，不能交给图片模型乱写。
+# 1. 优先使用可信封面主题绑定的真实原文图。
+# 2. 没有可信原文图时，优先使用 AI 生图。
+# 3. AI 生图失败或被质量检测拦截时，降级为极简本地无字背景。
+# 4. 封面图片本体不再渲染大标题，避免自动海报感。
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -190,23 +190,6 @@ def _wrap_text(text: str, font: ImageFont.ImageFont, max_width: int, max_lines: 
     return lines
 
 
-def _cover_story_title(news_list: list[dict], cover_subject: Optional[dict] = None) -> str:
-    """封面标题永远取封面绑定的新闻，兜底取正文第一条。"""
-    item = None
-    if cover_subject:
-        if cover_subject.get("cover_headline"):
-            return str(cover_subject["cover_headline"]).strip()
-        item = cover_subject.get("item")
-    if not item and news_list:
-        item = news_list[0]
-    if not item:
-        return "今日AI要闻"
-    if item.get("cover_headline"):
-        return str(item["cover_headline"]).strip()
-    title = item.get("chinese_title") or item.get("title") or "今日AI要闻"
-    return str(title).strip()
-
-
 def _cover_kicker(date_str: str, item: Optional[dict] = None) -> str:
     source = ""
     if item:
@@ -326,124 +309,75 @@ def _generate_cover_from_article_image(
     return output_path
 
 
-def _generate_title_card_cover(
-    news_list: list[dict],
-    date_str: str,
+def _blend_color(a: tuple[int, int, int], b: tuple[int, int, int], ratio: float) -> tuple[int, int, int]:
+    return tuple(int(a[i] * (1 - ratio) + b[i] * ratio) for i in range(3))
+
+
+def _generate_minimal_background_cover(
     output_path: str,
+    cover_subject: Optional[dict] = None,
     width: int = 900,
     height: int = 500,
-    cover_title: str = "今日AI要闻",
-    story_type: str = "general",
-    cover_subject: Optional[dict] = None,
 ) -> str:
-    """
-    降级方案：Pillow 生成标题排版型封面。
-
-    设计优化重点：
-    - 标题智能截断到 15-20 字，避免拥挤
-    - 使用更明快的配色（橙黄、青绿渐变）
-    - 增大字号和留白，提升可读性
-    - 简化元素，统一品牌为"今日AI要闻"
-    """
+    """本地兜底封面：只生成无字视觉背景，不再绘制标题卡片。"""
+    story_type = "general"
+    if cover_subject:
+        story_type = cover_subject.get("story_type", "general")
     palette = _STORY_TYPE_PALETTE.get(story_type, _STORY_TYPE_PALETTE["general"])
-    bg_color = palette["bg"]
+    bg = palette["bg"]
     primary = palette["primary"]
     secondary = palette["secondary"]
     accent = palette["accent"]
-    bound_item = cover_subject.get("item") if cover_subject else None
-    title = _cover_story_title(news_list, cover_subject)
 
-    # 标题智能截断：15-20 字最佳，超过则截断
-    if len(title) > 20:
-        title = _make_cover_headline(
-            bound_item or news_list[0] if news_list else {},
-            story_type
-        )
-
-    img = Image.new("RGB", (width, height), bg_color)
-    draw = ImageDraw.Draw(img, "RGBA")
-
-    # 背景：从深色到亮色的渐变，增加活力
+    img = Image.new("RGB", (width, height), bg)
+    draw = ImageDraw.Draw(img)
     for y in range(height):
-        ratio = y / height
-        # 增强渐变对比度，从暗到中亮
-        blend = tuple(
-            int(bg_color[i] * (1 - ratio * 0.45) + secondary[i] * ratio * 0.45 + accent[i] * ratio * 0.15)
-            for i in range(3)
-        )
-        draw.line([(0, y), (width, y)], fill=(*blend, 255))
+        ratio = y / max(1, height - 1)
+        color = _blend_color(bg, secondary, ratio * 0.72)
+        draw.line([(0, y), (width, y)], fill=color)
 
-    # 左侧装饰条 - 更细，更克制
-    draw.rectangle([(0, 0), (12, height)], fill=(*accent, 200))
-
-    # 右上角柔和色块 - 增加视觉趣味但不喧宾夺主
-    draw.polygon(
-        [(width - 280, 0), (width, 0), (width, int(height * 0.42))],
-        fill=(*primary, 65),
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+    od.ellipse(
+        (-120, -180, 420, 360),
+        fill=(*primary, 44),
     )
-
-    # 柔和光晕质感
-    texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    tdraw = ImageDraw.Draw(texture, "RGBA")
-    for cx, cy, r, alpha in [
-        (int(width * 0.82), int(height * 0.20), 140, 38),
-        (int(width * 0.15), int(height * 0.85), 160, 25),
-    ]:
-        tdraw.ellipse([(cx-r, cy-r), (cx+r, cy+r)], fill=(*accent, alpha))
-    texture = texture.filter(ImageFilter.GaussianBlur(40))
-    img = Image.alpha_composite(img.convert("RGBA"), texture).convert("RGB")
-    draw = ImageDraw.Draw(img, "RGBA")
-
-    # 文案区域 - 增大边距和字号
-    margin_x = 72
-    top_y = 85
-
-    # 顶部品牌标识 - 统一为"今日AI要闻"
-    brand_font = _load_font(22, bold=True)
-    draw.text(
-        (margin_x, top_y),
-        "今日AI要闻",
-        font=brand_font,
-        fill=(255, 255, 255, 200)
+    od.ellipse(
+        (width - 360, -130, width + 160, 390),
+        fill=(*accent, 36),
     )
-
-    # 日期标签
-    date_font = _load_font(16, bold=False)
-    draw.text(
-        (margin_x, top_y + 35),
-        date_str,
-        font=date_font,
-        fill=(*accent, 220)
+    od.polygon(
+        [
+            (int(width * 0.58), 0),
+            (width, 0),
+            (width, int(height * 0.58)),
+            (int(width * 0.78), int(height * 0.42)),
+        ],
+        fill=(*secondary, 88),
     )
+    od.polygon(
+        [
+            (0, height),
+            (int(width * 0.35), height),
+            (int(width * 0.16), int(height * 0.62)),
+            (0, int(height * 0.70)),
+        ],
+        fill=(*primary, 28),
+    )
+    overlay = overlay.filter(ImageFilter.GaussianBlur(22))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay)
 
-    # 主标题 - 更大字号，最多2行
-    title_y = top_y + 85
-    title_font = _fit_font(title, width - margin_x * 2 - 60, 62, 38, bold=True)
-    lines = _wrap_text(title, title_font, width - margin_x * 2 - 60, max_lines=2)
-    line_h = int(getattr(title_font, "size", 52) * 1.35)
-
-    for line in lines:
-        draw.text((margin_x, title_y), line, font=title_font, fill=(255, 255, 255, 255))
-        title_y += line_h
-
-    # 底部来源信息（如果有）
-    if bound_item:
-        source = bound_item.get("source") or bound_item.get("source_type") or ""
-        source = source.split(" + ")[0].strip()
-        if source:
-            meta_font = _load_font(17, bold=False)
-            meta_y = height - 68
-            draw.text(
-                (margin_x, meta_y),
-                f"来源: {source}",
-                font=meta_font,
-                fill=(200, 210, 220, 180)
-            )
+    veil = Image.new("RGBA", (width, height), (12, 18, 24, 0))
+    vd = ImageDraw.Draw(veil)
+    for x in range(width):
+        alpha = int(24 * (x / max(1, width - 1)))
+        vd.line([(x, 0), (x, height)], fill=(12, 18, 24, alpha))
+    img = Image.alpha_composite(img, veil).convert("RGB")
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    img.save(output_path, "JPEG", quality=94)
+    img.save(output_path, "JPEG", quality=92)
     logger.info(
-        "Generated editorial title-card cover (type=%s) at %s",
+        "Generated minimal text-free fallback cover (type=%s) at %s",
         story_type, output_path,
     )
     return output_path
@@ -464,8 +398,8 @@ def generate_cover_from_news(
     流程：
     1. 从正文 Top 1-3 选择与头条一致的封面主题。
     2. 优先使用该新闻的真实原文图生成封面。
-    3. 没有真实原文图时，生成标题排版型编辑封面。
-    4. AI 生图仅在 ENABLE_AI_COVER_GENERATION=1 时作为可选兜底。
+    3. 没有可信原文图时，使用 AI 生图。
+    4. AI 生图失败时，降级为极简本地无字背景。
 
     Args:
         news_list: 新闻列表
@@ -491,7 +425,6 @@ def generate_cover_from_news(
             cover_title = ct
 
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
-    safe_cover_enabled = _env_enabled_cover("ENABLE_SAFE_COVER", True)
     force_local_on_bad = _env_enabled_cover("FORCE_LOCAL_COVER_ON_BAD_IMAGE", True)
 
     if output_path is None:
@@ -506,48 +439,16 @@ def generate_cover_from_news(
             cover_subject["cover_source"] = "first_article_image"
             return cover_from_image
 
-    # 2. 如果绑定新闻无图，可从 Top 2-3 找同故事类型且有原文图的条目做背景。
-    # 仍然使用绑定新闻标题叠加，避免封面主题漂移。
-    target_type = cover_subject.get("story_type", "general") if cover_subject else "general"
-    if bound_item:
-        for item in news_list[:3]:
-            if item is bound_item:
-                continue
-            if not item.get("cover_image_url"):
-                continue
-            if _classify_story_type(item) != target_type:
-                continue
-            proxy = dict(item)
-            proxy["chinese_title"] = bound_item.get("chinese_title") or bound_item.get("title")
-            proxy["title"] = bound_item.get("title") or bound_item.get("chinese_title")
-            cover_from_related = _generate_cover_from_article_image(proxy, date_str, output_path)
-            if cover_from_related:
-                cover_subject["cover_source"] = "related_article_image"
-                return cover_from_related
-
-    # 3. AI 生图封面策略：
-    # - 如果 ENABLE_AI_COVER_GENERATION=1，优先尝试 AI 生图
-    # - 安全门禁（ENABLE_SAFE_COVER）在 mode=generic 时才拦截 AI 生图
-    # - 生成失败时降级到标题卡片封面
-    ai_cover_enabled = _env_enabled_cover("ENABLE_AI_COVER_GENERATION", False)
+    # 2. 没有可信原文图时，优先使用 AI 生图。
+    ai_cover_enabled = _env_enabled_cover("ENABLE_AI_COVER_GENERATION", True)
 
     if not ai_cover_enabled:
-        logger.info("AI cover generation disabled; using editorial title-card cover")
-        if cover_subject is not None:
-            cover_subject["cover_source"] = "editorial_title_card"
-        return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
-
-    # 安全门禁：mode=generic 时跳过 AI 生图
-    if safe_cover_enabled and cover_subject.get("mode") == "generic":
-        logger.info("Safe cover: no trusted candidate, skipping AI generation, using title-card")
-        cover_subject["cover_source"] = "editorial_title_card"
+        logger.info("AI cover generation disabled; using minimal text-free fallback cover")
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
     # 没有 API Key，降级
     if not api_key:
-        logger.warning("No API key for AI cover generation, using title-card cover")
-        if cover_subject is not None:
-            cover_subject["cover_source"] = "editorial_title_card"
+        logger.warning("No API key for AI cover generation, using minimal text-free fallback cover")
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
     # 开始 AI 生图
@@ -561,9 +462,10 @@ def generate_cover_from_news(
     img = _generate_ai_cover_image(image_base, api_key, prompt, max_retries)
 
     if img is None:
-        logger.warning("AI cover generation failed after %d attempts, falling back to title-card cover", max_retries)
-        if cover_subject is not None:
-            cover_subject["cover_source"] = "editorial_title_card"
+        logger.warning(
+            "AI cover generation failed after %d attempts, using minimal text-free fallback cover",
+            max_retries,
+        )
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
     # 检测图片质量
@@ -571,9 +473,7 @@ def generate_cover_from_news(
     if is_bad:
         logger.warning("AI cover image looks bad: %s", bad_reason)
         if force_local_on_bad:
-            logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using title-card cover")
-            if cover_subject is not None:
-                cover_subject["cover_source"] = "editorial_title_card"
+            logger.info("FORCE_LOCAL_COVER_ON_BAD_IMAGE=1, using minimal text-free fallback cover")
             return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
         # 否则继续使用 AI 图，但记录 warning
 
@@ -801,18 +701,17 @@ def _fallback_cover(
     cover_title: str = "今日AI要闻",
     cover_subject: Optional[dict] = None,
 ) -> str:
-    """降级：生成 Pillow 标题排版封面。"""
+    """降级：生成极简本地无字背景。"""
     if output_path is None:
         output_path = os.path.join("docs", "cover.jpg")
-    story_type = "general"
-    if cover_subject:
-        story_type = cover_subject.get("story_type", "general")
-    return _generate_title_card_cover(
-        news_list, date_str, output_path,
-        cover_title=cover_title,
-        story_type=story_type,
-        cover_subject=cover_subject,
-    )
+    if cover_subject is not None:
+        cover_subject["cover_source"] = "minimal_text_free_background"
+    return _generate_minimal_background_cover(output_path, cover_subject=cover_subject)
+
+
+def _flattened_pixels(img: Image.Image) -> list[int]:
+    pixels = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
+    return list(pixels)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1135,7 +1034,7 @@ def _looks_like_bad_cover(img: Image.Image) -> tuple[bool, str]:
 
     # 转灰度检测整体亮度
     gray = img.convert("L")
-    pixels = list(gray.getdata())
+    pixels = _flattened_pixels(gray)
     avg_brightness = sum(pixels) / len(pixels)
     if avg_brightness < 25:
         return True, f"image too dark (avg brightness={avg_brightness:.0f})"
@@ -1146,7 +1045,7 @@ def _looks_like_bad_cover(img: Image.Image) -> tuple[bool, str]:
     region_w, region_h = int(w * 0.5), int(h * 0.4)
     x0, y0 = cx - region_w // 2, cy - region_h // 2
     region = gray.crop((x0, y0, x0 + region_w, y0 + region_h))
-    rp = list(region.getdata())
+    rp = _flattened_pixels(region)
 
     if len(rp) > 0:
         r_min, r_max = min(rp), max(rp)
