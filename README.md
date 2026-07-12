@@ -82,6 +82,8 @@ docker compose up -d
 | `WECHAT_APP_SECRET` | 公众号 AppSecret | - |
 | `WECHAT_TOKEN` | 微信回调验证 Token | - |
 | `ALLOW_INSECURE_WECHAT_TOKEN` | 本地调试时允许缺失 Token 跳过验签，生产必须为 `0` | `0` |
+| `WECHAT_DRAFT_TITLE_PREFIX` | 公众号草稿标题前缀 | `今日要闻` |
+| `WECHAT_DRAFT_AUTHOR` | 公众号草稿作者署名 | `要闻编辑室` |
 | `DOMAIN` | 站点域名 | `tankex.xyz` |
 | `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
 | `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |

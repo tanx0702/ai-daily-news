@@ -20,6 +20,7 @@ import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -29,6 +30,37 @@ logger = logging.getLogger(__name__)
 # access_token 缓存文件（Docker 容器内 /tmp 可写）
 TOKEN_CACHE = "/tmp/.wx_token_cache"
 TOKEN_CACHE_TS = "/tmp/.wx_token_ts"
+DEFAULT_DRAFT_AUTHOR = "要闻编辑室"
+DEFAULT_DRAFT_TITLE_PREFIX = "今日要闻"
+
+
+def _draft_author() -> str:
+    """返回公众号草稿作者署名，避免顶部展示显得像机器模板。"""
+    author = os.environ.get("WECHAT_DRAFT_AUTHOR", DEFAULT_DRAFT_AUTHOR).strip()
+    return author or DEFAULT_DRAFT_AUTHOR
+
+
+def _format_draft_date(date_str: str) -> str:
+    try:
+        date_value = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return date_str
+    return f"{date_value.month}月{date_value.day}日"
+
+
+def _build_draft_title(date_str: str) -> str:
+    prefix = os.environ.get("WECHAT_DRAFT_TITLE_PREFIX", DEFAULT_DRAFT_TITLE_PREFIX).strip()
+    prefix = prefix or DEFAULT_DRAFT_TITLE_PREFIX
+    return f"{prefix}｜{_format_draft_date(date_str)}"
+
+
+def _build_draft_digest(news_list: list[dict], limit: int = 80) -> str:
+    headlines = []
+    for item in news_list[:3]:
+        title = str(item.get("chinese_title") or item.get("title") or "").strip()
+        if title:
+            headlines.append(title)
+    return "；".join(headlines)[:limit].rstrip("；，、 ")
 
 
 def _get_access_token(
@@ -133,7 +165,7 @@ def _create_draft(
     payload = {
         "articles": [{
             "title": title,
-            "author": "今日AI要闻",
+            "author": _draft_author(),
             "digest": digest or title,
             "content": content,
             "content_source_url": source_url,
@@ -490,14 +522,9 @@ def publish_daily_article(
     else:
         content = render_wechat_article(news_list, date_str, pages_url, cover_url)
 
-    # 5. 构建标题和摘要（digest 限制 ~120 字节，中文取前 40 字）
-    title = f"今日AI要闻 · {date_str}"
-    highlights = news_list[:3]
-    digest_parts = [
-        f"{i+1}. {item.get('chinese_title') or item['title']}"
-        for i, item in enumerate(highlights)
-    ]
-    digest = (" · ".join(digest_parts))[:40]
+    # 5. 构建标题和摘要：去掉机器人/英文模板感，保留栏目式信息密度。
+    title = _build_draft_title(date_str)
+    digest = _build_draft_digest(news_list)
 
     # 6. 创建草稿（个人订阅号不支持 API 发布，需手动去后台点发布）
     for attempt in range(retry + 1):
