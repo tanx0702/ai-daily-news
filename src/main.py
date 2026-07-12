@@ -194,32 +194,15 @@ def main():
 
     # === 3. 生成 HTML 日报 ===
     logger.info("[3/6] 生成 HTML 日报...")
-    from src.generator import render_daily_html, save_html
+    from src.pipeline_artifacts import render_and_save_daily_html
 
-    # 扫描历史归档链接
-    archive_links = []
-    if os.path.isdir(docs_dir):
-        archive_dir = os.path.join(docs_dir, "archive")
-        if os.path.isdir(archive_dir):
-            for fname in sorted(os.listdir(archive_dir), reverse=True):
-                if fname.endswith(".html"):
-                    archive_links.append(f"{pages_url}/archive/{fname}")
-
-    html = render_daily_html(
+    render_and_save_daily_html(
         news_list,
         date_str,
-        archive_links,
+        docs_dir,
+        pages_url,
         github_repo=os.environ.get("GITHUB_REPO", "tankex/ai-daily-news"),
     )
-
-    # 保存 HTML
-    os.makedirs(docs_dir, exist_ok=True)
-    save_html(html, os.path.join(docs_dir, "index.html"))
-
-    # 保存归档
-    archive_dir = os.path.join(docs_dir, "archive")
-    os.makedirs(archive_dir, exist_ok=True)
-    save_html(html, os.path.join(archive_dir, f"{date_str}.html"))
 
     # === 4. 生成封面图 ===
     logger.info("[4/6] 生成封面图...")
@@ -255,62 +238,27 @@ def main():
         logger.info("No API key for cover generation, skipping")
 
     # 生成公众号推文预览
-    from src.generator import render_wechat_article
-    cover_url = f"{pages_url}/cover.jpg"
-    wechat_html = render_wechat_article(news_list, date_str, pages_url, cover_image_url=cover_url)
-    save_html(wechat_html, os.path.join(docs_dir, "wechat.html"))
+    from src.pipeline_artifacts import render_and_save_wechat_preview
+
+    render_and_save_wechat_preview(news_list, date_str, docs_dir, pages_url)
     logger.info("WeChat preview saved to docs/wechat.html")
 
     # === 5. 保存新闻数据 + debug 报告 ===
     logger.info("[5/6] 保存新闻数据...")
     _annotate_reasons(news_list)
 
-    def _json_serial(obj):
-        """JSON 序列化辅助：datetime → ISO 字符串。"""
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        raise TypeError(f"Type {type(obj)} not serializable")
+    from src.pipeline_artifacts import build_latest_data, json_serial, save_latest_data
 
-    latest_data = {
-        "date": date_str,
-        "news": news_list,
-        "pages_url": pages_url,
-        "cover_image_url": f"{pages_url}/cover.jpg",
-        "wechat_preview_url": f"{pages_url}/wechat.html",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    if quality_report:
-        latest_data["quality_gate"] = {
-            "pass": quality_report.get("pass"),
-            "risk_level": quality_report.get("risk_level"),
-            "blocked_publish": quality_report.get("blocked_publish"),
-            "issues_count": len(quality_report.get("issues", [])),
-            "fixes_count": len(quality_report.get("applied_fixes", [])),
-        }
-    if cover_subject:
-        latest_data["cover_subject"] = {
-            "mode": cover_subject.get("mode"),
-            "title": cover_subject.get("cover_title", ""),
-            "headline": cover_subject.get("cover_headline", ""),
-            "reason": cover_subject.get("reason", ""),
-            "story_type": cover_subject.get("story_type", ""),
-            "cover_source": cover_subject.get("cover_source", ""),
-            "matches_top1": bool(
-                cover_subject.get("item") is news_list[0]
-                if news_list and cover_subject.get("item")
-                else False
-            ),
-        }
-    if media_report:
-        latest_data["media"] = {
-            "total": media_report.get("total", 0),
-            "with_original_image": media_report.get("with_original_image", 0),
-            "text_only": media_report.get("text_only", 0),
-        }
-
-    latest_path = os.path.join(docs_dir, "latest.json")
-    with open(latest_path, "w", encoding="utf-8") as f:
-        json.dump(latest_data, f, ensure_ascii=False, indent=2, default=_json_serial)
+    latest_data = build_latest_data(
+        news_list,
+        date_str,
+        pages_url,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        quality_report=quality_report,
+        cover_subject=cover_subject,
+        media_report=media_report,
+    )
+    latest_path = save_latest_data(latest_data, docs_dir, default=json_serial)
     logger.info("News data saved to %s", latest_path)
 
     _generate_debug_reports(news_list, date_str, docs_dir, cover_subject=cover_subject)
