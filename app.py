@@ -39,6 +39,18 @@ WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "")
 WECHAT_TOKEN = os.environ.get("WECHAT_TOKEN", "")
 NEWS_DATA_FILE = os.environ.get("NEWS_DATA_FILE", "/app/docs/latest.json")
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    val = os.environ.get(name, "").strip().lower()
+    if not val:
+        return default
+    if val in ("1", "true", "yes", "on"):
+        return True
+    if val in ("0", "false", "no", "off"):
+        return False
+    return default
+
+
 # ==================== 微信 API ====================
 
 # 内存缓存 access_token（简单实现，单进程够用）
@@ -131,8 +143,13 @@ def _build_xml_reply(to_user: str, content: str) -> str:
 def _verify_signature(signature: str, timestamp: str, nonce: str) -> bool:
     """验证微信签名。"""
     if not WECHAT_TOKEN:
-        logger.warning("WECHAT_TOKEN not configured, skipping signature verification")
-        return True
+        if _env_bool("ALLOW_INSECURE_WECHAT_TOKEN", False):
+            logger.warning(
+                "WECHAT_TOKEN not configured; insecure signature bypass is enabled"
+            )
+            return True
+        logger.error("WECHAT_TOKEN not configured; rejecting WeChat request")
+        return False
     tmp = sorted([WECHAT_TOKEN, timestamp, nonce])
     return hashlib.sha1("".join(tmp).encode()).hexdigest() == signature
 
@@ -192,11 +209,12 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
 @app.route("/wechat", methods=["GET", "POST"])
 def wechat_callback():
     """微信服务器回调。"""
+    signature = request.args.get("signature", "")
+    timestamp = request.args.get("timestamp", "")
+    nonce = request.args.get("nonce", "")
+
     if request.method == "GET":
         # 首次配置时的 URL 验证
-        signature = request.args.get("signature", "")
-        timestamp = request.args.get("timestamp", "")
-        nonce = request.args.get("nonce", "")
         echostr = request.args.get("echostr", "")
 
         if echostr and _verify_signature(signature, timestamp, nonce):
@@ -204,6 +222,9 @@ def wechat_callback():
         return "signature verify failed", 403
 
     # POST: 接收用户消息
+    if not _verify_signature(signature, timestamp, nonce):
+        return "signature verify failed", 403
+
     xml_body = request.data
     parsed = _parse_wechat_xml(xml_body)
     if not parsed:

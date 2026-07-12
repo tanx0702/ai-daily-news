@@ -1,4 +1,5 @@
 import hashlib
+import os
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -30,6 +31,44 @@ class WeChatAppTests(unittest.TestCase):
 
             self.assertTrue(app._verify_signature(signature, timestamp, nonce))
             self.assertFalse(app._verify_signature("bad-signature", timestamp, nonce))
+        finally:
+            app.WECHAT_TOKEN = original_token
+
+    def test_verify_signature_rejects_missing_token_by_default(self):
+        original_token = app.WECHAT_TOKEN
+        original_allow = os.environ.pop("ALLOW_INSECURE_WECHAT_TOKEN", None)
+        try:
+            app.WECHAT_TOKEN = ""
+            self.assertFalse(app._verify_signature("any", "1", "2"))
+        finally:
+            app.WECHAT_TOKEN = original_token
+            if original_allow is not None:
+                os.environ["ALLOW_INSECURE_WECHAT_TOKEN"] = original_allow
+
+    def test_verify_signature_can_allow_explicit_insecure_local_bypass(self):
+        original_token = app.WECHAT_TOKEN
+        original_allow = os.environ.get("ALLOW_INSECURE_WECHAT_TOKEN")
+        try:
+            app.WECHAT_TOKEN = ""
+            os.environ["ALLOW_INSECURE_WECHAT_TOKEN"] = "1"
+            self.assertTrue(app._verify_signature("any", "1", "2"))
+        finally:
+            app.WECHAT_TOKEN = original_token
+            if original_allow is None:
+                os.environ.pop("ALLOW_INSECURE_WECHAT_TOKEN", None)
+            else:
+                os.environ["ALLOW_INSECURE_WECHAT_TOKEN"] = original_allow
+
+    def test_post_rejects_invalid_signature(self):
+        original_token = app.WECHAT_TOKEN
+        try:
+            app.WECHAT_TOKEN = "secret-token"
+            client = app.app.test_client()
+            resp = client.post(
+                "/wechat?signature=bad&timestamp=1700000000&nonce=abc",
+                data=b"<xml></xml>",
+            )
+            self.assertEqual(resp.status_code, 403)
         finally:
             app.WECHAT_TOKEN = original_token
 
