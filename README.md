@@ -83,6 +83,7 @@ docker compose up -d
 | `WECHAT_TOKEN` | 微信回调验证 Token | - |
 | `DOMAIN` | 站点域名 | `tankex.xyz` |
 | `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
+| `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
 | `DAILY_TOP_N` | 入选新闻条数 | `10` |
 | `DAILY_RSS_TIMEOUT` | RSS 超时秒数 | `30` |
 | `DAILY_LLM_TIMEOUT` | LLM 超时秒数 | `15` |

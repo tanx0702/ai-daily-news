@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from jinja2 import Environment, BaseLoader
+from src.time_utils import report_date_str
 
 logger = logging.getLogger(__name__)
 
@@ -354,7 +355,7 @@ def render_daily_html(
         HTML 字符串
     """
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if archive_links is None:
         archive_links = []
     if github_repo is None:
@@ -407,7 +408,7 @@ def render_wechat_article(
     import html as _html
 
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
 
@@ -819,7 +820,7 @@ def render_wechat_article_ai(
         return ""
 
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
 

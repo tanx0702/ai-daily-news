@@ -58,7 +58,9 @@ def main():
 
 
 def _run_pipeline():
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    from src.time_utils import report_date_str
+
+    date_str = report_date_str()
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     pages_url = os.environ.get(
         "PAGES_URL",

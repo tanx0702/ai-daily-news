@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from flask import Flask, jsonify, request
+from src.time_utils import report_date_str
 
 # ==================== 配置 ====================
 
@@ -158,7 +159,7 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
     if not news_list:
         return "暂无今日 AI 新闻，请稍后再试。"
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = report_date_str()
     lines = [f"今日AI要闻 · {today}", f"共 {len(news_list)} 条精选\n"]
 
     limit = min(len(news_list), 20) if full else min(len(news_list), 10)
