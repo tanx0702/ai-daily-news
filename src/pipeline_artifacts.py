@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from typing import Any, Callable
 
+from src.file_utils import atomic_write_text
 from src.generator import render_daily_html, render_wechat_article, save_html
 
 
@@ -123,9 +124,8 @@ def save_latest_data(
 ) -> str:
     """Save latest.json and return the path."""
     latest_path = os.path.join(docs_dir, "latest.json")
-    os.makedirs(os.path.dirname(latest_path), exist_ok=True)
-    with open(latest_path, "w", encoding="utf-8") as f:
-        json.dump(latest_data, f, ensure_ascii=False, indent=2, default=default)
+    content = json.dumps(latest_data, ensure_ascii=False, indent=2, default=default)
+    atomic_write_text(latest_path, content)
     return latest_path
 
 

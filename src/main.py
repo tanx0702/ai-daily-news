@@ -40,6 +40,24 @@ def _env_bool(name: str, default: bool = True) -> bool:
 
 
 def main():
+    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+    lock_path = os.environ.get(
+        "DAILY_RUN_LOCK_PATH",
+        os.path.join(docs_dir, ".daily_run.lock"),
+    )
+    lock_ttl = int(os.environ.get("DAILY_RUN_LOCK_TTL_SECONDS", str(6 * 60 * 60)))
+
+    from src.run_guard import RunLockError, single_run_lock
+
+    try:
+        with single_run_lock(lock_path, ttl_seconds=lock_ttl):
+            _run_pipeline()
+    except RunLockError as e:
+        logger.warning("Another daily run appears active, skipping: %s", e)
+        sys.exit(2)
+
+
+def _run_pipeline():
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     pages_url = os.environ.get(

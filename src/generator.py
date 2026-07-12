@@ -884,7 +884,7 @@ def _guess_region(source: str) -> str:
 
 def save_html(html: str, output_path: str) -> None:
     """将 HTML 保存到文件。"""
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    from src.file_utils import atomic_write_text
+
+    atomic_write_text(output_path, html)
     logger.info("Saved HTML to %s", output_path)
