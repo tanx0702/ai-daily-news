@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>spec-superflow — AI 编程工作流引擎</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+
+  :root {
+    --bg: #0d0f12;
+    --surface: #15181e;
+    --surface-raised: #1c2028;
+    --border: #2a2f3a;
+    --border-accent: #3d4555;
+    --text-primary: #e4e6ea;
+    --text-secondary: #9299a8;
+    --text-muted: #5e6678;
+    --accent: #5b9bd5;
+    --accent-glow: rgba(91, 155, 213, 0.15);
+    --amber: #d4a853;
+    --green: #6aab73;
+    --red: #c96b6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(42, 47, 58, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42, 47, 58, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 100px 0 80px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border: 1px solid var(--border-accent);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    margin-bottom: 32px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .hero h1 {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+    line-height: 1.15;
+    background: linear-gradient(180deg, #ffffff 0%, #b0b8c4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero .tagline {
+    font-size: 20px;
+    color: var(--text-secondary);
+    font-weight: 300;
+    max-width: 600px;
+    margin: 0 auto 48px;
+  }
+
+  .hero-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+    margin: 0 auto;
+    max-width: 600px;
+  }
+
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 64px;
+    margin-top: 48px;
+  }
+
+  .hero-stat {
+    text-align: center;
+  }
+
+  .hero-stat .num {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .hero-stat .label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Sections */
+  section {
+    padding: 80px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+  }
+
+  section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+
+  section p {
+    color: var(--text-secondary);
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+
+  /* Pain Points */
+  .pain-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 40px;
+  }
+
+  .pain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    padding: 28px;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .pain-card .card-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--red);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .pain-card h4 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .pain-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* Solution Bridge */
+  .bridge-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 48px 0;
+  }
+
+  .bridge-block {
+    flex: 1;
+    max-width: 200px;
+    text-align: center;
+    padding: 24px 16px;
+  }
+
+  .bridge-block .block-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .bridge-block h5 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .bridge-block p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .bridge-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .bridge-core {
+    background: var(--surface-raised);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+  }
+
+  .bridge-core .block-icon {
+    color: var(--accent);
+  }
+
+  /* State Machine */
+  .state-pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 48px 0;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+
+  .state-node {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    min-width: 130px;
+  }
+
+  .state-node:first-child { border-radius: 6px 0 0 6px; }
+  .state-node:last-child { border-radius: 0 6px 6px 0; }
+
+  .state-node .state-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .state-node .state-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .state-node.spec { border-color: var(--amber); }
+  .state-node.spec .state-name { color: var(--amber); }
+  .state-node.bridge { border-color: var(--accent); }
+  .state-node.bridge .state-name { color: var(--accent); }
+  .state-node.exec { border-color: var(--green); }
+  .state-node.exec .state-name { color: var(--green); }
+
+  .state-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    color: var(--border-accent);
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+
+  /* Skills Grid */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 40px;
+  }
+
+  .skill-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    border-radius: 6px;
+    transition: border-color 0.2s;
+  }
+
+  .skill-card:hover {
+    border-color: var(--border-accent);
+  }
+
+  .skill-card .skill-phase {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .skill-card .skill-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .skill-card .skill-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* Principles */
+  .principles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 40px;
+  }
+
+  .principle-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    border-radius: 6px;
+  }
+
+  .principle-card .principle-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .principle-card .principle-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .principle-card .principle-title::before {
+    content: '# ';
+    color: var(--accent);
+  }
+
+  /* Contract Highlight */
+  .contract-highlight {
+    background: var(--surface-raised);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 32px;
+    margin-top: 40px;
+  }
+
+  .contract-highlight h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .contract-items {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .contract-item {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .contract-item strong {
+    color: var(--text-primary);
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  /* CTA */
+  .cta {
+    text-align: center;
+    padding: 80px 0;
+  }
+
+  .cta h2 {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .cta p {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+  }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 32px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .cta-btn:hover {
+    background: #4a8bc4;
+    transform: translateY(-1px);
+  }
+
+  .cta-btn .btn-arrow {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  footer a:hover { color: var(--text-primary); }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 36px; }
+    .pain-grid { grid-template-columns: 1fr; }
+    .skills-grid { grid-template-columns: 1fr 1fr; }
+    .contract-items { grid-template-columns: 1fr; }
+    .principles-grid { grid-template-columns: 1fr; }
+    .hero-stats { gap: 32px; }
+    .state-pipeline { flex-wrap: wrap; justify-content: center; gap: 4px; }
+    .state-arrow { display: none; }
+    .state-node { border-radius: 6px; min-width: 100px; padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">Claude Code / Trae Workflow Plugin</div>
+    <h1>spec-superflow</h1>
+    <p class="tagline">连通"需求说清楚"和"代码写对路"的 AI 编程工作流引擎</p>
+    <div class="hero-divider"></div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num">6</div>
+        <div class="label">协作 Skill</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">6</div>
+        <div class="label">状态管线</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">MIT</div>
+        <div class="label">开源许可</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Problem -->
+  <section>
+    <div class="section-label">The Problem</div>
+    <h2>AI 编程的两个失控点</h2>
+    <p>用 AI 写代码时，最常碰到的两个问题，恰好分别发生在动手之前和动手之后。</p>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="card-icon">// PAIN POINT 01</div>
+        <h4>方向失控</h4>
+        <p>还没想清楚要做什么，AI 就开始写代码。你说"帮我加个权限控制"，它就开始改几十个文件。改到一半才发现 —— 到底要 RBAC 还是 ABAC？</p>
+      </div>
+      <div class="pain-card">
+        <div class="card-icon">// PAIN POINT 02</div>
+        <h4>质量失控</h4>
+        <p>规划文档写得明明白白，但执行阶段还是会跑偏。proposal 写了、design 画了，但实现过程中没人盯着测试、没人卡 review，等到合并才发现行为不对。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bridge Solution -->
+  <section>
+    <div class="section-label">The Solution</div>
+    <h2>在两个失控点之间架一座硬桥</h2>
+    <div class="bridge-visual">
+      <div class="bridge-block">
+        <div class="block-icon">STEP 1-2</div>
+        <h5>澄清 & 规划</h5>
+        <p>need-explorer<br>spec-writer</p>
+      </div>
+      <div class="bridge-arrow">→</div>
+      <div class="bridge-core">
+        <div class="block-icon">BRIDGE</div>
+        <h5 style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text-primary);">execution<br>contract</h5>
+        <p style="font-size: 11px; color: var(--accent);">契约层</p>
+      </div>
+      <div class="bridge-arrow">→</div>
+      <div class="bridge-block">
+        <div class="block-icon">STEP 4-6</div>
+        <h5>执行 & 收口</h5>
+        <p>build-executor<br>release-archivist</p>
+      </div>
+    </div>
+    <p style="text-align: center; color: var(--text-secondary);">spec-superflow 不是把 OpenSpec 和 Superpowers 并排安装再手工拼接，而是把两者最有价值的部分吸收进一个统一的工作流引擎。</p>
+  </section>
+
+  <!-- State Machine -->
+  <section>
+    <div class="section-label">State Machine</div>
+    <h2>6 状态管线：每一步都有硬约束</h2>
+    <div class="state-pipeline">
+      <div class="state-node">
+        <div class="state-name">exploring</div>
+        <div class="state-label">探索意图</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-node spec">
+        <div class="state-name">specifying</div>
+        <div class="state-label">产出规划</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-node bridge">
+        <div class="state-name">bridging</div>
+        <div class="state-label">生成契约</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-node">
+        <div class="state-name">approved</div>
+        <div class="state-label">待执行</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-node exec">
+        <div class="state-name">executing</div>
+        <div class="state-label">纪律实现</div>
+      </div>
+      <div class="state-arrow">→</div>
+      <div class="state-node">
+        <div class="state-name">closing</div>
+        <div class="state-label">验证归档</div>
+      </div>
+    </div>
+    <p style="text-align: center; color: var(--text-muted); font-size: 13px;">没有稳定规划工件 → 不允许进入实现 | 违反契约 → 拦截回退 | 需求变更 → 强制回退到对应规划阶段</p>
+  </section>
+
+  <!-- Skills -->
+  <section>
+    <div class="section-label">Skills</div>
+    <h2>6 个协作 Skill，各司其职</h2>
+    <div class="skills-grid">
+      <div class="skill-card">
+        <div class="skill-phase">入口</div>
+        <div class="skill-name">workflow-start</div>
+        <div class="skill-desc">检查当前状态、路由到正确的 skill、阻止非法跳转</div>
+      </div>
+      <div class="skill-card">
+        <div class="skill-phase">探索</div>
+        <div class="skill-name">need-explorer</div>
+        <div class="skill-desc">澄清意图、范围、约束、成功标准，把模糊需求变明确边界</div>
+      </div>
+      <div class="skill-card">
+        <div class="skill-phase">规格</div>
+        <div class="skill-name">spec-writer</div>
+        <div class="skill-desc">生成 proposal、specs、design、tasks 四份正式规划工件</div>
+      </div>
+      <div class="skill-card">
+        <div class="skill-phase">桥接</div>
+        <div class="skill-name">contract-builder</div>
+        <div class="skill-desc">把规划工件压缩为可检查的 execution-contract.md</div>
+      </div>
+      <div class="skill-card">
+        <div class="skill-phase">执行</div>
+        <div class="skill-name">build-executor</div>
+        <div class="skill-desc">强制 TDD、评审关卡、契约优先实现，违规即拦截</div>
+      </div>
+      <div class="skill-card">
+        <div class="skill-phase">收口</div>
+        <div class="skill-name">release-archivist</div>
+        <div class="skill-desc">验证完成度、生成变更总结、准备归档</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Design Principles -->
+  <section>
+    <div class="section-label">Design Principles</div>
+    <h2>四大设计原则</h2>
+    <div class="principles-grid">
+      <div class="principle-card">
+        <div class="principle-title">Spec First</div>
+        <div class="principle-desc">没有稳定的规划工件，不允许进入实现。把"先想清楚再动手"从口号变成硬约束。</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-title">Guarded Handoff</div>
+        <div class="principle-desc">execution-contract.md 是规划到实现的唯一交接层，所有模糊决策在这里被显式压缩为可验证条目。</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-title">Strong Guardrails</div>
+        <div class="principle-desc">实现过程中违反契约的行为被明确拦截并回退，而不是靠开发者"感觉不对"来手动纠偏。</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-title">Self-Contained</div>
+        <div class="principle-desc">不需要运行时安装 OpenSpec 或 Superpowers，即装即用，零运行时依赖。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Execution Contract -->
+  <section>
+    <div class="section-label">Key Innovation</div>
+    <h2>execution-contract.md：不只是一份文档</h2>
+    <p>这是 spec-superflow 区别于其他工作流工具的核心。它不是又一份规划文档，而是一份可检查的契约。</p>
+    <div class="contract-highlight">
+      <h3>// execution-contract.md</h3>
+      <div class="contract-items">
+        <div class="contract-item">
+          <strong>Input / Output</strong>
+          明确本次变更的输入、输出、边界条件
+        </div>
+        <div class="contract-item">
+          <strong>Test Checklist</strong>
+          逐条对应该通过的测试用例
+        </div>
+        <div class="contract-item">
+          <strong>Review Gates</strong>
+          预定义验收关卡和 escalation 规则
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <div class="cta">
+    <h2>让 AI 编程从随机游走变成可控流水线</h2>
+    <p>开源、自包含、即装即用。支持 Claude Code 和 Trae。</p>
+    <a href="https://github.com/MageByte-Zero/spec-superflow" class="cta-btn" target="_blank">
+      GitHub
+      <span class="btn-arrow">-></span>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    spec-superflow v0.8.12 &middot; MIT License &middot;
+    <a href="https://github.com/MageByte-Zero/spec-superflow" target="_blank">github.com/MageByte-Zero/spec-superflow</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Read a config field from spec-superflow.config.json
+# Usage: get-config <field-path>
+# Example: get-config execution.inlineThreshold → outputs "3"
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+field_path="${1:-}"
+
+if [ -z "$field_path" ]; then
+  echo "Usage: get-config <field-path>" >&2
+  echo "Example: get-config execution.inlineThreshold" >&2
+  exit 2
+fi
+
+# Use node to load config and extract field
+node --input-type=module -e "
+import { loadConfig } from '${SCRIPT_DIR}/lib/config-loader.mjs';
+const config = loadConfig(process.cwd());
+const parts = '${field_path}'.split('.');
+let val = config;
+for (const p of parts) {
+  if (val === undefined || val === null) { val = undefined; break; }
+  val = val[p];
+}
+if (val !== undefined) {
+  process.stdout.write(typeof val === 'object' ? JSON.stringify(val) : String(val));
+} else {
+  process.exit(1);
+}
+" 2>/dev/null || exit 1
