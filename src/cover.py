@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
+from src.text_utils import clean_display_text
+
 logger = logging.getLogger(__name__)
 
 def _env_enabled_cover(name: str, default: bool = True) -> bool:
@@ -193,7 +195,7 @@ def _wrap_text(text: str, font: ImageFont.ImageFont, max_width: int, max_lines: 
 def _cover_kicker(date_str: str, item: Optional[dict] = None) -> str:
     source = ""
     if item:
-        source = item.get("source") or item.get("source_type") or ""
+        source = clean_display_text(item.get("source") or item.get("source_type") or "")
         source = source.split(" + ")[0].strip()
     if source:
         return f"{date_str} · {source}"
@@ -297,7 +299,9 @@ def _generate_cover_from_article_image(
         logger.info("Cover source image too small: %sx%s", img.width, img.height)
         return None
 
-    title = item.get("cover_headline") or item.get("chinese_title") or item.get("title") or "今日AI要闻"
+    title = clean_display_text(
+        item.get("cover_headline") or item.get("chinese_title") or item.get("title") or "今日AI要闻"
+    )
     cover = _crop_cover(img, width, height)
     cover = ImageEnhance.Color(cover).enhance(0.92)
     cover = ImageEnhance.Contrast(cover).enhance(0.96)
@@ -338,39 +342,59 @@ def _generate_minimal_background_cover(
 
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
-    od.ellipse(
-        (-120, -180, 420, 360),
-        fill=(*primary, 44),
-    )
-    od.ellipse(
-        (width - 360, -130, width + 160, 390),
-        fill=(*accent, 36),
-    )
-    od.polygon(
-        [
-            (int(width * 0.58), 0),
-            (width, 0),
-            (width, int(height * 0.58)),
-            (int(width * 0.78), int(height * 0.42)),
-        ],
-        fill=(*secondary, 88),
-    )
-    od.polygon(
-        [
-            (0, height),
-            (int(width * 0.35), height),
-            (int(width * 0.16), int(height * 0.62)),
-            (0, int(height * 0.70)),
-        ],
-        fill=(*primary, 28),
-    )
-    overlay = overlay.filter(ImageFilter.GaussianBlur(22))
+
+    # 细网格，保持“技术感”但不抢主体。
+    for x in range(0, width, 72):
+        od.line([(x, 0), (x, height)], fill=(*primary, 12), width=1)
+    for y in range(0, height, 72):
+        od.line([(0, y), (width, y)], fill=(*primary, 10), width=1)
+
+    # 模型层 / 电路层视觉母题。
+    center_x, center_y = int(width * 0.52), int(height * 0.50)
+    layer_specs = [
+        (0, 0, 240, 108, 54),
+        (-34, -30, 194, 78, 38),
+        (-70, -58, 160, 54, 26),
+    ]
+    for dx0, dy0, dx1, dy1, alpha in layer_specs:
+        od.rounded_rectangle(
+            [
+                center_x - 200 + dx0,
+                center_y - 78 + dy0,
+                center_x + 120 + dx1,
+                center_y + 78 + dy1,
+            ],
+            radius=24,
+            outline=(*accent, alpha),
+            width=2,
+        )
+
+    # 节点连线，暗示 AI 网络结构。
+    nodes = [
+        (int(width * 0.16), int(height * 0.72)),
+        (int(width * 0.30), int(height * 0.58)),
+        (int(width * 0.44), int(height * 0.64)),
+        (int(width * 0.58), int(height * 0.46)),
+        (int(width * 0.72), int(height * 0.56)),
+        (int(width * 0.84), int(height * 0.34)),
+    ]
+    for left, right in zip(nodes, nodes[1:]):
+        od.line([left, right], fill=(*secondary, 90), width=3)
+        mx = (left[0] + right[0]) // 2
+        my = (left[1] + right[1]) // 2
+        od.line([(mx, my - 4), (mx + 18, my + 8)], fill=(*accent, 45), width=2)
+
+    for px, py in nodes:
+        od.ellipse((px - 7, py - 7, px + 7, py + 7), fill=(*accent, 190))
+        od.ellipse((px - 16, py - 16, px + 16, py + 16), outline=(*accent, 42), width=2)
+
+    overlay = overlay.filter(ImageFilter.GaussianBlur(2))
     img = Image.alpha_composite(img.convert("RGBA"), overlay)
 
     veil = Image.new("RGBA", (width, height), (12, 18, 24, 0))
     vd = ImageDraw.Draw(veil)
     for x in range(width):
-        alpha = int(24 * (x / max(1, width - 1)))
+        alpha = int(18 * (x / max(1, width - 1)))
         vd.line([(x, 0), (x, height)], fill=(12, 18, 24, alpha))
     img = Image.alpha_composite(img, veil).convert("RGB")
 
@@ -413,7 +437,7 @@ def generate_cover_from_news(
     Returns:
         封面图路径，失败返回 None
     """
-    cover_title = cover_title or "今日AI要闻"
+    cover_title = clean_display_text(cover_title or "今日AI要闻")
 
     # 0. 封面主题选择（如果未外部传入）
     if cover_subject is None:
@@ -423,6 +447,9 @@ def generate_cover_from_news(
         ct = cover_subject.get("cover_title", "")
         if ct and len(ct) >= 4:
             cover_title = ct
+    cover_subject["cover_title"] = clean_display_text(cover_title)
+    if not cover_subject.get("visual_prompt_topic"):
+        cover_subject["visual_prompt_topic"] = cover_subject["cover_title"]
 
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     force_local_on_bad = _env_enabled_cover("FORCE_LOCAL_COVER_ON_BAD_IMAGE", True)
@@ -589,74 +616,66 @@ def _parse_api_error(resp: requests.Response) -> tuple[str, str]:
 _STORY_TYPE_VISUAL_BRIEF: dict[str, dict[str, str]] = {
     "personnel": {
         "scene": (
-            "Professional figure silhouette standing at floor-to-ceiling office window, "
-            "gazing at city skyline or glowing screens in distance. "
-            "Modern glass office interior, warm sunset light streaming through windows. "
-            "Subject positioned on left third of frame, facing right, leaving right side open for text."
+            "Editorial portrait silhouette inside a modern AI company office, "
+            "glass walls, boardroom energy, and soft screens in the background. "
+            "Warm sunset light, refined corporate mood, subject on the left third of the frame."
         ),
         "mood": "Contemplative, sophisticated, corporate elegance. Warm amber and deep navy tones.",
-        "avoid": "No faces visible, no UI screens with text, no company logos.",
+        "avoid": "No faces visible, no readable screens, no company logos, no stock-photo handshake scenes.",
     },
     "product": {
         "scene": (
-            "Extreme close-up of sleek tech device edge - brushed metal surface with soft blue glow, "
-            "abstract curved lines suggesting premium product design. "
-            "Sharp focus on one corner, rest softly blurred. "
-            "Cool teal and slate gray palette, studio lighting."
+            "AI product launch scene with sleek interface panels, prompt windows, assistant cards, "
+            "and a premium device edge integrated into the composition. "
+            "Soft blue glow, layered UI depth, studio lighting, sharp focal point with negative space."
         ),
-        "mood": "Premium, minimalist, Apple-like design aesthetic. Clean and futuristic.",
-        "avoid": "No brand names, no interface elements, no readable screens.",
+        "mood": "Premium, minimalist, clean and futuristic. Strongly product-led and clearly AI-related.",
+        "avoid": "No brand names, no readable screens, no generic device-only close-up, no logos.",
     },
     "model": {
         "scene": (
-            "Floating translucent geometric layers in deep space - layered glass panels with subtle light passing through, "
-            "forming abstract architectural structure. "
-            "Dark indigo and violet background, soft purple accent lighting on edges. "
-            "Isometric view, centered composition with generous margins."
+            "Layered model architecture in deep space, with translucent compute slabs, attention-like light traces, "
+            "luminous nodes, and thin circuit paths connecting the layers. "
+            "Dark indigo and violet background, isometric view, centered composition with generous margins."
         ),
-        "mood": "Futuristic, precise, scientific blueprint aesthetic. Cool and ethereal.",
-        "avoid": "No literal brain imagery, no glowing nodes/circuits, no data visualizations with numbers.",
+        "mood": "Futuristic, precise, scientific blueprint aesthetic. Cool, ethereal, and unmistakably AI.",
+        "avoid": "No literal brain imagery, no charts with numbers, no text blocks, no logos or watermarks.",
     },
     "research": {
         "scene": (
-            "Abstract laboratory workspace - clean white surface with geometric glass instruments, "
-            "prism refracting light into subtle rainbow, molecular structure models as minimalist wireframes. "
-            "Dark charcoal background with emerald accent lighting. "
-            "Overhead flat-lay angle, asymmetric arrangement leaving space for text."
+            "AI research workspace with clean diagram grids, geometric glass instruments, "
+            "thin light beams, and transparent paper-like layers suggesting papers and experiments. "
+            "Dark charcoal background with emerald accent lighting, overhead editorial composition."
         ),
         "mood": "Scientific precision, editorial elegance, discovery and innovation.",
-        "avoid": "No periodic table, no chemical formulas, no microscope images with labels.",
+        "avoid": "No periodic table, no chemical formulas, no microscope images with labels, no dense equations.",
     },
     "business": {
         "scene": (
-            "Modern glass office tower reflecting golden sunset sky, "
-            "shot from ground level looking up at geometric window patterns. "
-            "Warm gold and deep navy color palette, long exposure smooth clouds. "
-            "Vertical composition with sky gradient at top for text overlay."
+            "AI business landscape with modern glass towers, subtle dashboard overlays, and faint circuit traces. "
+            "Shot from ground level looking up at geometric window patterns, warm gold and deep navy palette, "
+            "long-exposure smooth clouds, vertical composition."
         ),
-        "mood": "Ambitious, premium, corporate sophistication. Aspirational and powerful.",
-        "avoid": "No company signage, no street signs, no visible people.",
+        "mood": "Ambitious, premium, corporate sophistication. Aspirational, powerful, and clearly linked to AI industry.",
+        "avoid": "No company signage, no street signs, no visible people, no generic stock skyline.",
     },
     "policy": {
         "scene": (
-            "Government building facade abstracted into geometric forms - classical columns or modern civic architecture "
-            "rendered with clean lines and symmetry. "
-            "Muted steel blue and gray tones, overcast natural light, frontal symmetric view. "
-            "Strong horizontal lines with clear space at top or bottom."
+            "AI policy briefing scene with symmetrical civic architecture, document-like panels, "
+            "and restrained legal atmosphere. Clean lines, cool steel blue and gray tones, "
+            "frontal view, strong horizontal structure and broad negative space."
         ),
-        "mood": "Authoritative, serious, institutional gravitas. Dignified and formal.",
-        "avoid": "No flags with text, no visible signage, no recognizable monuments.",
+        "mood": "Authoritative, serious, institutional gravitas. Dignified, formal, and policy-oriented.",
+        "avoid": "No flags with text, no visible signage, no recognizable monuments, no courtroom scenes.",
     },
     "general": {
         "scene": (
-            "Minimalist desk flatlay - clean white surface with abstract paper shapes, "
-            "geometric wooden or metal objects casting soft shadows, "
-            "subtle warm light from top-left creating depth. "
-            "60% negative space on right side for text overlay. "
-            "Warm beige and dark graphite color palette."
+            "Minimal AI briefing cover with translucent layers, faint circuit traces, "
+            "subtle model blocks, and prompt-window shapes on a dark editorial background. "
+            "Broad negative space, restrained geometry, no literal text."
         ),
-        "mood": "Editorial sophistication, curated daily briefing aesthetic, premium magazine quality.",
-        "avoid": "No newspapers, no readable documents, no laptop screens.",
+        "mood": "Editorial sophistication, curated daily briefing aesthetic, premium magazine quality, clearly AI-related.",
+        "avoid": "No newspapers, no readable documents, no laptop screens, no paper-craft stock art.",
     },
 }
 
@@ -676,7 +695,8 @@ def _build_cover_prompt(cover_subject: dict) -> str:
     """
     mode = cover_subject.get("mode", "generic")
     story_type = cover_subject.get("story_type", "general")
-    item = cover_subject.get("item")
+    cover_title = clean_display_text(cover_subject.get("cover_title") or "今日AI要闻")
+    visual_topic = clean_display_text(cover_subject.get("visual_prompt_topic") or "")
 
     # 选择对应类型的视觉 brief
     if mode == "trusted" and story_type in _STORY_TYPE_VISUAL_BRIEF:
@@ -684,12 +704,43 @@ def _build_cover_prompt(cover_subject: dict) -> str:
     else:
         brief = _STORY_TYPE_VISUAL_BRIEF["general"]
 
-    # 构建精简单段 prompt
-    prompt = f"{brief['scene']} {brief['mood']} {brief['avoid']} {_AVOID_LIST}"
+    ai_anchor = (
+        f"Editorial cover for a daily AI news briefing. "
+        f"Main headline concept: {cover_title}. "
+        f"Visual topic: {visual_topic or cover_title}. "
+        "The image must clearly read as artificial intelligence / machine learning news, "
+        "not generic abstract art."
+    )
+
+    type_hint_map = {
+        "personnel": (
+            "Use corporate AI leadership cues, boardroom atmosphere, and a restrained portrait-like composition."
+        ),
+        "product": (
+            "Use product-launch energy, sleek UI layers, prompt surfaces, and a polished consumer-tech feel."
+        ),
+        "model": (
+            "Use layered model architecture, translucent compute planes, attention-like light traces, and circuit paths."
+        ),
+        "research": (
+            "Use research and paper cues, clean diagram structure, and a scientific editorial feeling."
+        ),
+        "business": (
+            "Use market, company, and growth cues around AI industry developments."
+        ),
+        "policy": (
+            "Use civic and regulatory cues around AI governance and policy."
+        ),
+        "general": (
+            "Use unmistakable AI motifs such as prompt windows, model blocks, node graphs, chip traces, or data layers."
+        ),
+    }
+
+    prompt = f"{ai_anchor} {type_hint_map.get(story_type, type_hint_map['general'])} {brief['scene']} {brief['mood']} {brief['avoid']} {_AVOID_LIST} Avoid plain decorative paper-craft shapes, stock wallpaper, or unrelated geometric art."
 
     # 限制长度，避免 API 拒绝
-    if len(prompt) > 500:
-        prompt = prompt[:500]
+    if len(prompt) > 900:
+        prompt = prompt[:900]
 
     return prompt
 
@@ -726,7 +777,7 @@ _RUMOR_KEYWORDS = [
 
 def _is_eligible_for_cover(item: dict) -> tuple[bool, str]:
     """检查单条新闻是否可作为封面主题。返回 (eligible, reason)。"""
-    title = item.get("chinese_title") or item.get("title", "")
+    title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
     title_lower = title.lower()
 
     if item.get("_cover_excluded"):
@@ -750,7 +801,7 @@ def _is_eligible_for_cover(item: dict) -> tuple[bool, str]:
 
 def _make_cover_headline(item: dict, story_type: str) -> str:
     """生成更适合封面的短标题，不改变正文标题。"""
-    title = str(item.get("chinese_title") or item.get("title") or "").strip()
+    title = clean_display_text(item.get("chinese_title") or item.get("title") or "")
     if not title:
         return "今日AI要闻"
 
@@ -802,9 +853,9 @@ _NO_VISUAL_VALUE_PATTERNS = [
 
 def _has_visual_value(item: dict) -> tuple[bool, str]:
     """判断新闻是否有足够的视觉故事性来做封面。"""
-    title = item.get("chinese_title") or item.get("title", "")
+    title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
     title_lower = title.lower()
-    summary = item.get("summary", "")
+    summary = clean_display_text(item.get("summary", ""))
 
     # 无实体关键词的纯技术标题 → 无视觉价值
     for pat in _NO_VISUAL_VALUE_PATTERNS:
@@ -870,7 +921,7 @@ def select_cover_subject(news_list: list[dict]) -> dict:
     excluded_info: list[dict] = []
 
     for i, item in enumerate(top3):
-        title = item.get("chinese_title") or item.get("title", "")
+        title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
 
         # 检查资格
         eligible, reason = _is_eligible_for_cover(item)
@@ -931,8 +982,8 @@ def _classify_story_type(item: dict) -> str:
     Returns one of:
         personnel, product, model, research, business, policy, general
     """
-    title = (item.get("chinese_title") or item.get("title", "")).lower()
-    summary = (item.get("summary", "")).lower()
+    title = clean_display_text(item.get("chinese_title") or item.get("title", "")).lower()
+    summary = clean_display_text(item.get("summary", "")).lower()
     combined = title + " " + summary
 
     # 人物变动
@@ -996,12 +1047,14 @@ def _classify_story_type(item: dict) -> str:
 
 def _extract_topic_for_visual(item: dict) -> str:
     """从新闻条目提取英文视觉主题关键词。"""
-    english_title = item.get("title", "")
+    english_title = clean_display_text(item.get("title", ""))
     has_chinese = any('一' <= c <= '鿿' for c in english_title)
     if has_chinese:
         import re as _re
-        en_words = _re.findall(r'[A-Z][a-z]+|[A-Z]{2,}|[a-z]{4,}',
-                               english_title + " " + str(item.get("summary", "")))
+        en_words = _re.findall(
+            r'[A-Z][a-z]+|[A-Z]{2,}|[a-z]{4,}',
+            english_title + " " + clean_display_text(item.get("summary", "")),
+        )
         stop = {'this', 'that', 'with', 'from', 'have', 'been', 'they', 'them', 'their',
                 'your', 'will', 'would', 'could', 'about', 'which', 'when', 'where'}
         en_words = [w for w in en_words if w.lower() not in stop]

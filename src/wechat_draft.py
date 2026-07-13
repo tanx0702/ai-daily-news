@@ -25,6 +25,8 @@ from typing import Optional
 
 import requests
 
+from src.text_utils import clean_display_text
+
 logger = logging.getLogger(__name__)
 
 # access_token 缓存文件（Docker 容器内 /tmp 可写）
@@ -36,7 +38,7 @@ DEFAULT_DRAFT_TITLE_PREFIX = "今日要闻"
 
 def _draft_author() -> str:
     """返回公众号草稿作者署名，避免顶部展示显得像机器模板。"""
-    author = os.environ.get("WECHAT_DRAFT_AUTHOR", DEFAULT_DRAFT_AUTHOR).strip()
+    author = clean_display_text(os.environ.get("WECHAT_DRAFT_AUTHOR", DEFAULT_DRAFT_AUTHOR))
     return author or DEFAULT_DRAFT_AUTHOR
 
 
@@ -49,7 +51,7 @@ def _format_draft_date(date_str: str) -> str:
 
 
 def _build_draft_title(date_str: str) -> str:
-    prefix = os.environ.get("WECHAT_DRAFT_TITLE_PREFIX", DEFAULT_DRAFT_TITLE_PREFIX).strip()
+    prefix = clean_display_text(os.environ.get("WECHAT_DRAFT_TITLE_PREFIX", DEFAULT_DRAFT_TITLE_PREFIX))
     prefix = prefix or DEFAULT_DRAFT_TITLE_PREFIX
     return f"{prefix}｜{_format_draft_date(date_str)}"
 
@@ -57,7 +59,7 @@ def _build_draft_title(date_str: str) -> str:
 def _build_draft_digest(news_list: list[dict], limit: int = 80) -> str:
     headlines = []
     for item in news_list[:3]:
-        title = str(item.get("chinese_title") or item.get("title") or "").strip()
+        title = clean_display_text(item.get("chinese_title") or item.get("title") or "")
         if title:
             headlines.append(title)
     return "；".join(headlines)[:limit].rstrip("；，、 ")

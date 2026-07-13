@@ -13,6 +13,8 @@ from typing import Optional
 
 from openai import OpenAI
 
+from src.text_utils import clean_display_text
+
 logger = logging.getLogger(__name__)
 
 # ── 幻觉检测：常见 AI 型号/产品名 pattern，用于校验 LLM 输出 ──
@@ -226,7 +228,7 @@ def summarize_news(
                 # 按顺序映射，不依赖 LLM 返回的 index（LLM 可能返回全局序号）
                 for pos, item in enumerate(results):
                     if pos < len(batch_news):
-                        c_title = item.get("chinese_title", "")
+                        c_title = clean_display_text(item.get("chinese_title", ""))
                         # 幻觉校验：检查是否编造了型号/产品名
                         if c_title:
                             validation = validate_summary_facts(c_title, batch_news[pos])
@@ -238,8 +240,8 @@ def summarize_news(
                                 # 标记但保留原 LLM 结果（避免因误判丢弃），记录到 debug 字段
                                 batch_news[pos]["_summary_flagged"] = True
                                 batch_news[pos]["_suspicious_terms"] = validation["suspicious_terms"]
-                        batch_news[pos]["chinese_title"] = c_title or batch_news[pos]["title"]
-                        batch_news[pos]["summary"] = item.get("summary", "")[:200]
+                        batch_news[pos]["chinese_title"] = c_title or clean_display_text(batch_news[pos]["title"])
+                        batch_news[pos]["summary"] = clean_display_text(item.get("summary", ""))[:200]
                         logger.info("  Batch summary #%d: %s", pos + 1,
                                     batch_news[pos]["chinese_title"][:40])
             else:
@@ -275,14 +277,16 @@ def summarize_news(
                     content = response.choices[0].message.content.strip()
                     result = _extract_json(content)
                     if result:
-                        news["chinese_title"] = result.get("chinese_title", news["title"])
-                        news["summary"] = result.get("summary", "")[:200]
+                        news["chinese_title"] = clean_display_text(
+                            result.get("chinese_title", news["title"])
+                        )
+                        news["summary"] = clean_display_text(result.get("summary", ""))[:200]
                     else:
-                        news["chinese_title"] = news["title"]
+                        news["chinese_title"] = clean_display_text(news["title"])
                         news["summary"] = ""
                 except Exception as e2:
                     logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e2)
-                    news["chinese_title"] = news["title"]
+                    news["chinese_title"] = clean_display_text(news["title"])
                     news["summary"] = ""
 
     return news_list
@@ -338,7 +342,10 @@ def generate_highlights(
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         logger.info("No API key for highlights, using chinese_title fallback")
-        return [item.get("chinese_title") or item.get("title", "") for item in top_items]
+        return [
+            clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            for item in top_items
+        ]
 
     # 构建输入：标题 + 摘要 + 来源
     items_text = "\n".join(
@@ -383,14 +390,16 @@ def generate_highlights(
             highlights = []
             for i in range(len(top_items)):
                 if i < len(results) and isinstance(results[i], str) and results[i].strip():
-                    text = results[i].strip()
+                    text = clean_display_text(results[i])
                     # 截断过长
                     if len(text) > 50:
                         text = text[:45] + "…"
                     highlights.append(text)
                 else:
                     # 降级：使用 chinese_title
-                    fallback = top_items[i].get("chinese_title") or top_items[i].get("title", "")
+                    fallback = clean_display_text(
+                        top_items[i].get("chinese_title") or top_items[i].get("title", "")
+                    )
                     highlights.append(fallback)
             logger.info("Generated %d highlights", len(highlights))
             return highlights
@@ -399,7 +408,10 @@ def generate_highlights(
 
     except Exception as e:
         logger.warning("Highlights generation failed: %s, using fallback", e)
-        return [item.get("chinese_title") or item.get("title", "") for item in top_items]
+        return [
+            clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            for item in top_items
+        ]
 
 
 def generate_cover_title(
@@ -435,7 +447,7 @@ def generate_cover_title(
         logger.info("Cover title: top item low confidence or excluded by quality gate, using generic title")
         return "今日 AI 热点速览"
 
-    topic = top.get("chinese_title") or top.get("title", "")
+    topic = clean_display_text(top.get("chinese_title") or top.get("title", ""))
 
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
@@ -455,7 +467,7 @@ def generate_cover_title(
         "严格按 JSON 格式回复：{\"cover_title\": \"封面标题\"}"
     )
 
-    summary = top.get("summary", "")
+    summary = clean_display_text(top.get("summary", ""))
 
     try:
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
@@ -472,7 +484,7 @@ def generate_cover_title(
         result = _extract_json(content)
 
         if isinstance(result, dict) and result.get("cover_title"):
-            title = result["cover_title"].strip().strip("“”\"'")
+            title = clean_display_text(result["cover_title"]).strip("“”\"'")
             # 确保在合理长度范围内
             if 8 <= len(title) <= 30:
                 logger.info("Cover title generated: %s", title)
@@ -512,7 +524,7 @@ def summarize_for_wechat(
     api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         items = news_list[:top_n]
-        titles = [item.get("chinese_title") or item["title"] for item in items]
+        titles = [clean_display_text(item.get("chinese_title") or item["title"]) for item in items]
         return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=15)
@@ -542,8 +554,15 @@ def summarize_for_wechat(
             temperature=0.5,
             max_tokens=300,
         )
-        return response.choices[0].message.content.strip()
+        return "\n".join(
+            clean_display_text(line)
+            for line in response.choices[0].message.content.strip().splitlines()
+            if clean_display_text(line)
+        )
     except Exception as e:
         logger.warning("Failed to generate WeChat summary: %s", e)
-        titles = [item.get("chinese_title") or item["title"] for item in news_list[:top_n]]
+        titles = [
+            clean_display_text(item.get("chinese_title") or item["title"])
+            for item in news_list[:top_n]
+        ]
         return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))

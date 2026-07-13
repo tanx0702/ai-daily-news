@@ -9,12 +9,13 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
-from html import unescape
 from math import log1p
 from typing import Optional
 
 import feedparser
 import requests
+
+from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ def _load_sources(config_path: str = None) -> list[dict]:
 def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
     """将 feedparser 的 entry 转换为结构化新闻字典。"""
     title_raw = entry.get("title", "")
-    title = unescape(title_raw).strip()
+    title = clean_display_text(title_raw)
     if not title:
         return None
 
@@ -126,9 +127,9 @@ def _parse_rss_item(entry: dict, name_hint: str = "") -> Optional[dict]:
 
     # 摘要：优先取 summary，其次取 description
     summary_raw = entry.get("summary", "") or entry.get("description", "")
-    summary = unescape(summary_raw).strip() if summary_raw else ""
+    summary = clean_display_text(summary_raw, collapse_whitespace=False) if summary_raw else ""
     # 纯文本化：去除 HTML 标签
-    summary = _strip_html(summary)
+    summary = clean_display_text(_strip_html(summary))
     image_candidates = _extract_rss_image_candidates(entry)
 
     source = entry.get("source", {}).get("title", "") or ""
@@ -159,7 +160,7 @@ def _extract_rss_image_candidates(entry: dict) -> list[dict]:
     def add(url: str, source: str):
         if not url:
             return
-        url = str(url).strip()
+        url = clean_display_text(url, collapse_whitespace=False)
         if not url or url.startswith("data:"):
             return
         if any(c.get("url") == url for c in candidates):
@@ -609,8 +610,8 @@ def _normalize_rss_item(item: dict) -> dict:
     """将旧版 RSS item 转为统一 candidate 格式。"""
     from src.collectors import BaseCollector
 
-    url = item.get("url", "")
-    title = item.get("title", "")
+    url = clean_display_text(item.get("url", ""), collapse_whitespace=False)
+    title = clean_display_text(item.get("title", ""))
 
     # 稳定 ID：URL hash 或 title hash
     id_str = url or title
@@ -620,11 +621,11 @@ def _normalize_rss_item(item: dict) -> dict:
         id_=id_,
         title=title,
         url=url,
-        source=item.get("source", ""),
+        source=clean_display_text(item.get("source", "")),
         source_type="rss",
         published_at=item.get("published_at"),
         published_source=item.get("published_source", "missing"),
-        summary=item.get("summary", ""),
+        summary=clean_display_text(item.get("summary", "")),
     )
     if item.get("image_candidates"):
         candidate["image_candidates"] = item.get("image_candidates", [])

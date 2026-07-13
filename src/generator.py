@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from jinja2 import Environment, BaseLoader
+from src.text_utils import clean_display_text
 from src.time_utils import report_date_str
 
 logger = logging.getLogger(__name__)
@@ -365,6 +366,10 @@ def render_daily_html(
     formatted_news = []
     for item in news_list:
         news_item = dict(item)
+        news_item["title"] = clean_display_text(news_item.get("title", ""))
+        news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
+        news_item["summary"] = clean_display_text(news_item.get("summary", ""))
+        news_item["source"] = clean_display_text(news_item.get("source", ""))
         pub = news_item.get("published_at")
         if isinstance(pub, datetime):
             news_item["published_at"] = pub.strftime("%m/%d %H:%M")
@@ -423,8 +428,11 @@ def render_wechat_article(
     BORDER = "#e5e7eb"
     DIVIDER = "#d1d5db"
 
-    def esc(s: str) -> str:
-        return _html.escape(s, quote=True)
+    def esc(s: str, *, collapse_whitespace: bool = True) -> str:
+        return _html.escape(
+            clean_display_text(s, collapse_whitespace=collapse_whitespace),
+            quote=True,
+        )
 
     # 来源名称标准化表
     _source_name_map: dict[str, str] = {
@@ -443,6 +451,7 @@ def render_wechat_article(
         - 映射常见缩写到完整名称
         - label 用于显示格式 "来源：XXX · 阅读原文"
         """
+        raw = clean_display_text(raw)
         if not raw:
             if source_type == "hn":
                 return "Hacker News", "来源：Hacker News"
@@ -499,7 +508,7 @@ def render_wechat_article(
     # ── 封面图 ──
     if cover_image_url:
         parts.append(
-            f'<img src="{esc(cover_image_url)}" '
+            f'<img src="{esc(cover_image_url, collapse_whitespace=False)}" '
             f'style="display:block;width:100%;height:auto;margin:0;padding:0;" '
             f'alt="" />'
         )
@@ -528,9 +537,11 @@ def render_wechat_article(
             f'font-weight:600;line-height:1.4;">📌 今日重点</p>'
         )
         for i, item in enumerate(highlight_candidates):
-            highlight_text = item.get("highlight_text", "")
+            highlight_text = clean_display_text(item.get("highlight_text", ""))
             if not highlight_text:
-                highlight_text = item.get("chinese_title") or item.get("title", "")
+                highlight_text = clean_display_text(
+                    item.get("chinese_title") or item.get("title", "")
+                )
             parts.append(
                 f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
                 f'line-height:1.6;">{esc(str(i + 1))}. {esc(highlight_text)}</p>'
@@ -542,14 +553,14 @@ def render_wechat_article(
     TEXT_ONLY_BG = "#f8fafc"  # 纯文字卡片微背景
 
     for idx, item in enumerate(news_list):
-        title = item.get("chinese_title") or item.get("title", "")
+        title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
         title = _fix_typos(title)
-        summary = item.get("summary", "")
+        summary = clean_display_text(item.get("summary", ""))
         summary = _fix_typos(summary)
-        source_name = item.get("source", "")
+        source_name = clean_display_text(item.get("source", ""))
         source_type = item.get("source_type", "")
-        url = item.get("url", "")
-        article_img = item.get("article_image_url", "")
+        url = clean_display_text(item.get("url", ""), collapse_whitespace=False)
+        article_img = clean_display_text(item.get("article_image_url", ""), collapse_whitespace=False)
         image_type = item.get("image_type", "")
 
         # 判断是否为图文卡片。
@@ -574,7 +585,7 @@ def render_wechat_article(
             )
             # 顶部配图
             parts.append(
-                f'<img src="{esc(article_img)}" '
+                f'<img src="{esc(article_img, collapse_whitespace=False)}" '
                 f'style="display:block;width:100%;max-height:240px;'
                 f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
             )
@@ -601,7 +612,7 @@ def render_wechat_article(
             )
             if url:
                 parts.append(
-                    f' · <a href="{esc(url)}" style="color:{ACCENT};text-decoration:none;">'
+                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
                     f'阅读原文</a>'
                 )
             parts.append('</p></section>')
@@ -640,7 +651,7 @@ def render_wechat_article(
             )
             if url:
                 parts.append(
-                    f' · <a href="{esc(url)}" style="color:{ACCENT};text-decoration:none;">'
+                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
                     f'阅读原文</a>'
                 )
             parts.append('</p></section>')
@@ -650,7 +661,7 @@ def render_wechat_article(
         f'<section style="margin:8px 16px 24px;padding:20px 0 0;'
         f'text-align:center;border-top:1px solid {DIVIDER};">'
         f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:14px;line-height:1.6;">'
-        f'<a href="{esc(pages_url)}" style="color:{ACCENT};font-weight:600;'
+        f'<a href="{esc(pages_url, collapse_whitespace=False)}" style="color:{ACCENT};font-weight:600;'
         f'text-decoration:none;">查看完整日报</a></p>'
         f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
         f'每日AI资讯整理</p>'
@@ -697,11 +708,11 @@ def _news_to_markdown(
         lines.append("")
 
         for item in items:
-            title = item.get("chinese_title") or item.get("title", "")
-            summary = item.get("summary", "")
-            source_name = item.get("source", "")
-            url = item.get("url", "")
-            img = item.get("article_image_url", "")
+            title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            summary = clean_display_text(item.get("summary", ""))
+            source_name = clean_display_text(item.get("source", ""))
+            url = clean_display_text(item.get("url", ""), collapse_whitespace=False)
+            img = clean_display_text(item.get("article_image_url", ""), collapse_whitespace=False)
 
             lines.append(f"### {title}")
             lines.append("")
@@ -829,7 +840,7 @@ def render_wechat_article_ai(
 
     # 2. 注入封面图（如果有的话）到 Markdown 头部
     if cover_image_url:
-        md_content = f"![封面]({cover_image_url})\n\n{md_content}"
+        md_content = f"![封面]({clean_display_text(cover_image_url, collapse_whitespace=False)})\n\n{md_content}"
 
     # 3. 拼接完整 prompt
     prompt = _MD2WECHAT_OCEAN_CALM_PROMPT.format(markdown_content=md_content)
