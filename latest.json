@@ -1,143 +1,143 @@
 {
-  "date": "2026-07-13",
+  "date": "2026-07-14",
   "news": [
     {
-      "title": "Fidji Simo steps down from OpenAI’s No. 2 role",
-      "url": "https://techcrunch.com/2026/07/09/fidji-simo-steps-down-from-openais-no-2-role/",
+      "title": "Waze adds new AI-powered features and customization updates",
+      "url": "https://techcrunch.com/2026/07/13/waze-adds-new-ai-powered-features-and-customization-updates/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 高管 Fidji Simo 宣布辞去其在公司的高层领导职位。",
-      "_score": 14.0,
-      "chinese_title": "Fidji Simo 辞去 OpenAI 二号人物职务"
+      "summary": "",
+      "_score": 16.0,
+      "chinese_title": "Waze adds new AI-powered features and customization updates"
     },
     {
-      "title": "Fidji Simo steps down from leading OpenAI’s AGI work due to illness",
-      "url": "https://www.theverge.com/ai-artificial-intelligence/963738/openai-fidji-simo-steps-down-ceo-advisor",
+      "title": "The wildest allegations in Apple’s trade secrets lawsuit against OpenAI",
+      "url": "https://techcrunch.com/2026/07/13/the-wildest-allegations-in-apples-trade-secrets-lawsuit-against-openai/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "",
+      "_score": 14.0,
+      "chinese_title": "The wildest allegations in Apple’s trade secrets lawsuit against OpenAI"
+    },
+    {
+      "title": "The 6 wildest claims in Apple’s lawsuit against OpenAI",
+      "url": "https://www.theverge.com/tech/964843/apple-openai-lawsuit-wildest-claims",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "受健康状况影响，Fidji Simo 不再负责 OpenAI 通用人工智能（AGI）的相关工作。",
+      "summary": "",
       "_score": 14.0,
-      "chinese_title": "因健康问题，Fidji Simo 辞去 OpenAI AGI 工作负责人一职"
+      "chinese_title": "The 6 wildest claims in Apple’s lawsuit against OpenAI"
+    },
+    {
+      "title": "Waze is getting a bunch of new AI-powered features",
+      "url": "https://www.theverge.com/transportation/964132/waze-gemini-ai-voice-commands-less-chatty",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "",
+      "_score": 14.0,
+      "chinese_title": "Waze is getting a bunch of new AI-powered features"
+    },
+    {
+      "title": "Video-generation startup PixVerse raises $439M, valuation soars past $2B",
+      "url": "https://techcrunch.com/2026/07/13/video-generation-startup-pixverse-raises-439m-valuation-soars-past-2b/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "",
+      "_score": 13.0,
+      "chinese_title": "Video-generation startup PixVerse raises $439M, valuation soars past $2B"
+    },
+    {
+      "title": "Anthropic starts localizing Claude pricing for India, its biggest market after the US",
+      "url": "https://techcrunch.com/2026/07/13/anthropic-starts-localizing-claude-pricing-for-india-its-biggest-market-after-the-us/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "",
+      "_score": 13.0,
+      "chinese_title": "Anthropic starts localizing Claude pricing for India, its biggest market after the US"
     },
     {
       "title": "Open source AI matters more than ever, according to Hugging Face’s Clem Delangue",
       "url": "https://techcrunch.com/podcast/open-source-ai-matters-more-than-ever-according-to-hugging-faces-clem-delangue/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Hugging Face 首席执行官 Clem Delangue 强调在 AI 领域坚持开源战略的重要性。",
+      "summary": "",
       "_score": 13.0,
-      "chinese_title": "Hugging Face 创始人 Clem Delangue：开源 AI 比以往任何时候都更重要"
+      "chinese_title": "Open source AI matters more than ever, according to Hugging Face’s Clem Delangue"
     },
     {
       "title": "OpenAI launches its new family of models with GPT-5.6",
       "url": "https://techcrunch.com/2026/07/09/openai-launches-its-new-family-of-models-with-gpt-5-6/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 正式推出其最新模型系列，其中包括备受关注的 GPT-5.6 版本。",
+      "summary": "",
       "_score": 13.0,
-      "chinese_title": "OpenAI 发布新一代模型家族，包含 GPT-5.6"
+      "chinese_title": "OpenAI launches its new family of models with GPT-5.6"
     },
     {
-      "title": "Elon Musk praises Mythos/Fable, promises not to ‘cut off’ Anthropic",
-      "url": "https://techcrunch.com/2026/07/09/elon-musk-praises-mythos-fable-promises-not-to-cut-off-anthropic/",
+      "title": "Satya Nadella has issued a shocking warning to companies using AI",
+      "url": "https://techcrunch.com/2026/07/13/satya-nadella-has-issued-a-shocking-warning-to-companies-using-ai/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "埃隆·马斯克公开赞扬了 Anthropic 的 Mythos 和 Fable 项目，并保证将继续支持该公司。",
-      "_score": 13.0,
-      "chinese_title": "马斯克称赞 Mythos/Fable，承诺不会‘切断’ Anthropic"
-    },
-    {
-      "title": "How did the government decide OpenAI’s frontier model was safe to release?",
-      "url": "https://techcrunch.com/2026/07/09/how-did-the-government-decide-openais-frontier-model-was-safe-to-release/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "本文探讨了监管机构或企业内部在批准 OpenAI 前沿模型发布前所采用的安全评估标准与决策流程。",
-      "_score": 13.0,
-      "chinese_title": "政府如何判定 OpenAI 的前沿模型发布是安全的？"
+      "summary": "",
+      "_score": 11.0,
+      "chinese_title": "Satya Nadella has issued a shocking warning to companies using AI"
     },
     {
       "title": "OpenAI bets on families as ChatGPT goes deeper into households",
       "url": "https://techcrunch.com/2026/07/11/openai-bets-on-families-as-chatgpt-goes-deeper-into-households/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 正调整战略重心，致力于将 ChatGPT 更深入地融入家庭场景，以开拓新的用户增长点。",
+      "summary": "",
       "_score": 11.0,
-      "chinese_title": "随着 ChatGPT 深入家庭，OpenAI 押注家庭用户市场"
+      "chinese_title": "OpenAI bets on families as ChatGPT goes deeper into households"
     },
     {
       "title": "Apple sues OpenAI over alleged trade secret theft",
       "url": "https://techcrunch.com/2026/07/10/apple-sues-openai-over-alleged-trade-secret-theft/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "苹果公司正式对 OpenAI 提起诉讼，指控其非法获取并使用受保护的商业机密。",
+      "summary": "",
       "_score": 11.0,
-      "chinese_title": "苹果起诉 OpenAI 涉嫌窃取商业机密"
+      "chinese_title": "Apple sues OpenAI over alleged trade secret theft"
     },
     {
       "title": "Hugging Face’s CEO on why companies are done renting their AI",
       "url": "https://techcrunch.com/2026/07/10/hugging-faces-ceo-on-why-companies-are-done-renting-their-ai/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Hugging Face 首席执行官阐述了企业界逐渐转向自建或拥有 AI 基础设施，而非单纯依赖租赁服务的深层原因。",
+      "summary": "",
       "_score": 11.0,
-      "chinese_title": "Hugging Face CEO：企业为何不再愿意租赁 AI"
+      "chinese_title": "Hugging Face’s CEO on why companies are done renting their AI"
     },
     {
       "title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter",
       "url": "https://techcrunch.com/2026/07/09/openai-says-gpt-5-6-is-the-preferred-model-for-microsoft-copilot-amid-breakup-chatter/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "尽管外界有关于双方合作关系的猜测，OpenAI 仍确认 GPT 5.6 版本是微软 Copilot 365 的核心驱动模型。",
+      "summary": "",
       "_score": 11.0,
-      "chinese_title": " amid 分手传闻，OpenAI 称 GPT 5.6 为微软 Copilot 365 的“首选模型”"
+      "chinese_title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter"
+    },
+    {
+      "title": "Fidji Simo steps down from OpenAI’s No. 2 role",
+      "url": "https://techcrunch.com/2026/07/09/fidji-simo-steps-down-from-openais-no-2-role/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "",
+      "_score": 11.0,
+      "chinese_title": "Fidji Simo steps down from OpenAI’s No. 2 role"
     },
     {
       "title": "OpenAI is shutting down Atlas, but its AI browser ambitions are still growing",
       "url": "https://techcrunch.com/2026/07/09/openai-is-shutting-down-atlas-but-its-ai-browser-ambitions-are-still-growing/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "尽管 OpenAI 停止了 Atlas 项目的运营，但其在人工智能浏览器领域的战略投入和愿景并未减弱，显示出公司对该方向的长期承诺。",
+      "summary": "",
       "_score": 11.0,
-      "chinese_title": "OpenAI 关闭 Atlas 项目，但其 AI 浏览器野心仍在扩张"
-    },
-    {
-      "title": "Meta enters the crowded AI coding battle with Muse Spark 1.1",
-      "url": "https://techcrunch.com/2026/07/09/meta-enters-the-crowded-ai-coding-battle-with-muse-spark-1-1/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "Meta 发布了新的 AI 编码工具 Muse Spark 1.1，旨在通过增强开发者的编程效率，在日益白热化的 AI 辅助编程市场中占据一席之地。",
-      "_score": 11.0,
-      "chinese_title": "Meta 携 Muse Spark 1.1 加入竞争激烈的 AI 编程赛道"
-    },
-    {
-      "title": "New York Times says OpenAI hid evidence in ChatGPT copyright trial",
-      "url": "https://techcrunch.com/2026/07/09/new-york-times-says-openai-hid-evidence-in-chatgpt-copyright-trial/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "《纽约时报》公开声称 OpenAI 在涉及 ChatGPT 的版权纠纷案件中未能充分披露关键证据，引发了对该公司法律合规性的进一步质疑。",
-      "_score": 11.0,
-      "chinese_title": "《纽约时报》指控 OpenAI 在 ChatGPT 版权诉讼中隐瞒证据"
-    },
-    {
-      "title": "Google will now disclose which ads are made with AI",
-      "url": "https://techcrunch.com/2026/07/09/google-will-now-disclose-which-ads-are-made-with-ai/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "为提升透明度并回应监管压力，Google 宣布将在其平台上明确标识出使用人工智能技术创建的广告，以便用户清晰区分人工与 AI 生成内容。",
-      "_score": 11.0,
-      "chinese_title": "Google 将强制披露由 AI 生成的广告内容"
-    },
-    {
-      "title": "Lorde says Ray-Ban Meta AI glasses are ‘not sexy’",
-      "url": "https://www.theverge.com/ai-artificial-intelligence/964539/lorde-says-ray-ban-meta-ai-glasses-are-not-sexy",
-      "source": "The Verge AI",
-      "published_at": null,
-      "summary": "知名歌手 Lorde 公开表示对 Ray-Ban 与 Meta 合作的 AI 智能眼镜持负面看法，认为其设计不够时尚或缺乏吸引力，反映了部分消费者对科技穿戴设备的审美争议。",
-      "_score": 11.0,
-      "chinese_title": "歌手 Lorde 批评 Ray-Ban Meta AI 智能眼镜‘缺乏魅力’"
+      "chinese_title": "OpenAI is shutting down Atlas, but its AI browser ambitions are still growing"
     }
   ],
   "pages_url": "https://tankex.xyz",
   "cover_image_url": "https://tankex.xyz/cover.jpg",
-  "generated_at": "2026-07-13T03:16:58.493589+00:00"
+  "generated_at": "2026-07-14T02:41:14.369376+00:00"
 }
