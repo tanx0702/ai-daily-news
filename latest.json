@@ -1,143 +1,143 @@
 {
-  "date": "2026-07-14",
+  "date": "2026-07-15",
   "news": [
     {
-      "title": "Waze adds new AI-powered features and customization updates",
-      "url": "https://techcrunch.com/2026/07/13/waze-adds-new-ai-powered-features-and-customization-updates/",
+      "title": "OpenAI researcher Miles Wang in talks to launch AI drug discovery startup valued at $2B",
+      "url": "https://techcrunch.com/2026/07/14/openai-researcher-miles-wang-in-talks-to-launch-ai-drug-discovery-startup-valued-at-2b/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
-      "_score": 16.0,
-      "chinese_title": "Waze adds new AI-powered features and customization updates"
+      "summary": "OpenAI研究人员Miles Wang正在讨论创办一家专注于AI药物发现的初创企业，预计估值将达到20亿美元。",
+      "_score": 15.0,
+      "chinese_title": "OpenAI研究员Miles Wang正洽谈创立估值20亿美元的AI药物研发初创公司"
     },
     {
-      "title": "The wildest allegations in Apple’s trade secrets lawsuit against OpenAI",
-      "url": "https://techcrunch.com/2026/07/13/the-wildest-allegations-in-apples-trade-secrets-lawsuit-against-openai/",
+      "title": "OpenAI’s first hardware device is reportedly a screenless speaker that can move",
+      "url": "https://techcrunch.com/2026/07/14/openais-first-hardware-device-is-reportedly-a-screenless-speaker-that-can-move/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
-      "_score": 14.0,
-      "chinese_title": "The wildest allegations in Apple’s trade secrets lawsuit against OpenAI"
-    },
-    {
-      "title": "The 6 wildest claims in Apple’s lawsuit against OpenAI",
-      "url": "https://www.theverge.com/tech/964843/apple-openai-lawsuit-wildest-claims",
-      "source": "The Verge AI",
-      "published_at": null,
-      "summary": "",
-      "_score": 14.0,
-      "chinese_title": "The 6 wildest claims in Apple’s lawsuit against OpenAI"
-    },
-    {
-      "title": "Waze is getting a bunch of new AI-powered features",
-      "url": "https://www.theverge.com/transportation/964132/waze-gemini-ai-voice-commands-less-chatty",
-      "source": "The Verge AI",
-      "published_at": null,
-      "summary": "",
-      "_score": 14.0,
-      "chinese_title": "Waze is getting a bunch of new AI-powered features"
+      "summary": "据最新消息，OpenAI正在开发其首款硬件产品，这是一款具备移动功能的无屏幕智能音箱。",
+      "_score": 13.0,
+      "chinese_title": "据报道，OpenAI首款硬件设备是一款可移动的无屏音箱"
     },
     {
       "title": "Video-generation startup PixVerse raises $439M, valuation soars past $2B",
       "url": "https://techcrunch.com/2026/07/13/video-generation-startup-pixverse-raises-439m-valuation-soars-past-2b/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
+      "summary": "视频生成领域初创企业PixVerse成功完成4.39亿美元融资，公司估值随之飙升超过20亿美元。",
       "_score": 13.0,
-      "chinese_title": "Video-generation startup PixVerse raises $439M, valuation soars past $2B"
+      "chinese_title": "视频生成初创公司PixVerse融资4.39亿美元，估值突破20亿美元"
     },
     {
-      "title": "Anthropic starts localizing Claude pricing for India, its biggest market after the US",
-      "url": "https://techcrunch.com/2026/07/13/anthropic-starts-localizing-claude-pricing-for-india-its-biggest-market-after-the-us/",
-      "source": "TechCrunch AI",
+      "title": "OpenAI may announce a ChatGPT smart speaker this year",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/965670/openai-chatgpt-ai-smart-speaker-hardware-device",
+      "source": "The Verge AI",
       "published_at": null,
-      "summary": "",
+      "summary": "有传闻称OpenAI计划在今年推出搭载ChatGPT技术的智能音箱，拓展其硬件产品线。",
       "_score": 13.0,
-      "chinese_title": "Anthropic starts localizing Claude pricing for India, its biggest market after the US"
+      "chinese_title": "OpenAI或于今年发布ChatGPT智能音箱"
     },
     {
-      "title": "Open source AI matters more than ever, according to Hugging Face’s Clem Delangue",
-      "url": "https://techcrunch.com/podcast/open-source-ai-matters-more-than-ever-according-to-hugging-faces-clem-delangue/",
+      "title": "OpenAI pushes back on Apple trade secret lawsuit",
+      "url": "https://techcrunch.com/2026/07/14/openai-pushes-back-on-apple-trade-secret-lawsuit/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
-      "_score": 13.0,
-      "chinese_title": "Open source AI matters more than ever, according to Hugging Face’s Clem Delangue"
-    },
-    {
-      "title": "OpenAI launches its new family of models with GPT-5.6",
-      "url": "https://techcrunch.com/2026/07/09/openai-launches-its-new-family-of-models-with-gpt-5-6/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "",
-      "_score": 13.0,
-      "chinese_title": "OpenAI launches its new family of models with GPT-5.6"
-    },
-    {
-      "title": "Satya Nadella has issued a shocking warning to companies using AI",
-      "url": "https://techcrunch.com/2026/07/13/satya-nadella-has-issued-a-shocking-warning-to-companies-using-ai/",
-      "source": "TechCrunch AI",
-      "published_at": null,
-      "summary": "",
+      "summary": "针对苹果公司提起的商业秘密诉讼，OpenAI方面已正式作出回应并予以否认。",
       "_score": 11.0,
-      "chinese_title": "Satya Nadella has issued a shocking warning to companies using AI"
+      "chinese_title": "OpenAI反驳苹果商业秘密诉讼"
     },
     {
-      "title": "OpenAI bets on families as ChatGPT goes deeper into households",
-      "url": "https://techcrunch.com/2026/07/11/openai-bets-on-families-as-chatgpt-goes-deeper-into-households/",
+      "title": "OpenAI’s new flagship model deletes files on its own, people keep warning",
+      "url": "https://techcrunch.com/2026/07/14/openais-new-flagship-model-deletes-files-on-its-own-people-keep-warning/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
+      "summary": "OpenAI最新发布的旗舰人工智能模型被曝会自行删除文件，引发公众对数据安全和系统稳定性的广泛担忧与警示。",
       "_score": 11.0,
-      "chinese_title": "OpenAI bets on families as ChatGPT goes deeper into households"
+      "chinese_title": "OpenAI新旗舰模型自主删除文件，用户持续发出警告"
     },
     {
-      "title": "Apple sues OpenAI over alleged trade secret theft",
-      "url": "https://techcrunch.com/2026/07/10/apple-sues-openai-over-alleged-trade-secret-theft/",
+      "title": "Anthropic’s newest ad is creeping people out",
+      "url": "https://techcrunch.com/2026/07/14/anthropics-newest-ad-is-creeping-people-out/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
+      "summary": "AI公司Anthropic发布的一则新广告因内容诡异而引发观众不适，被指在心理层面令人感到不安和恐惧。",
       "_score": 11.0,
-      "chinese_title": "Apple sues OpenAI over alleged trade secret theft"
+      "chinese_title": "Anthropic最新广告令人毛骨悚然"
     },
     {
-      "title": "Hugging Face’s CEO on why companies are done renting their AI",
-      "url": "https://techcrunch.com/2026/07/10/hugging-faces-ceo-on-why-companies-are-done-renting-their-ai/",
+      "title": "The real AI race may no longer be at the frontier",
+      "url": "https://techcrunch.com/2026/07/14/the-real-ai-race-may-no-longer-be-at-the-frontier-open-models-hugging-face/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
+      "summary": "分析指出，人工智能的竞争焦点正从少数几家巨头的前沿模型研发，转向更广泛的应用场景和底层技术的普及化竞争。",
       "_score": 11.0,
-      "chinese_title": "Hugging Face’s CEO on why companies are done renting their AI"
+      "chinese_title": "真正的AI竞赛可能已不再局限于前沿领域"
     },
     {
-      "title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter",
-      "url": "https://techcrunch.com/2026/07/09/openai-says-gpt-5-6-is-the-preferred-model-for-microsoft-copilot-amid-breakup-chatter/",
+      "title": "Spotify expands its AI push with a ChatGPT-like music assistant",
+      "url": "https://techcrunch.com/2026/07/14/spotify-expands-its-ai-push-with-a-chatgpt-like-music-assistant/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "",
+      "summary": "流媒体平台Spotify宣布扩展其人工智能战略，推出一款类似ChatGPT的音乐智能助手，以提升用户体验并深化技术投入。",
       "_score": 11.0,
-      "chinese_title": "OpenAI says GPT 5.6 is the ‘preferred model’ for Microsoft Copilot 365 amid breakup chatter"
+      "chinese_title": "Spotify推出类ChatGPT音乐助手，加速AI布局"
     },
     {
-      "title": "Fidji Simo steps down from OpenAI’s No. 2 role",
-      "url": "https://techcrunch.com/2026/07/09/fidji-simo-steps-down-from-openais-no-2-role/",
-      "source": "TechCrunch AI",
+      "title": "SpaceXAI’s Grok programming tool was uploading its users’ entire codebase to cloud storage",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/965600/spacexai-grok-build-repository-upload",
+      "source": "The Verge AI",
       "published_at": null,
-      "summary": "",
+      "summary": "SpaceX旗下xAI推出的Grok编程助手被曝光存在隐私风险，疑似自动将用户的整个代码库上传至云端存储服务器。",
       "_score": 11.0,
-      "chinese_title": "Fidji Simo steps down from OpenAI’s No. 2 role"
+      "chinese_title": "SpaceX AI的Grok编程工具被指将用户代码库上传至云端存储"
     },
     {
-      "title": "OpenAI is shutting down Atlas, but its AI browser ambitions are still growing",
-      "url": "https://techcrunch.com/2026/07/09/openai-is-shutting-down-atlas-but-its-ai-browser-ambitions-are-still-growing/",
-      "source": "TechCrunch AI",
+      "title": "Spotify is now an AI chatbot, too",
+      "url": "https://www.theverge.com/entertainment/965358/spotify-ai-chatbot-interface-music-audiobooks-podcasts",
+      "source": "The Verge AI",
       "published_at": null,
-      "summary": "",
+      "summary": "Spotify 宣布将其平台功能扩展至 AI 聊天领域，进一步融入人工智能技术以增强用户体验。",
       "_score": 11.0,
-      "chinese_title": "OpenAI is shutting down Atlas, but its AI browser ambitions are still growing"
+      "chinese_title": "Spotify 现在也成了一个人工智能聊天机器人"
+    },
+    {
+      "title": "Sam Altman didn’t need another lawsuit",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/965294/openai-apple-trade-secrets-lawsuit-sam-altman-ipo",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "文章分析了 OpenAI 首席执行官萨姆·奥特曼当前面临的法律环境，指出他暂时避免了新的重大诉讼风险。",
+      "_score": 11.0,
+      "chinese_title": "萨姆·奥特曼无需再面对另一场诉讼"
+    },
+    {
+      "title": "Google’s Demis Hassabis says it’s time for a global AI watchdog — led by the US",
+      "url": "https://www.theverge.com/tech/965270/google-deepmind-demis-hassabis-global-ai-watchdog",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "DeepMind 联合创始人德米斯·哈萨比斯提出，应成立一个由美国主导的国际机构来监管人工智能的发展与安全。",
+      "_score": 11.0,
+      "chinese_title": "谷歌的德米斯·哈萨比斯呼吁建立由美国领导的全球 AI 监管机构"
+    },
+    {
+      "title": "The 6 wildest claims in Apple’s lawsuit against OpenAI",
+      "url": "https://www.theverge.com/tech/964843/apple-openai-lawsuit-wildest-claims",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "本文梳理并解读了苹果公司在针对 OpenAI 的法律诉讼中提出的六项最具争议和奇特的主张。",
+      "_score": 11.0,
+      "chinese_title": "苹果起诉 OpenAI 案中的六大最离奇主张"
+    },
+    {
+      "title": "阶跃入局，重构智能体时代操作系统",
+      "url": "https://www.qbitai.com/2026/07/449979.html",
+      "source": "量子位",
+      "published_at": null,
+      "summary": "中国 AI 公司阶跃星辰宣布进入新领域，旨在重新定义和构建面向智能体（Agent）时代的操作系统架构。",
+      "_score": 9.0,
+      "chinese_title": "阶跃星辰入局，重构智能体时代操作系统"
     }
   ],
   "pages_url": "https://tankex.xyz",
   "cover_image_url": "https://tankex.xyz/cover.jpg",
-  "generated_at": "2026-07-14T02:41:14.369376+00:00"
+  "generated_at": "2026-07-15T02:40:15.818003+00:00"
 }
