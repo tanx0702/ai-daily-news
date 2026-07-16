@@ -341,7 +341,8 @@ def generate_highlights(
 
     top_items = eligible[:3]
 
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    if api_key is None:
+        api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         logger.info("No API key for highlights, using chinese_title fallback")
         return [

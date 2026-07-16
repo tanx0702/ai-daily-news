@@ -283,8 +283,8 @@ def _run_pipeline():
 
     _generate_debug_reports(news_list, date_str, docs_dir, cover_subject=cover_subject)
 
-    # === 6. 发布微信推文 ===
-    logger.info("[6/6] 发布微信推文...")
+    # === 6. 创建微信草稿 ===
+    logger.info("[6/6] 创建微信草稿...")
 
     if blocked_publish:
         logger.warning(

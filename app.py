@@ -6,7 +6,7 @@ Flask 服务 — AI 日报微信回调 + 新闻 API
   GET /health        — 健康检查
   GET /api/news      — 返回最新新闻 JSON
 
-部署：docker compose up -d（Caddy 自动 HTTPS，反代到本服务 :5000）
+部署：docker compose up -d（nginx 负责 HTTPS、静态文件和 /wechat 反代）
 """
 
 import hashlib
