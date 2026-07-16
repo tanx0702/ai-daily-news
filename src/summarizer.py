@@ -323,6 +323,8 @@ def generate_highlights(
     # 过滤：只从高置信度新闻中提取今日重点
     eligible = []
     for item in news_list:
+        if item.get("_highlight_excluded"):
+            continue
         bc = item.get("_brand_claim", {})
         if bc.get("confidence") == "low":
             # 低置信度大厂传闻：跳过，不进入今日重点

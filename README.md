@@ -7,7 +7,7 @@
 生产部署基于 Docker Compose：
 
 ```text
-cron（每天 8:00） -> docker compose exec web python -m src.main
+cron（每天 8:00） -> docker compose exec -T web python -m src.main
                                       |
                                       v
                                   docs/
@@ -59,8 +59,10 @@ docker compose up -d
 服务器 cron 示例：
 
 ```bash
-0 8 * * * cd /opt/ai-news && docker compose exec web python -m src.main >> /var/log/ai-news.log 2>&1
+0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1
 ```
+
+生产环境如果不希望 high risk 质检结果进入微信公众号草稿箱，请在 `.env` 设置 `QUALITY_GATE_STRICT=1`。
 
 ## 微信模块边界
 

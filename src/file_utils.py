@@ -19,6 +19,7 @@ def atomic_write_text(path: str, content: str, encoding: str = "utf-8") -> None:
         with os.fdopen(fd, "w", encoding=encoding) as f:
             f.write(content)
         os.replace(tmp_path, path)
+        os.chmod(path, 0o644)
     except Exception:
         try:
             os.unlink(tmp_path)

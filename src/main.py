@@ -7,7 +7,7 @@ AI 每日新闻推送 Agent - 主程序
 3. 渲染 HTML 日报
 4. AI 封面图生成
 5. 保存 latest.json（供 Flask 读取）
-6. 发布微信推文（草稿 → 群发）
+6. 创建微信草稿（后台手动发布）
 """
 
 import json
