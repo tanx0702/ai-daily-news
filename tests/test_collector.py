@@ -77,6 +77,44 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(report["merged_groups"], 1)
         self.assertEqual(deduped[0]["merged_count"], 1)
 
+    def test_score_marks_hn_only_model_comparison_as_publish_risk(self):
+        item = {
+            "title": "$100 AI Music Video: Claude Fable 5 vs. GPT-5.6 Sol",
+            "url": "https://news.ycombinator.com/item?id=123",
+            "source": "Hacker News",
+            "source_type": "hn",
+            "published_at": datetime.now(timezone.utc),
+            "summary": "",
+            "metrics": {
+                "hn_score": 200,
+                "hn_comments": 120,
+                "cross_source_count": 0,
+            },
+        }
+
+        collector._score_item(item, [item])
+
+        self.assertEqual(item["_publish_risk"]["category"], "community_model_comparison")
+        self.assertGreater(item["scores"]["publish_risk_penalty"], 0)
+
+    def test_score_marks_single_source_financial_claim_as_publish_risk(self):
+        item = {
+            "title": "智谱 ARR 达到10亿美元，半年增长15倍",
+            "url": "https://36kr.com/p/example",
+            "source": "36氪",
+            "source_type": "rss",
+            "published_at": datetime.now(timezone.utc),
+            "summary": "",
+            "metrics": {
+                "cross_source_count": 0,
+            },
+        }
+
+        collector._score_item(item, [item])
+
+        self.assertEqual(item["_publish_risk"]["category"], "single_source_financial_claim")
+        self.assertGreater(item["scores"]["publish_risk_penalty"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

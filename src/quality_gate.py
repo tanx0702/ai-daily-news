@@ -769,6 +769,101 @@ def _apply_llm_fixes(news_list: list[dict], llm_fixes: list[dict]) -> list[dict]
     return applied
 
 
+_RISK_RANK = {"low": 0, "medium": 1, "high": 2}
+
+
+def _max_risk(a: str, b: str) -> str:
+    """Return the higher of two risk labels."""
+    return a if _RISK_RANK.get(a, 0) >= _RISK_RANK.get(b, 0) else b
+
+
+def _apply_llm_issue_marks(news_list: list[dict], llm_issues: list[dict]) -> None:
+    """
+    Copy LLM issue severity back onto individual news items.
+
+    LLM issue indexes are 1-based, matching the LLM prompt and _apply_llm_fixes().
+    High-risk items are excluded from publishing, highlights, and cover selection.
+    """
+    for issue in llm_issues:
+        raw_idx = issue.get("item_index", -1)
+        try:
+            raw_idx = int(raw_idx)
+        except (TypeError, ValueError):
+            raw_idx = -1
+        idx = raw_idx - 1 if raw_idx > 0 else -1
+        if idx < 0 or idx >= len(news_list):
+            logger.warning("QG LLM issue: invalid item_index %s (0-based %d), skipping", raw_idx, idx)
+            continue
+
+        severity = str(issue.get("severity", "low")).lower()
+        if severity not in _RISK_RANK:
+            severity = "low"
+        issue_type = issue.get("type") or "llm_quality_issue"
+        reason = issue.get("message") or issue_type
+
+        item = news_list[idx]
+        qg = item.setdefault("_quality_gate", {"risk_level": "low", "issues": [], "fixes": []})
+        qg["risk_level"] = _max_risk(qg.get("risk_level", "low"), severity)
+        if issue_type not in qg["issues"]:
+            qg["issues"].append(issue_type)
+
+        if severity == "high":
+            publish_reason = f"quality_gate (LLM): {reason}"
+            item["_publish_excluded"] = publish_reason
+            if not item.get("_highlight_excluded"):
+                item["_highlight_excluded"] = publish_reason
+            if not item.get("_cover_excluded"):
+                item["_cover_excluded"] = publish_reason
+            if "exclude_from_publish_by_llm" not in qg["fixes"]:
+                qg["fixes"].append("exclude_from_publish_by_llm")
+
+
+def _publish_exclusion_reason(item: dict) -> str:
+    if item.get("_publish_excluded"):
+        return str(item["_publish_excluded"])
+    qg = item.get("_quality_gate", {}) or {}
+    if qg.get("risk_level") == "high":
+        return "quality_gate: high risk"
+    return ""
+
+
+def _remaining_risk_level(news_list: list[dict]) -> str:
+    risk = "low"
+    for item in news_list:
+        qg = item.get("_quality_gate", {}) or {}
+        risk = _max_risk(risk, qg.get("risk_level", "low"))
+    return risk
+
+
+def _filter_publishable_items(news_list: list[dict], target_count: int) -> tuple[list[dict], dict]:
+    """Remove high-risk items and keep the first target_count publishable candidates."""
+    selected: list[dict] = []
+    removed: list[dict] = []
+
+    for item in news_list:
+        reason = _publish_exclusion_reason(item)
+        if reason:
+            removed.append({
+                "title": item.get("chinese_title") or item.get("title", ""),
+                "source": item.get("source", ""),
+                "source_type": item.get("source_type", ""),
+                "reason": reason,
+            })
+            continue
+        if len(selected) < target_count:
+            selected.append(item)
+
+    filter_report = {
+        "enabled": True,
+        "target_count": target_count,
+        "selected_count": len(selected),
+        "removed_count": len(removed),
+        "removed_items": removed,
+        "insufficient_publishable_items": len(selected) < target_count,
+    }
+    return selected, filter_report
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Debug 报告
 # ═══════════════════════════════════════════════════════════════════
@@ -886,6 +981,8 @@ def review_daily(
     strict: bool = False,
     date_str: str = "",
     docs_dir: str = "",
+    target_count: int | None = None,
+    filter_high_risk: bool = False,
 ) -> tuple[list[dict], dict]:
     """
     对当日入选新闻做编辑质检。
@@ -905,6 +1002,8 @@ def review_daily(
         strict: 严格模式
         date_str: 日期字符串
         docs_dir: docs 目录路径
+        target_count: 发布目标条数；配合 filter_high_risk 从后备候选回填
+        filter_high_risk: 是否从发布列表移除 high risk 单条
 
     Returns:
         (reviewed_news_list, quality_report)
@@ -942,6 +1041,7 @@ def review_daily(
         report["issues"].extend(llm_issues)
         report["global_notes"] = global_notes
         report["llm_reviewed"] = True
+        _apply_llm_issue_marks(news_list, llm_issues)
 
         # 应用 LLM 修正
         llm_applied = _apply_llm_fixes(news_list, llm_fixes)
@@ -964,12 +1064,39 @@ def review_daily(
         report["llm_reviewed"] = False
         report["global_notes"] = []
 
-    # 3. 更新 pass 和 blocked_publish
+    # 3. 发布安全过滤：移除 high risk 单条并从后备候选回填。
+    publish_filter_report = None
+    if filter_high_risk and target_count is not None:
+        news_list, publish_filter_report = _filter_publishable_items(news_list, target_count)
+        report["publish_filter"] = publish_filter_report
+        if publish_filter_report["removed_count"] > 0:
+            logger.info(
+                "Quality gate publish filter: removed=%d selected=%d/%d",
+                publish_filter_report["removed_count"],
+                publish_filter_report["selected_count"],
+                publish_filter_report["target_count"],
+            )
+
+    # 4. 更新 pass 和 blocked_publish
+    if publish_filter_report:
+        remaining_risk = _remaining_risk_level(news_list)
+        if publish_filter_report["insufficient_publishable_items"]:
+            report["risk_level"] = "high"
+        else:
+            report["risk_level"] = remaining_risk
+
     report["pass"] = (report["risk_level"] != "high")
     report["blocked_publish"] = strict and (report["risk_level"] == "high")
     report["summary"] = _build_summary(report["issues"], report["applied_fixes"])
+    if publish_filter_report:
+        report["summary"] = (
+            f"{report['summary']}；发布过滤移除 "
+            f"{publish_filter_report['removed_count']} 条高风险候选，"
+            f"最终可发布 {publish_filter_report['selected_count']}/"
+            f"{publish_filter_report['target_count']} 条。"
+        )
 
-    # 4. 保存 debug 报告
+    # 5. 保存 debug 报告
     if docs_dir:
         try:
             _save_quality_report(report, date_str, docs_dir)

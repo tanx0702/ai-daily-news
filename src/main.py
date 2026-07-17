@@ -76,7 +76,20 @@ def _run_pipeline():
 
     top_n = int(os.environ.get("DAILY_TOP_N", "10"))
     rss_timeout = int(os.environ.get("DAILY_RSS_TIMEOUT", "30"))
-    news_list = collect_news(top_n=top_n, rss_timeout=rss_timeout)
+
+    qg_enabled = _env_bool("ENABLE_LLM_QUALITY_GATE", True)
+    qg_strict = _env_bool("QUALITY_GATE_STRICT", False)
+    publish_filter_enabled = _env_bool("ENABLE_PUBLISH_SAFETY_FILTER", True)
+    safety_reserve_n = int(os.environ.get("DAILY_SAFETY_RESERVE_N", "6"))
+    collect_top_n = top_n
+    if qg_enabled and publish_filter_enabled:
+        collect_top_n = top_n + max(safety_reserve_n, 0)
+        logger.info(
+            "Publish safety filter enabled: collecting %d items (%d target + %d reserve)",
+            collect_top_n, top_n, max(safety_reserve_n, 0),
+        )
+
+    news_list = collect_news(top_n=collect_top_n, rss_timeout=rss_timeout)
 
     if not news_list:
         logger.error("No news collected! Aborting.")
@@ -110,9 +123,6 @@ def _run_pipeline():
     quality_report = {}
     blocked_publish = False
 
-    # 读取质检配置
-    qg_enabled = _env_bool("ENABLE_LLM_QUALITY_GATE", True)
-    qg_strict = _env_bool("QUALITY_GATE_STRICT", False)
     qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(llm_timeout)))
 
     if qg_enabled and news_list:
@@ -128,6 +138,8 @@ def _run_pipeline():
             strict=qg_strict,
             date_str=date_str,
             docs_dir=docs_dir,
+            target_count=top_n,
+            filter_high_risk=publish_filter_enabled,
         )
         blocked_publish = quality_report.get("blocked_publish", False)
         logger.info(
@@ -380,6 +392,9 @@ def _annotate_reasons(news_list: list[dict]):
             reasons.append(f"[低置信度品牌声明] {bc.get('reason', '')}")
         elif bc.get("confidence") == "medium":
             reasons.append(f"[品牌声明-中等置信度] {bc.get('reason', '')}")
+        publish_risk = item.get("_publish_risk", {})
+        if publish_risk:
+            reasons.append(f"[发布风险] {publish_risk.get('reason', '')}")
         qg = item.get("_quality_gate", {})
         if qg:
             qg_risk = qg.get("risk_level", "")
@@ -428,6 +443,13 @@ def _generate_debug_reports(
                 "brand": bc.get("brand", ""),
                 "confidence": bc.get("confidence", ""),
                 "reason": bc.get("reason", ""),
+            }
+        publish_risk = item.get("_publish_risk", {})
+        if publish_risk:
+            entry["publish_risk"] = {
+                "category": publish_risk.get("category", ""),
+                "severity": publish_risk.get("severity", ""),
+                "reason": publish_risk.get("reason", ""),
             }
         if item.get("_highlight_excluded"):
             entry["highlight_excluded"] = item["_highlight_excluded"]

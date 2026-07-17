@@ -341,6 +341,62 @@ def _freshness_score(published_at: Optional[datetime], now: datetime = None) -> 
         return 0.0
 
 
+def _detect_publish_risk(item: dict) -> dict:
+    """
+    Detect items that are AI-related but weak candidates for auto-publishing.
+
+    This is a ranking signal only. The quality gate decides whether to remove
+    an item from the final publish list.
+    """
+    title = item.get("title", "")
+    title_lower = title.lower()
+    source_type = item.get("source_type", "rss")
+    metrics = item.get("metrics", {}) or {}
+    cross_source = metrics.get("cross_source_count", 0) or 0
+    url_is_official = _is_official_ai_org(item.get("url", ""))
+
+    if source_type == "hn" and cross_source == 0 and not url_is_official:
+        has_model_name = re.search(
+            r"\b(gpt[-\s]?\d[\w.]*|claude\s?\w+|gemini\s?\w+|llama\s?\w+|grok\s?\w+)\b",
+            title_lower,
+            re.I,
+        )
+        has_comparison = re.search(
+            r"\b(vs\.?|versus|compare|comparison|test|challenge|benchmark)\b",
+            title_lower,
+            re.I,
+        )
+        has_experiment_signal = "$" in title or "music video" in title_lower
+        if has_model_name and (has_comparison or has_experiment_signal):
+            return {
+                "category": "community_model_comparison",
+                "severity": "medium",
+                "penalty": 18.0,
+                "reason": "HN-only community model comparison without official or cross-source confirmation",
+            }
+
+    if source_type == "rss" and cross_source == 0:
+        has_finance_metric = re.search(
+            r"\b(arr|revenue|valuation|funding|financing|market cap)\b|融资|收入|营收|估值|市值",
+            title_lower,
+            re.I,
+        )
+        has_large_amount = re.search(
+            r"\b\d+(?:\.\d+)?\s?(?:billion|million)\b|亿美元|亿元|千万|百万|\d+\s?倍",
+            title_lower,
+            re.I,
+        )
+        if has_finance_metric and has_large_amount:
+            return {
+                "category": "single_source_financial_claim",
+                "severity": "medium",
+                "penalty": 12.0,
+                "reason": "single-source financial or growth claim should not dominate ranking",
+            }
+
+    return {}
+
+
 def _score_item(item: dict, all_items: list[dict]) -> float:
     """
     为新闻条目计算热度/重要性评分。
@@ -457,6 +513,17 @@ def _score_item(item: dict, all_items: list[dict]) -> float:
         item["_brand_penalty"] = round(penalty, 1)
         item.setdefault("scores", {})["brand_penalty"] = round(penalty, 1)
     item["_confidence_level"] = brand_check["confidence"] if brand_check["is_brand_claim"] else "high"
+
+    publish_risk = _detect_publish_risk(item)
+    if publish_risk:
+        penalty = min(float(publish_risk.get("penalty", 0.0)), max(score, 0.0))
+        score -= penalty
+        item["_publish_risk"] = {
+            "category": publish_risk["category"],
+            "severity": publish_risk["severity"],
+            "reason": publish_risk["reason"],
+        }
+        item.setdefault("scores", {})["publish_risk_penalty"] = round(penalty, 1)
 
     item["_community"] = round(community, 1)
     item.setdefault("scores", {})["community"] = round(community, 1)

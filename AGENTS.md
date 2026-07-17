@@ -40,7 +40,7 @@ docker compose up -d
 echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -
 ```
 
-如果希望发布前质检出现 high risk 时不要创建微信草稿，在服务器 `.env` 中设置：
+如果希望发布安全过滤后仍存在 high risk 或可发布候选不足时不要创建微信草稿，在服务器 `.env` 中设置：
 
 ```bash
 QUALITY_GATE_STRICT=1
@@ -57,8 +57,9 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 ## 6 步管道（src/main.py）
 
 ```
-1. collector.collect_news()      → RSS 采集 + AI 关键词过滤 + 去重 + 热度评分，返回 top_n 条
+1. collector.collect_news()      → RSS 采集 + AI 关键词过滤 + 去重 + 热度评分；发布安全过滤开启时返回 top_n + reserve 条
 2. summarizer.summarize_news()   → LLM 批量翻译标题 + 中文摘要（BATCH_SIZE=5）
+2.5 quality_gate.review_daily()  → 发布前质检；high risk 单条移除并从 reserve 回填，必要时阻断微信草稿
 3. generator.render_daily_html() → Jinja2 渲染内嵌 HTML 模板
 4. cover.generate_cover_from_news() → AI 封面图（失败降级到 Pillow 渐变色）
 5. 保存 docs/latest.json        → 供 Flask 微信服务读取
@@ -71,6 +72,7 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 |------|------|----------|
 | `src/collector.py` | RSS 采集 | 两级 AI 关键词过滤，中文 bigram / 英文 Jaccard 去重 |
 | `src/summarizer.py` | LLM 摘要 | 批量 5 条/次，要求 index 强校验；数量/索引异常时整批降级逐条 |
+| `src/quality_gate.py` | 发布前质检 | LLM/本地规则标记风险；high risk 单条可从发布列表移除并回填 |
 | `src/generator.py` | HTML 渲染 | 模板完全内嵌在 Python 字符串中，Jinja2 从字符串渲染 |
 | `src/cover.py` | 封面图 | Agnes Image API → Pillow 渐变色降级（6 套配色按日期 hash） |
 | `app.py` | Flask 微信服务 | 双路由（GET 验证/POST 消息），客服消息推送，读 latest.json |
@@ -104,11 +106,13 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
 | `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
 | `DAILY_TOP_N` | 新闻条数 | `10` |
+| `DAILY_SAFETY_RESERVE_N` | 发布安全过滤备用候选数量 | `6` |
 | `DAILY_RSS_TIMEOUT` | RSS 超时(秒) | `30` |
 | `HN_DETAILS_TIMEOUT` | Hacker News 明细抓取总超时(秒) | `90` |
 | `DAILY_LLM_TIMEOUT` | LLM 超时(秒) | `15` |
 | `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
-| `QUALITY_GATE_STRICT` | high risk 时是否阻止创建微信草稿 | `false` |
+| `ENABLE_PUBLISH_SAFETY_FILTER` | high risk 单条是否移除并从备用候选回填 | `true` |
+| `QUALITY_GATE_STRICT` | 过滤后仍 high risk 或候选不足时是否阻止创建微信草稿 | `false` |
 | `ENABLE_ARTICLE_IMAGE_FETCH` | 是否启用正文原文图抓取 | `true` |
 | `ENABLE_AI_COVER_GENERATION` | 无可信原文图时是否启用 AI 生图封面 | `true` |
 | `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | AI 图疑似含错误文字/Logo 时是否改用本地无字封面 | `true` |
