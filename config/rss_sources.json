@@ -3,7 +3,8 @@
         {
             "name": "Hacker News AI",
             "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude+OR+Agent+OR+Foundation+Model",
-            "region": "overseas"
+            "region": "overseas",
+            "tier": "community"
         },
         {
             "name": "TechCrunch AI",
@@ -18,12 +19,14 @@
         {
             "name": "OpenAI Blog",
             "url": "https://openai.com/blog/rss.xml",
-            "region": "overseas"
+            "region": "overseas",
+            "tier": "primary"
         },
         {
             "name": "Google DeepMind",
             "url": "https://deepmind.google/blog/rss.xml",
-            "region": "overseas"
+            "region": "overseas",
+            "tier": "primary"
         },
         {
             "name": "MIT Technology Review AI",

@@ -594,6 +594,8 @@ def _fetch_source(source: dict, timeout: int = 30) -> list[dict]:
     for attempt_url in urls_to_try:
         items = _fetch_single(name, attempt_url, timeout)
         if items:
+            for item in items:
+                item["source_tier"] = source.get("tier", "media")
             return items
 
     logger.warning("Source '%s' returned no items after all fallbacks", name)
@@ -734,6 +736,8 @@ def _normalize_rss_item(item: dict) -> dict:
         published_source=item.get("published_source", "missing"),
         summary=clean_display_text(item.get("summary", "")),
     )
+    if item.get("source_tier"):
+        candidate["source_tier"] = item["source_tier"]
     if item.get("image_candidates"):
         candidate["image_candidates"] = item.get("image_candidates", [])
     return candidate
@@ -1451,8 +1455,10 @@ def collect_news(
                       hf_candidates + arxiv_candidates)
     merged = _merge_candidates(all_candidates)
     from src.evidence import preserve_source_evidence
+    from src.editorial_selection import assign_source_tier
 
     for item in merged:
+        assign_source_tier(item)
         preserve_source_evidence(item)
 
     # ---- 过滤统计 ----
