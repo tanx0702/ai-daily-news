@@ -106,6 +106,106 @@ class CoverStrategyTests(unittest.TestCase):
         self.assertEqual(generator.call_args.args[1], "image-key")
         self.assertEqual(generator.call_args.kwargs["model"], "image-model")
 
+    def test_image_endpoint_base_url_is_normalized_before_generation(self):
+        subject = {
+            "mode": "generic",
+            "story_type": "general",
+            "item": None,
+            "cover_title": "Today",
+        }
+        ai_image = Image.new("RGB", (900, 500), (96, 128, 144))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "cover.jpg")
+            with patch.dict(
+                os.environ,
+                {
+                    "ENABLE_AI_COVER_GENERATION": "1",
+                    "AI_COVER_MAX_RETRIES": "1",
+                },
+            ):
+                with patch("src.cover._generate_ai_cover_image", return_value=ai_image) as generator:
+                    cover.generate_cover_from_news(
+                        [],
+                        "2026-07-12",
+                        output_path=output_path,
+                        api_key="image-key",
+                        base_url="https://apihub.agnes-ai.com/v1/images/generations",
+                        cover_subject=subject,
+                    )
+
+        generator.assert_called_once()
+        self.assertEqual(generator.call_args.args[0], "https://apihub.agnes-ai.com")
+
+    def test_ai_generation_request_uses_agnes_documented_image_params(self):
+        class FakeResponse:
+            status_code = 200
+
+            def json(self):
+                return {"data": [{"url": "https://images.example/cover.png"}]}
+
+        class FakeImageResponse:
+            content = b"image-bytes"
+
+            def raise_for_status(self):
+                return None
+
+        with patch("src.cover.requests.post", return_value=FakeResponse()) as post:
+            with patch("src.cover.requests.get", return_value=FakeImageResponse()):
+                with patch("src.cover.Image.open", return_value=Image.new("RGB", (900, 500))):
+                    result = cover._generate_ai_cover_image(
+                        "https://apihub.agnes-ai.com",
+                        "image-key",
+                        "prompt",
+                        max_retries=1,
+                        model="agnes-image-2.1-flash",
+                    )
+
+        self.assertIsNotNone(result)
+        post.assert_called_once()
+        self.assertEqual(post.call_args.args[0], "https://apihub.agnes-ai.com/v1/images/generations")
+        self.assertEqual(
+            post.call_args.kwargs["json"],
+            {
+                "model": "agnes-image-2.1-flash",
+                "prompt": "prompt",
+                "size": "1K",
+                "ratio": "16:9",
+                "extra_body": {"response_format": "url"},
+            },
+        )
+
+    def test_ai_generated_cover_is_saved_to_wechat_cover_canvas(self):
+        subject = {
+            "mode": "generic",
+            "story_type": "general",
+            "item": None,
+            "cover_title": "Today",
+        }
+        ai_image = Image.new("RGB", (1312, 736), (96, 128, 144))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "cover.jpg")
+            with patch.dict(
+                os.environ,
+                {
+                    "ENABLE_AI_COVER_GENERATION": "1",
+                    "AI_COVER_MAX_RETRIES": "1",
+                    "FORCE_LOCAL_COVER_ON_BAD_IMAGE": "0",
+                },
+            ):
+                with patch("src.cover._generate_ai_cover_image", return_value=ai_image):
+                    cover.generate_cover_from_news(
+                        [],
+                        "2026-07-12",
+                        output_path=output_path,
+                        api_key="api-key",
+                        cover_subject=subject,
+                    )
+
+            with Image.open(output_path) as saved:
+                self.assertEqual(saved.size, (900, 500))
+
     def test_ai_failure_uses_minimal_text_free_background_not_title_card(self):
         subject = {
             "mode": "generic",

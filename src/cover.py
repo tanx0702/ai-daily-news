@@ -314,6 +314,18 @@ def _generate_cover_from_article_image(
     return output_path
 
 
+def _normalize_image_api_base(base_url: str) -> str:
+    """Normalize provider URL from root, /v1 base, or full generations endpoint."""
+    normalized = str(base_url or "").strip().rstrip("/")
+    for suffix in ("/v1/images/generations", "/images/generations"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)].rstrip("/")
+            break
+    if normalized.endswith("/v1"):
+        normalized = normalized[:-3].rstrip("/")
+    return normalized
+
+
 def _blend_color(a: tuple[int, int, int], b: tuple[int, int, int], ratio: float) -> tuple[int, int, int]:
     return tuple(int(a[i] * (1 - ratio) + b[i] * ratio) for i in range(3))
 
@@ -486,8 +498,7 @@ def generate_cover_from_news(
     # 开始 AI 生图
     logger.info("AI cover generation enabled, attempting to generate...")
     prompt = _build_cover_prompt(cover_subject)
-    base_url = base_url.rstrip("/")
-    image_base = base_url.replace("/v1", "") if base_url.endswith("/v1") else base_url
+    image_base = _normalize_image_api_base(base_url)
 
     # 免费 API 不稳定，带指数退避重试（1s → 2s → 4s ...）
     max_retries = int(os.environ.get("AI_COVER_MAX_RETRIES", "5"))
@@ -516,6 +527,7 @@ def generate_cover_from_news(
         # 否则继续使用 AI 图，但记录 warning
 
     # 保存图片（不叠加任何文字 — 封面图片本体必须是纯视觉图）
+    img = _crop_cover(img)
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     img.save(output_path, "JPEG", quality=90)
     if cover_subject is not None:
@@ -555,7 +567,9 @@ def _generate_ai_cover_image(
                 json={
                     "model": model,
                     "prompt": prompt,
-                    "size": "900x500",
+                    "size": "1K",
+                    "ratio": "16:9",
+                    "extra_body": {"response_format": "url"},
                 },
                 timeout=120,
             )

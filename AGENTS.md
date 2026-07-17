@@ -99,7 +99,7 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址；兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE` | `https://apihub.agnes-ai.com/v1` |
 | `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图；兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` | — |
 | `IMAGE_MODEL` | 图片生成模型名称；兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL` | `agnes-image-2.1-flash` |
-| `IMAGE_API_BASE` | 图片生成 API 地址；兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE` | `https://apihub.agnes-ai.com` |
+| `IMAGE_API_BASE` | 图片生成 API 地址；兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE`；可填基础地址、`/v1` 地址或完整 `/v1/images/generations` endpoint | `https://apihub.agnes-ai.com` |
 | `WECHAT_APP_ID` | 公众号 AppID | — |
 | `WECHAT_APP_SECRET` | 公众号 AppSecret | — |
 | `WECHAT_TOKEN` | 回调验证 Token | — |

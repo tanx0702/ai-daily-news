@@ -8,6 +8,7 @@ AGENTS.md
 CLAUDE.md
 personMdDosc
 .tmp/
+tmp/
 *.tgz
 
 # 运行产物 — 每天由管道重新生成，不入库
