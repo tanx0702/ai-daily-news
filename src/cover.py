@@ -292,8 +292,19 @@ def _generate_cover_from_article_image(
     height: int = 500,
 ) -> Optional[str]:
     """使用真实原文图生成封面。"""
-    image_url = item.get("cover_image_url") or ""
-    img = _download_image(image_url)
+    if item.get("media_state") != "trusted":
+        return None
+    normalized_path = item.get("normalized_image_path") or ""
+    if normalized_path and os.path.isfile(normalized_path):
+        try:
+            with Image.open(normalized_path) as local_image:
+                img = local_image.copy()
+        except Exception as exc:
+            logger.warning("Failed to open trusted normalized cover image: %s", exc)
+            img = None
+    else:
+        image_url = item.get("cover_image_url") or ""
+        img = _download_image(image_url)
     if not img:
         return None
     if img.width < 300 or img.height < 180:
@@ -477,7 +488,7 @@ def generate_cover_from_news(
     bound_item = cover_subject.get("item") if cover_subject else None
 
     # 1. 优先用绑定新闻的真实原文图。
-    if bound_item and bound_item.get("cover_image_url"):
+    if bound_item and bound_item.get("media_state") == "trusted" and bound_item.get("cover_image_url"):
         cover_from_image = _generate_cover_from_article_image(bound_item, date_str, output_path)
         if cover_from_image:
             cover_subject["cover_source"] = "first_article_image"
@@ -555,6 +566,11 @@ def _generate_ai_cover_image(
     """
     import time
 
+    try:
+        request_timeout = max(1, int(os.environ.get("IMAGE_GENERATION_TIMEOUT", "30")))
+    except ValueError:
+        request_timeout = 30
+
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(
@@ -571,7 +587,7 @@ def _generate_ai_cover_image(
                     "ratio": "16:9",
                     "extra_body": {"response_format": "url"},
                 },
-                timeout=120,
+                timeout=request_timeout,
             )
 
             # 非 2xx：解析错误体，区分「关键词拦截」和「临时故障」
@@ -581,12 +597,20 @@ def _generate_ai_cover_image(
                     "Image generation API attempt %d/%d failed: HTTP %d | code=%s | %s",
                     attempt, max_retries, resp.status_code, err_code, err_msg,
                 )
-                # 内容审核拦截：重试无效（同样的 prompt 永远被拦），立即放弃
-                if err_code == "content_policy_violation":
+                non_retryable_codes = {
+                    "content_policy_violation",
+                    "unsupported_model",
+                    "model_not_found",
+                    "invalid_model",
+                    "invalid_api_key",
+                    "authentication_error",
+                    "permission_denied",
+                }
+                # 配置、鉴权、权限和内容审核错误重试无效，立即降级。
+                if resp.status_code in {400, 401, 403} or err_code in non_retryable_codes:
                     logger.warning(
-                        "Prompt 命中内容审核，重试无效。请检查 prompt 是否含敏感词"
-                        "（如 'skyscraper'）。prompt=%s",
-                        prompt,
+                        "Image generation error is non-retryable (HTTP %d, code=%s); using fallback.",
+                        resp.status_code, err_code,
                     )
                     return None
                 # 其他错误：走下面的重试逻辑
@@ -808,6 +832,8 @@ def _is_eligible_for_cover(item: dict) -> tuple[bool, str]:
 
     if item.get("_cover_excluded"):
         return False, f"cover_excluded: {item['_cover_excluded']}"
+    if item.get("media_state") and item.get("media_state") != "trusted":
+        return False, f"untrusted media: {item.get('media_state')}"
     if item.get("_confidence_level") == "low":
         return False, "low confidence"
     bc = item.get("_brand_claim", {})

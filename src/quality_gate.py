@@ -133,10 +133,14 @@ def _check_unsupported_entities(news_list: list[dict]) -> list[dict]:
     for i, item in enumerate(news_list):
         # 构建原文文本池
         original_text = " ".join([
-            item.get("title", ""),
-            item.get("summary", "") if isinstance(item.get("summary"), str) else "",
-            item.get("url", ""),
-            item.get("source", ""),
+            item.get("source_title", item.get("title", "")),
+            (
+                item.get("source_summary", item.get("summary", ""))
+                if isinstance(item.get("source_summary", item.get("summary", "")), str)
+                else ""
+            ),
+            item.get("source_url", item.get("url", "")),
+            item.get("source_name", item.get("source", "")),
         ])
         original_terms = _extract_model_terms(original_text)
 
@@ -841,33 +845,77 @@ def _remaining_risk_level(news_list: list[dict]) -> str:
     return risk
 
 
-def _filter_publishable_items(news_list: list[dict], target_count: int) -> tuple[list[dict], dict]:
-    """Remove high-risk items and keep the first target_count publishable candidates."""
-    selected: list[dict] = []
-    removed: list[dict] = []
+def _source_evidence_is_sparse(item: dict) -> bool:
+    """Return whether an item lacks enough source text for a generated summary."""
+    source_title = str(item.get("source_title", item.get("title", ""))).strip()
+    source_summary = str(item.get("source_summary", "")).strip()
+    return bool(source_title) and len(source_summary) < 40
 
+
+def _apply_quality_states(news_list: list[dict]) -> None:
+    """Assign a safe publishing state without mutating immutable source evidence."""
     for item in news_list:
-        reason = _publish_exclusion_reason(item)
-        if reason:
-            removed.append({
-                "title": item.get("chinese_title") or item.get("title", ""),
-                "source": item.get("source", ""),
-                "source_type": item.get("source_type", ""),
-                "reason": reason,
-            })
+        if _publish_exclusion_reason(item):
+            item["quality_state"] = "replace"
             continue
-        if len(selected) < target_count:
-            selected.append(item)
 
+        if _source_evidence_is_sparse(item):
+            source_title = str(item.get("source_title", item.get("title", ""))).strip()
+            item["quality_state"] = "source_only"
+            item["chinese_title"] = source_title or item.get("title", "")
+            item["summary"] = "原始来源未提供足够摘要，以下内容仅保留原标题、来源和原文链接，请以原文为准。"
+            item["source_only_reason"] = "source_summary_too_short"
+            continue
+
+        item["quality_state"] = "ready"
+
+
+def _filter_publishable_items(
+    selected_items: list[dict],
+    reserves: list[dict],
+    target_count: int,
+    *,
+    max_items_per_source: int,
+    max_items_per_topic: int,
+    min_primary_or_research: int,
+) -> tuple[list[dict], dict]:
+    """Replace unsafe selected items from reserves while preserving editorial caps."""
+    from src.editorial_selection import select_editorial_candidates
+
+    initial_selected_ids = {id(item) for item in selected_items}
+    all_candidates = [*selected_items, *reserves]
+    eligible = [item for item in all_candidates if item.get("quality_state") != "replace"]
+    final_selected, _, selection = select_editorial_candidates(
+        eligible,
+        target_count=target_count,
+        max_items_per_source=max_items_per_source,
+        max_items_per_topic=max_items_per_topic,
+        min_primary_or_research=min_primary_or_research,
+    )
+    removed = [
+        {
+            "title": item.get("chinese_title") or item.get("title", ""),
+            "source": item.get("source", ""),
+            "source_type": item.get("source_type", ""),
+            "reason": _publish_exclusion_reason(item),
+        }
+        for item in all_candidates
+        if item.get("quality_state") == "replace"
+    ]
+    replacement_count = sum(
+        id(item) not in initial_selected_ids for item in final_selected
+    )
     filter_report = {
         "enabled": True,
         "target_count": target_count,
-        "selected_count": len(selected),
+        "selected_count": len(final_selected),
         "removed_count": len(removed),
+        "replaced_count": replacement_count,
         "removed_items": removed,
-        "insufficient_publishable_items": len(selected) < target_count,
+        "insufficient_publishable_items": len(final_selected) < target_count,
+        "selection": selection,
     }
-    return selected, filter_report
+    return final_selected, filter_report
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -980,6 +1028,7 @@ def _build_quality_md(report: dict, date_str: str) -> list[str]:
 def review_daily(
     news_list: list[dict],
     *,
+    reserves: list[dict] | None = None,
     api_key: str = "",
     model: str = "",
     base_url: str = "",
@@ -989,6 +1038,9 @@ def review_daily(
     docs_dir: str = "",
     target_count: int | None = None,
     filter_high_risk: bool = False,
+    max_items_per_source: int = 2,
+    max_items_per_topic: int = 2,
+    min_primary_or_research: int = 2,
 ) -> tuple[list[dict], dict]:
     """
     对当日入选新闻做编辑质检。
@@ -1000,7 +1052,8 @@ def review_daily(
     4. 生成 quality report
 
     Args:
-        news_list: 入选新闻列表（需已有 chinese_title + summary）
+        news_list: 已按编辑配额选出的新闻列表（需已有 chinese_title + summary）
+        reserves: 备用候选；会与入选列表一同质检，仅在原入选条目不安全时回填
         api_key: LLM API Key，为空只做本地规则
         model: LLM 模型名
         base_url: API 地址
@@ -1014,7 +1067,9 @@ def review_daily(
     Returns:
         (reviewed_news_list, quality_report)
     """
-    if not news_list:
+    reserves = list(reserves or [])
+    candidates = [*news_list, *reserves]
+    if not candidates:
         return news_list, {
             "enabled": False,
             "pass": True,
@@ -1026,10 +1081,11 @@ def review_daily(
             "summary": "空新闻列表，跳过质检。",
         }
 
-    logger.info("Quality gate: reviewing %d items (strict=%s)", len(news_list), strict)
+    logger.info("Quality gate: reviewing %d items (%d selected, %d reserves, strict=%s)",
+                len(candidates), len(news_list), len(reserves), strict)
 
     # 1. 本地规则检测 + 自动修正
-    news_list, report = _run_local_rules(news_list)
+    candidates, report = _run_local_rules(candidates)
     report["strict"] = strict
     report["blocked_publish"] = False
 
@@ -1039,7 +1095,7 @@ def review_daily(
     if quality_config.api_key:
         logger.info("Quality gate: running LLM review...")
         llm_issues, llm_fixes, global_notes = _run_llm_review(
-            news_list,
+            candidates,
             api_key=quality_config.api_key,
             model=quality_config.model,
             base_url=quality_config.base_url,
@@ -1061,10 +1117,10 @@ def review_daily(
         report["llm_review_failed"] = any(is_llm_failure(note) for note in global_notes)
         report["llm_reviewed"] = not report["llm_review_failed"]
         report["llm_review_status"] = "failed" if report["llm_review_failed"] else "passed"
-        _apply_llm_issue_marks(news_list, llm_issues)
+        _apply_llm_issue_marks(candidates, llm_issues)
 
         # 应用 LLM 修正
-        llm_applied = _apply_llm_fixes(news_list, llm_fixes)
+        llm_applied = _apply_llm_fixes(candidates, llm_fixes)
         report["applied_fixes"].extend(llm_applied)
 
         # LLM 可能降低/提高风险等级
@@ -1085,10 +1141,19 @@ def review_daily(
         report["global_notes"] = []
         report["llm_review_failed"] = False
 
-    # 3. 发布安全过滤：移除 high risk 单条并从后备候选回填。
+    _apply_quality_states(candidates)
+
+    # 3. 发布安全过滤：移除 high risk 单条，并在全部合格候选中重新应用编辑配额。
     publish_filter_report = None
     if filter_high_risk and target_count is not None:
-        news_list, publish_filter_report = _filter_publishable_items(news_list, target_count)
+        news_list, publish_filter_report = _filter_publishable_items(
+            candidates[:len(news_list)],
+            candidates[len(news_list):],
+            target_count,
+            max_items_per_source=max_items_per_source,
+            max_items_per_topic=max_items_per_topic,
+            min_primary_or_research=min_primary_or_research,
+        )
         report["publish_filter"] = publish_filter_report
         if publish_filter_report["removed_count"] > 0:
             logger.info(
@@ -1098,11 +1163,16 @@ def review_daily(
                 publish_filter_report["target_count"],
             )
 
-    # 4. 更新 pass 和 blocked_publish
+    elif target_count is not None:
+        news_list = candidates[:target_count]
+    else:
+        news_list = candidates[:len(news_list)]
+
+    # 4. 更新 pass；日报永远继续生成，严格模式只保留兼容性与诊断信息。
     if publish_filter_report:
         remaining_risk = _remaining_risk_level(news_list)
         if publish_filter_report["insufficient_publishable_items"]:
-            report["risk_level"] = "high"
+            report["risk_level"] = _max_risk("medium", remaining_risk)
         else:
             report["risk_level"] = remaining_risk
 
@@ -1110,7 +1180,8 @@ def review_daily(
         report["risk_level"] = "medium"
 
     report["pass"] = (report["risk_level"] != "high")
-    report["blocked_publish"] = strict and (report["risk_level"] == "high")
+    report["blocked_publish"] = False
+    report["strict_mode_deprecated"] = bool(strict)
     report["summary"] = _build_summary(report["issues"], report["applied_fixes"])
     if report.get("llm_review_failed"):
         report["summary"] = (

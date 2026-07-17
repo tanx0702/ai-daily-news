@@ -351,6 +351,33 @@ def _upload_image_from_url(
         return None
 
 
+def _upload_normalized_image(access_token: str, image_path: str) -> Optional[str]:
+    """Upload media already validated and re-encoded by ``media_assets``."""
+    try:
+        with open(image_path, "rb") as image_file:
+            content = image_file.read()
+        if not content.startswith(b"\xff\xd8"):
+            logger.warning("Normalized image is not JPEG: %s", image_path)
+            return None
+        upload_url = (
+            "https://api.weixin.qq.com/cgi-bin/material/add_material"
+            f"?access_token={access_token}&type=image"
+        )
+        response = requests.post(
+            upload_url,
+            files={"media": ("article.jpg", content, "image/jpeg")},
+            timeout=30,
+        )
+        data = response.json()
+        if "url" in data:
+            logger.info("Uploaded normalized article image: %s", data["url"][:60])
+            return data["url"]
+        logger.warning("Normalized article image upload failed: %s", data)
+    except (OSError, requests.RequestException) as exc:
+        logger.warning("Failed to upload normalized image %s: %s", image_path, exc)
+    return None
+
+
 def _enrich_news_with_images(
     access_token: str,
     news_list: list[dict],
@@ -360,77 +387,31 @@ def _enrich_news_with_images(
     为每条新闻的配图下载并上传到微信素材库。
 
     关键规则（按用户要求）：
-    1. 预览 HTML 可用外部 URL；正式草稿前必须全部上传到微信素材库
-    2. 已有微信素材 URL（mmbiz.qpic.cn）：跳过
-    3. 已有外部图片 URL：必须下载 → 上传微信 → 替换为微信 URL
-    4. 上传成功：替换 article_image_url 为微信素材 URL
-    5. 上传失败：降级为 image_type="text_only"，清空 article_image_url
-    6. 不能出现"卡片按有图样式渲染，但图片被微信吞掉"的情况
-    7. text_only 条目不上传占位图
+    1. 只上传 media_state="trusted" 的本地标准化 JPEG
+    2. 上传成功：替换 article_image_url 为微信素材 URL
+    3. 上传失败或不存在标准化文件：降级为 text_only
     """
     def _process_one(item: dict) -> None:
         title_short = (item.get("chinese_title") or item.get("title", ""))[:40]
 
-        # 已是 text_only：清空 URL，不尝试上传占位图
-        if item.get("image_type") == "text_only":
+        if item.get("media_state") != "trusted":
             item["article_image_url"] = ""
-            return
-
-        existing_url = item.get("article_image_url", "")
-
-        # 如果已经是微信素材 URL，无需再上传
-        if existing_url and "mmbiz.qpic.cn" in existing_url:
-            item["image_upload_status"] = "already_uploaded"
-            return
-
-        # 如果有外部图片 URL（非微信素材），必须下载并上传到微信
-        # 这是关键修复：不能因为"已有 URL"就跳过上传
-        if existing_url:
-            wx_url = _upload_image_from_url(access_token, existing_url)
-            if wx_url:
-                item["article_image_url"] = wx_url
-                item["image_type"] = "original"
-                item["image_upload_status"] = "uploaded"
-                logger.info("Re-uploaded external → wx for: %s", title_short)
-            else:
-                # 上传失败 → 降级，避免"有图卡片但图片被微信吞掉"
-                item["image_type"] = "text_only"
-                item["article_image_url"] = ""
-                item["image_upload_status"] = "upload_failed"
-                logger.warning(
-                    "Upload failed, downgraded to text_only: %s", title_short,
-                )
-            return
-
-        # 没有现有 URL，尝试从原文抓取 og:image
-        url = item.get("url", "")
-        source_type = item.get("source_type", "")
-
-        # 来源天然无图 → 标记 text_only
-        if not url or source_type in ("hn", "github", "huggingface", "arxiv"):
             item["image_type"] = "text_only"
-            item["article_image_url"] = ""
-            item["image_reason"] = (
-                f"source usually text-only ({source_type or 'no-url'})"
-            )
+            item["image_upload_status"] = "not_trusted"
             return
 
-        og_img = _fetch_og_image(url)
-        if og_img:
-            wx_url = _upload_image_from_url(access_token, og_img)
-            if wx_url:
-                item["article_image_url"] = wx_url
-                item["image_type"] = "original"
-                item["image_upload_status"] = "uploaded"
-                logger.info("Enriched image for: %s", title_short)
-            else:
-                item["image_type"] = "text_only"
-                item["article_image_url"] = ""
-                item["image_upload_status"] = "upload_failed"
+        normalized_path = item.get("normalized_image_path", "")
+        wx_url = _upload_normalized_image(access_token, normalized_path) if normalized_path else None
+        if wx_url:
+            item["article_image_url"] = wx_url
+            item["image_type"] = "original"
+            item["image_upload_status"] = "uploaded_normalized"
+            logger.info("Uploaded trusted image for: %s", title_short)
         else:
             item["image_type"] = "text_only"
             item["article_image_url"] = ""
-            item["image_reason"] = "no og:image found"
+            item["image_upload_status"] = "normalized_upload_failed"
+            item["image_reason"] = "normalized_upload_failed"
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_process_one, item): item for item in news_list}

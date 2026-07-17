@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -86,9 +87,10 @@ def _run_pipeline():
     qg_strict = _env_bool("QUALITY_GATE_STRICT", False)
     publish_filter_enabled = _env_bool("ENABLE_PUBLISH_SAFETY_FILTER", True)
     safety_reserve_n = int(os.environ.get("DAILY_SAFETY_RESERVE_N", "6"))
-    collect_top_n = top_n
+    candidate_pool_n = int(os.environ.get("DAILY_CANDIDATE_POOL_N", "30"))
+    collect_top_n = max(top_n, candidate_pool_n)
     if qg_enabled and publish_filter_enabled:
-        collect_top_n = top_n + max(safety_reserve_n, 0)
+        collect_top_n = max(collect_top_n, top_n + max(safety_reserve_n, 0))
         logger.info(
             "Publish safety filter enabled: collecting %d items (%d target + %d reserve)",
             collect_top_n, top_n, max(safety_reserve_n, 0),
@@ -105,11 +107,35 @@ def _run_pipeline():
     for item in news_list:
         preserve_source_evidence(item)
 
+    from src.editorial_selection import assign_source_tier, select_editorial_candidates
+
+    max_items_per_source = int(os.environ.get("DAILY_MAX_ITEMS_PER_SOURCE", "2"))
+    max_items_per_topic = int(os.environ.get("DAILY_MAX_ITEMS_PER_TOPIC", "2"))
+    min_primary_or_research = int(os.environ.get("DAILY_MIN_PRIMARY_OR_RESEARCH", "2"))
+    for item in news_list:
+        assign_source_tier(item)
+
+    selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
+        news_list,
+        target_count=top_n,
+        pool_size=candidate_pool_n,
+        max_items_per_source=max_items_per_source,
+        max_items_per_topic=max_items_per_topic,
+        min_primary_or_research=min_primary_or_research,
+    )
+    candidate_news = [*selected_candidates, *reserve_candidates]
+    if not selected_candidates:
+        logger.error("Editorial selection produced no candidates! Aborting.")
+        sys.exit(1)
+
     # Fix Windows console encoding for emoji output
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         sys.stdout.reconfigure(encoding="utf-8")
 
-    logger.info("Collected %d news items", len(news_list))
+    logger.info(
+        "Collected %d news items; editorial selection chose %d with %d reserves",
+        len(news_list), len(selected_candidates), len(reserve_candidates),
+    )
 
     # === 2. LLM 摘要 ===
     logger.info("[2/6] 生成 LLM 摘要...")
@@ -127,8 +153,8 @@ def _run_pipeline():
     llm_timeout = int(os.environ.get("DAILY_LLM_TIMEOUT", "15"))
 
     if api_key:
-        news_list = summarize_news(
-            news_list,
+        candidate_news = summarize_news(
+            candidate_news,
             api_key=api_key,
             model=model,
             base_url=llm_base_url,
@@ -137,19 +163,23 @@ def _run_pipeline():
     else:
         logger.info("LLM API key not set, skipping LLM summary")
 
+    selected_candidates = candidate_news[:len(selected_candidates)]
+    reserve_candidates = candidate_news[len(selected_candidates):]
+    news_list = selected_candidates
+
     # === 2.5 质检门禁 ===
     quality_report = {}
-    blocked_publish = False
 
     qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(llm_timeout)))
 
-    if qg_enabled and news_list:
+    if qg_enabled and selected_candidates:
         logger.info("[2.5/6] 发布前质检...")
         from src.quality_gate import review_daily
 
         quality_llm = resolve_quality_llm_config()
         news_list, quality_report = review_daily(
-            news_list,
+            selected_candidates,
+            reserves=reserve_candidates,
             api_key=quality_llm.api_key,
             model=quality_llm.model,
             base_url=quality_llm.base_url,
@@ -159,13 +189,16 @@ def _run_pipeline():
             docs_dir=docs_dir,
             target_count=top_n,
             filter_high_risk=publish_filter_enabled,
+            max_items_per_source=max_items_per_source,
+            max_items_per_topic=max_items_per_topic,
+            min_primary_or_research=min_primary_or_research,
         )
-        blocked_publish = quality_report.get("blocked_publish", False)
+        quality_report["editorial_selection"] = selection_report
         logger.info(
-            "Quality gate: pass=%s, risk=%s, blocked=%s",
-            quality_report.get("pass"),
-            quality_report.get("risk_level"),
-            blocked_publish,
+                "Quality gate: pass=%s, risk=%s, blocked=%s",
+                quality_report.get("pass"),
+                quality_report.get("risk_level"),
+                quality_report.get("blocked_publish", False),
         )
     elif not qg_enabled:
         logger.info("[2.5/6] 质检已禁用 (ENABLE_LLM_QUALITY_GATE=0)")
@@ -281,23 +314,20 @@ def _run_pipeline():
         cover_subject.get("mode"), cover_subject.get("cover_title", ""),
     )
 
-    if cover_key:
-        try:
-            generate_cover_from_news(
-                news_list,
-                date_str,
-                output_path=cover_save_path,
-                api_key=cover_key,
-                base_url=cover_base_url,
-                model=cover_model,
-                cover_title=cover_title,
-                cover_subject=cover_subject,
-            )
-            logger.info("Cover image saved to %s", cover_save_path)
-        except Exception as e:
-            logger.warning("Cover generation failed (non-fatal): %s", e)
-    else:
-        logger.info("No image API key for cover generation, skipping")
+    try:
+        generate_cover_from_news(
+            news_list,
+            date_str,
+            output_path=cover_save_path,
+            api_key=cover_key,
+            base_url=cover_base_url,
+            model=cover_model,
+            cover_title=cover_title,
+            cover_subject=cover_subject,
+        )
+        logger.info("Cover image saved to %s", cover_save_path)
+    except Exception as e:
+        logger.warning("Cover generation failed (non-fatal): %s", e)
 
     # 生成公众号推文预览
     from src.pipeline_artifacts import render_and_save_wechat_preview
@@ -308,6 +338,7 @@ def _run_pipeline():
     # === 5. 保存新闻数据 + debug 报告 ===
     logger.info("[5/6] 保存新闻数据...")
     _annotate_reasons(news_list)
+    source_health = _build_source_health(news_list)
 
     from src.pipeline_artifacts import build_latest_data, json_serial, save_latest_data
 
@@ -319,11 +350,22 @@ def _run_pipeline():
         quality_report=quality_report,
         cover_subject=cover_subject,
         media_report=media_report,
+        selection_report=selection_report,
+        source_health=source_health,
     )
     latest_path = save_latest_data(latest_data, docs_dir, default=json_serial)
     logger.info("News data saved to %s", latest_path)
 
-    _generate_debug_reports(news_list, date_str, docs_dir, cover_subject=cover_subject)
+    _generate_debug_reports(
+        news_list,
+        date_str,
+        docs_dir,
+        cover_subject=cover_subject,
+        quality_report=quality_report,
+        media_report=media_report,
+        selection_report=selection_report,
+        source_health=source_health,
+    )
 
     # === 6. 创建微信草稿 ===
     logger.info("[6/6] 创建微信草稿...")
@@ -331,14 +373,6 @@ def _run_pipeline():
     if _should_skip_wechat_draft():
         logger.info("Skipping WeChat draft creation because SKIP_WECHAT_DRAFT=1")
         wechat_result = {"status": "skipped", "reason": "dry_run"}
-    elif blocked_publish:
-        logger.warning(
-            "QUALITY GATE BLOCKED: 严格模式下发现 high risk，跳过微信草稿发布。"
-        )
-        logger.warning(
-            "HTML/debug/latest.json 已生成，请人工审核后手动发布。"
-        )
-        wechat_result = {"status": "blocked", "reason": "quality_gate_high_risk"}
     else:
         from src.wechat_draft import publish_daily_article
 
@@ -443,11 +477,35 @@ def _annotate_reasons(news_list: list[dict]):
         item["selected_reason"] = " | ".join(reasons) if reasons else "综合评分"
 
 
+def _build_source_health(news_list: list[dict]) -> dict:
+    """Summarize final-source diversity and per-item safety states for diagnostics."""
+    source_counts = Counter(
+        str(item.get("source") or "unknown") for item in news_list
+    )
+    tier_counts = Counter(
+        str(item.get("source_tier") or "unknown") for item in news_list
+    )
+    state_counts = Counter(
+        str(item.get("quality_state") or "ready") for item in news_list
+    )
+    return {
+        "selected_count": len(news_list),
+        "source_counts": dict(source_counts),
+        "source_tier_counts": dict(tier_counts),
+        "quality_state_counts": dict(state_counts),
+        "source_only_count": state_counts.get("source_only", 0),
+    }
+
+
 def _generate_debug_reports(
     news_list: list[dict],
     date_str: str,
     docs_dir: str,
     cover_subject: dict | None = None,
+    quality_report: dict | None = None,
+    media_report: dict | None = None,
+    selection_report: dict | None = None,
+    source_health: dict | None = None,
 ):
     """生成 debug 报告：candidates.json 和 ranking.md。"""
     debug_dir = os.path.join(docs_dir, "debug")
@@ -469,6 +527,16 @@ def _generate_debug_reports(
             "metrics": item.get("metrics", {}),
             "selected_reason": item.get("selected_reason", ""),
             "confidence_level": item.get("_confidence_level", "high"),
+            "source_tier": item.get("source_tier", ""),
+            "quality_state": item.get("quality_state", "ready"),
+            "llm_review_status": (quality_report or {}).get("llm_review_status", "skipped"),
+            "media": {
+                "state": item.get("media_state", "not_checked"),
+                "reason": item.get("image_reason", ""),
+                "sha256": item.get("media_sha256", ""),
+                "phash": item.get("media_phash", ""),
+                "dimensions": [item.get("media_width", 0), item.get("media_height", 0)],
+            },
         }
         bc = item.get("_brand_claim", {})
         if bc:
@@ -505,6 +573,28 @@ def _generate_debug_reports(
     with open(candidates_path, "w", encoding="utf-8") as f:
         json.dump(compact, f, ensure_ascii=False, indent=2, default=str)
     logger.info("Debug candidates saved to %s", candidates_path)
+
+    diagnostics_path = os.path.join(debug_dir, f"{date_str}-pipeline.json")
+    cover_diagnostics = {
+        key: value for key, value in (cover_subject or {}).items()
+        if key != "item"
+    }
+    with open(diagnostics_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "date": date_str,
+                "editorial_selection": selection_report or {},
+                "source_health": source_health or {},
+                "quality_gate": quality_report or {},
+                "media": media_report or {},
+                "cover": cover_diagnostics,
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+    logger.info("Pipeline diagnostics saved to %s", diagnostics_path)
 
     # ---- ranking.md: 人类可读的排名解释 ----
     ranking_path = os.path.join(debug_dir, f"{date_str}-ranking.md")

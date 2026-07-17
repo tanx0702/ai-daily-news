@@ -72,6 +72,8 @@ def build_latest_data(
     quality_report: dict | None = None,
     cover_subject: dict | None = None,
     media_report: dict | None = None,
+    selection_report: dict | None = None,
+    source_health: dict | None = None,
 ) -> dict[str, Any]:
     """Build the JSON payload consumed by Flask and debug tools."""
     latest_data: dict[str, Any] = {
@@ -90,6 +92,8 @@ def build_latest_data(
             "blocked_publish": quality_report.get("blocked_publish"),
             "issues_count": len(quality_report.get("issues", [])),
             "fixes_count": len(quality_report.get("applied_fixes", [])),
+            "llm_review_status": quality_report.get("llm_review_status", "skipped"),
+            "publish_filter": quality_report.get("publish_filter", {}),
         }
 
     if cover_subject:
@@ -112,6 +116,20 @@ def build_latest_data(
             "total": media_report.get("total", 0),
             "with_original_image": media_report.get("with_original_image", 0),
             "text_only": media_report.get("text_only", 0),
+            "trusted": sum(
+                1 for item in media_report.get("items", [])
+                if item.get("media_state") == "trusted"
+            ),
+            "rejected": sum(
+                1 for item in media_report.get("items", [])
+                if item.get("media_state") == "rejected"
+            ),
+        }
+
+    if selection_report or source_health:
+        latest_data["diagnostics"] = {
+            "editorial_selection": selection_report or {},
+            "source_health": source_health or {},
         }
 
     return latest_data

@@ -98,6 +98,23 @@ class EditorialSelectionTests(unittest.TestCase):
             "community",
         )
 
+    def test_selection_reports_relaxed_caps_when_no_alternative_exists(self):
+        items = [
+            _item(f"Only publisher {index}", "Only Publisher", 100 - index)
+            for index in range(3)
+        ]
+
+        selected, _, report = select_editorial_candidates(
+            items,
+            target_count=3,
+            max_items_per_source=2,
+            min_primary_or_research=0,
+        )
+
+        self.assertEqual(len(selected), 3)
+        self.assertTrue(report["cap_relaxed"])
+        self.assertEqual(report["source_counts"], {"only publisher": 3})
+
 
 if __name__ == "__main__":
     unittest.main()

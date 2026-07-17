@@ -148,9 +148,79 @@ class MainPublishFilterTests(unittest.TestCase):
              patch("src.main._generate_debug_reports"):
             daily_main._run_pipeline()
 
-        self.assertEqual(collect_news.call_args.kwargs["top_n"], 16)
+        self.assertEqual(collect_news.call_args.kwargs["top_n"], 30)
         self.assertEqual(review_kwargs["target_count"], 10)
         self.assertTrue(review_kwargs["filter_high_risk"])
+
+    def test_pipeline_separates_editorial_selection_from_quality_reserves(self):
+        collected = _news_items(30)
+        selected = collected[:10]
+        reserves = collected[10:]
+        review_kwargs = {}
+
+        def fake_review(news, **kwargs):
+            review_kwargs.update(kwargs)
+            return news, {
+                "pass": True,
+                "risk_level": "low",
+                "blocked_publish": False,
+                "issues": [],
+                "applied_fixes": [],
+            }
+
+        env = {
+            "DAILY_TOP_N": "10",
+            "DAILY_CANDIDATE_POOL_N": "30",
+            "ENABLE_LLM_QUALITY_GATE": "1",
+            "ENABLE_PUBLISH_SAFETY_FILTER": "1",
+            "ENABLE_ARTICLE_IMAGE_FETCH": "0",
+            "LLM_API_KEY": "",
+            "IMAGE_API_KEY": "",
+            "AGNES_API_KEY": "",
+            "OPENAI_API_KEY": "",
+        }
+
+        with patch.dict(os.environ, env), \
+             patch("src.collector.collect_news", return_value=collected), \
+             patch("src.editorial_selection.select_editorial_candidates", return_value=(selected, reserves, {"selected_count": 10})), \
+             patch("src.quality_gate.review_daily", side_effect=fake_review), \
+             patch("src.pipeline_artifacts.render_and_save_daily_html"), \
+             patch("src.pipeline_artifacts.render_and_save_wechat_preview"), \
+             patch("src.pipeline_artifacts.build_latest_data", return_value={}), \
+             patch("src.pipeline_artifacts.save_latest_data", return_value="latest.json"), \
+             patch("src.cover.select_cover_subject", return_value={"mode": "generic", "cover_title": "今日AI要闻"}), \
+             patch("src.wechat_draft.publish_daily_article", return_value={"status": "draft_created"}), \
+             patch("src.main._generate_debug_reports"):
+            daily_main._run_pipeline()
+
+        self.assertEqual(review_kwargs["reserves"], reserves)
+        self.assertEqual(review_kwargs["target_count"], 10)
+
+    def test_pipeline_generates_local_cover_when_image_key_is_missing(self):
+        env = {
+            "DAILY_TOP_N": "2",
+            "DAILY_CANDIDATE_POOL_N": "2",
+            "ENABLE_LLM_QUALITY_GATE": "0",
+            "ENABLE_ARTICLE_IMAGE_FETCH": "0",
+            "LLM_API_KEY": "",
+            "IMAGE_API_KEY": "",
+            "AGNES_API_KEY": "",
+            "OPENAI_API_KEY": "",
+        }
+
+        with patch.dict(os.environ, env), \
+             patch("src.collector.collect_news", return_value=_news_items(2)), \
+             patch("src.pipeline_artifacts.render_and_save_daily_html"), \
+             patch("src.pipeline_artifacts.render_and_save_wechat_preview"), \
+             patch("src.pipeline_artifacts.build_latest_data", return_value={}), \
+             patch("src.pipeline_artifacts.save_latest_data", return_value="latest.json"), \
+             patch("src.cover.select_cover_subject", return_value={"mode": "generic", "cover_title": "今日AI要闻"}), \
+             patch("src.cover.generate_cover_from_news", return_value="cover.jpg") as generate_cover, \
+             patch("src.wechat_draft.publish_daily_article", return_value={"status": "draft_created"}), \
+             patch("src.main._generate_debug_reports"):
+            daily_main._run_pipeline()
+
+        self.assertEqual(generate_cover.call_args.kwargs["api_key"], "")
 
     def test_annotate_reasons_includes_publish_risk(self):
         item = {

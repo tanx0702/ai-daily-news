@@ -34,6 +34,31 @@ _MODEL_PATTERN = re.compile(
 
 # 低置信度 brand claim 标记 key（从 collector 传入）
 _LOW_CONFIDENCE_KEY = "low_confidence_brand_claim"
+_NON_RETRYABLE_LLM_STATUS_CODES = {400, 401, 403}
+
+
+def _is_non_retryable_llm_error(error: Exception) -> bool:
+    """Avoid multiplying configuration and authentication failures per item."""
+    if getattr(error, "status_code", None) in _NON_RETRYABLE_LLM_STATUS_CODES:
+        return True
+    message = str(error).lower()
+    return any(token in message for token in (
+        "invalid api key",
+        "authentication",
+        "permission denied",
+        "unsupported_model",
+        "model not found",
+        "invalid model",
+    ))
+
+
+def _apply_non_retryable_summary_fallback(news: dict) -> None:
+    """Keep source text intact when the configured LLM cannot serve the request."""
+    news["chinese_title"] = clean_display_text(
+        news.get("source_title") or news.get("title", "")
+    )
+    news["summary"] = ""
+    news["llm_summary_status"] = "non_retryable_error"
 
 
 def validate_summary_facts(chinese_title: str, original: dict) -> dict:
@@ -52,10 +77,10 @@ def validate_summary_facts(chinese_title: str, original: dict) -> dict:
 
     # 提取原文中出现的所有型号/产品名
     original_text = (
-        original.get("title", "") + " " +
-        original.get("summary", "") + " " +
-        original.get("url", "") + " " +
-        original.get("source", "")
+        original.get("source_title", original.get("title", "")) + " " +
+        original.get("source_summary", original.get("summary", "")) + " " +
+        original.get("source_url", original.get("url", "")) + " " +
+        original.get("source_name", original.get("source", ""))
     )
     original_matches = set(m.lower() for m in _MODEL_PATTERN.findall(original_text))
 
@@ -348,6 +373,14 @@ def summarize_news(
         except Exception as e:
             logger.warning("Batch failed for items %d-%d: %s",
                            batch_start + 1, batch_start + len(batch_indices), e)
+            if _is_non_retryable_llm_error(e):
+                logger.error(
+                    "LLM batch error is non-retryable; skipping remaining summary requests: %s",
+                    e,
+                )
+                for remaining_index in need_summarize[batch_start:]:
+                    _apply_non_retryable_summary_fallback(news_list[remaining_index])
+                break
             # 降级：逐条处理这批
             for news in batch_news:
                 _summarize_single_news(client, news, model)

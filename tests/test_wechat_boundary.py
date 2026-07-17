@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -7,6 +8,26 @@ from src import wechat, wechat_draft
 
 
 class WeChatBoundaryTests(unittest.TestCase):
+    def test_trusted_normalized_image_uploads_as_jpeg(self):
+        class FakeResponse:
+            def json(self):
+                return {"url": "https://mmbiz.qpic.cn/article.jpg"}
+
+        fd, image_path = tempfile.mkstemp(suffix=".jpg")
+        try:
+            with os.fdopen(fd, "wb") as image_file:
+                image_file.write(b"\xff\xd8normalized-jpeg")
+            with patch("src.wechat_draft.requests.post", return_value=FakeResponse()) as post:
+                result = wechat_draft._upload_normalized_image("token", image_path)
+        finally:
+            os.unlink(image_path)
+
+        self.assertEqual(result, "https://mmbiz.qpic.cn/article.jpg")
+        uploaded = post.call_args.kwargs["files"]["media"]
+        self.assertEqual(uploaded[0], "article.jpg")
+        self.assertEqual(uploaded[1], b"\xff\xd8normalized-jpeg")
+        self.assertEqual(uploaded[2], "image/jpeg")
+
     def test_legacy_wechat_module_reexports_draft_publisher(self):
         self.assertIs(wechat.publish_daily_article, wechat_draft.publish_daily_article)
 

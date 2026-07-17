@@ -17,6 +17,7 @@ class CoverStrategyTests(unittest.TestCase):
                 "title": "OpenAI announces a model",
                 "chinese_title": "OpenAI 发布新模型",
                 "cover_image_url": "https://example.com/cover.jpg",
+                "media_state": "trusted",
             },
         }
 

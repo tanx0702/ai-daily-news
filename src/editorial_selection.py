@@ -89,8 +89,30 @@ def select_editorial_candidates(
             continue
         select(item)
 
+    # A sparse daily pool must still produce a complete report. Preserve the
+    # cap whenever alternatives exist, then explicitly relax it only to fill
+    # otherwise empty slots.
+    cap_relaxed = False
+    if len(selected) < target_count:
+        for item in pool:
+            if len(selected) >= target_count:
+                break
+            if item in selected:
+                continue
+            selected.append(item)
+            cap_relaxed = True
+
     selected_ids = {id(item) for item in selected}
     reserves = [item for item in pool if id(item) not in selected_ids]
+    final_source_counts: Counter[str] = Counter()
+    final_topic_counts: Counter[str] = Counter()
+    for item in selected:
+        source = str(item.get("source", "")).strip().lower()
+        if source:
+            final_source_counts[source] += 1
+        topic = _topic_key(item)
+        if topic:
+            final_topic_counts[topic] += 1
     primary_or_research_count = sum(
         item.get("source_tier") in {"primary", "research"} for item in selected
     )
@@ -99,7 +121,8 @@ def select_editorial_candidates(
         "selected_count": len(selected),
         "reserve_count": len(reserves),
         "primary_or_research_count": primary_or_research_count,
-        "source_counts": dict(source_counts),
-        "topic_counts": dict(topic_counts),
+        "source_counts": dict(final_source_counts),
+        "topic_counts": dict(final_topic_counts),
+        "cap_relaxed": cap_relaxed,
     }
     return selected, reserves, report

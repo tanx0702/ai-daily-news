@@ -56,6 +56,34 @@ class PipelineArtifactsTests(unittest.TestCase):
         self.assertTrue(data["cover_subject"]["matches_top1"])
         self.assertEqual(data["media"]["with_original_image"], 1)
 
+    def test_build_latest_data_includes_evidence_quality_diagnostics(self):
+        data = build_latest_data(
+            [{"title": "Source-only item", "quality_state": "source_only"}],
+            "2026-07-17",
+            "https://tankex.xyz",
+            generated_at="2026-07-17T00:00:00+00:00",
+            quality_report={
+                "pass": True,
+                "risk_level": "medium",
+                "llm_review_status": "failed",
+                "publish_filter": {"replaced_count": 2},
+            },
+            media_report={
+                "total": 1,
+                "with_original_image": 0,
+                "text_only": 1,
+                "items": [{"media_state": "rejected", "reason": "bad_url_hint"}],
+            },
+            selection_report={"selected_count": 10, "reserve_count": 20},
+            source_health={"source_counts": {"Example": 1}, "source_only_count": 1},
+        )
+
+        self.assertEqual(data["quality_gate"]["llm_review_status"], "failed")
+        self.assertEqual(data["quality_gate"]["publish_filter"]["replaced_count"], 2)
+        self.assertEqual(data["media"]["rejected"], 1)
+        self.assertEqual(data["diagnostics"]["editorial_selection"]["reserve_count"], 20)
+        self.assertEqual(data["diagnostics"]["source_health"]["source_only_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

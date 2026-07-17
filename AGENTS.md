@@ -40,11 +40,7 @@ docker compose up -d
 echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -
 ```
 
-如果希望发布安全过滤后仍存在 high risk 或可发布候选不足时不要创建微信草稿，在服务器 `.env` 中设置：
-
-```bash
-QUALITY_GATE_STRICT=1
-```
+日报不会因单条 high risk 或候选不足停止创建微信草稿。高风险条目从通过质检的备用候选回填；证据不足的条目降级为仅原标题、来源和原文链接。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不再阻断整天任务。
 
 ### 本地开发
 
@@ -57,9 +53,10 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 ## 6 步管道（src/main.py）
 
 ```
-1. collector.collect_news()      → RSS 采集 + AI 关键词过滤 + 去重 + 热度评分；发布安全过滤开启时返回 top_n + reserve 条
-2. summarizer.summarize_news()   → LLM 批量翻译标题 + 中文摘要（BATCH_SIZE=5）
-2.5 quality_gate.review_daily()  → 发布前质检；high risk 单条移除并从 reserve 回填，必要时阻断微信草稿
+1. collector.collect_news()      → RSS 采集 + AI 关键词过滤 + 去重 + 热度评分；保留候选池
+1.5 editorial_selection.select_editorial_candidates() → 依来源/主题配额选出日报条目和备用候选
+2. summarizer.summarize_news()   → LLM 批量翻译标题 + 中文摘要（BATCH_SIZE=5），同时处理备用候选
+2.5 quality_gate.review_daily()  → 按原始证据质检；high risk 单条移除并从合格备用候选回填，证据稀疏时 source_only 降级
 3. generator.render_daily_html() → Jinja2 渲染内嵌 HTML 模板
 4. cover.generate_cover_from_news() → AI 封面图（失败降级到 Pillow 渐变色）
 5. 保存 docs/latest.json        → 供 Flask 微信服务读取
@@ -113,16 +110,24 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
 | `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
 | `DAILY_TOP_N` | 新闻条数 | `10` |
-| `DAILY_SAFETY_RESERVE_N` | 发布安全过滤备用候选数量 | `6` |
+| `DAILY_SAFETY_RESERVE_N` | 旧的采集保底数量；候选池下限仍会兼容该值 | `6` |
+| `DAILY_CANDIDATE_POOL_N` | 编辑选择和回填候选池数量 | `30` |
+| `DAILY_MAX_ITEMS_PER_SOURCE` | 单一来源优先最多入选条数 | `2` |
+| `DAILY_MAX_ITEMS_PER_TOPIC` | 单一主题优先最多入选条数 | `2` |
+| `DAILY_MIN_PRIMARY_OR_RESEARCH` | 官方/研究来源优先最低条数 | `2` |
 | `DAILY_RSS_TIMEOUT` | RSS 超时(秒) | `30` |
 | `HN_DETAILS_TIMEOUT` | Hacker News 明细抓取总超时(秒) | `90` |
 | `DAILY_LLM_TIMEOUT` | LLM 超时(秒) | `15` |
 | `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
 | `ENABLE_PUBLISH_SAFETY_FILTER` | high risk 单条是否移除并从备用候选回填 | `true` |
-| `QUALITY_GATE_STRICT` | 过滤后仍 high risk 或候选不足时是否阻止创建微信草稿 | `false` |
+| `QUALITY_GATE_STRICT` | 旧配置兼容标记，不再阻止整天微信草稿 | `false` |
 | `ENABLE_ARTICLE_IMAGE_FETCH` | 是否启用正文原文图抓取 | `true` |
+| `ARTICLE_IMAGE_TIMEOUT` | 正文图片下载、解码和校验超时(秒) | `8` |
 | `ENABLE_AI_COVER_GENERATION` | 无可信原文图时是否启用 AI 生图封面 | `true` |
 | `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | AI 图疑似含错误文字/Logo 时是否改用本地无字封面 | `true` |
+| `AI_COVER_MAX_RETRIES` | 图片服务临时错误最大重试次数 | `5` |
+| `IMAGE_GENERATION_TIMEOUT` | 单次图片生成请求硬超时(秒) | `30` |
+| `SKIP_WECHAT_DRAFT` | 本地/CI 干跑：保留产物但跳过草稿 API | `false` |
 | `DAILY_RUN_LOCK_PATH` | 定时任务锁文件路径 | `docs/.daily_run.lock` |
 
 ## 开发约定

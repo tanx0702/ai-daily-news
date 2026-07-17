@@ -62,7 +62,7 @@ docker compose up -d
 0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1
 ```
 
-生产环境如果不希望 high risk 质检结果进入微信公众号草稿箱，请在 `.env` 设置 `QUALITY_GATE_STRICT=1`。
+日报不会因单条 high risk 或候选不足而停止创建草稿：高风险条目由通过质检的备用候选替换，证据不足的条目降级为仅保留原标题、来源和原文链接。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不再阻断整天任务。
 
 ## 微信模块边界
 
@@ -96,12 +96,21 @@ docker compose up -d
 | `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
 | `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
 | `DAILY_TOP_N` | 入选新闻条数 | `10` |
+| `DAILY_CANDIDATE_POOL_N` | 进入编辑选择与质检回填的候选池数量 | `30` |
+| `DAILY_MAX_ITEMS_PER_SOURCE` | 单一来源优先最多入选条数 | `2` |
+| `DAILY_MAX_ITEMS_PER_TOPIC` | 单一主题优先最多入选条数 | `2` |
+| `DAILY_MIN_PRIMARY_OR_RESEARCH` | 优先保证的官方/研究来源条数 | `2` |
 | `DAILY_RSS_TIMEOUT` | RSS 超时秒数 | `30` |
 | `DAILY_LLM_TIMEOUT` | LLM 超时秒数 | `15` |
 | `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
-| `QUALITY_GATE_STRICT` | 高风险时是否阻止创建微信草稿 | `false` |
+| `QUALITY_GATE_STRICT` | 旧配置兼容标记；不再阻止整天微信草稿 | `false` |
+| `SKIP_WECHAT_DRAFT` | 仅跳过外部草稿 API 的本地/CI 干跑开关 | `false` |
+| `ENABLE_ARTICLE_IMAGE_FETCH` | 下载、验证、去重正文原文图 | `true` |
+| `ARTICLE_IMAGE_TIMEOUT` | 正文图片下载校验超时秒数 | `8` |
 | `ENABLE_AI_COVER_GENERATION` | 无可信原文图时是否使用 AI 生图封面 | `true` |
 | `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | AI 图疑似含错误文字/Logo 时是否改用极简无字背景 | `true` |
+| `AI_COVER_MAX_RETRIES` | 图片服务可重试错误的最大尝试次数 | `5` |
+| `IMAGE_GENERATION_TIMEOUT` | 单次图片生成请求硬超时(秒) | `30` |
 | `DAILY_RUN_LOCK_PATH` | 定时任务锁文件路径 | `docs/.daily_run.lock` |
 
 ## 测试

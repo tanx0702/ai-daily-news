@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.summarizer import summarize_news
+from src.summarizer import summarize_news, validate_summary_facts
 
 
 class _FakeOpenAI:
@@ -46,6 +46,35 @@ def _news(count):
 
 
 class SummarizerBatchValidationTests(unittest.TestCase):
+    def test_non_retryable_auth_error_stops_all_batch_fallback_requests(self):
+        class AuthenticationFailure(Exception):
+            status_code = 401
+
+        fake_client = _FakeOpenAI([AuthenticationFailure("invalid API key")])
+
+        with patch("src.summarizer.OpenAI", return_value=fake_client):
+            result = summarize_news(_news(6), api_key="test-key")
+
+        self.assertEqual(len(fake_client.calls), 1)
+        self.assertEqual(
+            [item["chinese_title"] for item in result],
+            [f"Original story {index}" for index in range(1, 7)],
+        )
+        self.assertTrue(all(item["llm_summary_status"] == "non_retryable_error" for item in result))
+
+    def test_summary_validation_uses_immutable_source_evidence(self):
+        original = {
+            "title": "Original announcement",
+            "summary": "GPT-7 appears in an earlier generated summary.",
+            "source_title": "Original announcement",
+            "source_summary": "The source only confirms a rename.",
+        }
+
+        validation = validate_summary_facts("GPT-7 正式发布", original)
+
+        self.assertFalse(validation["valid"])
+        self.assertEqual(validation["action"], "fallback")
+
     def test_batch_count_mismatch_falls_back_per_item(self):
         batch_response = _json([
             {"chinese_title": "错位 1", "summary": "摘要 1"},
