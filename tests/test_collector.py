@@ -97,6 +97,26 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(item["_publish_risk"]["category"], "community_model_comparison")
         self.assertGreater(item["scores"]["publish_risk_penalty"], 0)
 
+    def test_score_marks_hn_rss_model_comparison_as_publish_risk(self):
+        item = {
+            "title": "$100 AI Music Video: Claude Fable 5 vs. GPT-5.6 Sol",
+            "url": "https://example.com/community-test",
+            "source": "Hacker News AI + Hacker News",
+            "source_type": "rss",
+            "published_at": datetime.now(timezone.utc),
+            "summary": "",
+            "metrics": {
+                "hn_score": 200,
+                "hn_comments": 120,
+                "cross_source_count": 1,
+            },
+        }
+
+        collector._score_item(item, [item])
+
+        self.assertEqual(item["_publish_risk"]["category"], "community_model_comparison")
+        self.assertGreater(item["scores"]["publish_risk_penalty"], 0)
+
     def test_score_marks_single_source_financial_claim_as_publish_risk(self):
         item = {
             "title": "智谱 ARR 达到10亿美元，半年增长15倍",

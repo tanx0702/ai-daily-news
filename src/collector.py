@@ -341,6 +341,24 @@ def _freshness_score(published_at: Optional[datetime], now: datetime = None) -> 
         return 0.0
 
 
+def _is_hn_community_only_source(source: str, source_type: str, cross_source: int) -> bool:
+    if source_type == "hn" and cross_source == 0:
+        return True
+
+    source_lower = source.lower()
+    if "hacker news" not in source_lower:
+        return False
+
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+(?:\+|\|)\s+", source_lower)
+        if part.strip()
+    ]
+    if not parts:
+        parts = [source_lower]
+    return all("hacker news" in part or part in {"hn", "hnrss"} for part in parts)
+
+
 def _detect_publish_risk(item: dict) -> dict:
     """
     Detect items that are AI-related but weak candidates for auto-publishing.
@@ -354,8 +372,11 @@ def _detect_publish_risk(item: dict) -> dict:
     metrics = item.get("metrics", {}) or {}
     cross_source = metrics.get("cross_source_count", 0) or 0
     url_is_official = _is_official_ai_org(item.get("url", ""))
+    hn_community_only = _is_hn_community_only_source(
+        item.get("source", ""), source_type, cross_source,
+    )
 
-    if source_type == "hn" and cross_source == 0 and not url_is_official:
+    if hn_community_only and not url_is_official:
         has_model_name = re.search(
             r"\b(gpt[-\s]?\d[\w.]*|claude\s?\w+|gemini\s?\w+|llama\s?\w+|grok\s?\w+)\b",
             title_lower,
