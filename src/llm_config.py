@@ -69,6 +69,30 @@ def resolve_text_llm_config(
     )
 
 
+def resolve_quality_llm_config(
+    *,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
+) -> LLMConfig:
+    """Resolve a dedicated review provider, falling back to the text provider."""
+    text_config = resolve_text_llm_config()
+    return LLMConfig(
+        api_key=_first_value(
+            api_key,
+            ("QUALITY_LLM_API_KEY",),
+            text_config.api_key,
+            empty_override_disables=True,
+        ),
+        model=_first_value(model, ("QUALITY_LLM_MODEL",), text_config.model),
+        base_url=_first_value(
+            base_url,
+            ("QUALITY_LLM_API_BASE",),
+            text_config.base_url,
+        ),
+    )
+
+
 def resolve_image_llm_config(
     *,
     api_key: Optional[str] = None,

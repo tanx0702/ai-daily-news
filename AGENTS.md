@@ -71,7 +71,7 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | 模块 | 职责 | 关键实现 |
 |------|------|----------|
 | `src/collector.py` | RSS 采集 | 两级 AI 关键词过滤，中文 bigram / 英文 Jaccard 去重，单发布源/风险题材均衡 |
-| `src/llm_config.py` | LLM 配置解析 | 文本/图片模型分开解析，`LLM_*` / `IMAGE_*` 优先，兼容 `AGNES_*` / `OPENAI_*` |
+| `src/llm_config.py` | LLM 配置解析 | 文本/质检/图片模型分开解析，`LLM_*` / `QUALITY_LLM_*` / `IMAGE_*` 优先，兼容 `AGNES_*` / `OPENAI_*` |
 | `src/summarizer.py` | LLM 摘要 | 批量 5 条/次，要求 index 强校验；数量/索引异常时整批降级逐条 |
 | `src/quality_gate.py` | 发布前质检 | LLM/本地规则标记风险；high risk 单条可从发布列表移除并回填 |
 | `src/generator.py` | HTML 渲染 | 模板完全内嵌在 Python 字符串中，Jinja2 从字符串渲染 |
@@ -94,9 +94,12 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点、封面标题和质检；兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` | — |
+| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点和封面标题；兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` | — |
 | `LLM_MODEL` | 文本 LLM 模型名称；兼容读取 `AGNES_MODEL` / `OPENAI_MODEL` | `agnes-2.0-flash` |
 | `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址；兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE` | `https://apihub.agnes-ai.com/v1` |
+| `QUALITY_LLM_API_KEY` | 发布前质检 LLM Key | 空时继承 `LLM_API_KEY` |
+| `QUALITY_LLM_MODEL` | 发布前质检模型名称 | 空时继承 `LLM_MODEL` |
+| `QUALITY_LLM_API_BASE` | 发布前质检 API 地址 | 空时继承 `LLM_API_BASE` |
 | `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图；兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` | — |
 | `IMAGE_MODEL` | 图片生成模型名称；兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL` | `agnes-image-2.1-flash` |
 | `IMAGE_API_BASE` | 图片生成 API 地址；兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE`；可填基础地址、`/v1` 地址或完整 `/v1/images/generations` endpoint | `https://apihub.agnes-ai.com` |

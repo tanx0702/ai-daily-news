@@ -77,9 +77,12 @@ docker compose up -d
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点、封面标题和质检 | 兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` |
+| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点和封面标题 | 兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` |
 | `LLM_MODEL` | 文本 LLM 模型名称 | 兼容读取 `AGNES_MODEL` / `OPENAI_MODEL`，默认 `agnes-2.0-flash` |
 | `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址 | 兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE`，默认 `https://apihub.agnes-ai.com/v1` |
+| `QUALITY_LLM_API_KEY` | 发布前质检 LLM Key | 空时继承 `LLM_API_KEY` |
+| `QUALITY_LLM_MODEL` | 发布前质检模型名称 | 空时继承 `LLM_MODEL` |
+| `QUALITY_LLM_API_BASE` | 发布前质检 API 地址 | 空时继承 `LLM_API_BASE` |
 | `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图 | 兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` |
 | `IMAGE_MODEL` | 图片生成模型名称 | 兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL`，默认 `agnes-image-2.1-flash` |
 | `IMAGE_API_BASE` | 图片生成 API 地址 | 兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE`；可填基础地址、`/v1` 地址或完整 `/v1/images/generations` endpoint；默认 `https://apihub.agnes-ai.com` |

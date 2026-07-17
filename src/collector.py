@@ -1450,6 +1450,10 @@ def collect_news(
     all_candidates = (rss_candidates + hn_candidates + gh_candidates +
                       hf_candidates + arxiv_candidates)
     merged = _merge_candidates(all_candidates)
+    from src.evidence import preserve_source_evidence
+
+    for item in merged:
+        preserve_source_evidence(item)
 
     # ---- 过滤统计 ----
     stats = {

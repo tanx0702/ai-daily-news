@@ -95,6 +95,11 @@ def _run_pipeline():
         logger.error("No news collected! Aborting.")
         sys.exit(1)
 
+    from src.evidence import preserve_source_evidence
+
+    for item in news_list:
+        preserve_source_evidence(item)
+
     # Fix Windows console encoding for emoji output
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         sys.stdout.reconfigure(encoding="utf-8")
