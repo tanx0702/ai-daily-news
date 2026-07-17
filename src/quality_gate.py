@@ -633,7 +633,7 @@ def _run_llm_review(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
-            max_tokens=2000,
+            max_tokens=int(os.environ.get("QUALITY_GATE_MAX_TOKENS", "4000")),
             response_format={"type": "json_object"},
         )
         content = response.choices[0].message.content.strip()
@@ -1041,6 +1041,10 @@ def review_daily(
         report["issues"].extend(llm_issues)
         report["global_notes"] = global_notes
         report["llm_reviewed"] = True
+        report["llm_review_failed"] = any(
+            isinstance(note, str) and "LLM 质检请求失败" in note
+            for note in global_notes
+        )
         _apply_llm_issue_marks(news_list, llm_issues)
 
         # 应用 LLM 修正
@@ -1063,6 +1067,7 @@ def review_daily(
     else:
         report["llm_reviewed"] = False
         report["global_notes"] = []
+        report["llm_review_failed"] = False
 
     # 3. 发布安全过滤：移除 high risk 单条并从后备候选回填。
     publish_filter_report = None
@@ -1085,9 +1090,17 @@ def review_daily(
         else:
             report["risk_level"] = remaining_risk
 
+    if report.get("llm_review_failed") and report["risk_level"] == "low":
+        report["risk_level"] = "medium"
+
     report["pass"] = (report["risk_level"] != "high")
     report["blocked_publish"] = strict and (report["risk_level"] == "high")
     report["summary"] = _build_summary(report["issues"], report["applied_fixes"])
+    if report.get("llm_review_failed"):
+        report["summary"] = (
+            "LLM 质检失败，已按本地规则和发布过滤结果降级为 medium；"
+            + report["summary"]
+        )
     if publish_filter_report:
         report["summary"] = (
             f"{report['summary']}；发布过滤移除 "
