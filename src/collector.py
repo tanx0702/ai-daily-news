@@ -999,6 +999,50 @@ def _extract_entities(title: str) -> set[str]:
     return entities
 
 
+def _source_bucket(source: str) -> str:
+    """Normalize a source label for publisher-level balance caps."""
+    if not source:
+        return ""
+    source = clean_display_text(str(source)).lower()
+    parts = [
+        part.strip()
+        for part in re.split(r"\s*(?:\+|\||/|,|，)\s*", source)
+        if part.strip()
+    ]
+    source = parts[0] if parts else source.strip()
+    return re.sub(r"\s+", " ", source)
+
+
+def _publish_risk_category(item: dict) -> str:
+    risk = item.get("_publish_risk", {}) or {}
+    category = risk.get("category", "")
+    return str(category) if category else ""
+
+
+def _balance_counts(items: list[dict]) -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
+    type_counts: dict[str, int] = {}
+    company_counts: dict[str, int] = {}
+    source_counts: dict[str, int] = {}
+    risk_counts: dict[str, int] = {}
+
+    for item in items:
+        st = item.get("source_type", "rss")
+        type_counts[st] = type_counts.get(st, 0) + 1
+
+        for ent in _extract_entities(item.get("title", "")):
+            company_counts[ent] = company_counts.get(ent, 0) + 1
+
+        source_bucket = _source_bucket(item.get("source", ""))
+        if source_bucket:
+            source_counts[source_bucket] = source_counts.get(source_bucket, 0) + 1
+
+        risk_category = _publish_risk_category(item)
+        if risk_category:
+            risk_counts[risk_category] = risk_counts.get(risk_category, 0) + 1
+
+    return type_counts, company_counts, source_counts, risk_counts
+
+
 def _cluster_by_topic(items: list[dict]) -> tuple[list[dict], dict]:
     """
     主题聚类：合并同公司同产品的重复条目。
@@ -1529,6 +1573,7 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     - HN max 50%（上限），RSS/官方/媒体 min 40%（下限）
     - arXiv 硬上限 2，HuggingFace 硬上限 2
     - 同一公司/产品最多 2 条
+    - 同一发布源和单源融资类发布风险稿设置软上限，有替补时优先分散
     - 超限项放入 reserve，不足时补充
     """
     if not items:
@@ -1536,7 +1581,11 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
 
     hn_cap = max(int(top_n * 0.5), 4)     # HN 最多 50%
     rss_min = max(int(top_n * 0.4), 3)    # RSS/官方 最少 40%
-    general_cap = hn_cap                    # 其他类型默认上限
+    source_cap = max(2, int(top_n * 0.3))  # top10 时同一发布源最多 3 条
+    risk_caps = {
+        "single_source_financial_claim": max(1, int(top_n * 0.2)),
+        "community_model_comparison": max(1, int(top_n * 0.1)),
+    }
 
     HARD_CAPS = {
         "arxiv": 2,
@@ -1546,29 +1595,62 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
 
     type_counts: dict[str, int] = {}
     company_counts: dict[str, int] = {}
+    source_counts: dict[str, int] = {}
+    risk_counts: dict[str, int] = {}
     selected = []
     reserves = []
 
-    for item in items:
+    def can_select(
+        item: dict,
+        *,
+        enforce_type: bool = True,
+        enforce_company: bool = True,
+        enforce_source: bool = True,
+        enforce_risk: bool = True,
+    ) -> bool:
         st = item.get("source_type", "rss")
-        cap = HARD_CAPS.get(st, general_cap)
+        type_cap = HARD_CAPS.get(st)
+        if enforce_type and type_cap is not None and type_counts.get(st, 0) >= type_cap:
+            return False
 
-        # 公司/产品上限检查
-        entities = _extract_entities(item.get("title", ""))
-        company_ok = True
-        for ent in entities:
-            if company_counts.get(ent, 0) >= 2:
-                company_ok = False
-                break
+        if enforce_company:
+            for ent in _extract_entities(item.get("title", "")):
+                if company_counts.get(ent, 0) >= 2:
+                    return False
 
-        # 类型上限检查
-        type_ok = type_counts.get(st, 0) < cap
+        source_bucket = _source_bucket(item.get("source", ""))
+        if enforce_source and source_bucket and source_counts.get(source_bucket, 0) >= source_cap:
+            return False
 
-        if type_ok and company_ok:
-            selected.append(item)
-            type_counts[st] = type_counts.get(st, 0) + 1
-            for ent in entities:
-                company_counts[ent] = company_counts.get(ent, 0) + 1
+        risk_category = _publish_risk_category(item)
+        risk_cap = risk_caps.get(risk_category)
+        if enforce_risk and risk_cap is not None and risk_counts.get(risk_category, 0) >= risk_cap:
+            return False
+
+        return True
+
+    def add_selected(item: dict, reason: str = "") -> None:
+        if reason:
+            item["_balance_relaxed"] = reason
+        selected.append(item)
+
+        st = item.get("source_type", "rss")
+        type_counts[st] = type_counts.get(st, 0) + 1
+
+        for ent in _extract_entities(item.get("title", "")):
+            company_counts[ent] = company_counts.get(ent, 0) + 1
+
+        source_bucket = _source_bucket(item.get("source", ""))
+        if source_bucket:
+            source_counts[source_bucket] = source_counts.get(source_bucket, 0) + 1
+
+        risk_category = _publish_risk_category(item)
+        if risk_category:
+            risk_counts[risk_category] = risk_counts.get(risk_category, 0) + 1
+
+    for item in items:
+        if can_select(item):
+            add_selected(item)
         else:
             reserves.append(item)
 
@@ -1577,10 +1659,13 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     rss_promoted = 0
     if rss_count < rss_min:
         for item in reserves[:]:
-            if item.get("source_type") == "rss" and rss_count < rss_min:
-                selected.append(item)
+            if (
+                item.get("source_type") == "rss"
+                and rss_count < rss_min
+                and can_select(item)
+            ):
+                add_selected(item)
                 reserves.remove(item)
-                type_counts["rss"] = type_counts.get("rss", 0) + 1
                 rss_count += 1
                 rss_promoted += 1
         if rss_count < rss_min:
@@ -1589,16 +1674,34 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
                 rss_min, rss_count, rss_min - rss_count,
             )
 
-    # 如果 selected 不够 top_n，从 reserves 补充
+    # 如果 selected 不够 top_n，先从仍满足软上限的 reserves 补充
+    for item in reserves[:]:
+        if len(selected) >= top_n:
+            break
+        if can_select(item):
+            add_selected(item)
+            reserves.remove(item)
+
+    # 候选不足时才放宽发布源/风险题材上限，保证日报仍能补满
+    for item in reserves[:]:
+        if len(selected) >= top_n:
+            break
+        if can_select(item, enforce_source=False, enforce_risk=False):
+            add_selected(item, "候选不足，放宽发布源/风险题材上限补齐日报")
+            reserves.remove(item)
+
     while len(selected) < top_n and reserves:
-        selected.append(reserves.pop(0))
+        add_selected(reserves.pop(0), "候选不足，放宽全部均衡上限补齐日报")
 
     # ── 多样性后处理：小 top_n 时检查同实体分布 ──
     if top_n <= 10:
         selected = _ensure_diversity(selected, reserves, top_n)
+        type_counts, company_counts, source_counts, risk_counts = _balance_counts(selected)
 
     type_dist = {st: c for st, c in type_counts.items()}
     company_dist = {e: c for e, c in company_counts.items() if c >= 2}
+    source_dist = {s: c for s, c in source_counts.items() if c >= 2}
+    risk_dist = {r: c for r, c in risk_counts.items() if c >= 2}
     rss_pct = type_dist.get("rss", 0) / max(len(selected), 1) * 100
     hn_pct = type_dist.get("hn", 0) / max(len(selected), 1) * 100
     logger.info(
@@ -1607,6 +1710,10 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     )
     if company_dist:
         logger.info("  Companies (>=2): %s", company_dist)
+    if source_dist:
+        logger.info("  Sources (>=2): %s", source_dist)
+    if risk_dist:
+        logger.info("  Publish risks (>=2): %s", risk_dist)
 
     return selected
 

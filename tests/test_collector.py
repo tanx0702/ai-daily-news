@@ -5,6 +5,25 @@ from src import collector
 
 
 class CollectorTests(unittest.TestCase):
+    def _ranked_item(self, title, source, score, publish_risk_category=None):
+        item = {
+            "title": title,
+            "url": f"https://example.com/{score}",
+            "source": source,
+            "source_type": "rss",
+            "published_at": datetime.now(timezone.utc),
+            "summary": "AI product update",
+            "metrics": {},
+            "_score": score,
+        }
+        if publish_risk_category:
+            item["_publish_risk"] = {
+                "category": publish_risk_category,
+                "severity": "medium",
+                "reason": "single-source financial or growth claim",
+            }
+        return item
+
     def test_is_ai_related_matches_high_confidence_terms(self):
         self.assertTrue(
             collector._is_ai_related(
@@ -134,6 +153,50 @@ class CollectorTests(unittest.TestCase):
 
         self.assertEqual(item["_publish_risk"]["category"], "single_source_financial_claim")
         self.assertGreater(item["scores"]["publish_risk_penalty"], 0)
+
+    def test_source_balance_limits_single_publisher_when_alternatives_exist(self):
+        items = [
+            self._ranked_item(f"36氪 AI 产品观察 {i}", "36氪", 100 - i)
+            for i in range(6)
+        ] + [
+            self._ranked_item(f"AI 技术进展 {i}", f"来源 {i}", 80 - i)
+            for i in range(8)
+        ]
+
+        selected = collector._apply_source_balance(items, top_n=10)[:10]
+
+        self.assertEqual(len(selected), 10)
+        self.assertLessEqual(
+            sum(1 for item in selected if item["source"] == "36氪"),
+            3,
+        )
+
+    def test_source_balance_limits_single_source_financial_claims_when_alternatives_exist(self):
+        finance_sources = ["36氪", "钛媒体", "虎嗅", "品玩", "量子位", "机器之心"]
+        items = [
+            self._ranked_item(
+                f"AI 公司融资进展 {i}",
+                finance_sources[i],
+                100 - i,
+                publish_risk_category="single_source_financial_claim",
+            )
+            for i in range(6)
+        ] + [
+            self._ranked_item(f"AI 开源工具进展 {i}", f"技术媒体 {i}", 80 - i)
+            for i in range(8)
+        ]
+
+        selected = collector._apply_source_balance(items, top_n=10)[:10]
+
+        self.assertEqual(len(selected), 10)
+        self.assertLessEqual(
+            sum(
+                1
+                for item in selected
+                if item.get("_publish_risk", {}).get("category") == "single_source_financial_claim"
+            ),
+            2,
+        )
 
 
 if __name__ == "__main__":
