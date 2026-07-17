@@ -1,7 +1,10 @@
+import os
 import unittest
 from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from src.generator import render_daily_html, render_wechat_article
+from src.generator import render_daily_html, render_wechat_article, render_wechat_article_ai
 
 
 SAMPLE_NEWS = [
@@ -43,6 +46,50 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("OpenAI 发布新模型", html)
         self.assertIn("阅读原文", html)
         self.assertIn("https://example.com/openai", html)
+
+    def test_render_wechat_article_ai_uses_text_llm_env(self):
+        calls = {}
+
+        class FakeOpenAI:
+            def __init__(self, **kwargs):
+                calls["client"] = kwargs
+                self.chat = SimpleNamespace(
+                    completions=SimpleNamespace(create=self._create)
+                )
+
+            def _create(self, **kwargs):
+                calls["completion"] = kwargs
+                return SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(content="<section>ok</section>")
+                        )
+                    ]
+                )
+
+        env = {
+            "LLM_API_KEY": "text-key",
+            "LLM_API_BASE": "https://text.example/v1",
+            "LLM_MODEL": "text-model",
+            "AGNES_API_KEY": "",
+            "AGNES_API_BASE": "",
+            "AGNES_MODEL": "",
+            "OPENAI_API_KEY": "",
+            "OPENAI_API_BASE": "",
+            "OPENAI_MODEL": "",
+        }
+
+        with patch.dict(os.environ, env), patch("openai.OpenAI", FakeOpenAI):
+            html = render_wechat_article_ai(
+                SAMPLE_NEWS,
+                date_str="2026-07-11",
+                pages_url="https://tankex.xyz",
+            )
+
+        self.assertEqual(html, "<section>ok</section>")
+        self.assertEqual(calls["client"]["api_key"], "text-key")
+        self.assertEqual(calls["client"]["base_url"], "https://text.example/v1")
+        self.assertEqual(calls["completion"]["model"], "text-model")
 
 
 if __name__ == "__main__":

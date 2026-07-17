@@ -6,13 +6,17 @@ LLM 摘要模块
 
 import json
 import logging
-import os
 import re
 from datetime import datetime, timezone
 from typing import Optional
 
 from openai import OpenAI
 
+from src.llm_config import (
+    DEFAULT_TEXT_API_BASE,
+    DEFAULT_TEXT_MODEL,
+    resolve_text_llm_config,
+)
 from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
@@ -75,11 +79,9 @@ def validate_summary_facts(chinese_title: str, original: dict) -> dict:
     return {"valid": True, "suspicious_terms": [], "action": "keep"}
 
 
-# Agnes API 配置
-AGNES_BASE_URL = os.environ.get(
-    "AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"
-)
-DEFAULT_MODEL = "agnes-2.0-flash"
+# Backward-compatible constants for older callers.
+AGNES_BASE_URL = DEFAULT_TEXT_API_BASE
+DEFAULT_MODEL = DEFAULT_TEXT_MODEL
 
 # 批量处理：每次最多处理 5 条新闻
 BATCH_SIZE = 5
@@ -241,9 +243,9 @@ def _summarize_single_news(client, news: dict, model: str) -> None:
 def summarize_news(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     timeout: int = 30,
-    base_url: str = AGNES_BASE_URL,
+    base_url: Optional[str] = None,
 ) -> list[dict]:
     """
     批量为新闻列表生成中文翻译标题和摘要。
@@ -253,17 +255,20 @@ def summarize_news(
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
-        api_key: Agnes API Key，默认从 AGNES_API_KEY 环境变量读取
+        api_key: Text LLM API Key，默认从 LLM_API_KEY 环境变量读取，兼容 AGNES_API_KEY / OPENAI_API_KEY
         model: 模型名称，默认 agnes-2.0-flash
         timeout: 单次调用超时秒数（建议 >= 30）
-        base_url: API 基础地址，默认 Agnes hub
+        base_url: API 基础地址，默认文本 LLM API 地址
 
     Returns:
         补充了 chinese_title 和 summary 的新闻列表
     """
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
-        logger.warning("AGNES_API_KEY not set, skipping LLM summary")
+        logger.warning("LLM API key not set, skipping LLM summary")
         return news_list
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
@@ -353,8 +358,8 @@ def summarize_news(
 def generate_highlights(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
-    base_url: str = AGNES_BASE_URL,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
     timeout: int = 30,
 ) -> list[str]:
     """
@@ -367,7 +372,7 @@ def generate_highlights(
 
     Args:
         news_list: 新闻列表（需已有 chinese_title + summary + _confidence_level）
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: 模型名称
         base_url: API 地址
         timeout: 超时秒数
@@ -399,8 +404,10 @@ def generate_highlights(
 
     top_items = eligible[:3]
 
-    if api_key is None:
-        api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
         logger.info("No API key for highlights, using chinese_title fallback")
         return [
@@ -509,8 +516,8 @@ def generate_highlights(
 def generate_cover_title(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
-    base_url: str = AGNES_BASE_URL,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
     timeout: int = 30,
 ) -> str:
     """
@@ -518,7 +525,7 @@ def generate_cover_title(
 
     Args:
         news_list: 新闻列表（取第 1 条，需已有 chinese_title + summary）
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: 模型名称
         base_url: API 地址
         timeout: 超时秒数
@@ -541,7 +548,10 @@ def generate_cover_title(
 
     topic = clean_display_text(top.get("chinese_title") or top.get("title", ""))
 
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
         # 无 API：截取 chinese_title 的前 20 个字符
         short = topic[:20].rstrip("，。；：！？、")
@@ -596,16 +606,16 @@ def generate_cover_title(
 def summarize_for_wechat(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     top_n: int = 5,
-    base_url: str = AGNES_BASE_URL,
+    base_url: Optional[str] = None,
 ) -> str:
     """
     为微信推送生成摘要文本。
 
     Args:
         news_list: 新闻列表
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: 模型名称
         top_n: 取前 N 条新闻生成摘要
         base_url: API 基础地址
@@ -613,7 +623,10 @@ def summarize_for_wechat(
     Returns:
         格式化后的微信推送摘要文本
     """
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
         items = news_list[:top_n]
         titles = [clean_display_text(item.get("chinese_title") or item["title"]) for item in items]

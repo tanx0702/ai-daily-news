@@ -22,6 +22,8 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
+from src.llm_config import resolve_text_llm_config
+
 logger = logging.getLogger(__name__)
 
 # ── 型号/产品名 pattern（与 summarizer 保持一致，额外增加一些编造型号） ──
@@ -1028,13 +1030,14 @@ def review_daily(
     report["blocked_publish"] = False
 
     # 2. LLM 质检（如果可用）
-    if api_key:
+    text_config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    if text_config.api_key:
         logger.info("Quality gate: running LLM review...")
         llm_issues, llm_fixes, global_notes = _run_llm_review(
             news_list,
-            api_key=api_key,
-            model=model or os.environ.get("AGNES_MODEL", "agnes-2.0-flash"),
-            base_url=base_url or os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"),
+            api_key=text_config.api_key,
+            model=text_config.model,
+            base_url=text_config.base_url,
             timeout=timeout,
         )
 

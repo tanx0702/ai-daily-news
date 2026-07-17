@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from jinja2 import Environment, BaseLoader
+from src.llm_config import resolve_text_llm_config
 from src.text_utils import clean_display_text
 from src.time_utils import report_date_str
 
@@ -815,7 +816,7 @@ def render_wechat_article_ai(
         date_str: 日期
         pages_url: 日报 URL
         cover_image_url: 封面图 URL
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: LLM 模型名
         base_url: API 地址
         timeout: LLM 超时秒数
@@ -825,7 +826,8 @@ def render_wechat_article_ai(
     """
     import re as _re
 
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    text_config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = text_config.api_key
     if not api_key:
         logger.warning("No API key for AI HTML generation, falling back")
         return ""
@@ -846,8 +848,8 @@ def render_wechat_article_ai(
     prompt = _MD2WECHAT_OCEAN_CALM_PROMPT.format(markdown_content=md_content)
 
     # 4. 调用 LLM
-    model = model or os.environ.get("AGNES_MODEL", "agnes-2.0-flash")
-    base_url = base_url or os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")
+    model = text_config.model
+    base_url = text_config.base_url
 
     try:
         from openai import OpenAI

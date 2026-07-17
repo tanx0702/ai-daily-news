@@ -1,7 +1,7 @@
 """
 封面图生成模块
 
-使用 Agnes Image API 根据当日新闻标题生成每日封面图。
+使用可配置图片生成 API 根据当日新闻标题生成每日封面图。
 """
 
 import io
@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
+from src.llm_config import DEFAULT_IMAGE_MODEL, resolve_image_llm_config
 from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
@@ -412,7 +413,8 @@ def generate_cover_from_news(
     date_str: str,
     output_path: str = None,
     api_key: Optional[str] = None,
-    base_url: str = "https://apihub.agnes-ai.com",
+    base_url: Optional[str] = None,
+    model: Optional[str] = None,
     cover_title: str = "",
     cover_subject: Optional[dict] = None,
 ) -> Optional[str]:
@@ -429,8 +431,8 @@ def generate_cover_from_news(
         news_list: 新闻列表
         date_str: 日期字符串
         output_path: 输出图片路径
-        api_key: Agnes API Key
-        base_url: Agnes API 基础地址
+        api_key: Image generation API Key
+        base_url: Image generation API 基础地址
         cover_title: 中文封面标题（12-20 字）
         cover_subject: select_cover_subject() 的结果，为空则内部生成
 
@@ -451,7 +453,10 @@ def generate_cover_from_news(
     if not cover_subject.get("visual_prompt_topic"):
         cover_subject["visual_prompt_topic"] = cover_subject["cover_title"]
 
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    image_config = resolve_image_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = image_config.api_key
+    base_url = image_config.base_url
+    image_model = image_config.model
     force_local_on_bad = _env_enabled_cover("FORCE_LOCAL_COVER_ON_BAD_IMAGE", True)
 
     if output_path is None:
@@ -486,7 +491,13 @@ def generate_cover_from_news(
 
     # 免费 API 不稳定，带指数退避重试（1s → 2s → 4s ...）
     max_retries = int(os.environ.get("AI_COVER_MAX_RETRIES", "5"))
-    img = _generate_ai_cover_image(image_base, api_key, prompt, max_retries)
+    img = _generate_ai_cover_image(
+        image_base,
+        api_key,
+        prompt,
+        max_retries,
+        model=image_model,
+    )
 
     if img is None:
         logger.warning(
@@ -519,9 +530,10 @@ def _generate_ai_cover_image(
     api_key: str,
     prompt: str,
     max_retries: int = 3,
+    model: str = DEFAULT_IMAGE_MODEL,
 ) -> Optional["Image.Image"]:
     """
-    调用 Agnes Image API 生成封面图，带指数退避重试。
+    调用图片生成 API 生成封面图，带指数退避重试。
 
     每次失败都记录具体原因（HTTP 状态码 + API error code + message），便于排查：
     - content_policy_violation（关键词命中审核）→ 重试无效，立即放弃
@@ -541,7 +553,7 @@ def _generate_ai_cover_image(
                 f"{image_base}/v1/images/generations",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "agnes-image-2.1-flash",
+                    "model": model,
                     "prompt": prompt,
                     "size": "900x500",
                 },
@@ -552,7 +564,7 @@ def _generate_ai_cover_image(
             if resp.status_code >= 400:
                 err_code, err_msg = _parse_api_error(resp)
                 logger.warning(
-                    "Agnes Image API attempt %d/%d failed: HTTP %d | code=%s | %s",
+                    "Image generation API attempt %d/%d failed: HTTP %d | code=%s | %s",
                     attempt, max_retries, resp.status_code, err_code, err_msg,
                 )
                 # 内容审核拦截：重试无效（同样的 prompt 永远被拦），立即放弃
@@ -582,7 +594,7 @@ def _generate_ai_cover_image(
 
         except Exception as e:
             logger.warning(
-                "Agnes Image API attempt %d/%d failed: %s: %s",
+                "Image generation API attempt %d/%d failed: %s: %s",
                 attempt, max_retries, type(e).__name__, e,
             )
             if attempt < max_retries:

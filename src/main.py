@@ -103,10 +103,13 @@ def _run_pipeline():
 
     # === 2. LLM 摘要 ===
     logger.info("[2/6] 生成 LLM 摘要...")
+    from src.llm_config import resolve_image_llm_config, resolve_text_llm_config
     from src.summarizer import summarize_news
 
-    api_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
-    model = os.environ.get("AGNES_MODEL", os.environ.get("OPENAI_MODEL", "agnes-2.0-flash"))
+    text_llm = resolve_text_llm_config()
+    api_key = text_llm.api_key
+    model = text_llm.model
+    llm_base_url = text_llm.base_url
     llm_timeout = int(os.environ.get("DAILY_LLM_TIMEOUT", "15"))
 
     if api_key:
@@ -114,10 +117,11 @@ def _run_pipeline():
             news_list,
             api_key=api_key,
             model=model,
+            base_url=llm_base_url,
             timeout=llm_timeout,
         )
     else:
-        logger.info("AGNES_API_KEY not set, skipping LLM summary")
+        logger.info("LLM API key not set, skipping LLM summary")
 
     # === 2.5 质检门禁 ===
     quality_report = {}
@@ -133,7 +137,7 @@ def _run_pipeline():
             news_list,
             api_key=api_key,
             model=model,
-            base_url=os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"),
+            base_url=llm_base_url,
             timeout=qg_timeout,
             strict=qg_strict,
             date_str=date_str,
@@ -184,7 +188,11 @@ def _run_pipeline():
         # generate_highlights() 内部会跳过低置信度 item，
         # 返回的列表长度等于 eligible items 数量（最多 3）
         highlights = generate_highlights(
-            news_list, api_key=api_key, model=model, timeout=llm_timeout,
+            news_list,
+            api_key=api_key,
+            model=model,
+            base_url=llm_base_url,
+            timeout=llm_timeout,
         )
         # 将 highlights 按顺序映射回符合条件的 news_list items
         hi = 0
@@ -218,7 +226,11 @@ def _run_pipeline():
             logger.info("Cover title: top item excluded by quality gate, using generic title")
         else:
             cover_title = generate_cover_title(
-                news_list, api_key=api_key, model=model, timeout=llm_timeout,
+                news_list,
+                api_key=api_key,
+                model=model,
+                base_url=llm_base_url,
+                timeout=llm_timeout,
             )
         logger.info("Cover title: %s", cover_title)
     else:
@@ -240,8 +252,10 @@ def _run_pipeline():
     logger.info("[4/6] 生成封面图...")
     from src.cover import generate_cover_from_news, select_cover_subject
 
-    cover_key = os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
-    cover_base_url = os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com")
+    image_llm = resolve_image_llm_config()
+    cover_key = image_llm.api_key
+    cover_base_url = image_llm.base_url
+    cover_model = image_llm.model
     cover_save_path = os.path.join(docs_dir, "cover.jpg")
 
     # 选择封面主题（从可信候选池中选择）
@@ -260,6 +274,7 @@ def _run_pipeline():
                 output_path=cover_save_path,
                 api_key=cover_key,
                 base_url=cover_base_url,
+                model=cover_model,
                 cover_title=cover_title,
                 cover_subject=cover_subject,
             )
@@ -267,7 +282,7 @@ def _run_pipeline():
         except Exception as e:
             logger.warning("Cover generation failed (non-fatal): %s", e)
     else:
-        logger.info("No API key for cover generation, skipping")
+        logger.info("No image API key for cover generation, skipping")
 
     # 生成公众号推文预览
     from src.pipeline_artifacts import render_and_save_wechat_preview

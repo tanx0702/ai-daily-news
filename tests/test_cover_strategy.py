@@ -72,6 +72,40 @@ class CoverStrategyTests(unittest.TestCase):
         self.assertEqual(subject["cover_source"], "ai_generated")
         generator.assert_called_once()
 
+    def test_image_model_env_is_passed_to_ai_generation(self):
+        subject = {
+            "mode": "generic",
+            "story_type": "general",
+            "item": None,
+            "cover_title": "Today",
+        }
+        ai_image = Image.new("RGB", (900, 500), (96, 128, 144))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "cover.jpg")
+            with patch.dict(
+                os.environ,
+                {
+                    "ENABLE_AI_COVER_GENERATION": "1",
+                    "AI_COVER_MAX_RETRIES": "1",
+                    "IMAGE_MODEL": "image-model",
+                },
+            ):
+                with patch("src.cover._generate_ai_cover_image", return_value=ai_image) as generator:
+                    cover.generate_cover_from_news(
+                        [],
+                        "2026-07-12",
+                        output_path=output_path,
+                        api_key="image-key",
+                        base_url="https://image.example",
+                        cover_subject=subject,
+                    )
+
+        generator.assert_called_once()
+        self.assertEqual(generator.call_args.args[0], "https://image.example")
+        self.assertEqual(generator.call_args.args[1], "image-key")
+        self.assertEqual(generator.call_args.kwargs["model"], "image-model")
+
     def test_ai_failure_uses_minimal_text_free_background_not_title_card(self):
         subject = {
             "mode": "generic",

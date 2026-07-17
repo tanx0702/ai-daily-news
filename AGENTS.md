@@ -31,7 +31,7 @@ cd /opt/ai-news
 
 # 2. 创建 .env 文件（参考 .env.example）
 cp .env.example .env
-vim .env  # 填入你的 AGNES_API_KEY, WECHAT_APP_ID 等
+vim .env  # 填入你的 LLM_API_KEY/LLM_MODEL/LLM_API_BASE、IMAGE_*、WECHAT_* 等
 
 # 3. 启动
 docker compose up -d
@@ -71,10 +71,11 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | 模块 | 职责 | 关键实现 |
 |------|------|----------|
 | `src/collector.py` | RSS 采集 | 两级 AI 关键词过滤，中文 bigram / 英文 Jaccard 去重，单发布源/风险题材均衡 |
+| `src/llm_config.py` | LLM 配置解析 | 文本/图片模型分开解析，`LLM_*` / `IMAGE_*` 优先，兼容 `AGNES_*` / `OPENAI_*` |
 | `src/summarizer.py` | LLM 摘要 | 批量 5 条/次，要求 index 强校验；数量/索引异常时整批降级逐条 |
 | `src/quality_gate.py` | 发布前质检 | LLM/本地规则标记风险；high risk 单条可从发布列表移除并回填 |
 | `src/generator.py` | HTML 渲染 | 模板完全内嵌在 Python 字符串中，Jinja2 从字符串渲染 |
-| `src/cover.py` | 封面图 | Agnes Image API → Pillow 渐变色降级（6 套配色按日期 hash） |
+| `src/cover.py` | 封面图 | 可配置图片生成 API → Pillow 渐变色降级（6 套配色按日期 hash） |
 | `app.py` | Flask 微信服务 | 双路由（GET 验证/POST 消息），客服消息推送，读 latest.json |
 | `src/wechat_draft.py` | 微信公众号草稿创建 | 上传封面素材、生成正文、创建草稿；后台手动发布 |
 | `src/wechat.py` | 兼容入口 | 仅转发 `publish_daily_article`，新代码不要继续依赖 |
@@ -93,9 +94,12 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `AGNES_API_KEY` | LLM 摘要 + 封面图 | — |
-| `AGNES_MODEL` | 模型名称 | `agnes-2.0-flash` |
-| `AGNES_API_BASE` | API 地址 | `https://apihub.agnes-ai.com/v1` |
+| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点、封面标题和质检；兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` | — |
+| `LLM_MODEL` | 文本 LLM 模型名称；兼容读取 `AGNES_MODEL` / `OPENAI_MODEL` | `agnes-2.0-flash` |
+| `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址；兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE` | `https://apihub.agnes-ai.com/v1` |
+| `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图；兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` | — |
+| `IMAGE_MODEL` | 图片生成模型名称；兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL` | `agnes-image-2.1-flash` |
+| `IMAGE_API_BASE` | 图片生成 API 地址；兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE` | `https://apihub.agnes-ai.com` |
 | `WECHAT_APP_ID` | 公众号 AppID | — |
 | `WECHAT_APP_SECRET` | 公众号 AppSecret | — |
 | `WECHAT_TOKEN` | 回调验证 Token | — |

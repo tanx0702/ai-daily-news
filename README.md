@@ -29,7 +29,7 @@ src.wechat_draft -> 创建微信公众号草稿，后台手动发布
 - 中文摘要：LLM 批量翻译标题并生成克制的中文新闻摘要
 - 发布前质检：对高风险品牌声明、传闻和不确定表述进行降级或拦截
 - 页面生成：生成 `docs/index.html`、历史归档和微信预览 HTML
-- 封面生成：可信原文图优先；无可信原文图时调用 Agnes Image API；失败时降级为极简本地无字背景
+- 封面生成：可信原文图优先；无可信原文图时调用可配置图片生成 API；失败时降级为极简本地无字背景
 - 微信触达：`app.py` 处理客服消息；`src.wechat_draft` 创建公众号草稿
 
 ## 本地开发
@@ -51,7 +51,7 @@ python app.py
 
 ```bash
 cp .env.example .env
-# 填写 AGNES_API_KEY、WECHAT_APP_ID、WECHAT_APP_SECRET、WECHAT_TOKEN 等
+# 填写 LLM_API_KEY/LLM_MODEL/LLM_API_BASE、IMAGE_*、WECHAT_* 等
 
 docker compose up -d
 ```
@@ -77,9 +77,12 @@ docker compose up -d
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `AGNES_API_KEY` | LLM 摘要和封面图 | - |
-| `AGNES_MODEL` | LLM 模型名称 | `agnes-2.0-flash` |
-| `AGNES_API_BASE` | OpenAI 兼容 API 地址 | `https://apihub.agnes-ai.com/v1` |
+| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点、封面标题和质检 | 兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` |
+| `LLM_MODEL` | 文本 LLM 模型名称 | 兼容读取 `AGNES_MODEL` / `OPENAI_MODEL`，默认 `agnes-2.0-flash` |
+| `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址 | 兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE`，默认 `https://apihub.agnes-ai.com/v1` |
+| `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图 | 兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` |
+| `IMAGE_MODEL` | 图片生成模型名称 | 兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL`，默认 `agnes-image-2.1-flash` |
+| `IMAGE_API_BASE` | 图片生成 API 地址 | 兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE`，默认 `https://apihub.agnes-ai.com` |
 | `WECHAT_APP_ID` | 公众号 AppID | - |
 | `WECHAT_APP_SECRET` | 公众号 AppSecret | - |
 | `WECHAT_TOKEN` | 微信回调验证 Token | - |
