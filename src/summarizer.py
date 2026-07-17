@@ -430,7 +430,9 @@ def generate_highlights(
         "5. 不要把传闻写成官宣，不确定时使用弱表述\n"
         "6. 如果当天没有足够强的重点，宁可写得保守，不要硬凑爆点\n"
         f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
-        "严格按 JSON 数组格式回复：[\"重点1\", \"重点2\", \"重点3\"]"
+        "严格按 JSON 数组格式回复："
+        "[{\"index\":1,\"highlight\":\"重点1\"},{\"index\":2,\"highlight\":\"重点2\"}]。"
+        "index 必须对应输入编号，不要重排或省略。"
     )
 
     try:
@@ -448,16 +450,45 @@ def generate_highlights(
         results = _extract_json(content)
 
         if isinstance(results, list) and len(results) >= 1:
+            highlights_by_index: dict[int, str] = {}
+            positional_results: list[str] = []
+
+            for pos, result in enumerate(results):
+                idx = None
+                text = ""
+
+                if isinstance(result, dict):
+                    try:
+                        idx = int(result.get("index", 0)) - 1
+                    except (TypeError, ValueError):
+                        idx = None
+                    text = (
+                        result.get("highlight")
+                        or result.get("highlight_text")
+                        or result.get("text")
+                        or ""
+                    )
+                elif isinstance(result, str):
+                    idx = pos
+                    text = result
+
+                text = clean_display_text(str(text)) if text else ""
+                if not text:
+                    continue
+                if len(text) > 50:
+                    text = text[:45] + "…"
+                if idx is not None and 0 <= idx < len(top_items) and idx not in highlights_by_index:
+                    highlights_by_index[idx] = text
+                elif isinstance(result, str):
+                    positional_results.append(text)
+
             highlights = []
             for i in range(len(top_items)):
-                if i < len(results) and isinstance(results[i], str) and results[i].strip():
-                    text = clean_display_text(results[i])
-                    # 截断过长
-                    if len(text) > 50:
-                        text = text[:45] + "…"
-                    highlights.append(text)
+                if i in highlights_by_index:
+                    highlights.append(highlights_by_index[i])
+                elif i < len(positional_results):
+                    highlights.append(positional_results[i])
                 else:
-                    # 降级：使用 chinese_title
                     fallback = clean_display_text(
                         top_items[i].get("chinese_title") or top_items[i].get("title", "")
                     )
