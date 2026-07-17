@@ -358,9 +358,25 @@ def resolve_article_media(
         }
 
     # 顺序处理（避免并发过载）
+    used_image_urls: set[str] = set()
     for i, item in enumerate(news_list):
         try:
             report = _process_one(i, item)
+            image_url = item.get("article_image_url", "")
+            if item.get("image_type") == "original" and image_url in used_image_urls:
+                item["image_type"] = "text_only"
+                item["image_reason"] = "duplicate image URL"
+                item["article_image_url"] = ""
+                item["cover_image_url"] = ""
+                item["cover_image_score"] = 0
+                report.update(
+                    image_type="text_only",
+                    image_url="",
+                    cover_image_score=0,
+                    reason="duplicate image URL",
+                )
+            elif item.get("image_type") == "original" and image_url:
+                used_image_urls.add(image_url)
             items_report.append(report)
         except Exception as e:
             logger.warning("Media #%d: failed to process: %s", i, e)
