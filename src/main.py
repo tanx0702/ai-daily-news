@@ -108,7 +108,11 @@ def _run_pipeline():
 
     # === 2. LLM 摘要 ===
     logger.info("[2/6] 生成 LLM 摘要...")
-    from src.llm_config import resolve_image_llm_config, resolve_text_llm_config
+    from src.llm_config import (
+        resolve_image_llm_config,
+        resolve_quality_llm_config,
+        resolve_text_llm_config,
+    )
     from src.summarizer import summarize_news
 
     text_llm = resolve_text_llm_config()
@@ -138,11 +142,12 @@ def _run_pipeline():
         logger.info("[2.5/6] 发布前质检...")
         from src.quality_gate import review_daily
 
+        quality_llm = resolve_quality_llm_config()
         news_list, quality_report = review_daily(
             news_list,
-            api_key=api_key,
-            model=model,
-            base_url=llm_base_url,
+            api_key=quality_llm.api_key,
+            model=quality_llm.model,
+            base_url=quality_llm.base_url,
             timeout=qg_timeout,
             strict=qg_strict,
             date_str=date_str,

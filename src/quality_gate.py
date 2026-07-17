@@ -22,7 +22,7 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from src.llm_config import resolve_text_llm_config
+from src.llm_config import resolve_quality_llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -515,8 +515,12 @@ def _build_llm_input(news_list: list[dict]) -> list[dict]:
     for i, item in enumerate(news_list):
         entry = {
             "index": i + 1,
-            "original_title": item.get("title", "")[:200],
-            "original_summary": (item.get("summary", "") if isinstance(item.get("summary"), str) else "")[:300],
+            "original_title": (item.get("source_title") or item.get("title", ""))[:200],
+            "original_summary": (
+                item.get("source_summary", item.get("summary", ""))
+                if isinstance(item.get("source_summary", item.get("summary", "")), str)
+                else ""
+            )[:300],
             "generated_title": item.get("chinese_title", "")[:100],
             "generated_summary": (item.get("summary", "") if isinstance(item.get("summary"), str) else "")[:200],
             "highlight_text": item.get("highlight_text", "")[:60],
@@ -665,7 +669,7 @@ def _run_llm_review(
 
     except Exception as e:
         logger.warning("LLM quality review failed: %s, keeping local rule results only", e)
-        return [], [], [f"LLM 质检请求失败: {e}"]
+        return [], [], [f"LLM quality review failed: {e}"]
 
 
 def _apply_llm_fixes(news_list: list[dict], llm_fixes: list[dict]) -> list[dict]:
@@ -1030,24 +1034,33 @@ def review_daily(
     report["blocked_publish"] = False
 
     # 2. LLM 质检（如果可用）
-    text_config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
-    if text_config.api_key:
+    quality_config = resolve_quality_llm_config(api_key=api_key, model=model, base_url=base_url)
+    report["llm_review_status"] = "skipped"
+    if quality_config.api_key:
         logger.info("Quality gate: running LLM review...")
         llm_issues, llm_fixes, global_notes = _run_llm_review(
             news_list,
-            api_key=text_config.api_key,
-            model=text_config.model,
-            base_url=text_config.base_url,
+            api_key=quality_config.api_key,
+            model=quality_config.model,
+            base_url=quality_config.base_url,
             timeout=timeout,
         )
 
         report["issues"].extend(llm_issues)
         report["global_notes"] = global_notes
-        report["llm_reviewed"] = True
-        report["llm_review_failed"] = any(
-            isinstance(note, str) and "LLM 质检请求失败" in note
-            for note in global_notes
-        )
+        def is_llm_failure(note: object) -> bool:
+            if not isinstance(note, str):
+                return False
+            normalized = note.lower()
+            return (
+                "llm quality review failed" in normalized
+                or "llm review failed" in normalized
+                or "LLM 质检请求失败" in note
+            )
+
+        report["llm_review_failed"] = any(is_llm_failure(note) for note in global_notes)
+        report["llm_reviewed"] = not report["llm_review_failed"]
+        report["llm_review_status"] = "failed" if report["llm_review_failed"] else "passed"
         _apply_llm_issue_marks(news_list, llm_issues)
 
         # 应用 LLM 修正
