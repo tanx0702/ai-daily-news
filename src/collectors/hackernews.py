@@ -6,8 +6,9 @@ Hacker News 采集器
 """
 
 import logging
+import os
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timezone
 from math import log1p
 from typing import Optional
@@ -92,9 +93,17 @@ class HackerNewsCollector(BaseCollector):
     拉取 topstories + newstories，过滤 AI 相关，计算社区热度。
     """
 
-    def __init__(self, timeout: int = 30, max_items: int = 150):
+    def __init__(
+        self,
+        timeout: int = 30,
+        max_items: int = 150,
+        details_timeout: Optional[float] = None,
+    ):
         super().__init__(timeout)
         self.max_items = max_items
+        if details_timeout is None:
+            details_timeout = _env_float("HN_DETAILS_TIMEOUT", 90.0)
+        self.details_timeout = details_timeout
 
     def fetch(self) -> list[dict]:
         """采集 HN AI 相关新闻。"""
@@ -227,15 +236,28 @@ class HackerNewsCollector(BaseCollector):
             except Exception:
                 return None
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(_fetch_one, sid): sid for sid in story_ids}
-            for future in as_completed(futures):
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        futures = {executor.submit(_fetch_one, sid): sid for sid in story_ids}
+        completed = set()
+        try:
+            for future in as_completed(futures, timeout=self.details_timeout):
+                completed.add(future)
                 try:
                     result = future.result()
                     if result:
                         results.append(result)
                 except Exception:
                     pass
+        except FuturesTimeoutError:
+            pending = [future for future in futures if future not in completed]
+            for future in pending:
+                future.cancel()
+            logger.warning(
+                "HN item detail fetch hit total timeout %.1fs; returning %d/%d completed items",
+                self.details_timeout, len(results), len(story_ids),
+            )
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         return results
 
@@ -282,3 +304,15 @@ class HackerNewsCollector(BaseCollector):
                     return "weak+domain"
 
         return ""
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("Env var %s has invalid value %r, using %.1f", name, raw, default)
+        return default
+    return value if value > 0 else default

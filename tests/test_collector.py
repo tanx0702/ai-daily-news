@@ -49,6 +49,34 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(item["published_at"].date().isoformat(), "2026-07-11")
         self.assertEqual(item["image_candidates"][0]["url"], "https://example.com/a.jpg")
 
+    def test_final_editorial_dedup_merges_title_variants_with_spacing_and_prefix(self):
+        items = [
+            {
+                "title": "独家 | 智谱 ARR 达到 10 亿美元，半年增长 15 倍",
+                "url": "https://example.com/zhipu-exclusive",
+                "source": "Source A",
+                "source_type": "rss",
+                "summary": "",
+                "metrics": {},
+                "_score": 90,
+            },
+            {
+                "title": "智谱ARR达到10亿美元，半年增长15倍",
+                "url": "https://example.com/zhipu-arr",
+                "source": "Source B",
+                "source_type": "rss",
+                "summary": "",
+                "metrics": {},
+                "_score": 80,
+            },
+        ]
+
+        deduped, report = collector.apply_final_editorial_dedup(items, top_n=2)
+
+        self.assertEqual(len(deduped), 1)
+        self.assertEqual(report["merged_groups"], 1)
+        self.assertEqual(deduped[0]["merged_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -70,7 +70,7 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | 模块 | 职责 | 关键实现 |
 |------|------|----------|
 | `src/collector.py` | RSS 采集 | 两级 AI 关键词过滤，中文 bigram / 英文 Jaccard 去重 |
-| `src/summarizer.py` | LLM 摘要 | 批量 5 条/次，失败降级逐条；按位置映射不依赖 LLM 返回 index |
+| `src/summarizer.py` | LLM 摘要 | 批量 5 条/次，要求 index 强校验；数量/索引异常时整批降级逐条 |
 | `src/generator.py` | HTML 渲染 | 模板完全内嵌在 Python 字符串中，Jinja2 从字符串渲染 |
 | `src/cover.py` | 封面图 | Agnes Image API → Pillow 渐变色降级（6 套配色按日期 hash） |
 | `app.py` | Flask 微信服务 | 双路由（GET 验证/POST 消息），客服消息推送，读 latest.json |
@@ -105,6 +105,7 @@ python app.py             # 启动 Flask（:5000，用于调试微信回调）
 | `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
 | `DAILY_TOP_N` | 新闻条数 | `10` |
 | `DAILY_RSS_TIMEOUT` | RSS 超时(秒) | `30` |
+| `HN_DETAILS_TIMEOUT` | Hacker News 明细抓取总超时(秒) | `90` |
 | `DAILY_LLM_TIMEOUT` | LLM 超时(秒) | `15` |
 | `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
 | `QUALITY_GATE_STRICT` | high risk 时是否阻止创建微信草稿 | `false` |

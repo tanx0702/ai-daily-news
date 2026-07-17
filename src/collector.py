@@ -7,6 +7,7 @@ RSS 新闻采集模块
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from math import log1p
@@ -558,9 +559,13 @@ def _title_similarity(a: str, b: str) -> float:
 
     a_clean = a.strip().lower()
     b_clean = b.strip().lower()
+    a_canonical = _canonical_title_for_similarity(a_clean)
+    b_canonical = _canonical_title_for_similarity(b_clean)
 
     # 完全相同
     if a_clean == b_clean:
+        return 1.0
+    if a_canonical and a_canonical == b_canonical:
         return 1.0
 
     # 一个包含另一个
@@ -568,6 +573,11 @@ def _title_similarity(a: str, b: str) -> float:
         shorter = min(len(a_clean), len(b_clean))
         longer = max(len(a_clean), len(b_clean))
         # 短标题被长标题包含，比例越高越相似
+        return shorter / longer if longer > 0 else 0.0
+    if a_canonical and b_canonical and (
+            a_canonical in b_canonical or b_canonical in a_canonical):
+        shorter = min(len(a_canonical), len(b_canonical))
+        longer = max(len(a_canonical), len(b_canonical))
         return shorter / longer if longer > 0 else 0.0
 
     # 判断是否主要包含中文
@@ -580,6 +590,15 @@ def _title_similarity(a: str, b: str) -> float:
     else:
         # 英文标题：使用单词级 Jaccard
         return _english_word_jaccard(a_clean, b_clean)
+
+
+def _canonical_title_for_similarity(title: str) -> str:
+    """Normalize editorial wrappers, punctuation, and spacing for dedup."""
+    title = clean_display_text(title).lower()
+    title = re.sub(r"^(独家|首发|快讯|重磅)\s*[|｜:：]\s*", "", title)
+    title = re.sub(r"\s+", "", title)
+    title = re.sub(r"[，,。.!！?？:：;；|｜、\"'“”‘’（）()【】\[\]\-—_]", "", title)
+    return title
 
 
 def _chinese_bigram_similarity(a: str, b: str) -> float:

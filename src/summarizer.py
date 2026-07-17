@@ -128,6 +128,116 @@ def _extract_json(text: str) -> Optional[dict]:
     return None
 
 
+def _parse_result_index(value) -> Optional[int]:
+    """Parse LLM-returned item indexes while rejecting ambiguous values."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _normalize_batch_results(
+    results,
+    batch_indices: list[int],
+) -> list[dict]:
+    """
+    Validate and order a batch summary response.
+
+    The safest path is an explicit 1-based `index` matching the numbered input.
+    Legacy responses without indexes are accepted only when the count matches
+    exactly, because otherwise positional mapping can silently shift summaries.
+    """
+    if not isinstance(results, list):
+        raise ValueError(f"Expected list, got {type(results).__name__}")
+
+    expected_count = len(batch_indices)
+    if len(results) != expected_count:
+        raise ValueError(
+            f"Batch result count mismatch: expected {expected_count}, got {len(results)}"
+        )
+    if not all(isinstance(item, dict) for item in results):
+        raise ValueError("Batch result must contain JSON objects only")
+
+    has_index = ["index" in item for item in results]
+    if not any(has_index):
+        return results
+    if not all(has_index):
+        raise ValueError("Batch result mixes indexed and unindexed items")
+
+    expected_indexes = [idx + 1 for idx in batch_indices]
+    by_index: dict[int, dict] = {}
+    for item in results:
+        item_index = _parse_result_index(item.get("index"))
+        if item_index is None:
+            raise ValueError(f"Invalid batch result index: {item.get('index')!r}")
+        if item_index in by_index:
+            raise ValueError(f"Duplicate batch result index: {item_index}")
+        by_index[item_index] = item
+
+    if set(by_index) != set(expected_indexes):
+        raise ValueError(
+            f"Batch result indexes mismatch: expected {expected_indexes}, "
+            f"got {sorted(by_index)}"
+        )
+
+    return [by_index[idx] for idx in expected_indexes]
+
+
+def _apply_summary_item(news: dict, item: dict, label: str) -> None:
+    """Apply one validated summary result to one news item."""
+    c_title = clean_display_text(item.get("chinese_title", ""))
+    if c_title:
+        validation = validate_summary_facts(c_title, news)
+        if validation["action"] == "fallback":
+            logger.warning(
+                "  Summary %s flagged: suspicious terms %s in '%s'",
+                label, validation["suspicious_terms"], c_title[:40],
+            )
+            news["_summary_flagged"] = True
+            news["_suspicious_terms"] = validation["suspicious_terms"]
+
+    news["chinese_title"] = c_title or clean_display_text(news["title"])
+    news["summary"] = clean_display_text(item.get("summary", ""))[:200]
+
+
+def _summarize_single_news(client, news: dict, model: str) -> None:
+    """Fallback path for one item when batch output is malformed."""
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "请将以下英文新闻标题改写成自然的中文公众号标题，"
+                        "避免生硬直译，保留核心事实不标题党。"
+                        "禁止编造原文没有的型号、版本号、时间、金额。"
+                        f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
+                        "同时生成一段中文摘要（80-140 字，通常 2 句），"
+                        "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
+                        "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。"
+                        "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
+                    ),
+                },
+                {"role": "user", "content": news["title"]},
+            ],
+            temperature=0.3,
+            max_tokens=350,
+        )
+        content = response.choices[0].message.content.strip()
+        result = _extract_json(content)
+        if isinstance(result, dict):
+            _apply_summary_item(news, result, "single")
+        else:
+            news["chinese_title"] = clean_display_text(news["title"])
+            news["summary"] = ""
+    except Exception as e:
+        logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e)
+        news["chinese_title"] = clean_display_text(news["title"])
+        news["summary"] = ""
+
+
 def summarize_news(
     news_list: list[dict],
     api_key: Optional[str] = None,
@@ -179,8 +289,8 @@ def summarize_news(
 
         # 构建批量 prompt
         headlines = "\n".join(
-            f"{idx+1}. {news['title']}"
-            for idx, news in enumerate(batch_news, start=batch_start)
+            f"{news_index + 1}. {news['title']}"
+            for news_index, news in zip(batch_indices, batch_news)
         )
 
         system_prompt = (
@@ -207,8 +317,8 @@ def summarize_news(
             "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
             "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。\n\n"
             "严格按以下 JSON 数组格式回复，不要有其他内容：\n"
-            "[{\"chinese_title\": \"中文标题\", \"summary\": \"摘要内容\"}]\n"
-            "数组中每个元素的顺序对应输入的标题顺序（第一条对应第一个标题）。"
+            "[{\"index\": 1, \"chinese_title\": \"中文标题\", \"summary\": \"摘要内容\"}]\n"
+            "index 必须等于输入标题前的编号；必须返回每一条，不能少、不能重复、不能乱配。"
         )
 
         try:
@@ -224,70 +334,18 @@ def summarize_news(
             content = response.choices[0].message.content.strip()
             results = _extract_json(content)
 
-            if isinstance(results, list):
-                # 按顺序映射，不依赖 LLM 返回的 index（LLM 可能返回全局序号）
-                for pos, item in enumerate(results):
-                    if pos < len(batch_news):
-                        c_title = clean_display_text(item.get("chinese_title", ""))
-                        # 幻觉校验：检查是否编造了型号/产品名
-                        if c_title:
-                            validation = validate_summary_facts(c_title, batch_news[pos])
-                            if validation["action"] == "fallback":
-                                logger.warning(
-                                    "  Batch summary #%d FALLBACK: suspicious terms %s in '%s'",
-                                    pos + 1, validation["suspicious_terms"], c_title[:40],
-                                )
-                                # 标记但保留原 LLM 结果（避免因误判丢弃），记录到 debug 字段
-                                batch_news[pos]["_summary_flagged"] = True
-                                batch_news[pos]["_suspicious_terms"] = validation["suspicious_terms"]
-                        batch_news[pos]["chinese_title"] = c_title or clean_display_text(batch_news[pos]["title"])
-                        batch_news[pos]["summary"] = clean_display_text(item.get("summary", ""))[:200]
-                        logger.info("  Batch summary #%d: %s", pos + 1,
-                                    batch_news[pos]["chinese_title"][:40])
-            else:
-                raise ValueError(f"Expected list, got {type(results).__name__}")
+            normalized_results = _normalize_batch_results(results, batch_indices)
+            for pos, item in enumerate(normalized_results):
+                _apply_summary_item(batch_news[pos], item, f"batch #{pos + 1}")
+                logger.info("  Batch summary #%d: %s", pos + 1,
+                            batch_news[pos]["chinese_title"][:40])
 
         except Exception as e:
             logger.warning("Batch failed for items %d-%d: %s",
                            batch_start + 1, batch_start + len(batch_indices), e)
             # 降级：逐条处理这批
             for news in batch_news:
-                try:
-                    response = client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": (
-                                    "请将以下英文新闻标题改写成自然的中文公众号标题，"
-                                    "避免生硬直译，保留核心事实不标题党。"
-                                    "禁止编造原文没有的型号、版本号、时间、金额。"
-                                    f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
-                                    "同时生成一段中文摘要（80-140 字，通常 2 句），"
-                                    "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
-                                    "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。"
-                                    "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
-                                ),
-                            },
-                            {"role": "user", "content": news["title"]},
-                        ],
-                        temperature=0.3,
-                        max_tokens=350,
-                    )
-                    content = response.choices[0].message.content.strip()
-                    result = _extract_json(content)
-                    if result:
-                        news["chinese_title"] = clean_display_text(
-                            result.get("chinese_title", news["title"])
-                        )
-                        news["summary"] = clean_display_text(result.get("summary", ""))[:200]
-                    else:
-                        news["chinese_title"] = clean_display_text(news["title"])
-                        news["summary"] = ""
-                except Exception as e2:
-                    logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e2)
-                    news["chinese_title"] = clean_display_text(news["title"])
-                    news["summary"] = ""
+                _summarize_single_news(client, news, model)
 
     return news_list
 
