@@ -21,6 +21,13 @@ def _news_items(count):
 
 
 class MainPublishFilterTests(unittest.TestCase):
+    def test_skip_wechat_draft_flag_is_opt_in(self):
+        with patch.dict(os.environ, {"SKIP_WECHAT_DRAFT": "true"}, clear=True):
+            self.assertTrue(daily_main._should_skip_wechat_draft())
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(daily_main._should_skip_wechat_draft())
+
     def test_pipeline_uses_separate_text_and_image_model_config(self):
         collected = _news_items(10)
         calls = {}

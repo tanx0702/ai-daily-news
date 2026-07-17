@@ -39,6 +39,11 @@ def _env_bool(name: str, default: bool = True) -> bool:
     return default
 
 
+def _should_skip_wechat_draft() -> bool:
+    """Return whether this run is a local/CI dry run without a draft API call."""
+    return _env_bool("SKIP_WECHAT_DRAFT", False)
+
+
 def main():
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     lock_path = os.environ.get(
@@ -323,7 +328,10 @@ def _run_pipeline():
     # === 6. 创建微信草稿 ===
     logger.info("[6/6] 创建微信草稿...")
 
-    if blocked_publish:
+    if _should_skip_wechat_draft():
+        logger.info("Skipping WeChat draft creation because SKIP_WECHAT_DRAFT=1")
+        wechat_result = {"status": "skipped", "reason": "dry_run"}
+    elif blocked_publish:
         logger.warning(
             "QUALITY GATE BLOCKED: 严格模式下发现 high risk，跳过微信草稿发布。"
         )
