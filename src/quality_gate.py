@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from src.llm_config import resolve_quality_llm_config
+from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
 
@@ -852,19 +853,27 @@ def _source_evidence_is_sparse(item: dict) -> bool:
     return bool(source_title) and len(source_summary) < 40
 
 
+def _has_chinese_display_title(item: dict) -> bool:
+    """Return whether the candidate has a Chinese title suitable for this publication."""
+    title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
+    return bool(re.search(r"[\u3400-\u9fff]", title))
+
+
 def _apply_quality_states(news_list: list[dict]) -> None:
-    """Assign a safe publishing state without mutating immutable source evidence."""
+    """Assign a publishing state without overwriting generated display fields."""
     for item in news_list:
         if _publish_exclusion_reason(item):
             item["quality_state"] = "replace"
             continue
 
         if _source_evidence_is_sparse(item):
-            source_title = str(item.get("source_title", item.get("title", ""))).strip()
             item["quality_state"] = "source_only"
-            item["chinese_title"] = source_title or item.get("title", "")
-            item["summary"] = "原始来源未提供足够摘要，以下内容仅保留原标题、来源和原文链接，请以原文为准。"
             item["source_only_reason"] = "source_summary_too_short"
+            continue
+
+        if not _has_chinese_display_title(item):
+            item["quality_state"] = "translation_missing"
+            item["translation_missing_reason"] = "chinese_title_not_translated"
             continue
 
         item["quality_state"] = "ready"
@@ -884,7 +893,7 @@ def _filter_publishable_items(
 
     initial_selected_ids = {id(item) for item in selected_items}
     all_candidates = [*selected_items, *reserves]
-    eligible = [item for item in all_candidates if item.get("quality_state") != "replace"]
+    eligible = [item for item in all_candidates if item.get("quality_state") == "ready"]
     final_selected, _, selection = select_editorial_candidates(
         eligible,
         target_count=target_count,
@@ -902,6 +911,14 @@ def _filter_publishable_items(
         for item in all_candidates
         if item.get("quality_state") == "replace"
     ]
+    source_only_excluded = [
+        item for item in all_candidates
+        if item.get("quality_state") == "source_only"
+    ]
+    translation_missing_excluded = [
+        item for item in all_candidates
+        if item.get("quality_state") == "translation_missing"
+    ]
     replacement_count = sum(
         id(item) not in initial_selected_ids for item in final_selected
     )
@@ -910,6 +927,8 @@ def _filter_publishable_items(
         "target_count": target_count,
         "selected_count": len(final_selected),
         "removed_count": len(removed),
+        "source_only_excluded_count": len(source_only_excluded),
+        "translation_missing_excluded_count": len(translation_missing_excluded),
         "replaced_count": replacement_count,
         "removed_items": removed,
         "insufficient_publishable_items": len(final_selected) < target_count,
@@ -1192,6 +1211,8 @@ def review_daily(
         report["summary"] = (
             f"{report['summary']}；发布过滤移除 "
             f"{publish_filter_report['removed_count']} 条高风险候选，"
+            f"跳过 {publish_filter_report['source_only_excluded_count']} 条证据不足候选，"
+            f"跳过 {publish_filter_report['translation_missing_excluded_count']} 条未翻译候选，"
             f"最终可发布 {publish_filter_report['selected_count']}/"
             f"{publish_filter_report['target_count']} 条。"
         )

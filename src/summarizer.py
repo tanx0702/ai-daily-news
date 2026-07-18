@@ -57,7 +57,8 @@ def _apply_non_retryable_summary_fallback(news: dict) -> None:
     news["chinese_title"] = clean_display_text(
         news.get("source_title") or news.get("title", "")
     )
-    news["summary"] = ""
+    source_summary = clean_display_text(news.get("source_summary", ""))
+    news["summary"] = source_summary[:200] if re.search(r"[\u3400-\u9fff]", source_summary) else ""
     news["llm_summary_status"] = "non_retryable_error"
 
 
@@ -228,6 +229,22 @@ def _apply_summary_item(news: dict, item: dict, label: str) -> None:
     news["summary"] = clean_display_text(item.get("summary", ""))[:200]
 
 
+def _format_news_evidence(index: int, news: dict) -> str:
+    """Build the source-bound evidence packet used by the summary model."""
+    title = clean_display_text(news.get("source_title") or news.get("title", ""))
+    source = clean_display_text(news.get("source_name") or news.get("source", ""))
+    source_type = clean_display_text(news.get("source_type", ""))
+    source_summary = clean_display_text(news.get("source_summary") or news.get("summary", ""))
+
+    lines = [f"{index}. 原始标题: {title}"]
+    if source:
+        lines.append(f"来源: {source}")
+    if source_type:
+        lines.append(f"来源类型: {source_type}")
+    lines.append(f"原始摘要: {source_summary or '（未提供）'}")
+    return "\n".join(lines)
+
+
 def _summarize_single_news(client, news: dict, model: str) -> None:
     """Fallback path for one item when batch output is malformed."""
     try:
@@ -237,7 +254,7 @@ def _summarize_single_news(client, news: dict, model: str) -> None:
                 {
                     "role": "system",
                     "content": (
-                        "请将以下英文新闻标题改写成自然的中文公众号标题，"
+                        "请根据以下原始新闻证据改写成自然的中文公众号标题，"
                         "避免生硬直译，保留核心事实不标题党。"
                         "禁止编造原文没有的型号、版本号、时间、金额。"
                         f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
@@ -247,7 +264,7 @@ def _summarize_single_news(client, news: dict, model: str) -> None:
                         "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
                     ),
                 },
-                {"role": "user", "content": news["title"]},
+                {"role": "user", "content": _format_news_evidence(1, news)},
             ],
             temperature=0.3,
             max_tokens=350,
@@ -318,14 +335,14 @@ def summarize_news(
                      batch_start + 1, batch_start + len(batch_indices), len(batch_indices))
 
         # 构建批量 prompt
-        headlines = "\n".join(
-            f"{news_index + 1}. {news['title']}"
+        headlines = "\n\n".join(
+            _format_news_evidence(news_index + 1, news)
             for news_index, news in zip(batch_indices, batch_news)
         )
 
         system_prompt = (
             "你是一个专业的 AI 新闻编辑，擅长撰写自然流畅的中文科技新闻。"
-            "请将以下每条英文新闻标题改写成中文公众号标题，要求：\n\n"
+            "请根据以下每条原始新闻证据改写成中文公众号标题，要求：\n\n"
             "【语法与可读性】\n"
             "1. 标题必须语法正确，读起来通顺自然\n"
             "2. 避免生硬直译，用中文读者习惯的表达方式\n"

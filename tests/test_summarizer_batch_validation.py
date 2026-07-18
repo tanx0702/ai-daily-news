@@ -62,6 +62,24 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         )
         self.assertTrue(all(item["llm_summary_status"] == "non_retryable_error" for item in result))
 
+    def test_non_retryable_error_preserves_chinese_source_summary(self):
+        class AuthenticationFailure(Exception):
+            status_code = 401
+
+        fake_client = _FakeOpenAI([AuthenticationFailure("invalid API key")])
+        news = [{
+            "title": "中文原始标题",
+            "source_title": "中文原始标题",
+            "source_summary": "原始中文摘要已经说明了发布内容和适用范围。",
+            "source": "中文媒体",
+        }]
+
+        with patch("src.summarizer.OpenAI", return_value=fake_client):
+            result = summarize_news(news, api_key="test-key")
+
+        self.assertEqual(result[0]["chinese_title"], "中文原始标题")
+        self.assertEqual(result[0]["summary"], "原始中文摘要已经说明了发布内容和适用范围。")
+
     def test_summary_validation_uses_immutable_source_evidence(self):
         original = {
             "title": "Original announcement",
@@ -114,6 +132,27 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         )
         self.assertEqual([item["summary"] for item in result], ["摘要一", "摘要二", "摘要三"])
         self.assertEqual(len(fake_client.calls), 1)
+
+    def test_batch_prompt_includes_source_evidence_for_each_news_item(self):
+        response = _json([
+            {"index": 1, "chinese_title": "来源证据新闻", "summary": "来源证据支持的中文摘要。"},
+        ])
+        fake_client = _FakeOpenAI([response])
+        news = [{
+            "title": "Original title",
+            "source_title": "Original title",
+            "source_summary": "The official announcement confirms a product rename and rollout date.",
+            "source": "Example News",
+            "source_type": "rss",
+            "url": "https://example.com/original",
+        }]
+
+        with patch("src.summarizer.OpenAI", return_value=fake_client):
+            summarize_news(news, api_key="test-key")
+
+        prompt = fake_client.calls[0]["messages"][1]["content"]
+        self.assertIn("来源: Example News", prompt)
+        self.assertIn("原始摘要: The official announcement confirms a product rename and rollout date.", prompt)
 
     def test_duplicate_or_missing_index_falls_back_per_item(self):
         batch_response = _json([

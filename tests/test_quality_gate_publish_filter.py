@@ -7,7 +7,9 @@ from src.quality_gate import review_daily
 def _item(title, source_type="rss"):
     return {
         "title": title,
-        "chinese_title": title,
+        "source_title": title,
+        "source_summary": "This source has enough factual detail to support a publishable summary.",
+        "chinese_title": f"中文标题：{title}",
         "summary": "Short summary",
         "source": "Example",
         "source_type": source_type,
@@ -56,22 +58,86 @@ class QualityGatePublishFilterTests(unittest.TestCase):
         self.assertEqual(report["publish_filter"]["selected_count"], 3)
         self.assertFalse(report["blocked_publish"])
 
-    def test_sparse_source_evidence_is_downgraded_to_source_only(self):
+    def test_sparse_source_evidence_keeps_existing_translation_without_placeholder_summary(self):
         item = {
             **_item("Original source title"),
             "source_title": "Original source title",
             "source_summary": "",
             "source_url": "https://example.test/source",
-            "chinese_title": "生成的夸张标题",
+            "chinese_title": "保留的中文翻译标题",
             "summary": "生成的细节，原始来源并未提供。",
         }
 
         reviewed, report = review_daily([item])
 
         self.assertEqual(reviewed[0]["quality_state"], "source_only")
-        self.assertEqual(reviewed[0]["chinese_title"], "Original source title")
-        self.assertIn("原始来源未提供足够摘要", reviewed[0]["summary"])
+        self.assertEqual(reviewed[0]["chinese_title"], "保留的中文翻译标题")
+        self.assertEqual(reviewed[0]["summary"], "生成的细节，原始来源并未提供。")
         self.assertFalse(report["blocked_publish"])
+
+    def test_sparse_source_only_selected_item_is_replaced_by_ready_reserve(self):
+        selected = [{
+            **_item("Sparse source"),
+            "source_title": "Sparse source",
+            "source_summary": "",
+            "chinese_title": "稀疏来源的中文标题",
+            "summary": "没有足够证据支撑的摘要。",
+            "topic_key": "sparse",
+            "_score": 100,
+        }]
+        reserves = [{
+            **_item("Ready reserve"),
+            "source_title": "Ready reserve",
+            "source_summary": "This source contains enough factual detail to support a publishable summary.",
+            "chinese_title": "可发布的备用新闻",
+            "summary": "这是一条有完整来源证据的摘要。",
+            "topic_key": "ready",
+            "_score": 80,
+        }]
+
+        reviewed, report = review_daily(
+            selected,
+            reserves=reserves,
+            target_count=1,
+            filter_high_risk=True,
+            max_items_per_source=2,
+            max_items_per_topic=2,
+            min_primary_or_research=0,
+        )
+
+        self.assertEqual([item["title"] for item in reviewed], ["Ready reserve"])
+        self.assertEqual(report["publish_filter"]["source_only_excluded_count"], 1)
+        self.assertEqual(report["publish_filter"]["selected_count"], 1)
+
+    def test_untranslated_selected_item_is_replaced_by_chinese_ready_reserve(self):
+        selected = [{
+            **_item("English headline"),
+            "chinese_title": "English headline",
+            "summary": "The source contains enough English factual detail for publication.",
+            "topic_key": "english",
+            "_score": 100,
+        }]
+        reserves = [{
+            **_item("Chinese reserve"),
+            "chinese_title": "中文备用新闻",
+            "summary": "这是一条有完整来源证据的中文摘要。",
+            "topic_key": "chinese",
+            "_score": 80,
+        }]
+
+        reviewed, report = review_daily(
+            selected,
+            reserves=reserves,
+            target_count=1,
+            filter_high_risk=True,
+            max_items_per_source=2,
+            max_items_per_topic=2,
+            min_primary_or_research=0,
+        )
+
+        self.assertEqual([item["title"] for item in reviewed], ["Chinese reserve"])
+        self.assertEqual(report["publish_filter"]["translation_missing_excluded_count"], 1)
+        self.assertEqual(report["publish_filter"]["selected_count"], 1)
 
     def test_strict_mode_never_blocks_the_daily_draft(self):
         news = [_item("Unsafe item")]
@@ -128,7 +194,11 @@ class QualityGatePublishFilterTests(unittest.TestCase):
 
         self.assertEqual(
             [item["chinese_title"] for item in reviewed],
-            ["Official model update", "Roblox AI tool", "NotebookLM update"],
+            [
+                "中文标题：Official model update",
+                "中文标题：Roblox AI tool",
+                "中文标题：NotebookLM update",
+            ],
         )
         self.assertTrue(report["pass"])
         self.assertFalse(report["blocked_publish"])
@@ -137,7 +207,7 @@ class QualityGatePublishFilterTests(unittest.TestCase):
         self.assertEqual(report["publish_filter"]["selected_count"], 3)
         self.assertEqual(
             report["publish_filter"]["removed_items"][0]["title"],
-            "Community test mentions GPT-5.6",
+            "中文标题：Community test mentions GPT-5.6",
         )
 
     def test_llm_review_failure_is_reported_as_medium_risk(self):
@@ -159,7 +229,10 @@ class QualityGatePublishFilterTests(unittest.TestCase):
                 filter_high_risk=True,
             )
 
-        self.assertEqual([item["chinese_title"] for item in reviewed], ["Official model update", "Roblox AI tool"])
+        self.assertEqual(
+            [item["chinese_title"] for item in reviewed],
+            ["中文标题：Official model update", "中文标题：Roblox AI tool"],
+        )
         self.assertTrue(report["pass"])
         self.assertEqual(report["risk_level"], "medium")
         self.assertFalse(report["blocked_publish"])
