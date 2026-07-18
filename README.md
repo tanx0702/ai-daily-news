@@ -1,36 +1,24 @@
 # AI Daily News Agent
 
-每日自动采集 AI 新闻，经过 LLM 翻译和摘要后生成 HTML 日报，并通过微信公众号客服消息与公众号草稿能力触达用户。
+每日自动采集 AI 新闻，使用 LLM 完成翻译和摘要，生成网页日报与微信公众号草稿。草稿创建后仍由公众号后台手动发布。
 
 ## 当前架构
 
-生产部署基于 Docker Compose：
-
 ```text
-cron（每天 8:00） -> docker compose exec -T web python -m src.main
-                                      |
-                                      v
-                                  docs/
-                                  ├── index.html
-                                  ├── cover.jpg
-                                  ├── latest.json
-                                  ├── wechat.html
-                                  └── archive/
+cron (每天 8:00) -> docker compose exec -T web python -m src.main
+                                             |
+                                             v
+                                           docs/
+                                           |- index.html
+                                           |- cover.jpg
+                                           |- latest.json
+                                           |- wechat.html
+                                           `- archive/
 
-nginx       -> 托管 docs/ 静态文件，并反代 /wechat
-Flask app.py -> 处理微信公众号 GET 验证和 POST 消息回调
-src.wechat_draft -> 创建微信公众号草稿，后台手动发布
+nginx        -> 托管 docs/ 静态文件，反代 /wechat
+Flask app.py -> 微信公众号 GET 验证和 POST 消息回调
+wechat_draft -> 上传封面并创建微信公众号草稿
 ```
-
-## 功能
-
-- 多源采集：RSS、Hacker News、GitHub、Hugging Face、arXiv 等候选源
-- 编辑筛选：AI 关键词过滤、去重、热度评分、最终编辑去重
-- 中文摘要：LLM 批量翻译标题并生成克制的中文新闻摘要
-- 发布前质检：对高风险品牌声明、传闻和不确定表述进行降级或拦截
-- 页面生成：生成 `docs/index.html`、历史归档和微信预览 HTML
-- 封面生成：可信原文图优先；无可信原文图时调用可配置图片生成 API；失败时降级为极简本地无字背景
-- 微信触达：`app.py` 处理客服消息；`src.wechat_draft` 创建公众号草稿
 
 ## 本地开发
 
@@ -40,87 +28,88 @@ python -m src.main
 python app.py
 ```
 
-默认输出：
-
-- `docs/index.html`：完整日报
-- `docs/latest.json`：Flask 回调读取的数据
-- `docs/wechat.html`：公众号正文预览
-- `docs/archive/<date>.html`：历史归档
+日报产物会写入 `docs/index.html`、`docs/latest.json`、
+`docs/wechat.html` 与 `docs/archive/<date>.html`。
 
 ## Docker 部署
 
 ```bash
+git clone https://github.com/tanx0702/ai-daily-news.git /opt/ai-news
+cd /opt/ai-news
+
 cp .env.example .env
-# 填写 LLM_API_KEY/LLM_MODEL/LLM_API_BASE、IMAGE_*、WECHAT_* 等
+# 填写文本模型、图片模型、微信公众号和域名配置。
+# 只有需要调参时，才从 .env.advanced.example 复制单个配置到 .env。
 
 docker compose up -d
 ```
 
-服务器 cron 示例：
+每日定时任务示例：
 
 ```bash
-0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1
+echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -
 ```
 
-日报不会因单条 high risk 或候选不足而停止创建草稿：高风险条目由通过质检的备用候选替换，证据不足的条目降级为仅保留原标题、来源和原文链接。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不再阻断整天任务。
+手动运行并直接查看日志：
+
+```bash
+cd /opt/ai-news
+docker compose exec -T web python -m src.main
+```
+
+## 核心环境变量
+
+首次部署只需要编辑 `.env.example` 中的 11 项：
+
+| 变量 | 用途 |
+|------|------|
+| `LLM_API_KEY` | 文本摘要和标题生成的 API Key |
+| `LLM_MODEL` | 文本模型名称 |
+| `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址 |
+| `IMAGE_API_KEY` | 封面图片生成 API Key；留空时使用本地封面降级 |
+| `IMAGE_MODEL` | 图片模型名称 |
+| `IMAGE_API_BASE` | 图片生成 API 地址 |
+| `WECHAT_APP_ID` | 公众号 AppID |
+| `WECHAT_APP_SECRET` | 公众号 AppSecret |
+| `WECHAT_TOKEN` | 公众号回调验证 Token |
+| `DOMAIN` | 日报站点域名 |
+| `PAGES_URL` | 日报完整 URL |
+
+## 高级环境变量
+
+`.env.advanced.example` 是注释形式的参考文件，不能直接替换 `.env`。
+需要覆盖默认值时，只复制所需的一行到现有 `.env`，然后执行：
+
+```bash
+docker compose up -d --force-recreate
+```
+
+高级变量按以下用途分组：
+
+- `QUALITY_LLM_*`：独立质检模型。未设置时会继承对应的 `LLM_*`，大多数部署不需要填写。
+- 日报选择：候选池、来源和主题配额、新闻时效窗口、超时与任务锁。
+- 采集源：Hacker News、GitHub、Hugging Face、arXiv 开关，以及可选的 `GITHUB_TOKEN` 和 `HF_TOKEN`。
+- 证据质检：发布安全回填、质检超时和 Token 上限。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不会阻止当天草稿创建。
+- 图片与封面：原文图抓取、AI 封面、安全封面、重试和超时。
+- 本地调试：跳过公众号草稿、日志目录、Flask 回调端口和公众号标题展示。
+
+代码仍兼容旧的 `AGNES_*` 与 `OPENAI_*` 变量，供已有部署继续运行；新部署请只使用 `LLM_*`、`IMAGE_*` 与可选的 `QUALITY_LLM_*`，不要混用别名。
 
 ## 微信模块边界
 
-| 文件 | 责任 |
+| 文件 | 职责 |
 |------|------|
-| `app.py` | Flask 微信回调服务。处理 URL 验证、用户文本消息和客服消息回复。 |
-| `src/wechat_draft.py` | 微信公众号草稿创建。上传封面素材、生成正文、创建草稿。 |
-| `src/wechat.py` | 兼容入口，仅转发 `publish_daily_article`，新代码不要继续依赖。 |
-| `src/tencent_push.py` / `src/tencent_scf/` | 旧 SCF 方案，保留历史，不再由当前 Docker 主流程调用。 |
-
-## 关键环境变量
-
-| 变量 | 用途 | 默认值 |
-|------|------|--------|
-| `LLM_API_KEY` | 文本 LLM Key，用于摘要、今日重点和封面标题 | 兼容读取 `AGNES_API_KEY` / `OPENAI_API_KEY` |
-| `LLM_MODEL` | 文本 LLM 模型名称 | 兼容读取 `AGNES_MODEL` / `OPENAI_MODEL`，默认 `agnes-2.0-flash` |
-| `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址 | 兼容读取 `AGNES_API_BASE` / `OPENAI_API_BASE`，默认 `https://apihub.agnes-ai.com/v1` |
-| `QUALITY_LLM_API_KEY` | 发布前质检 LLM Key | 空时继承 `LLM_API_KEY` |
-| `QUALITY_LLM_MODEL` | 发布前质检模型名称 | 空时继承 `LLM_MODEL` |
-| `QUALITY_LLM_API_BASE` | 发布前质检 API 地址 | 空时继承 `LLM_API_BASE` |
-| `IMAGE_API_KEY` | 图片生成 API Key，用于 AI 封面图 | 兼容读取 `AGNES_IMAGE_API_KEY` / `AGNES_API_KEY` / `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY` |
-| `IMAGE_MODEL` | 图片生成模型名称 | 兼容读取 `AGNES_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL`，默认 `agnes-image-2.1-flash` |
-| `IMAGE_API_BASE` | 图片生成 API 地址 | 兼容读取 `AGNES_IMAGE_API_BASE` / `AGNES_API_BASE` / `OPENAI_IMAGE_API_BASE` / `OPENAI_API_BASE`；可填基础地址、`/v1` 地址或完整 `/v1/images/generations` endpoint；默认 `https://apihub.agnes-ai.com` |
-| `WECHAT_APP_ID` | 公众号 AppID | - |
-| `WECHAT_APP_SECRET` | 公众号 AppSecret | - |
-| `WECHAT_TOKEN` | 微信回调验证 Token | - |
-| `ALLOW_INSECURE_WECHAT_TOKEN` | 本地调试时允许缺失 Token 跳过验签，生产必须为 `0` | `0` |
-| `WECHAT_DRAFT_TITLE_PREFIX` | 公众号草稿标题前缀 | `今日要闻` |
-| `WECHAT_DRAFT_AUTHOR` | 公众号草稿作者署名 | `要闻编辑室` |
-| `DOMAIN` | 站点域名 | `tankex.xyz` |
-| `PAGES_URL` | 日报完整 URL | `https://{DOMAIN}` |
-| `APP_TIMEZONE` | 日报日期展示时区 | `Asia/Shanghai` |
-| `DAILY_TOP_N` | 入选新闻条数 | `10` |
-| `DAILY_CANDIDATE_POOL_N` | 进入编辑选择与质检回填的候选池数量 | `30` |
-| `DAILY_MAX_ITEMS_PER_SOURCE` | 单一来源优先最多入选条数 | `2` |
-| `DAILY_MAX_ITEMS_PER_TOPIC` | 单一主题优先最多入选条数 | `2` |
-| `DAILY_MIN_PRIMARY_OR_RESEARCH` | 优先保证的官方/研究来源条数 | `2` |
-| `DAILY_RSS_TIMEOUT` | RSS 超时秒数 | `30` |
-| `DAILY_LLM_TIMEOUT` | LLM 超时秒数 | `15` |
-| `ENABLE_LLM_QUALITY_GATE` | 是否启用发布前质检 | `true` |
-| `QUALITY_GATE_STRICT` | 旧配置兼容标记；不再阻止整天微信草稿 | `false` |
-| `SKIP_WECHAT_DRAFT` | 仅跳过外部草稿 API 的本地/CI 干跑开关 | `false` |
-| `ENABLE_ARTICLE_IMAGE_FETCH` | 下载、验证、去重正文原文图 | `true` |
-| `ARTICLE_IMAGE_TIMEOUT` | 正文图片下载校验超时秒数 | `8` |
-| `ENABLE_AI_COVER_GENERATION` | 无可信原文图时是否使用 AI 生图封面 | `true` |
-| `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | AI 图疑似含错误文字/Logo 时是否改用极简无字背景 | `true` |
-| `AI_COVER_MAX_RETRIES` | 图片服务可重试错误的最大尝试次数 | `5` |
-| `IMAGE_GENERATION_TIMEOUT` | 单次图片生成请求硬超时(秒) | `30` |
-| `DAILY_RUN_LOCK_PATH` | 定时任务锁文件路径 | `docs/.daily_run.lock` |
+| `app.py` | Flask 微信回调服务，处理 URL 验证、用户文本消息和客服回复 |
+| `src/wechat_draft.py` | 上传封面素材、生成正文、创建公众号草稿 |
+| `src/wechat.py` | 兼容入口；新代码不应继续依赖 |
+| `src/tencent_push.py` / `src/tencent_scf/` | 历史 SCF 方案，不属于当前 Docker 主流程 |
 
 ## 测试
 
 ```bash
-python -m unittest discover -s tests
+python -m pytest -q
 ```
 
-如果本地 Python 环境未安装 Flask，`app.py` 相关测试会被明确跳过；完整依赖安装后会执行。
+## 兼容与安全
 
-## spec-superflow
-
-项目已接入 `spec-superflow`。较大的功能、重构和发布链路调整可从 `workflow-start` 开始；详细说明见 `SPEC_SUPERFLOW.md`。
+单条新闻的 high risk 质检结果不会停止整天任务：系统会从备用候选回填，或将证据稀疏的条目降级为原标题、来源和原文链接。不要提交真实 `.env`、API Key、公众号密钥或生成的 `docs/` 产物。
