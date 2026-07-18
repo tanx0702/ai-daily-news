@@ -35,6 +35,7 @@ _MODEL_PATTERN = re.compile(
 # 低置信度 brand claim 标记 key（从 collector 传入）
 _LOW_CONFIDENCE_KEY = "low_confidence_brand_claim"
 _NON_RETRYABLE_LLM_STATUS_CODES = {400, 401, 403}
+BATCH_MAX_ATTEMPTS = 2
 
 
 def _is_non_retryable_llm_error(error: Exception) -> bool:
@@ -60,6 +61,12 @@ def _apply_non_retryable_summary_fallback(news: dict) -> None:
     source_summary = clean_display_text(news.get("source_summary", ""))
     news["summary"] = source_summary[:200] if re.search(r"[\u3400-\u9fff]", source_summary) else ""
     news["llm_summary_status"] = "non_retryable_error"
+
+
+def _apply_invalid_response_fallback(news: dict) -> None:
+    """Preserve source evidence after an LLM response cannot be validated."""
+    _apply_non_retryable_summary_fallback(news)
+    news["llm_summary_status"] = "invalid_response"
 
 
 def validate_summary_facts(chinese_title: str, original: dict) -> dict:
@@ -127,8 +134,8 @@ _CHINESE_NEWS_STYLE_PROMPT = (
 )
 
 
-def _extract_json(text: str) -> Optional[dict]:
-    """从 LLM 响应中提取 JSON 对象。"""
+def _extract_json(text: str):
+    """从 LLM 响应中提取 JSON 值。"""
     text = text.strip()
 
     # 尝试直接解析
@@ -154,6 +161,27 @@ def _extract_json(text: str) -> Optional[dict]:
             pass
 
     return None
+
+
+def _completion_content(response) -> str:
+    """Return non-empty assistant content with a diagnostic error for empty choices."""
+    try:
+        choice = response.choices[0]
+        content = choice.message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        raise ValueError("LLM response has no assistant choice") from exc
+
+    if not isinstance(content, str) or not content.strip():
+        finish_reason = getattr(choice, "finish_reason", "unknown")
+        raise ValueError(f"LLM response has no text content (finish_reason={finish_reason})")
+    return content.strip()
+
+
+def _response_items(result) -> object:
+    """Read the items array from the JSON-object response contract."""
+    if isinstance(result, dict):
+        return result.get("items")
+    return result
 
 
 def _parse_result_index(value) -> Optional[int]:
@@ -269,7 +297,7 @@ def _summarize_single_news(client, news: dict, model: str) -> None:
             temperature=0.3,
             max_tokens=350,
         )
-        content = response.choices[0].message.content.strip()
+        content = _completion_content(response)
         result = _extract_json(content)
         if isinstance(result, dict):
             _apply_summary_item(news, result, "single")
@@ -363,44 +391,55 @@ def summarize_news(
             "同时为每条新闻生成一段中文摘要（80-140 字，通常 2 句），"
             "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
             "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。\n\n"
-            "严格按以下 JSON 数组格式回复，不要有其他内容：\n"
-            "[{\"index\": 1, \"chinese_title\": \"中文标题\", \"summary\": \"摘要内容\"}]\n"
+            "严格按以下 JSON 对象格式回复，不要有其他内容：\n"
+            "{\"items\":[{\"index\":1,\"chinese_title\":\"中文标题\",\"summary\":\"摘要内容\"}]}\n"
             "index 必须等于输入标题前的编号；必须返回每一条，不能少、不能重复、不能乱配。"
         )
 
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": headlines},
-                ],
-                temperature=0.3,
-                max_tokens=2000,
-            )
-            content = response.choices[0].message.content.strip()
-            results = _extract_json(content)
-
-            normalized_results = _normalize_batch_results(results, batch_indices)
-            for pos, item in enumerate(normalized_results):
-                _apply_summary_item(batch_news[pos], item, f"batch #{pos + 1}")
-                logger.info("  Batch summary #%d: %s", pos + 1,
-                            batch_news[pos]["chinese_title"][:40])
-
-        except Exception as e:
-            logger.warning("Batch failed for items %d-%d: %s",
-                           batch_start + 1, batch_start + len(batch_indices), e)
-            if _is_non_retryable_llm_error(e):
-                logger.error(
-                    "LLM batch error is non-retryable; skipping remaining summary requests: %s",
-                    e,
+        non_retryable_error = None
+        for attempt in range(1, BATCH_MAX_ATTEMPTS + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": headlines},
+                    ],
+                    temperature=0.3,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"},
                 )
-                for remaining_index in need_summarize[batch_start:]:
-                    _apply_non_retryable_summary_fallback(news_list[remaining_index])
+                result = _extract_json(_completion_content(response))
+                normalized_results = _normalize_batch_results(
+                    _response_items(result),
+                    batch_indices,
+                )
+                for pos, item in enumerate(normalized_results):
+                    _apply_summary_item(batch_news[pos], item, f"batch #{pos + 1}")
+                    logger.info("  Batch summary #%d: %s", pos + 1,
+                                batch_news[pos]["chinese_title"][:40])
                 break
-            # 降级：逐条处理这批
-            for news in batch_news:
-                _summarize_single_news(client, news, model)
+            except Exception as exc:
+                logger.warning(
+                    "Batch attempt %d/%d failed for items %d-%d: %s",
+                    attempt, BATCH_MAX_ATTEMPTS,
+                    batch_start + 1, batch_start + len(batch_indices), exc,
+                )
+                if _is_non_retryable_llm_error(exc):
+                    non_retryable_error = exc
+                    break
+                if attempt == BATCH_MAX_ATTEMPTS:
+                    for news in batch_news:
+                        _apply_invalid_response_fallback(news)
+
+        if non_retryable_error is not None:
+            logger.error(
+                "LLM batch error is non-retryable; skipping remaining summary requests: %s",
+                non_retryable_error,
+            )
+            for remaining_index in need_summarize[batch_start:]:
+                _apply_non_retryable_summary_fallback(news_list[remaining_index])
+            break
 
     return news_list
 
@@ -487,8 +526,8 @@ def generate_highlights(
         "5. 不要把传闻写成官宣，不确定时使用弱表述\n"
         "6. 如果当天没有足够强的重点，宁可写得保守，不要硬凑爆点\n"
         f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
-        "严格按 JSON 数组格式回复："
-        "[{\"index\":1,\"highlight\":\"重点1\"},{\"index\":2,\"highlight\":\"重点2\"}]。"
+        "严格按 JSON 对象格式回复："
+        "{\"items\":[{\"index\":1,\"highlight\":\"重点1\"},{\"index\":2,\"highlight\":\"重点2\"}]}。"
         "index 必须对应输入编号，不要重排或省略。"
     )
 
@@ -501,10 +540,10 @@ def generate_highlights(
                 {"role": "user", "content": items_text},
             ],
             temperature=0.4,
-            max_tokens=400,
+            max_tokens=800,
+            response_format={"type": "json_object"},
         )
-        content = response.choices[0].message.content.strip()
-        results = _extract_json(content)
+        results = _response_items(_extract_json(_completion_content(response)))
 
         if isinstance(results, list) and len(results) >= 1:
             highlights_by_index: dict[int, str] = {}
@@ -630,9 +669,10 @@ def generate_cover_title(
                 {"role": "user", "content": f"标题：{topic}\n摘要：{summary}"},
             ],
             temperature=0.4,
-            max_tokens=100,
+            max_tokens=256,
+            response_format={"type": "json_object"},
         )
-        content = response.choices[0].message.content.strip()
+        content = _completion_content(response)
         result = _extract_json(content)
 
         if isinstance(result, dict) and result.get("cover_title"):

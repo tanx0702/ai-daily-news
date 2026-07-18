@@ -51,6 +51,12 @@ TAG_CATEGORY = {
 # 最低门槛（Phase 4 强化）
 MIN_LIKES = 10
 MIN_DOWNLOADS = 500
+MAX_MODELS_PER_STRATEGY = 100
+
+PIPELINE_TAG_ALIASES = {
+    "image-text-to-text": "multimodal",
+    "visual-question-answering": "multimodal",
+}
 
 
 class HuggingFaceCollector(BaseCollector):
@@ -60,7 +66,7 @@ class HuggingFaceCollector(BaseCollector):
     通过 Hub API 获取近期热门模型，过滤核心 AI 类型。
     """
 
-    def __init__(self, timeout: int = 30, token: str = "", max_models: int = 30):
+    def __init__(self, timeout: int = 30, token: str = "", max_models: int = MAX_MODELS_PER_STRATEGY):
         super().__init__(timeout)
         self.token = token or os.environ.get("HF_TOKEN", "")
         self.max_models = max_models
@@ -76,8 +82,16 @@ class HuggingFaceCollector(BaseCollector):
         """获取 HF 近期热门 AI 模型。"""
         candidates = []
 
-        # 拉取最近更新的模型（按最后修改时间排序）
-        models = self._fetch_models("lastModified")
+        # 同时覆盖近期更新和高下载模型。单一的小样本最近更新列表通常会被
+        # 新建实验模型占满，无法代表当天真正值得关注的模型动态。
+        recent_models = self._fetch_models("lastModified")
+        popular_models = self._fetch_models("downloads")
+        models_by_id = {
+            model.get("id", ""): model
+            for model in [*recent_models, *popular_models]
+            if model.get("id")
+        }
+        models = list(models_by_id.values())
         if not models:
             logger.warning("HF: no models returned from API, trying trending fallback...")
             # fallback: 尝试 trending endpoint（需要 HF_TOKEN）
@@ -85,10 +99,16 @@ class HuggingFaceCollector(BaseCollector):
 
         logger.info("HF: fetched %d models from API", len(models))
 
+        skipped_pipeline = 0
+        skipped_engagement = 0
         for model in models:
             candidate = self._model_to_candidate(model)
             if candidate:
                 candidates.append(candidate)
+            elif not self._resolve_pipeline_tag(model):
+                skipped_pipeline += 1
+            else:
+                skipped_engagement += 1
 
         # 按社区热度排序
         candidates.sort(key=lambda c: c.get("_hf_hotness", 0), reverse=True)
@@ -99,7 +119,21 @@ class HuggingFaceCollector(BaseCollector):
             len(candidates), top_n,
             ", ".join(str(c["metrics"].get("hf_likes", 0)) for c in candidates[:top_n]),
         )
+        logger.info(
+            "HF filter: skipped_pipeline=%d, skipped_engagement=%d",
+            skipped_pipeline,
+            skipped_engagement,
+        )
         return candidates[:top_n]
+
+    @staticmethod
+    def _resolve_pipeline_tag(model: dict) -> str:
+        raw_tags = [model.get("pipeline_tag", ""), *(model.get("tags", []) or [])]
+        for tag in raw_tags:
+            normalized = PIPELINE_TAG_ALIASES.get(str(tag), str(tag))
+            if normalized in AI_PIPELINE_TAGS:
+                return normalized
+        return ""
 
     def _fetch_models(self, sort_by: str = "lastModified") -> list[dict]:
         """拉取模型列表。"""
@@ -151,9 +185,9 @@ class HuggingFaceCollector(BaseCollector):
         if not model_id:
             return None
 
-        # 检查 pipeline tag
-        pipeline_tag = model.get("pipeline_tag", "") or ""
-        if pipeline_tag not in AI_PIPELINE_TAGS:
+        # 部分 Hub API 响应没有 pipeline_tag，但会在 tags 中保留相同分类。
+        pipeline_tag = self._resolve_pipeline_tag(model)
+        if not pipeline_tag:
             return None
 
         # 质量门槛（Phase 4 强化）：
@@ -168,11 +202,12 @@ class HuggingFaceCollector(BaseCollector):
             # fallback: 标记为低 likes 边缘案例
             model["_hf_fallback"] = True
 
-        # 检查是否有实质内容（model card / description）
+        # language 字段不是模型描述，不能作为发布证据。
         card_data = model.get("cardData", {}) or {}
         description = (
-            card_data.get("language", []) or
-            model.get("description", "") or ""
+            model.get("description", "")
+            or card_data.get("description", "")
+            or ""
         )
         if isinstance(description, list):
             description = ", ".join(description)
@@ -206,13 +241,18 @@ class HuggingFaceCollector(BaseCollector):
                     pass
 
         # 标签
-        tags = model.get("tags", []) or []
+        tags = list(model.get("tags", []) or [])
         category = TAG_CATEGORY.get(pipeline_tag, pipeline_tag)
-        tags.append(category)
+        if category not in tags:
+            tags.append(category)
 
         # 社区热度
         community_hotness = log1p(likes) * 3 + log1p(downloads) * 0.5
 
+        evidence_summary = (
+            f"Hugging Face 模型，类型：{category}；"
+            f"点赞 {likes}，累计下载 {downloads}。{description}"
+        ).strip()
         candidate = self.make_candidate(
             id_=f"hf-{model_id}",
             title=title[:200],
@@ -221,7 +261,7 @@ class HuggingFaceCollector(BaseCollector):
             source_type="huggingface",
             published_at=pub_time,
             published_source=pub_source,
-            summary=description,
+            summary=evidence_summary[:300],
             author=author,
             tags=tags,
             metrics={

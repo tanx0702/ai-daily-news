@@ -33,6 +33,24 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("OpenAI 发布新模型", html)
         self.assertIn("2026-07-10", html)
 
+    def test_render_daily_html_escapes_external_text_and_rejects_unsafe_url(self):
+        html = render_daily_html(
+            [{
+                "title": "<script>alert(1)</script>",
+                "chinese_title": "<img src=x onerror=alert(2)>",
+                "summary": "<svg onload=alert(3)>",
+                "source": "<b>Untrusted</b>",
+                "url": "javascript:alert(4)",
+                "published_at": None,
+            }],
+            date_str="2026-07-11",
+        )
+
+        self.assertIn("&lt;img src=x onerror=alert(2)&gt;", html)
+        self.assertNotIn("<img src=x onerror=alert(2)>", html)
+        self.assertIn("&lt;svg onload=alert(3)&gt;", html)
+        self.assertNotIn('href="javascript:alert(4)"', html)
+
     def test_render_wechat_article_contains_cover_and_source_link(self):
         html = render_wechat_article(
             SAMPLE_NEWS,
@@ -46,6 +64,23 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("OpenAI 发布新模型", html)
         self.assertIn("阅读原文", html)
         self.assertIn("https://example.com/openai", html)
+
+    def test_render_wechat_article_rejects_unsafe_urls(self):
+        html = render_wechat_article(
+            [{
+                "chinese_title": "Unsafe link",
+                "summary": "Summary",
+                "source": "Example",
+                "url": "javascript:alert(1)",
+                "article_image_url": "javascript:alert(2)",
+                "image_type": "original",
+            }],
+            date_str="2026-07-11",
+            pages_url="javascript:alert(3)",
+            cover_image_url="javascript:alert(4)",
+        )
+
+        self.assertNotIn("javascript:", html)
 
     def test_render_wechat_article_ai_uses_text_llm_env(self):
         calls = {}

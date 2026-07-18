@@ -89,18 +89,8 @@ def select_editorial_candidates(
             continue
         select(item)
 
-    # A sparse daily pool must still produce a complete report. Preserve the
-    # cap whenever alternatives exist, then explicitly relax it only to fill
-    # otherwise empty slots.
+    # 发布候选宁可缩短，也不能为了凑满日报而破坏来源或主题上限。
     cap_relaxed = False
-    if len(selected) < target_count:
-        for item in pool:
-            if len(selected) >= target_count:
-                break
-            if item in selected:
-                continue
-            selected.append(item)
-            cap_relaxed = True
 
     selected_ids = {id(item) for item in selected}
     reserves = [item for item in pool if id(item) not in selected_ids]
@@ -124,5 +114,6 @@ def select_editorial_candidates(
         "source_counts": dict(final_source_counts),
         "topic_counts": dict(final_topic_counts),
         "cap_relaxed": cap_relaxed,
+        "insufficient_target": len(selected) < target_count,
     }
     return selected, reserves, report

@@ -45,6 +45,11 @@ def _should_skip_wechat_draft() -> bool:
     return _env_bool("SKIP_WECHAT_DRAFT", False)
 
 
+def _pipeline_exit_code(result: dict) -> int:
+    """Map a completed pipeline result to the process status used by cron."""
+    return 0 if result.get("status") in {"draft_created", "dry_run"} else 1
+
+
 def main():
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     lock_path = os.environ.get(
@@ -57,7 +62,11 @@ def main():
 
     try:
         with single_run_lock(lock_path, ttl_seconds=lock_ttl):
-            _run_pipeline()
+            result = _run_pipeline()
+            exit_code = _pipeline_exit_code(result)
+            if exit_code:
+                logger.error("Daily pipeline did not create a publishable draft: %s", result)
+                sys.exit(exit_code)
     except RunLockError as e:
         logger.warning("Another daily run appears active, skipping: %s", e)
         sys.exit(2)
@@ -170,7 +179,7 @@ def _run_pipeline():
     # === 2.5 质检门禁 ===
     quality_report = {}
 
-    qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(llm_timeout)))
+    qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(max(llm_timeout, 45))))
 
     if qg_enabled and selected_candidates:
         logger.info("[2.5/6] 发布前质检...")
@@ -202,8 +211,30 @@ def _run_pipeline():
         )
     elif not qg_enabled:
         logger.info("[2.5/6] 质检已禁用 (ENABLE_LLM_QUALITY_GATE=0)")
+        quality_report = {
+            "enabled": False,
+            "pass": False,
+            "risk_level": "medium",
+            "llm_review_status": "skipped",
+            "issues": [],
+            "applied_fixes": [],
+        }
     else:
         logger.info("[2.5/6] 跳过质检 (无新闻数据)")
+        quality_report = {
+            "enabled": False,
+            "pass": False,
+            "risk_level": "medium",
+            "llm_review_status": "skipped",
+            "issues": [],
+            "applied_fixes": [],
+        }
+
+    # 质检回填可能带入不同媒体的同一事件；发布前再做一次事件级去重。
+    from src.collector import apply_final_editorial_dedup
+
+    news_list, event_dedup_report = apply_final_editorial_dedup(news_list, top_n=top_n)
+    quality_report["event_dedup"] = event_dedup_report
 
     # === 2.55 正文媒体资源解析 ===
     if _env_bool("ENABLE_ARTICLE_IMAGE_FETCH", True) and news_list:
@@ -340,6 +371,15 @@ def _run_pipeline():
     _annotate_reasons(news_list)
     source_health = _build_source_health(news_list)
 
+    from src.publication import evaluate_publish_readiness
+
+    publish_readiness = evaluate_publish_readiness(news_list, quality_report)
+    quality_report["publish_readiness"] = publish_readiness
+    publication = {
+        **publish_readiness,
+        "status": "pending" if publish_readiness["ready"] else "blocked",
+    }
+
     from src.pipeline_artifacts import build_latest_data, json_serial, save_latest_data
 
     latest_data = build_latest_data(
@@ -352,6 +392,7 @@ def _run_pipeline():
         media_report=media_report,
         selection_report=selection_report,
         source_health=source_health,
+        publication=publication,
     )
     latest_path = save_latest_data(latest_data, docs_dir, default=json_serial)
     logger.info("News data saved to %s", latest_path)
@@ -370,9 +411,16 @@ def _run_pipeline():
     # === 6. 创建微信草稿 ===
     logger.info("[6/6] 创建微信草稿...")
 
-    if _should_skip_wechat_draft():
+    if not publish_readiness["ready"]:
+        wechat_result = {
+            "status": "blocked",
+            "reason": ",".join(publish_readiness["reasons"]),
+        }
+        publication["status"] = "blocked"
+    elif _should_skip_wechat_draft():
         logger.info("Skipping WeChat draft creation because SKIP_WECHAT_DRAFT=1")
         wechat_result = {"status": "skipped", "reason": "dry_run"}
+        publication["status"] = "dry_run"
     else:
         from src.wechat_draft import publish_daily_article
 
@@ -383,11 +431,24 @@ def _run_pipeline():
             pages_url,
             cover_path=cover_path if os.path.isfile(cover_path) else "",
         )
+        publication["status"] = (
+            "draft_created" if wechat_result.get("status") == "draft_created" else "failed"
+        )
+        if publication["status"] == "failed":
+            publication["reason"] = wechat_result.get("reason", "wechat_draft_failed")
+
+    latest_data["publication"] = publication
+    save_latest_data(latest_data, docs_dir, default=json_serial)
     logger.info("WeChat publish result: %s", wechat_result)
 
     logger.info("=" * 50)
     logger.info("Done! Today's report: %s", pages_url)
     logger.info("=" * 50)
+    return {
+        "status": publication["status"],
+        "publication": publication,
+        "wechat_result": wechat_result,
+    }
 
 
 def _annotate_reasons(news_list: list[dict]):

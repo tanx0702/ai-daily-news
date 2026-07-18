@@ -171,6 +171,17 @@ def _load_news() -> list[dict]:
         return []
 
 
+def _load_publication_status() -> dict:
+    """Read the latest pipeline publication result without failing the web service."""
+    try:
+        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        publication = data.get("publication", {})
+        return publication if isinstance(publication, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 def _format_summary(news_list: list[dict], full: bool = False) -> str:
     """格式化新闻摘要文本。"""
     if not news_list:
@@ -272,10 +283,16 @@ def wechat_callback():
 @app.route("/health")
 def health():
     """健康检查端点。"""
+    publication = _load_publication_status()
+    publication_status = publication.get("status", "not_run")
+    callback_configured = bool(WECHAT_TOKEN)
+    degraded = not callback_configured or publication_status in {"blocked", "failed"}
     return jsonify({
-        "status": "running",
+        "status": "degraded" if degraded else "running",
         "service": "ai-daily-news",
         "time": datetime.now(timezone.utc).isoformat(),
+        "wechat_callback": {"configured": callback_configured},
+        "publication": publication or {"status": "not_run"},
     })
 
 

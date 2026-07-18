@@ -10,9 +10,9 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from jinja2 import Environment, BaseLoader
+from jinja2 import BaseLoader, Environment
 from src.llm_config import resolve_text_llm_config
-from src.text_utils import clean_display_text
+from src.text_utils import clean_display_text, safe_http_url
 from src.time_utils import report_date_str
 
 logger = logging.getLogger(__name__)
@@ -371,6 +371,7 @@ def render_daily_html(
         news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
         news_item["summary"] = clean_display_text(news_item.get("summary", ""))
         news_item["source"] = clean_display_text(news_item.get("source", ""))
+        news_item["url"] = safe_http_url(news_item.get("url", ""))
         pub = news_item.get("published_at")
         if isinstance(pub, datetime):
             news_item["published_at"] = pub.strftime("%m/%d %H:%M")
@@ -385,13 +386,13 @@ def render_daily_html(
             grouped[region] = []
         grouped[region].append(item)
 
-    env = Environment(loader=BaseLoader())
+    env = Environment(loader=BaseLoader(), autoescape=True)
     template = env.from_string(HTML_TEMPLATE)
     return template.render(
         date=date_str,
         news=formatted_news,
         grouped_news=grouped,
-        archive_links=archive_links[-7:],
+        archive_links=[safe_http_url(link) for link in archive_links[-7:] if safe_http_url(link)],
         github_repo=github_repo,
     )
 
@@ -417,6 +418,8 @@ def render_wechat_article(
         date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
+    pages_url = safe_http_url(pages_url) or "https://tankex.xyz"
+    cover_image_url = safe_http_url(cover_image_url)
 
     # ── 色板 ──
     PAGE_BG = "#f7f8fa"
@@ -560,8 +563,8 @@ def render_wechat_article(
         summary = _fix_typos(summary)
         source_name = clean_display_text(item.get("source", ""))
         source_type = item.get("source_type", "")
-        url = clean_display_text(item.get("url", ""), collapse_whitespace=False)
-        article_img = clean_display_text(item.get("article_image_url", ""), collapse_whitespace=False)
+        url = safe_http_url(item.get("url", ""))
+        article_img = safe_http_url(item.get("article_image_url", ""))
         image_type = item.get("image_type", "")
 
         # 判断是否为图文卡片。
@@ -712,8 +715,8 @@ def _news_to_markdown(
             title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
             summary = clean_display_text(item.get("summary", ""))
             source_name = clean_display_text(item.get("source", ""))
-            url = clean_display_text(item.get("url", ""), collapse_whitespace=False)
-            img = clean_display_text(item.get("article_image_url", ""), collapse_whitespace=False)
+            url = safe_http_url(item.get("url", ""))
+            img = safe_http_url(item.get("article_image_url", ""))
 
             lines.append(f"### {title}")
             lines.append("")

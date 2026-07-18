@@ -15,7 +15,7 @@ cron (每天 8:00) -> docker compose exec -T web python -m src.main
                                            |- wechat.html
                                            `- archive/
 
-nginx        -> 托管 docs/ 静态文件，反代 /wechat
+nginx        -> 托管 docs/ 静态文件，反代 /wechat；从 DOMAIN 渲染证书与站点配置
 Flask app.py -> 微信公众号 GET 验证和 POST 消息回调
 wechat_draft -> 上传封面并创建微信公众号草稿
 ```
@@ -44,7 +44,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-每日定时任务示例：
+每日定时任务示例（草稿创建失败或日报未达到发布门槛会返回非零状态）：
 
 ```bash
 echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -

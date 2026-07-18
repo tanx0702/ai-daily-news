@@ -1115,12 +1115,15 @@ _PEOPLE_PATTERNS: list[str] = [
 _ACTION_WORDS_ZH: set[str] = {
     "离职", "卸任", "加入", "任命", "发布", "推出", "开源", "收购", "融资",
     "合作", "调整", "辞职", "上任", "下台", "跳槽", "投资", "估值", "上市",
+    "起诉", "诉讼", "索赔",
 }
 _ACTION_WORDS_EN: set[str] = {
     "resign", "step down", "leave", "join", "appoint", "launch", "release",
     "open-source", "acquire", "raise", "partner", "restructure", "depart",
-    "quit", "hire", "promote",
+    "quit", "hire", "promote", "sue", "sues", "sued", "lawsuit", "litigation",
+    "legal action",
 }
+_LEGAL_ACTIONS = {"起诉", "诉讼", "索赔", "sue", "sues", "sued", "lawsuit", "litigation", "legal action"}
 
 
 def _event_fingerprint(item: dict) -> dict:
@@ -1188,8 +1191,9 @@ def _actions_same_category(actions_a: set[str], actions_b: set[str]) -> bool:
     _join = {"加入", "任命", "上任", "join", "appoint", "hire", "promote"}
     _release = {"发布", "推出", "开源", "launch", "release", "open-source"}
     _fund = {"融资", "投资", "估值", "上市", "acquire", "raise", "partner"}
+    _legal = _LEGAL_ACTIONS
 
-    for category in (_departure, _join, _release, _fund):
+    for category in (_departure, _join, _release, _fund, _legal):
         hit_a = any(a in category for a in actions_a)
         hit_b = any(b in category for b in actions_b)
         if hit_a and hit_b:
@@ -1285,6 +1289,14 @@ def apply_final_editorial_dedup(items: list[dict], top_n: int) -> tuple[list[dic
                   and _actions_same_category(fp_i["actions"], fp_k["actions"])):
                 matched = True
                 reason = "same_person_company_event"
+
+            # 两家相同公司之间的法律事件，媒体标题往往风格差异很大，不能仅靠
+            # 词面相似度判断；共享公司对与法律动作已足以说明是同一条进展。
+            elif (len(overlap["shared_companies"]) >= 2
+                  and (fp_i["actions"] & _LEGAL_ACTIONS)
+                  and (fp_k["actions"] & _LEGAL_ACTIONS)):
+                matched = True
+                reason = "same_companies_legal_event"
 
             # 规则 B: 事件指纹重叠 + 综合相似度 >= 0.35
             elif ((overlap["shared_companies"] or overlap["shared_products"])

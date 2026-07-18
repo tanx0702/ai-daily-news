@@ -1,5 +1,7 @@
 import hashlib
+import json
 import os
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -86,6 +88,28 @@ class WeChatAppTests(unittest.TestCase):
         self.assertIn("共 1 条精选", summary)
         self.assertIn("OpenAI 发布新模型", summary)
         self.assertIn("完整内容:", summary)
+
+    def test_health_reports_callback_configuration_and_latest_publication(self):
+        original_token = app.WECHAT_TOKEN
+        original_data_file = app.NEWS_DATA_FILE
+        try:
+            app.WECHAT_TOKEN = ""
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as file:
+                json.dump({"publication": {"status": "failed", "reason": "wechat_draft_failed"}}, file)
+                app.NEWS_DATA_FILE = file.name
+
+            response = app.app.test_client().get("/health")
+            payload = response.get_json()
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(payload["status"], "degraded")
+            self.assertFalse(payload["wechat_callback"]["configured"])
+            self.assertEqual(payload["publication"]["status"], "failed")
+        finally:
+            app.WECHAT_TOKEN = original_token
+            app.NEWS_DATA_FILE = original_data_file
+            if "file" in locals() and os.path.exists(file.name):
+                os.unlink(file.name)
 
 
 if __name__ == "__main__":

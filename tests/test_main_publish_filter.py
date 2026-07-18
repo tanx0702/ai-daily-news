@@ -21,6 +21,12 @@ def _news_items(count):
 
 
 class MainPublishFilterTests(unittest.TestCase):
+    def test_pipeline_exit_code_reports_blocked_and_failed_publication(self):
+        self.assertEqual(daily_main._pipeline_exit_code({"status": "draft_created"}), 0)
+        self.assertEqual(daily_main._pipeline_exit_code({"status": "dry_run"}), 0)
+        self.assertEqual(daily_main._pipeline_exit_code({"status": "blocked"}), 1)
+        self.assertEqual(daily_main._pipeline_exit_code({"status": "failed"}), 1)
+
     def test_skip_wechat_draft_flag_is_opt_in(self):
         with patch.dict(os.environ, {"SKIP_WECHAT_DRAFT": "true"}, clear=True):
             self.assertTrue(daily_main._should_skip_wechat_draft())

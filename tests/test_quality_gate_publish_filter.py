@@ -197,14 +197,14 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             [
                 "中文标题：Official model update",
                 "中文标题：Roblox AI tool",
-                "中文标题：NotebookLM update",
             ],
         )
         self.assertTrue(report["pass"])
         self.assertFalse(report["blocked_publish"])
-        self.assertEqual(report["risk_level"], "low")
+        self.assertEqual(report["risk_level"], "medium")
         self.assertEqual(report["publish_filter"]["removed_count"], 1)
-        self.assertEqual(report["publish_filter"]["selected_count"], 3)
+        self.assertEqual(report["publish_filter"]["selected_count"], 2)
+        self.assertTrue(report["publish_filter"]["insufficient_publishable_items"])
         self.assertEqual(
             report["publish_filter"]["removed_items"][0]["title"],
             "中文标题：Community test mentions GPT-5.6",
@@ -238,6 +238,32 @@ class QualityGatePublishFilterTests(unittest.TestCase):
         self.assertFalse(report["blocked_publish"])
         self.assertTrue(report["llm_review_failed"])
         self.assertIn("LLM 质检失败", report["summary"])
+
+    def test_llm_review_skips_candidates_without_publishable_source_evidence(self):
+        sparse = {
+            **_item("Sparse source"),
+            "source_summary": "",
+            "chinese_title": "证据不足候选",
+            "summary": "不应送入质检模型。",
+        }
+        ready = _item("Ready source")
+        reviewed_inputs = []
+
+        def fake_review(items, **kwargs):
+            reviewed_inputs.extend(items)
+            return [], [], []
+
+        with patch("src.quality_gate._run_llm_review", side_effect=fake_review):
+            _, report = review_daily(
+                [sparse, ready],
+                api_key="test-key",
+                model="test-model",
+                target_count=2,
+                filter_high_risk=True,
+            )
+
+        self.assertEqual([item["title"] for item in reviewed_inputs], ["Ready source"])
+        self.assertEqual(report["llm_input_count"], 1)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock doc
 docker compose up -d --force-recreate
 ```
 
-日报不会因单条 high risk 或候选不足停止创建微信草稿。高风险条目从通过质检的备用候选回填；证据不足的条目降级为仅原标题、来源和原文链接。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不再阻断整天任务。
+日报 HTML 和诊断文件不会因单条 high risk 或候选不足而停止生成。高风险条目会从通过质检的备用候选回填；但当最终可发布条目少于 6 条、单一来源超过一半、存在非 `ready` 条目或 LLM 质检失败时，不创建微信公众号草稿，任务以非零状态退出。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不再单独决定整天任务是否阻断。
 
 ### 本地开发
 
@@ -101,7 +101,7 @@ python app.py
 |------|------|
 | `Dockerfile` | Python 3.12-slim + gunicorn 运行 Flask |
 | `docker-compose.yml` | web (Flask) + nginx |
-| `nginx/nginx.conf` | 静态文件、/wechat 反代和 SSL 配置 |
+| `nginx/nginx.conf.template` | 由 `DOMAIN` 渲染的静态文件、/wechat 反代和 SSL 配置 |
 
 ## 环境变量
 

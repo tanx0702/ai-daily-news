@@ -74,6 +74,7 @@ def build_latest_data(
     media_report: dict | None = None,
     selection_report: dict | None = None,
     source_health: dict | None = None,
+    publication: dict | None = None,
 ) -> dict[str, Any]:
     """Build the JSON payload consumed by Flask and debug tools."""
     latest_data: dict[str, Any] = {
@@ -131,6 +132,9 @@ def build_latest_data(
             "editorial_selection": selection_report or {},
             "source_health": source_health or {},
         }
+
+    if publication is not None:
+        latest_data["publication"] = publication
 
     return latest_data
 

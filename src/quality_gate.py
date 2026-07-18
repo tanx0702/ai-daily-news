@@ -1107,14 +1107,20 @@ def review_daily(
     candidates, report = _run_local_rules(candidates)
     report["strict"] = strict
     report["blocked_publish"] = False
+    _apply_quality_states(candidates)
 
     # 2. LLM 质检（如果可用）
     quality_config = resolve_quality_llm_config(api_key=api_key, model=model, base_url=base_url)
     report["llm_review_status"] = "skipped"
-    if quality_config.api_key:
+    reviewable_candidates = [
+        item for item in candidates
+        if item.get("quality_state") == "ready"
+    ]
+    report["llm_input_count"] = len(reviewable_candidates)
+    if quality_config.api_key and reviewable_candidates:
         logger.info("Quality gate: running LLM review...")
         llm_issues, llm_fixes, global_notes = _run_llm_review(
-            candidates,
+            reviewable_candidates,
             api_key=quality_config.api_key,
             model=quality_config.model,
             base_url=quality_config.base_url,
@@ -1136,10 +1142,10 @@ def review_daily(
         report["llm_review_failed"] = any(is_llm_failure(note) for note in global_notes)
         report["llm_reviewed"] = not report["llm_review_failed"]
         report["llm_review_status"] = "failed" if report["llm_review_failed"] else "passed"
-        _apply_llm_issue_marks(candidates, llm_issues)
+        _apply_llm_issue_marks(reviewable_candidates, llm_issues)
 
         # 应用 LLM 修正
-        llm_applied = _apply_llm_fixes(candidates, llm_fixes)
+        llm_applied = _apply_llm_fixes(reviewable_candidates, llm_fixes)
         report["applied_fixes"].extend(llm_applied)
 
         # LLM 可能降低/提高风险等级

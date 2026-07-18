@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from html import unescape
 from typing import Any
+from urllib.parse import urlparse
 
 
 def clean_display_text(value: Any, *, collapse_whitespace: bool = True, max_passes: int = 3) -> str:
@@ -35,3 +36,12 @@ def clean_display_text(value: Any, *, collapse_whitespace: bool = True, max_pass
     else:
         text = text.strip()
     return text.strip()
+
+
+def safe_http_url(value: Any) -> str:
+    """Return a normalized absolute HTTP(S) URL, or an empty string."""
+    url = clean_display_text(value, collapse_whitespace=False)
+    parsed = urlparse(url)
+    if parsed.scheme.lower() in {"http", "https"} and parsed.netloc:
+        return url
+    return ""

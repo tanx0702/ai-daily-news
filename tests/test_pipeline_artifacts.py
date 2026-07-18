@@ -84,6 +84,22 @@ class PipelineArtifactsTests(unittest.TestCase):
         self.assertEqual(data["diagnostics"]["editorial_selection"]["reserve_count"], 20)
         self.assertEqual(data["diagnostics"]["source_health"]["source_only_count"], 1)
 
+    def test_build_latest_data_includes_publication_status(self):
+        data = build_latest_data(
+            [{"title": "Ready item"}],
+            "2026-07-18",
+            "https://tankex.xyz",
+            generated_at="2026-07-18T00:00:00+00:00",
+            publication={
+                "status": "blocked",
+                "ready": False,
+                "reasons": ["source_concentration"],
+            },
+        )
+
+        self.assertEqual(data["publication"]["status"], "blocked")
+        self.assertEqual(data["publication"]["reasons"], ["source_concentration"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,9 +29,11 @@ AI_TOPICS = [
     "llm",
     "agents",
 ]
+KEYWORD_FALLBACK_TERMS = ["AI", "LLM", "agent"]
 
 # 最小 star 阈值
 MIN_STARS = 5
+RECENT_ACTIVITY_DAYS = 7
 
 
 class GitHubCollector(BaseCollector):
@@ -83,7 +85,8 @@ class GitHubCollector(BaseCollector):
         """搜索 GitHub AI 项目。"""
         seen_ids = set()
         candidates = []
-        seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+        cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_ACTIVITY_DAYS)
+        recent_date = cutoff.strftime("%Y-%m-%d")
 
         # 预检限流状态
         rate = self._check_rate_limit()
@@ -120,36 +123,71 @@ class GitHubCollector(BaseCollector):
         for topic in topics_to_search:
             if self._rate_limited:
                 break
-            query = f"topic:{topic}+created:>={seven_days_ago}"
-            items = self._search_repos(query, per_page)
-            queries_made += 1
+            searches = (
+                ("created", "stars", "new"),
+                ("pushed", "updated", "active"),
+            )
+            for field, sort_by, label in searches:
+                query = f"topic:{topic}+{field}:>={recent_date}"
+                items = self._search_repos(query, per_page, sort_by=sort_by)
+                queries_made += 1
 
-            if items is None:
-                # rate limited or fatal error
-                if self._rate_limited:
+                if items is None:
                     queries_failed += 1
-                    break
-                queries_failed += 1
-                continue
-
-            if not items:
-                logger.info("  GitHub topic '%s': 0 repos found in last 7 days", topic)
-                continue
-
-            for item in items:
-                rid = f"github-{item['id']}"
-                if rid in seen_ids:
+                    if self._rate_limited:
+                        break
                     continue
-                seen_ids.add(rid)
-                candidate = self._repo_to_candidate(item)
-                if candidate:
-                    candidates.append(candidate)
+
+                if not items:
+                    logger.info("  GitHub %s topic '%s': 0 repos", label, topic)
+                    continue
+
+                for item in items:
+                    rid = f"github-{item['id']}"
+                    if rid in seen_ids:
+                        continue
+                    seen_ids.add(rid)
+                    candidate = self._repo_to_candidate(item, cutoff=cutoff)
+                    if candidate:
+                        candidates.append(candidate)
+
+                if self._rate_limited:
+                    break
 
             # 无 token 时只搜 1 个 topic
             if not self.token:
                 break
 
-            time.sleep(1.5)
+            time.sleep(1.2)
+
+        # 活跃仓库通常没有维护 topic。只有 topic 查询没有任何合格候选时，才以
+        # 名称/描述关键词补充检索，避免每次任务都额外消耗搜索额度。
+        if not candidates and not self._rate_limited:
+            for term in KEYWORD_FALLBACK_TERMS:
+                query = (
+                    f"{term} in:name,description pushed:>={recent_date} "
+                    f"stars:>={MIN_STARS}"
+                )
+                items = self._search_repos(query, per_page, sort_by="updated")
+                queries_made += 1
+                if items is None:
+                    queries_failed += 1
+                    if self._rate_limited:
+                        break
+                    continue
+                for item in items:
+                    rid = f"github-{item['id']}"
+                    if rid in seen_ids:
+                        continue
+                    seen_ids.add(rid)
+                    candidate = self._repo_to_candidate(item, cutoff=cutoff)
+                    if candidate:
+                        candidates.append(candidate)
+                if self._rate_limited:
+                    break
+                time.sleep(1.2)
+
+        candidates.sort(key=lambda candidate: candidate.get("_gh_hotness", 0), reverse=True)
 
         # 诊断日志
         logger.info(
@@ -160,14 +198,19 @@ class GitHubCollector(BaseCollector):
 
         if not candidates and not self._rate_limited:
             logger.info(
-                "GitHub: no AI repos found in last 7 days with stars >= %d. "
-                "This may be normal — new AI repos with high stars are rare.",
+                "GitHub: no recent new or active AI repos found with stars >= %d.",
                 MIN_STARS,
             )
 
         return candidates
 
-    def _search_repos(self, query: str, per_page: int = 15) -> Optional[list[dict]]:
+    def _search_repos(
+        self,
+        query: str,
+        per_page: int = 15,
+        *,
+        sort_by: str = "stars",
+    ) -> Optional[list[dict]]:
         """
         执行一次 GitHub 仓库搜索。
 
@@ -178,7 +221,7 @@ class GitHubCollector(BaseCollector):
         url = f"{GITHUB_API_BASE}/search/repositories"
         params = {
             "q": query,
-            "sort": "stars",
+            "sort": sort_by,
             "order": "desc",
             "per_page": per_page,
         }
@@ -246,7 +289,21 @@ class GitHubCollector(BaseCollector):
             logger.warning("GitHub: search failed: %s", e)
             return []
 
-    def _repo_to_candidate(self, repo: dict) -> Optional[dict]:
+    @staticmethod
+    def _parse_github_time(value: str) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    def _repo_to_candidate(
+        self,
+        repo: dict,
+        *,
+        cutoff: Optional[datetime] = None,
+    ) -> Optional[dict]:
         """将 GitHub 仓库转为统一 candidate。"""
         name = repo.get("full_name", "")
         description = (repo.get("description") or "").strip()
@@ -259,24 +316,26 @@ class GitHubCollector(BaseCollector):
         if self._is_spam_repo(repo):
             return None
 
-        # 时间解析
-        pub_time = None
-        pub_source = "missing"
-        created_at = repo.get("created_at", "")
-        if created_at:
-            try:
-                pub_time = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ")
-                pub_time = pub_time.replace(tzinfo=timezone.utc)
-                pub_source = "api"
-            except ValueError:
-                pass
+        created_at = self._parse_github_time(repo.get("created_at", ""))
+        pushed_at = self._parse_github_time(repo.get("pushed_at", ""))
+        cutoff = cutoff or (datetime.now(timezone.utc) - timedelta(days=RECENT_ACTIVITY_DAYS))
+        is_recent_push = bool(
+            pushed_at and pushed_at >= cutoff and (not created_at or pushed_at > created_at)
+        )
+        activity_time = pushed_at if is_recent_push else created_at
+        activity_type = "recent_push" if is_recent_push else "new_repository"
 
         stars = repo.get("stargazers_count", 0) or 0
         forks = repo.get("forks_count", 0) or 0
         topics = repo.get("topics", []) or []
 
-        # 社区热度：stars 权重高但取 log 抑制超级项目
-        community_hotness = log1p(stars) * 3 + log1p(forks) * 1.5
+        # 社区热度：stars 权重高但取 log 抑制超级项目；近期活动额外加分。
+        activity_bonus = 8.0 if is_recent_push else 5.0
+        community_hotness = log1p(stars) * 3 + log1p(forks) * 1.5 + activity_bonus
+        activity_label = "近期推送活跃" if is_recent_push else "近期开源"
+        evidence_summary = (
+            f"GitHub {activity_label}项目，当前 {stars} stars、{forks} forks。{description}"
+        ).strip()
 
         candidate = self.make_candidate(
             id_=f"github-{repo['id']}",
@@ -284,14 +343,17 @@ class GitHubCollector(BaseCollector):
             url=repo.get("html_url", ""),
             source="GitHub",
             source_type="github",
-            published_at=pub_time,
-            published_source=pub_source,
-            summary=description[:300],
+            published_at=activity_time,
+            published_source="api" if activity_time else "missing",
+            summary=evidence_summary[:300],
             author=repo.get("owner", {}).get("login", ""),
             tags=topics,
             metrics={
                 "github_stars": stars,
                 "github_stars_recent": stars,
+                "github_activity_type": activity_type,
+                "github_created_at": created_at.isoformat() if created_at else "",
+                "github_pushed_at": pushed_at.isoformat() if pushed_at else "",
             },
         )
         candidate["scores"]["community"] = round(community_hotness, 1)

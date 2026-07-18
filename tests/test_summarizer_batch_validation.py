@@ -93,34 +93,31 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         self.assertFalse(validation["valid"])
         self.assertEqual(validation["action"], "fallback")
 
-    def test_batch_count_mismatch_falls_back_per_item(self):
-        batch_response = _json([
+    def test_batch_count_mismatch_retries_once_then_keeps_source_fallback(self):
+        batch_response = _json({"items": [
             {"chinese_title": "错位 1", "summary": "摘要 1"},
             {"chinese_title": "错位 2", "summary": "摘要 2"},
             {"chinese_title": "错位 3", "summary": "摘要 3"},
             {"chinese_title": "错位 4", "summary": "摘要 4"},
-        ])
-        single_responses = [
-            _json({"chinese_title": f"单条 {i}", "summary": f"单条摘要 {i}"})
-            for i in range(1, 6)
-        ]
-        fake_client = _FakeOpenAI([batch_response, *single_responses])
+        ]})
+        fake_client = _FakeOpenAI([batch_response, batch_response])
 
         with patch("src.summarizer.OpenAI", return_value=fake_client):
             result = summarize_news(_news(5), api_key="test-key")
 
         self.assertEqual(
             [item["chinese_title"] for item in result],
-            ["单条 1", "单条 2", "单条 3", "单条 4", "单条 5"],
+            [f"Original story {index}" for index in range(1, 6)],
         )
-        self.assertEqual(len(fake_client.calls), 6)
+        self.assertEqual(len(fake_client.calls), 2)
+        self.assertTrue(all(item["llm_summary_status"] == "invalid_response" for item in result))
 
     def test_batch_index_maps_unordered_results_to_original_items(self):
-        batch_response = _json([
+        batch_response = _json({"items": [
             {"index": 2, "chinese_title": "第二条", "summary": "摘要二"},
             {"index": 1, "chinese_title": "第一条", "summary": "摘要一"},
             {"index": 3, "chinese_title": "第三条", "summary": "摘要三"},
-        ])
+        ]})
         fake_client = _FakeOpenAI([batch_response])
 
         with patch("src.summarizer.OpenAI", return_value=fake_client):
@@ -134,9 +131,9 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         self.assertEqual(len(fake_client.calls), 1)
 
     def test_batch_prompt_includes_source_evidence_for_each_news_item(self):
-        response = _json([
+        response = _json({"items": [
             {"index": 1, "chinese_title": "来源证据新闻", "summary": "来源证据支持的中文摘要。"},
-        ])
+        ]})
         fake_client = _FakeOpenAI([response])
         news = [{
             "title": "Original title",
@@ -153,27 +150,24 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         prompt = fake_client.calls[0]["messages"][1]["content"]
         self.assertIn("来源: Example News", prompt)
         self.assertIn("原始摘要: The official announcement confirms a product rename and rollout date.", prompt)
+        self.assertEqual(fake_client.calls[0]["response_format"], {"type": "json_object"})
 
-    def test_duplicate_or_missing_index_falls_back_per_item(self):
-        batch_response = _json([
+    def test_duplicate_or_missing_index_retries_once_then_uses_source_fallback(self):
+        batch_response = _json({"items": [
             {"index": 1, "chinese_title": "重复一", "summary": "摘要一"},
             {"index": 1, "chinese_title": "重复二", "summary": "摘要二"},
             {"index": 2, "chinese_title": "第二条", "summary": "摘要三"},
-        ])
-        single_responses = [
-            _json({"chinese_title": f"单条 {i}", "summary": f"单条摘要 {i}"})
-            for i in range(1, 4)
-        ]
-        fake_client = _FakeOpenAI([batch_response, *single_responses])
+        ]})
+        fake_client = _FakeOpenAI([batch_response, batch_response])
 
         with patch("src.summarizer.OpenAI", return_value=fake_client):
             result = summarize_news(_news(3), api_key="test-key")
 
         self.assertEqual(
             [item["chinese_title"] for item in result],
-            ["单条 1", "单条 2", "单条 3"],
+            ["Original story 1", "Original story 2", "Original story 3"],
         )
-        self.assertEqual(len(fake_client.calls), 4)
+        self.assertEqual(len(fake_client.calls), 2)
 
 
 if __name__ == "__main__":

@@ -29,10 +29,10 @@ class EvidenceQualityGateTests(unittest.TestCase):
     def test_failed_llm_review_is_not_reported_as_reviewed(self):
         item = {
             "source_title": "Original",
-            "source_summary": "Original summary",
+            "source_summary": "Original source summary with enough factual detail for publication review.",
             "title": "Original",
             "summary": "Generated summary",
-            "chinese_title": "Generated title",
+            "chinese_title": "生成后的中文标题",
             "source_type": "rss",
             "metrics": {},
         }

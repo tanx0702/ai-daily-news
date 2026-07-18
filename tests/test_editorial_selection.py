@@ -98,7 +98,7 @@ class EditorialSelectionTests(unittest.TestCase):
             "community",
         )
 
-    def test_selection_reports_relaxed_caps_when_no_alternative_exists(self):
+    def test_selection_keeps_caps_and_reports_short_edition_when_no_alternative_exists(self):
         items = [
             _item(f"Only publisher {index}", "Only Publisher", 100 - index)
             for index in range(3)
@@ -111,9 +111,10 @@ class EditorialSelectionTests(unittest.TestCase):
             min_primary_or_research=0,
         )
 
-        self.assertEqual(len(selected), 3)
-        self.assertTrue(report["cap_relaxed"])
-        self.assertEqual(report["source_counts"], {"only publisher": 3})
+        self.assertEqual(len(selected), 2)
+        self.assertFalse(report["cap_relaxed"])
+        self.assertTrue(report["insufficient_target"])
+        self.assertEqual(report["source_counts"], {"only publisher": 2})
 
 
 if __name__ == "__main__":

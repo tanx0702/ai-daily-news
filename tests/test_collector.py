@@ -96,6 +96,33 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(report["merged_groups"], 1)
         self.assertEqual(deduped[0]["merged_count"], 1)
 
+    def test_final_editorial_dedup_merges_same_companies_legal_event(self):
+        items = [
+            {
+                "title": "Apple sues OpenAI over executive hiring",
+                "url": "https://example.com/apple-openai-lawsuit-a",
+                "source": "The Verge",
+                "source_type": "rss",
+                "summary": "Apple filed a lawsuit against OpenAI.",
+                "metrics": {},
+                "_score": 90,
+            },
+            {
+                "title": "Apple's lawsuit could not come at a worse time for OpenAI",
+                "url": "https://example.com/apple-openai-lawsuit-b",
+                "source": "TechCrunch",
+                "source_type": "rss",
+                "summary": "The legal action concerns Apple and OpenAI.",
+                "metrics": {},
+                "_score": 80,
+            },
+        ]
+
+        deduped, report = collector.apply_final_editorial_dedup(items, top_n=2)
+
+        self.assertEqual(len(deduped), 1)
+        self.assertEqual(report["details"][0]["reason"], "same_companies_legal_event")
+
     def test_score_marks_hn_only_model_comparison_as_publish_risk(self):
         item = {
             "title": "$100 AI Music Video: Claude Fable 5 vs. GPT-5.6 Sol",
