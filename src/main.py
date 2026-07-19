@@ -124,6 +124,10 @@ def _run_pipeline():
     for item in news_list:
         assign_source_tier(item)
 
+    from src.editorial_quality import annotate_editorial_candidates
+
+    annotate_editorial_candidates(news_list)
+
     selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
         news_list,
         target_count=top_n,
@@ -176,10 +180,38 @@ def _run_pipeline():
     reserve_candidates = candidate_news[len(selected_candidates):]
     news_list = selected_candidates
 
+    # 所有候选已有中文摘要后，再由质量模型做跨候选事件归并与价值比较。
+    # 草稿仍会照常创建；此步骤只提升最终选题，并保留可审计诊断。
+    qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(max(llm_timeout, 45))))
+    editorial_review_report = {"status": "skipped", "applied_count": 0, "notes": []}
+    if qg_enabled and candidate_news:
+        from src.editorial_review import review_editorial_candidates
+
+        editorial_llm = resolve_quality_llm_config()
+        editorial_review_report = review_editorial_candidates(
+            candidate_news,
+            api_key=editorial_llm.api_key,
+            model=editorial_llm.model,
+            base_url=editorial_llm.base_url,
+            timeout=qg_timeout,
+        )
+        if editorial_review_report.get("applied_count", 0):
+            selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
+                candidate_news,
+                target_count=top_n,
+                pool_size=candidate_pool_n,
+                max_items_per_source=max_items_per_source,
+                max_items_per_topic=max_items_per_topic,
+                min_primary_or_research=min_primary_or_research,
+            )
+            news_list = selected_candidates
+            logger.info(
+                "Editorial review reselected %d candidates with %d reserves",
+                len(selected_candidates), len(reserve_candidates),
+            )
+
     # === 2.5 质检门禁 ===
     quality_report = {}
-
-    qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(max(llm_timeout, 45))))
 
     if qg_enabled and selected_candidates:
         logger.info("[2.5/6] 发布前质检...")
@@ -203,6 +235,7 @@ def _run_pipeline():
             min_primary_or_research=min_primary_or_research,
         )
         quality_report["editorial_selection"] = selection_report
+        quality_report["editorial_review"] = editorial_review_report
         logger.info(
                 "Quality gate: pass=%s, risk=%s, blocked=%s",
                 quality_report.get("pass"),
@@ -235,6 +268,17 @@ def _run_pipeline():
 
     news_list, event_dedup_report = apply_final_editorial_dedup(news_list, top_n=top_n)
     quality_report["event_dedup"] = event_dedup_report
+
+    from src.editorial_quality import assess_daily_edition
+
+    quality_report["editorial_quality"] = assess_daily_edition(news_list, quality_report)
+    logger.info(
+        "Editorial quality: score=%s/%s, meets_target=%s, reasons=%s",
+        quality_report["editorial_quality"]["score"],
+        quality_report["editorial_quality"]["target"],
+        quality_report["editorial_quality"]["meets_target"],
+        ",".join(quality_report["editorial_quality"]["reasons"]),
+    )
 
     # === 2.55 正文媒体资源解析 ===
     if _env_bool("ENABLE_ARTICLE_IMAGE_FETCH", True) and news_list:

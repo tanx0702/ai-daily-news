@@ -95,6 +95,7 @@ def build_latest_data(
             "fixes_count": len(quality_report.get("applied_fixes", [])),
             "llm_review_status": quality_report.get("llm_review_status", "skipped"),
             "publish_filter": quality_report.get("publish_filter", {}),
+            "editorial_quality": quality_report.get("editorial_quality", {}),
         }
 
     if cover_subject:

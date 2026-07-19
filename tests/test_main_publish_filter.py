@@ -1,6 +1,6 @@
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import src.main as daily_main
 
@@ -52,6 +52,10 @@ class MainPublishFilterTests(unittest.TestCase):
                 "applied_fixes": [],
             }
 
+        def fake_editorial_review(news, **kwargs):
+            calls["editorial_review"] = kwargs
+            return {"status": "passed", "applied_count": len(news), "notes": []}
+
         def fake_highlights(news, **kwargs):
             calls["highlights"] = kwargs
             return []
@@ -87,6 +91,7 @@ class MainPublishFilterTests(unittest.TestCase):
         with patch.dict(os.environ, env), \
              patch("src.collector.collect_news", return_value=collected), \
              patch("src.summarizer.summarize_news", side_effect=fake_summarize), \
+             patch("src.editorial_review.review_editorial_candidates", side_effect=fake_editorial_review), \
              patch("src.quality_gate.review_daily", side_effect=fake_review), \
              patch("src.summarizer.generate_highlights", side_effect=fake_highlights), \
              patch("src.summarizer.generate_cover_title", side_effect=fake_cover_title), \
@@ -106,6 +111,9 @@ class MainPublishFilterTests(unittest.TestCase):
         self.assertEqual(calls["review"]["api_key"], "text-key")
         self.assertEqual(calls["review"]["model"], "text-model")
         self.assertEqual(calls["review"]["base_url"], "https://text.example/v1")
+        self.assertEqual(calls["editorial_review"]["api_key"], "text-key")
+        self.assertEqual(calls["editorial_review"]["model"], "text-model")
+        self.assertEqual(calls["editorial_review"]["base_url"], "https://text.example/v1")
         self.assertEqual(calls["highlights"]["api_key"], "text-key")
         self.assertEqual(calls["highlights"]["model"], "text-model")
         self.assertEqual(calls["highlights"]["base_url"], "https://text.example/v1")
@@ -163,6 +171,7 @@ class MainPublishFilterTests(unittest.TestCase):
         selected = collected[:10]
         reserves = collected[10:]
         review_kwargs = {}
+        annotate = Mock(side_effect=lambda items: items)
 
         def fake_review(news, **kwargs):
             review_kwargs.update(kwargs)
@@ -188,6 +197,7 @@ class MainPublishFilterTests(unittest.TestCase):
 
         with patch.dict(os.environ, env), \
              patch("src.collector.collect_news", return_value=collected), \
+             patch("src.editorial_quality.annotate_editorial_candidates", annotate), \
              patch("src.editorial_selection.select_editorial_candidates", return_value=(selected, reserves, {"selected_count": 10})), \
              patch("src.quality_gate.review_daily", side_effect=fake_review), \
              patch("src.pipeline_artifacts.render_and_save_daily_html"), \
@@ -201,6 +211,7 @@ class MainPublishFilterTests(unittest.TestCase):
 
         self.assertEqual(review_kwargs["reserves"], reserves)
         self.assertEqual(review_kwargs["target_count"], 10)
+        self.assertEqual(annotate.call_args.args[0], collected)
 
     def test_pipeline_generates_local_cover_when_image_key_is_missing(self):
         env = {

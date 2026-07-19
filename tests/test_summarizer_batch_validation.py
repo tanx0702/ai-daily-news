@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.summarizer import summarize_news, validate_summary_facts
+from src.summarizer import _apply_summary_item, summarize_news, validate_summary_facts
 
 
 class _FakeOpenAI:
@@ -92,6 +92,25 @@ class SummarizerBatchValidationTests(unittest.TestCase):
 
         self.assertFalse(validation["valid"])
         self.assertEqual(validation["action"], "fallback")
+
+    def test_recent_github_push_uses_activity_wording_not_release_wording(self):
+        news = {
+            "title": "acme/agent: A useful coding agent",
+            "source_title": "acme/agent: A useful coding agent",
+            "source_summary": "GitHub 近期推送活跃项目，当前 500 stars、20 forks。A useful coding agent.",
+            "source_type": "github",
+            "metrics": {"github_activity_type": "recent_push"},
+        }
+
+        _apply_summary_item(
+            news,
+            {"chinese_title": "开源 AI 助手 acme/agent 正式发布", "summary": "该项目正式发布，面向代码开发工作流。"},
+            "test",
+        )
+
+        self.assertEqual(news["chinese_title"], "GitHub 项目近期活跃：acme/agent")
+        self.assertIn("近期推送活跃项目", news["summary"])
+        self.assertNotIn("正式发布", news["summary"])
 
     def test_batch_count_mismatch_retries_once_then_keeps_source_fallback(self):
         batch_response = _json({"items": [

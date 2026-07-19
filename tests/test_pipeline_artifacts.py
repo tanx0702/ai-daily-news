@@ -37,6 +37,12 @@ class PipelineArtifactsTests(unittest.TestCase):
                 "blocked_publish": False,
                 "issues": [],
                 "applied_fixes": [{"field": "summary"}],
+                "editorial_quality": {
+                    "score": 9.2,
+                    "target": 9.0,
+                    "meets_target": True,
+                    "reasons": [],
+                },
             },
             cover_subject={
                 "mode": "story",
@@ -53,6 +59,7 @@ class PipelineArtifactsTests(unittest.TestCase):
 
         self.assertEqual(data["date"], "2026-07-12")
         self.assertEqual(data["quality_gate"]["fixes_count"], 1)
+        self.assertEqual(data["quality_gate"]["editorial_quality"]["score"], 9.2)
         self.assertTrue(data["cover_subject"]["matches_top1"])
         self.assertEqual(data["media"]["with_original_image"], 1)
 

@@ -31,6 +31,12 @@ python app.py
 日报产物会写入 `docs/index.html`、`docs/latest.json`、
 `docs/wechat.html` 与 `docs/archive/<date>.html`。
 
+## 编辑质量
+
+候选会先检查来源证据、时效和事件键，再按来源、主题与独立事件选择。摘要完成后，质检模型会跨候选归并同一事件并重新排序；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
+
+最终 `latest.json` 的 `quality_gate.editorial_quality` 会记录整期 0-10 编辑分及扣分原因。9 分代表建议人工发布的目标；该诊断用于提升草稿质量，不替代公众号后台的人工审核。
+
 ## Docker 部署
 
 ```bash
@@ -86,7 +92,7 @@ docker compose up -d --force-recreate
 
 高级变量按以下用途分组：
 
-- `QUALITY_LLM_*`：独立质检模型。未设置时会继承对应的 `LLM_*`，大多数部署不需要填写。
+- `QUALITY_LLM_*`：独立质检模型。未设置时会继承对应的 `LLM_*`，同时用于证据质检和跨候选编辑复核，大多数部署不需要填写。
 - 日报选择：候选池、来源和主题配额、新闻时效窗口、超时与任务锁。
 - 采集源：Hacker News、GitHub、Hugging Face、arXiv 开关，以及可选的 `GITHUB_TOKEN` 和 `HF_TOKEN`。
 - 证据质检：发布安全回填、质检超时和 Token 上限。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不会阻止当天草稿创建。

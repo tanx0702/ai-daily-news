@@ -255,6 +255,26 @@ def _apply_summary_item(news: dict, item: dict, label: str) -> None:
 
     news["chinese_title"] = c_title or clean_display_text(news["title"])
     news["summary"] = clean_display_text(item.get("summary", ""))[:200]
+    _apply_github_activity_language_guard(news)
+
+
+def _apply_github_activity_language_guard(news: dict) -> None:
+    """Do not let a repository push be presented as a product launch."""
+    if news.get("source_type") != "github":
+        return
+    activity_type = str((news.get("metrics") or {}).get("github_activity_type") or "")
+    if activity_type not in {"recent_push", "new_repository"}:
+        return
+
+    source_title = clean_display_text(news.get("source_title") or news.get("title", ""))
+    repository = source_title.split(":", 1)[0].strip() or "开源项目"
+    source_summary = clean_display_text(news.get("source_summary") or "")[:200]
+    if activity_type == "recent_push":
+        news["chinese_title"] = f"GitHub 项目近期活跃：{repository}"
+    else:
+        news["chinese_title"] = f"GitHub 新开源项目：{repository}"
+    if source_summary:
+        news["summary"] = source_summary
 
 
 def _format_news_evidence(index: int, news: dict) -> str:

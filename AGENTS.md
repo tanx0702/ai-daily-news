@@ -64,12 +64,18 @@ python app.py
 ```text
 1. collector.collect_news()
    -> RSS 采集、AI 关键词过滤、去重、热度评分，并保留候选池
+1.25 editorial_quality.annotate_editorial_candidates()
+   -> 校验来源证据、识别事件键，并为候选计算可解释的编辑分
 1.5 editorial_selection.select_editorial_candidates()
-   -> 依来源和主题配额选出日报条目与备用候选
+   -> 依来源、主题和独立事件配额选出日报条目与备用候选
 2. summarizer.summarize_news()
    -> LLM 批量翻译标题和中文摘要（BATCH_SIZE=5），同时处理备用候选
+2.25 editorial_review.review_editorial_candidates()
+   -> 质量模型跨候选归并同一事件并重排；GitHub 近期 push 只能作为项目活跃度
 2.5 quality_gate.review_daily()
    -> 按原始证据质检，high risk 单条移除并从合格备用候选回填
+2.6 editorial_quality.assess_daily_edition()
+   -> 生成 0-10 整期编辑质量诊断；9 分为人工发布建议目标，不影响草稿生成逻辑
 3. generator.render_daily_html()
    -> Jinja2 渲染内嵌 HTML 模板
 4. cover.generate_cover_from_news()
@@ -85,8 +91,10 @@ python app.py
 | 模块 | 职责 | 关键实现 |
 |------|------|----------|
 | `src/collector.py` | RSS 采集 | 两级 AI 关键词过滤，中文 bigram / 英文 Jaccard 去重，来源与风险题材均衡 |
+| `src/editorial_quality.py` | 编辑质量信号 | 来源证据、事件键、候选分与整期 9 分诊断 |
+| `src/editorial_review.py` | 跨候选编辑复核 | 使用质检模型归并相同事件并重排候选，不新增新闻事实 |
 | `src/llm_config.py` | LLM 配置解析 | 文本、质检、图片模型分开解析，优先 `LLM_*` / `QUALITY_LLM_*` / `IMAGE_*`，兼容旧别名 |
-| `src/summarizer.py` | LLM 摘要 | 批量 5 条/次；数量或索引异常时整批降级逐条 |
+| `src/summarizer.py` | LLM 摘要 | 批量 5 条/次；数量或索引异常时整批降级逐条；GitHub 活跃项目不写成正式发布 |
 | `src/quality_gate.py` | 发布前质检 | LLM/本地规则标记风险；high risk 单条可移除并回填 |
 | `src/generator.py` | HTML 渲染 | 模板完全内嵌在 Python 字符串中 |
 | `src/cover.py` | 封面图 | 原文图、可配置图片 API、Pillow 本地封面的降级链 |

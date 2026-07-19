@@ -34,8 +34,21 @@ def _topic_key(item: dict) -> str:
     return str(item.get("title", "")).strip().lower()
 
 
+def _event_key(item: dict) -> str:
+    editorial = item.get("_editorial") or {}
+    key = str(editorial.get("event_key") or "").strip()
+    return key.lower() if key else _topic_key(item)
+
+
 def _ordered(items: Iterable[dict]) -> list[dict]:
-    return sorted(items, key=lambda item: item.get("_score", 0), reverse=True)
+    return sorted(
+        items,
+        key=lambda item: (
+            (item.get("_editorial") or {}).get("score", 0),
+            item.get("_score", 0),
+        ),
+        reverse=True,
+    )
 
 
 def select_editorial_candidates(
@@ -46,12 +59,14 @@ def select_editorial_candidates(
     max_items_per_source: int = 2,
     max_items_per_topic: int = 2,
     min_primary_or_research: int = 2,
+    max_items_per_event: int = 1,
 ) -> tuple[list[dict], list[dict], dict]:
     """Select a diverse final list and preserve remaining eligible items as reserves."""
     pool = _ordered(items)[:pool_size] if pool_size else _ordered(items)
     selected: list[dict] = []
     source_counts: Counter[str] = Counter()
     topic_counts: Counter[str] = Counter()
+    event_counts: Counter[str] = Counter()
 
     def can_select(item: dict) -> bool:
         source = str(item.get("source", "")).strip().lower()
@@ -59,6 +74,9 @@ def select_editorial_candidates(
             return False
         topic = _topic_key(item)
         if topic and topic_counts[topic] >= max_items_per_topic:
+            return False
+        event = _event_key(item)
+        if event and event_counts[event] >= max_items_per_event:
             return False
         return True
 
@@ -70,6 +88,9 @@ def select_editorial_candidates(
         topic = _topic_key(item)
         if topic:
             topic_counts[topic] += 1
+        event = _event_key(item)
+        if event:
+            event_counts[event] += 1
 
     for item in pool:
         if len(selected) >= target_count:
@@ -96,6 +117,7 @@ def select_editorial_candidates(
     reserves = [item for item in pool if id(item) not in selected_ids]
     final_source_counts: Counter[str] = Counter()
     final_topic_counts: Counter[str] = Counter()
+    final_event_counts: Counter[str] = Counter()
     for item in selected:
         source = str(item.get("source", "")).strip().lower()
         if source:
@@ -103,6 +125,9 @@ def select_editorial_candidates(
         topic = _topic_key(item)
         if topic:
             final_topic_counts[topic] += 1
+        event = _event_key(item)
+        if event:
+            final_event_counts[event] += 1
     primary_or_research_count = sum(
         item.get("source_tier") in {"primary", "research"} for item in selected
     )
@@ -113,6 +138,7 @@ def select_editorial_candidates(
         "primary_or_research_count": primary_or_research_count,
         "source_counts": dict(final_source_counts),
         "topic_counts": dict(final_topic_counts),
+        "event_counts": dict(final_event_counts),
         "cap_relaxed": cap_relaxed,
         "insufficient_target": len(selected) < target_count,
     }
