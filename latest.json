@@ -1,30 +1,39 @@
 {
-  "date": "2026-07-18",
+  "date": "2026-07-19",
   "news": [
     {
       "title": "How a former DeepMind researcher raised at a $300M pre-seed valuation before launching a product",
       "url": "https://techcrunch.com/2026/07/16/how-a-former-deepmind-researcher-raised-at-a-300m-pre-seed-valuation-before-launching-a-product/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "本文探讨了这位前DeepMind研究人员如何在其初创公司推出产品之前，就获得了高达3亿美元的种子前估值。",
+      "summary": "本文探讨了这位前DeepMind研究人员如何在其初创公司推出产品之前，成功获得高达3亿美元的种子轮融资，展现了其非凡的融资能力与市场信心。",
       "_score": 17.0,
-      "chinese_title": "前DeepMind研究员如何在产品发布前以3亿美元种子前估值融资"
+      "chinese_title": "前DeepMind研究员如何在产品发布前以3亿美元种子轮估值融资"
     },
     {
       "title": "Roblox launches an AI-powered game-creation feature in its mobile app",
       "url": "https://techcrunch.com/2026/07/16/roblox-launches-an-ai-powered-game-creation-feature-in-its-mobile-app/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Roblox正式在其移动端应用内上线了由人工智能驱动的游戏开发工具，进一步降低用户创作门槛。",
+      "summary": "Roblox正式在其移动端应用中加入人工智能驱动的游戏开发工具，旨在降低创作门槛并激发用户生成内容的创新潜力。",
       "_score": 13.0,
       "chinese_title": "Roblox在移动应用中推出基于AI的游戏创作功能"
+    },
+    {
+      "title": "Kimi: Threat or menace?",
+      "url": "https://techcrunch.com/2026/07/18/kimi-threat-or-menace/",
+      "source": "TechCrunch AI",
+      "published_at": null,
+      "summary": "文章深入分析了Kimi这款AI产品对现有市场格局的影响，探讨其究竟是行业进步的推动者还是潜在的风险源。",
+      "_score": 11.0,
+      "chinese_title": "Kimi：是威胁还是祸患？"
     },
     {
       "title": "How Apple’s big lawsuit could disrupt OpenAI’s IPO plans",
       "url": "https://techcrunch.com/video/how-apples-big-lawsuit-could-disrupt-openais-ipo-plans/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "分析指出，苹果公司对OpenAI提起的诉讼可能会对其首次公开募股（IPO）的时间表和前景造成不利影响。",
+      "summary": "苹果对OpenAI提起的诉讼引发了广泛关注，分析指出该法律纠纷可能在时间点和舆论上对OpenAI即将进行的IPO构成重大阻碍。",
       "_score": 11.0,
       "chinese_title": "苹果的重大诉讼可能扰乱OpenAI的IPO计划"
     },
@@ -33,84 +42,102 @@
       "url": "https://techcrunch.com/podcast/apples-lawsuit-couldnt-come-at-a-worse-time-for-openai/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "文章评论认为，在当前背景下，苹果对OpenAI发起的法律行动恰逢其时地给OpenAI带来了巨大的挑战和压力。",
+      "summary": "评论认为，在当前敏感时期，苹果发起的这场诉讼恰逢其时地给OpenAI带来了巨大的公关压力和不确定性，严重影响了其上市进程。",
       "_score": 11.0,
-      "chinese_title": "苹果起诉OpenAI的时机极为不利"
+      "chinese_title": "苹果起诉OpenAI的时机对其极为不利"
     },
     {
       "title": "Google Vids now lets you star in your own AI videos",
       "url": "https://techcrunch.com/2026/07/16/google-vids-now-lets-you-star-in-your-own-ai-videos/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "Google更新了其视频生成工具Vids，新增功能允许用户上传个人形象，从而成为自己生成的AI视频的主角。",
+      "summary": "Google 推出新功能，允许用户通过 Google Vids 平台直接出现在由人工智能生成的视频中。",
       "_score": 11.0,
-      "chinese_title": "Google Vids现允许你主演自己的AI视频"
+      "chinese_title": "Google Vids 现支持让你成为自己 AI 视频的主角"
     },
     {
       "title": "Why is OpenAI selling a ChatGPT basketball?",
       "url": "https://techcrunch.com/2026/07/16/why-is-openai-selling-a-chatgpt-basketball/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "OpenAI 推出了一款印有 ChatGPT 标志的篮球，引发外界对其品牌营销战略及商业化新举措的关注与讨论。",
+      "summary": "文章探讨了 OpenAI 推出印有 ChatGPT 标志的篮球这一营销举措背后的原因及其引发的讨论。",
       "_score": 11.0,
-      "chinese_title": "6. 为什么 OpenAI 要出售一款 ChatGPT 篮球？"
+      "chinese_title": "OpenAI 为何出售 ChatGPT 篮球？"
     },
     {
       "title": "Moonshot’s upcoming Kimi 3 is expected to close the gap with Anthropic’s Opus 4.8",
       "url": "https://techcrunch.com/2026/07/16/moonshots-upcoming-kimi-3-is-expected-to-close-the-gap-with-anthropics-opus-4-8/",
       "source": "TechCrunch AI",
       "published_at": null,
-      "summary": "业界预测，月之暗面（Moonshot）的新模型 Kimi 3 在性能上将显著提升，有望接近 Anthropic 最新旗舰模型 Opus 4.8 的水平。",
+      "summary": "据预测，Moonshot 公司即将发布的新模型 Kimi 3 将在性能上大幅逼近 Anthropic 的 Opus 4.8。",
       "_score": 11.0,
-      "chinese_title": "7. 月之暗面即将发布的 Kimi 3 有望缩小与 Anthropic Opus 4.8 的差距"
+      "chinese_title": "Moonshot 即将推出的 Kimi 3 有望缩小与 Anthropic Opus 4.8 的差距"
+    },
+    {
+      "title": "Dave Eggers told OpenAI staff  that ChatGPT was ‘silencing an entire generation’",
+      "url": "https://www.theverge.com/ai-artificial-intelligence/967630/dave-eggers-openai-chatgpt-silencing-an-entire-generation",
+      "source": "The Verge AI",
+      "published_at": null,
+      "summary": "作家戴夫·伊格尔斯向 OpenAI 内部人员发出警告，批评 ChatGPT 等 AI 工具对年轻一代表达能力的负面影响。",
+      "_score": 11.0,
+      "chinese_title": "戴夫·伊格尔斯告诫 OpenAI 员工：ChatGPT 正在‘让整整一代人失声’"
     },
     {
       "title": "Apple’s plot to crush OpenAI",
       "url": "https://www.theverge.com/podcast/967244/apple-openai-lawsuit-vergecast",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "分析指出，苹果公司正通过整合自有 AI 技术与生态优势，制定旨在削弱 OpenAI 市场主导地位的战略计划。",
+      "summary": "报道揭示了苹果公司为保护自身生态系统而采取的一系列旨在限制或对抗 OpenAI 扩张的战略举措。",
       "_score": 11.0,
-      "chinese_title": "8. 苹果对抗 OpenAI 的战略布局"
+      "chinese_title": "苹果打压 OpenAI 的计划"
     },
     {
       "title": "Google is renaming NotebookLM to Gemini Notebook",
       "url": "https://www.theverge.com/tech/966112/google-gemini-notebook-notebooklm",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "Google 宣布将其 AI 笔记工具 NotebookLM 正式更名为 Gemini Notebook，以强化其与 Gemini 大模型的深度整合。",
+      "summary": "谷歌宣布将其 AI 笔记应用 NotebookLM 正式更名为 Gemini Notebook，以强化其与 Gemini 大模型的整合。",
       "_score": 11.0,
-      "chinese_title": "9. Google 将 NotebookLM 更名为 Gemini Notebook"
+      "chinese_title": "Google 将 NotebookLM 更名为 Gemini Notebook"
     },
     {
       "title": "Claude can now use your 1Password credentials for you",
       "url": "https://www.theverge.com/tech/966442/1password-anthropic-claude-browser-integration",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "Anthropic 推出的 Claude 新功能支持直接调用 1Password 存储的登录信息，旨在提升用户在网页交互中的操作效率与安全性。",
+      "summary": "Anthropic 的 Claude AI 新增与 1Password 的深度集成，允许用户在安全授权下直接利用密码管理器中的凭据进行身份验证。",
       "_score": 11.0,
-      "chinese_title": "10. Claude 现可直接使用你的 1Password 凭据"
+      "chinese_title": "Claude 现可直接调用您的 1Password 凭据"
     },
     {
       "title": "xAI sues a man for using Grok to generate CSAM ‘deepfakes’",
       "url": "https://www.theverge.com/ai-artificial-intelligence/966293/xai-grok-user-lawsuit-csam",
       "source": "The Verge AI",
       "published_at": null,
-      "summary": "xAI公司采取法律行动，指控有人滥用其Grok人工智能工具制作非法的CSAM深度伪造内容。",
+      "summary": "埃隆·马斯克旗下的 xAI 公司采取法律行动，指控有人滥用其 Grok 模型生成非法且有害的深度伪造内容。",
       "_score": 11.0,
-      "chinese_title": "xAI起诉一名男子利用Grok生成儿童性虐待材料‘深度伪造’视频"
+      "chinese_title": "xAI 起诉一名男子利用 Grok 生成儿童性虐待材料‘深度伪造’视频"
     },
     {
-      "title": "AI slop movies are the new direct-to-video cash grabs",
-      "url": "https://www.theverge.com/entertainment/965616/ash-koosha-odysseus-the-fall-foundtain-zero-tilly-norwood",
-      "source": "The Verge AI",
+      "title": "妙啊！无人机直连卫星传Token",
+      "url": "https://www.qbitai.com/2026/07/453789.html",
+      "source": "量子位",
       "published_at": null,
-      "summary": "分析指出，大量由AI粗制滥造的电影正被用作低成本、快速盈利的直接发行产品，引发行业关注。",
-      "_score": 11.0,
-      "chinese_title": "AI生成的‘垃圾电影’成为新的直接发行圈钱新手段"
+      "summary": "一项新技术实现了无人机通过卫星链路直接传输数据令牌（Token），展示了低延迟、广覆盖的空天通信新能力。",
+      "_score": 9.0,
+      "chinese_title": "妙啊！无人机直连卫星传输 Token"
+    },
+    {
+      "title": "后摩智能携 M50 Inside 终端亮相 WAIC 2026，支撑端侧 AI 算力与终端创新",
+      "url": "https://www.qbitai.com/2026/07/453705.html",
+      "source": "量子位",
+      "published_at": null,
+      "summary": "后摩智能在 WAIC 2026 上展示其 M50 Inside 解决方案，旨在为边缘设备提供强大的 AI 算力支持并推动终端技术创新。",
+      "_score": 9.0,
+      "chinese_title": "后摩智能携 M50 Inside 终端亮相 WAIC 2026，支撑端侧 AI 算力与终端创新"
     }
   ],
   "pages_url": "https://tankex.xyz",
   "cover_image_url": "https://tankex.xyz/cover.jpg",
-  "generated_at": "2026-07-18T02:42:07.935046+00:00"
+  "generated_at": "2026-07-19T02:55:37.468899+00:00"
 }
