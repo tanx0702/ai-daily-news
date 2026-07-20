@@ -1400,6 +1400,7 @@ def collect_news(
     hours: int = None,
     top_n: int = 20,
     rss_timeout: int = 30,
+    diagnostics: dict | None = None,
 ) -> list[dict]:
     """
     采集新闻的主入口。
@@ -1409,6 +1410,7 @@ def collect_news(
         hours: 时间窗口（小时），默认从 DAILY_NEWS_HOURS 读取（36）
         top_n: 输出新闻数量，默认 20
         rss_timeout: 单个 RSS 源超时秒数
+        diagnostics: 可选的影子流程采集统计输出；不传时不影响既有行为
 
     Returns:
         结构化新闻列表，按评分倒序排列
@@ -1584,7 +1586,19 @@ def collect_news(
                 community, st, item["title"][:60], item.get("source", ""),
             )
 
-    return balanced[:top_n]
+    result = balanced[:top_n]
+    if diagnostics is not None:
+        diagnostics.update(
+            {
+                "fetched_total": len(all_candidates),
+                "source_merge_removed": len(all_candidates) - len(merged),
+                "filtered_total": len(filtered),
+                "topic_cluster_removed": cluster_stats["merged"],
+                "final_editorial_dedup_removed": dedup_report["merged_groups"],
+                "returned_candidate_count": len(result),
+            }
+        )
+    return result
 
 
 def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:

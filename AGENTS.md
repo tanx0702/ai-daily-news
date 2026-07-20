@@ -138,4 +138,5 @@ python app.py
 - 采集和 API 失败不能中断整条流程，记录日志后继续。
 - HTML 模板内嵌在 `src/generator.py`。
 - RSS 源在 `config/rss_sources.json` 维护。
+- Git 提交信息默认使用中文；只有用户明确要求时才使用其他语言。
 - 不要提交真实 `.env`、密钥、日志或 `docs/` 生成产物。
