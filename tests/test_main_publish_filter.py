@@ -213,6 +213,99 @@ class MainPublishFilterTests(unittest.TestCase):
         self.assertEqual(review_kwargs["target_count"], 10)
         self.assertEqual(annotate.call_args.args[0], collected)
 
+    def test_pipeline_reviews_only_quality_ready_candidates_before_final_selection(self):
+        collected = [
+            {
+                **_news_items(1)[0],
+                "title": "Ready media story",
+                "chinese_title": "可发布媒体新闻",
+                "source": "Trusted Media",
+            },
+            {
+                **_news_items(1)[0],
+                "title": "Source only story",
+                "chinese_title": "证据不足新闻",
+                "source": "Thin Source",
+            },
+            {
+                **_news_items(1)[0],
+                "title": "Replace story",
+                "chinese_title": "应移除新闻",
+                "source": "Risky Source",
+            },
+            {
+                **_news_items(1)[0],
+                "title": "GitHub activity",
+                "chinese_title": "GitHub 项目动态",
+                "source": "GitHub",
+                "source_type": "github",
+                "source_tier": "community",
+                "metrics": {"github_activity_type": "push"},
+            },
+        ]
+        editorial_inputs = []
+        final_titles = []
+        final_quality_reports = []
+
+        def fake_review(selected_news, **kwargs):
+            for item in [*selected_news, *kwargs["reserves"]]:
+                item["quality_state"] = {
+                    "Ready media story": "ready",
+                    "Source only story": "source_only",
+                    "Replace story": "replace",
+                    "GitHub activity": "ready",
+                }[item["title"]]
+            return selected_news, {
+                "pass": True,
+                "risk_level": "low",
+                "blocked_publish": False,
+                "issues": [],
+                "applied_fixes": [],
+                "publish_filter": {"selected_count": len(selected_news)},
+            }
+
+        def fake_editorial_review(news, **kwargs):
+            editorial_inputs.append([item["title"] for item in news])
+            return {"status": "passed", "applied_count": 0, "notes": []}
+
+        def fake_latest_data(news, *args, **kwargs):
+            final_titles.append([item["title"] for item in news])
+            final_quality_reports.append(kwargs["quality_report"])
+            return {}
+
+        env = {
+            "DAILY_TOP_N": "2",
+            "DAILY_CANDIDATE_POOL_N": "4",
+            "ENABLE_LLM_QUALITY_GATE": "1",
+            "ENABLE_PUBLISH_SAFETY_FILTER": "1",
+            "ENABLE_ARTICLE_IMAGE_FETCH": "0",
+            "LLM_API_KEY": "",
+            "IMAGE_API_KEY": "",
+            "AGNES_API_KEY": "",
+            "OPENAI_API_KEY": "",
+        }
+
+        with patch.dict(os.environ, env), \
+             patch("src.collector.collect_news", return_value=collected), \
+             patch("src.quality_gate.review_daily", side_effect=fake_review), \
+             patch("src.editorial_review.review_editorial_candidates", side_effect=fake_editorial_review), \
+             patch("src.pipeline_artifacts.render_and_save_daily_html"), \
+             patch("src.pipeline_artifacts.render_and_save_wechat_preview"), \
+             patch("src.pipeline_artifacts.build_latest_data", side_effect=fake_latest_data), \
+             patch("src.pipeline_artifacts.save_latest_data", return_value="latest.json"), \
+             patch("src.cover.select_cover_subject", return_value={"mode": "generic", "cover_title": "Today"}), \
+             patch("src.cover.generate_cover_from_news", return_value="cover.jpg"), \
+             patch("src.wechat_draft.publish_daily_article", return_value={"status": "draft_created"}), \
+             patch("src.main._generate_debug_reports"):
+            daily_main._run_pipeline()
+
+        self.assertEqual(editorial_inputs, [["Ready media story", "GitHub activity"]])
+        self.assertEqual(final_titles, [["Ready media story"]])
+        publish_filter = final_quality_reports[0]["publish_filter"]
+        self.assertEqual(publish_filter["selected_count"], 1)
+        self.assertTrue(publish_filter["insufficient_publishable_items"])
+        self.assertEqual(publish_filter["selection"]["selected_count"], 1)
+
     def test_pipeline_generates_local_cover_when_image_key_is_missing(self):
         env = {
             "DAILY_TOP_N": "2",

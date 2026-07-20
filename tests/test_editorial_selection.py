@@ -13,6 +13,26 @@ def _item(title, source, score, tier="media", topic=""):
     }
 
 
+def _editorial_item(
+    title,
+    source,
+    score,
+    *,
+    tier="media",
+    source_type="rss",
+    editorial_score=8.8,
+    event_type="news",
+):
+    item = _item(title, source, score, tier=tier)
+    item["source_type"] = source_type
+    item["_editorial"] = {
+        "score": editorial_score,
+        "event_key": f"event:{title.lower().replace(' ', '-')}",
+        "event_type": event_type,
+    }
+    return item
+
+
 class EditorialSelectionTests(unittest.TestCase):
     def test_selection_caps_a_publisher_at_two_items(self):
         items = [
@@ -115,6 +135,40 @@ class EditorialSelectionTests(unittest.TestCase):
         self.assertFalse(report["cap_relaxed"])
         self.assertTrue(report["insufficient_target"])
         self.assertEqual(report["source_counts"], {"only publisher": 2})
+
+    def test_selection_replaces_community_activity_with_high_quality_soft_cap_story(self):
+        items = [
+            _editorial_item(f"Publisher A {index}", "Publisher A", 100 - index, editorial_score=9.0)
+            for index in range(3)
+        ] + [
+            _editorial_item(f"Publisher B {index}", "Publisher B", 90 - index, editorial_score=8.9)
+            for index in range(2)
+        ] + [
+            _editorial_item("Publisher C", "Publisher C", 80, editorial_score=8.8),
+            _editorial_item(
+                "GitHub activity",
+                "GitHub",
+                70,
+                tier="community",
+                source_type="github",
+                editorial_score=7.2,
+                event_type="github_activity",
+            ),
+        ]
+
+        selected, reserves, report = select_editorial_candidates(
+            items,
+            target_count=6,
+            max_items_per_source=2,
+            min_primary_or_research=0,
+        )
+
+        self.assertEqual(len(selected), 6)
+        self.assertNotIn("GitHub activity", [item["title"] for item in selected])
+        self.assertEqual(sum(item["source"] == "Publisher A" for item in selected), 3)
+        self.assertTrue(report["cap_relaxed"])
+        self.assertEqual(report["community_radar_excluded_count"], 1)
+        self.assertIn("GitHub activity", [item["title"] for item in reserves])
 
 
 if __name__ == "__main__":

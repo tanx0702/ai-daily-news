@@ -51,6 +51,24 @@ def _ordered(items: Iterable[dict]) -> list[dict]:
     )
 
 
+def _is_community_radar(item: dict) -> bool:
+    """Keep unverified community activity available as a reserve only."""
+    source_type = str(item.get("source_type") or "").lower()
+    editorial = item.get("_editorial") or {}
+    event_type = str(editorial.get("event_type") or "")
+
+    if source_type == "github":
+        return event_type != "github_release"
+    if source_type == "hn":
+        metrics = item.get("metrics") or {}
+        return not bool(metrics.get("cross_source_count"))
+    return item.get("source_tier") == "community"
+
+
+def _editorial_score(item: dict) -> float:
+    return float((item.get("_editorial") or {}).get("score", 0) or 0)
+
+
 def select_editorial_candidates(
     items: list[dict],
     target_count: int,
@@ -68,9 +86,9 @@ def select_editorial_candidates(
     topic_counts: Counter[str] = Counter()
     event_counts: Counter[str] = Counter()
 
-    def can_select(item: dict) -> bool:
+    def can_select(item: dict, *, source_cap: int) -> bool:
         source = str(item.get("source", "")).strip().lower()
-        if source and source_counts[source] >= max_items_per_source:
+        if source and source_counts[source] >= source_cap:
             return False
         topic = _topic_key(item)
         if topic and topic_counts[topic] >= max_items_per_topic:
@@ -95,7 +113,11 @@ def select_editorial_candidates(
     for item in pool:
         if len(selected) >= target_count:
             break
-        if item.get("source_tier") in {"primary", "research"} and can_select(item):
+        if (
+            not _is_community_radar(item)
+            and item.get("source_tier") in {"primary", "research"}
+            and can_select(item, source_cap=max_items_per_source)
+        ):
             select(item)
             if sum(
                 candidate.get("source_tier") in {"primary", "research"}
@@ -106,12 +128,29 @@ def select_editorial_candidates(
     for item in pool:
         if len(selected) >= target_count:
             break
-        if item in selected or not can_select(item):
+        if (
+            item in selected
+            or _is_community_radar(item)
+            or not can_select(item, source_cap=max_items_per_source)
+        ):
             continue
         select(item)
 
     # 发布候选宁可缩短，也不能为了凑满日报而破坏来源或主题上限。
     cap_relaxed = False
+    soft_source_cap = max(max_items_per_source, target_count // 2)
+    for item in pool:
+        if len(selected) >= target_count:
+            break
+        if (
+            item in selected
+            or _is_community_radar(item)
+            or _editorial_score(item) < 8.5
+            or not can_select(item, source_cap=soft_source_cap)
+        ):
+            continue
+        select(item)
+        cap_relaxed = True
 
     selected_ids = {id(item) for item in selected}
     reserves = [item for item in pool if id(item) not in selected_ids]
@@ -140,6 +179,9 @@ def select_editorial_candidates(
         "topic_counts": dict(final_topic_counts),
         "event_counts": dict(final_event_counts),
         "cap_relaxed": cap_relaxed,
+        "community_radar_excluded_count": sum(
+            _is_community_radar(item) for item in pool
+        ),
         "insufficient_target": len(selected) < target_count,
     }
     return selected, reserves, report

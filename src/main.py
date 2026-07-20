@@ -184,32 +184,6 @@ def _run_pipeline():
     # 草稿仍会照常创建；此步骤只提升最终选题，并保留可审计诊断。
     qg_timeout = int(os.environ.get("QUALITY_GATE_TIMEOUT", str(max(llm_timeout, 45))))
     editorial_review_report = {"status": "skipped", "applied_count": 0, "notes": []}
-    if qg_enabled and candidate_news:
-        from src.editorial_review import review_editorial_candidates
-
-        editorial_llm = resolve_quality_llm_config()
-        editorial_review_report = review_editorial_candidates(
-            candidate_news,
-            api_key=editorial_llm.api_key,
-            model=editorial_llm.model,
-            base_url=editorial_llm.base_url,
-            timeout=qg_timeout,
-        )
-        if editorial_review_report.get("applied_count", 0):
-            selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
-                candidate_news,
-                target_count=top_n,
-                pool_size=candidate_pool_n,
-                max_items_per_source=max_items_per_source,
-                max_items_per_topic=max_items_per_topic,
-                min_primary_or_research=min_primary_or_research,
-            )
-            news_list = selected_candidates
-            logger.info(
-                "Editorial review reselected %d candidates with %d reserves",
-                len(selected_candidates), len(reserve_candidates),
-            )
-
     # === 2.5 质检门禁 ===
     quality_report = {}
 
@@ -234,8 +208,6 @@ def _run_pipeline():
             max_items_per_topic=max_items_per_topic,
             min_primary_or_research=min_primary_or_research,
         )
-        quality_report["editorial_selection"] = selection_report
-        quality_report["editorial_review"] = editorial_review_report
         logger.info(
                 "Quality gate: pass=%s, risk=%s, blocked=%s",
                 quality_report.get("pass"),
@@ -264,6 +236,50 @@ def _run_pipeline():
         }
 
     # 质检回填可能带入不同媒体的同一事件；发布前再做一次事件级去重。
+    if qg_enabled:
+        eligible_candidates = [
+            item
+            for item in candidate_news
+            if item.get("quality_state", "ready") == "ready"
+        ]
+        if eligible_candidates:
+            from src.editorial_review import review_editorial_candidates
+
+            editorial_llm = resolve_quality_llm_config()
+            editorial_review_report = review_editorial_candidates(
+                eligible_candidates,
+                api_key=editorial_llm.api_key,
+                model=editorial_llm.model,
+                base_url=editorial_llm.base_url,
+                timeout=qg_timeout,
+            )
+            selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
+                eligible_candidates,
+                target_count=top_n,
+                pool_size=candidate_pool_n,
+                max_items_per_source=max_items_per_source,
+                max_items_per_topic=max_items_per_topic,
+                min_primary_or_research=min_primary_or_research,
+            )
+            news_list = selected_candidates
+            publish_filter_report = quality_report.get("publish_filter")
+            if isinstance(publish_filter_report, dict):
+                publish_filter_report.update(
+                    {
+                        "selected_count": len(selected_candidates),
+                        "insufficient_publishable_items": len(selected_candidates) < top_n,
+                        "selection": selection_report,
+                    }
+                )
+            logger.info(
+                "Final editorial selection chose %d quality-ready candidates with %d reserves",
+                len(selected_candidates),
+                len(reserve_candidates),
+            )
+
+        quality_report["editorial_selection"] = selection_report
+        quality_report["editorial_review"] = editorial_review_report
+
     from src.collector import apply_final_editorial_dedup
 
     news_list, event_dedup_report = apply_final_editorial_dedup(news_list, top_n=top_n)
