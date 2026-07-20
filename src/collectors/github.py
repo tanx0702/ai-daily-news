@@ -10,6 +10,7 @@ GITHUB_TOKEN（可选）：设置后 API 限流从 10 次/min 提升到 30 次/m
 
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from math import log1p
@@ -34,6 +35,9 @@ KEYWORD_FALLBACK_TERMS = ["AI", "LLM", "agent"]
 # 最小 star 阈值
 MIN_STARS = 5
 RECENT_ACTIVITY_DAYS = 7
+RELEASE_CANDIDATE_LIMIT = 8
+MIN_PROJECT_DESCRIPTION_LENGTH = 24
+MIN_RELEASE_NOTES_LENGTH = 40
 
 
 class GitHubCollector(BaseCollector):
@@ -84,7 +88,7 @@ class GitHubCollector(BaseCollector):
     def fetch(self) -> list[dict]:
         """搜索 GitHub AI 项目。"""
         seen_ids = set()
-        candidates = []
+        repositories = []
         cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_ACTIVITY_DAYS)
         recent_date = cutoff.strftime("%Y-%m-%d")
 
@@ -147,9 +151,7 @@ class GitHubCollector(BaseCollector):
                     if rid in seen_ids:
                         continue
                     seen_ids.add(rid)
-                    candidate = self._repo_to_candidate(item, cutoff=cutoff)
-                    if candidate:
-                        candidates.append(candidate)
+                    repositories.append(item)
 
                 if self._rate_limited:
                     break
@@ -162,6 +164,7 @@ class GitHubCollector(BaseCollector):
 
         # 活跃仓库通常没有维护 topic。只有 topic 查询没有任何合格候选时，才以
         # 名称/描述关键词补充检索，避免每次任务都额外消耗搜索额度。
+        candidates = self._release_candidates(repositories, cutoff=cutoff)
         if not candidates and not self._rate_limited:
             for term in KEYWORD_FALLBACK_TERMS:
                 query = (
@@ -180,13 +183,13 @@ class GitHubCollector(BaseCollector):
                     if rid in seen_ids:
                         continue
                     seen_ids.add(rid)
-                    candidate = self._repo_to_candidate(item, cutoff=cutoff)
-                    if candidate:
-                        candidates.append(candidate)
+                    repositories.append(item)
                 if self._rate_limited:
                     break
                 time.sleep(1.2)
 
+        if not candidates:
+            candidates = self._release_candidates(repositories, cutoff=cutoff)
         candidates.sort(key=lambda candidate: candidate.get("_gh_hotness", 0), reverse=True)
 
         # 诊断日志
@@ -198,8 +201,7 @@ class GitHubCollector(BaseCollector):
 
         if not candidates and not self._rate_limited:
             logger.info(
-                "GitHub: no recent new or active AI repos found with stars >= %d.",
-                MIN_STARS,
+                "GitHub: no recent AI releases with complete project and change evidence found.",
             )
 
         return candidates
@@ -298,7 +300,7 @@ class GitHubCollector(BaseCollector):
         except ValueError:
             return None
 
-    def _repo_to_candidate(
+    def _legacy_repo_to_candidate(
         self,
         repo: dict,
         *,
@@ -358,6 +360,180 @@ class GitHubCollector(BaseCollector):
         )
         candidate["scores"]["community"] = round(community_hotness, 1)
         candidate["_gh_hotness"] = round(community_hotness, 1)
+        return candidate
+
+    def _repo_to_candidate(
+        self,
+        repo: dict,
+        *,
+        cutoff: Optional[datetime] = None,
+    ) -> Optional[dict]:
+        """Do not treat repository search metadata as a publishable event."""
+        return None
+
+    def _release_candidates(
+        self,
+        repositories: list[dict],
+        *,
+        cutoff: datetime,
+    ) -> list[dict]:
+        """Enrich a bounded repository shortlist with explainable release evidence."""
+        candidates: list[dict] = []
+        for repo in repositories[:RELEASE_CANDIDATE_LIMIT]:
+            if self._is_spam_repo(repo):
+                continue
+            release = self._fetch_latest_release(repo)
+            if not release:
+                continue
+            project_description = self._fetch_readme_excerpt(repo)
+            if not project_description:
+                project_description = self._clean_evidence_text(
+                    repo.get("description", ""),
+                    limit=600,
+                )
+            candidate = self._release_to_candidate(
+                repo,
+                release,
+                project_description=project_description,
+                cutoff=cutoff,
+            )
+            if candidate:
+                candidates.append(candidate)
+        return candidates
+
+    def _fetch_latest_release(self, repo: dict) -> Optional[dict]:
+        """Fetch the latest stable release without allowing a failure to stop collection."""
+        name = str(repo.get("full_name") or "").strip()
+        if not name:
+            return None
+        try:
+            response = requests.get(
+                f"{GITHUB_API_BASE}/repos/{name}/releases/latest",
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            release = response.json()
+            return release if isinstance(release, dict) else None
+        except requests.exceptions.Timeout:
+            logger.warning("GitHub: release lookup timed out for %s", name)
+        except Exception as exc:
+            logger.warning("GitHub: release lookup failed for %s: %s", name, exc)
+        return None
+
+    def _fetch_readme_excerpt(self, repo: dict) -> str:
+        """Return a compact project description from the repository README."""
+        name = str(repo.get("full_name") or "").strip()
+        if not name:
+            return ""
+        headers = {**self._headers, "Accept": "application/vnd.github.raw+json"}
+        try:
+            response = requests.get(
+                f"{GITHUB_API_BASE}/repos/{name}/readme",
+                headers=headers,
+                timeout=self.timeout,
+            )
+            if response.status_code == 404:
+                return ""
+            response.raise_for_status()
+            return self._readme_to_excerpt(response.text)
+        except requests.exceptions.Timeout:
+            logger.warning("GitHub: README lookup timed out for %s", name)
+        except Exception as exc:
+            logger.warning("GitHub: README lookup failed for %s: %s", name, exc)
+        return ""
+
+    @staticmethod
+    def _clean_evidence_text(value: object, *, limit: int) -> str:
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        return text[:limit].strip()
+
+    @classmethod
+    def _readme_to_excerpt(cls, content: str) -> str:
+        cleaned_lines: list[str] = []
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("<!--") or line.startswith("![]"):
+                continue
+            line = re.sub(r"^#{1,6}\s*", "", line)
+            line = re.sub(r"^[-*>]+\s*", "", line)
+            line = re.sub(r"!\[[^]]*\]\([^)]*\)", "", line)
+            line = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", line)
+            if line:
+                cleaned_lines.append(line)
+            if len(" ".join(cleaned_lines)) >= 600:
+                break
+        return cls._clean_evidence_text(" ".join(cleaned_lines), limit=600)
+
+    def _release_to_candidate(
+        self,
+        repo: dict,
+        release: dict,
+        *,
+        project_description: str,
+        cutoff: Optional[datetime] = None,
+    ) -> Optional[dict]:
+        """Create a candidate only when a stable, explainable release is evidenced."""
+        name = str(repo.get("full_name") or "").strip()
+        tag_name = self._clean_evidence_text(release.get("tag_name"), limit=80)
+        release_url = self._clean_evidence_text(release.get("html_url"), limit=500)
+        release_notes = self._clean_evidence_text(release.get("body"), limit=1400)
+        project_description = self._clean_evidence_text(project_description, limit=600)
+        published_at = self._parse_github_time(str(release.get("published_at") or ""))
+        cutoff = cutoff or (datetime.now(timezone.utc) - timedelta(days=RECENT_ACTIVITY_DAYS))
+
+        if (
+            not name
+            or release.get("draft")
+            or release.get("prerelease")
+            or not tag_name
+            or not release_url
+            or published_at is None
+            or published_at < cutoff
+            or len(project_description) < MIN_PROJECT_DESCRIPTION_LENGTH
+            or len(release_notes) < MIN_RELEASE_NOTES_LENGTH
+        ):
+            return None
+
+        stars = repo.get("stargazers_count", 0) or 0
+        forks = repo.get("forks_count", 0) or 0
+        topics = repo.get("topics", []) or []
+        hotness = log1p(stars) * 3 + log1p(forks) * 1.5 + 12.0
+        source_summary = (
+            f"GitHub Release {tag_name}. Project: {project_description}. "
+            f"Release notes: {release_notes}"
+        )
+        candidate = self.make_candidate(
+            id_=f"github-release-{repo['id']}-{tag_name}",
+            title=f"{name} {tag_name}"[:200],
+            url=release_url,
+            source="GitHub",
+            source_type="github",
+            published_at=published_at,
+            published_source="api",
+            summary=source_summary[:2000],
+            author=repo.get("owner", {}).get("login", ""),
+            tags=topics,
+            metrics={
+                "github_stars": stars,
+                "github_stars_recent": stars,
+                "github_activity_type": "github_release",
+                "github_release_tag": tag_name,
+                "github_release_url": release_url,
+                "github_created_at": str(repo.get("created_at") or ""),
+                "github_pushed_at": str(repo.get("pushed_at") or ""),
+            },
+        )
+        candidate["github_evidence"] = {
+            "project_description": project_description,
+            "release_notes": release_notes,
+            "release_tag": tag_name,
+            "release_url": release_url,
+        }
+        candidate["scores"]["community"] = round(hotness, 1)
+        candidate["_gh_hotness"] = round(hotness, 1)
         return candidate
 
     @staticmethod

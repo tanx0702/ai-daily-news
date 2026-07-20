@@ -290,6 +290,17 @@ def _format_news_evidence(index: int, news: dict) -> str:
     if source_type:
         lines.append(f"来源类型: {source_type}")
     lines.append(f"原始摘要: {source_summary or '（未提供）'}")
+    github_evidence = news.get("github_evidence") or {}
+    if source_type == "github" and github_evidence:
+        project_description = clean_display_text(
+            github_evidence.get("project_description") or ""
+        )
+        release_notes = clean_display_text(github_evidence.get("release_notes") or "")
+        release_tag = clean_display_text(github_evidence.get("release_tag") or "")
+        if project_description:
+            lines.append(f"GitHub 项目用途: {project_description}")
+        if release_notes:
+            lines.append(f"GitHub 本次 Release {release_tag or '（版本未提供）'}: {release_notes}")
     return "\n".join(lines)
 
 
@@ -407,6 +418,9 @@ def summarize_news(
             "7. 优先使用陈述句，确保信息完整\n"
             "8. 可使用设问句，但必须确保语法正确\n"
             "9. 不要为了吸引眼球改写事实\n\n"
+            "【GitHub Release】\n"
+            "10. 对 GitHub 正式 Release，标题和摘要必须先说明项目是什么，再说明本次发布改了什么及其实际影响；"
+            "不得把 stars、forks 或近期 push 写成新闻主体。\n\n"
             f"{_CHINESE_NEWS_STYLE_PROMPT}\n\n"
             "同时为每条新闻生成一段中文摘要（80-140 字，通常 2 句），"
             "第一句说明发生了什么，第二句说明影响、风险或不确定性。"

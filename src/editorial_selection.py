@@ -51,6 +51,13 @@ def _ordered(items: Iterable[dict]) -> list[dict]:
     )
 
 
+def _has_explainable_github_release(item: dict) -> bool:
+    evidence = item.get("github_evidence") or {}
+    project_description = str(evidence.get("project_description") or "").strip()
+    release_notes = str(evidence.get("release_notes") or "").strip()
+    return len(project_description) >= 24 and len(release_notes) >= 40
+
+
 def _is_community_radar(item: dict) -> bool:
     """Keep unverified community activity available as a reserve only."""
     source_type = str(item.get("source_type") or "").lower()
@@ -58,7 +65,7 @@ def _is_community_radar(item: dict) -> bool:
     event_type = str(editorial.get("event_type") or "")
 
     if source_type == "github":
-        return event_type != "github_release"
+        return event_type != "github_release" or not _has_explainable_github_release(item)
     if source_type == "hn":
         metrics = item.get("metrics") or {}
         return not bool(metrics.get("cross_source_count"))

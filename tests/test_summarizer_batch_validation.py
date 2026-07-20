@@ -171,6 +171,36 @@ class SummarizerBatchValidationTests(unittest.TestCase):
         self.assertIn("原始摘要: The official announcement confirms a product rename and rollout date.", prompt)
         self.assertEqual(fake_client.calls[0]["response_format"], {"type": "json_object"})
 
+    def test_github_release_prompt_includes_project_and_change_evidence(self):
+        response = _json({"items": [{
+            "index": 1,
+            "chinese_title": "Release Agent 发布 v1.4.0",
+            "summary": "Release Agent 是为编码智能体应用仓库规则的工具。本次新增规则包和 TypeScript 集成，方便团队统一开发约束。",
+        }]})
+        fake_client = _FakeOpenAI([response])
+        news = [{
+            "title": "acme/release-agent v1.4.0",
+            "source_title": "acme/release-agent v1.4.0",
+            "source_summary": "GitHub Release v1.4.0.",
+            "source": "GitHub",
+            "source_type": "github",
+            "url": "https://github.com/acme/release-agent/releases/tag/v1.4.0",
+            "github_evidence": {
+                "project_description": "A tool that applies repository rules to coding agents.",
+                "release_notes": "Adds repository rule packs and a TypeScript integration for coding agents.",
+                "release_tag": "v1.4.0",
+            },
+        }]
+
+        with patch("src.summarizer.OpenAI", return_value=fake_client):
+            summarize_news(news, api_key="test-key")
+
+        system_prompt = fake_client.calls[0]["messages"][0]["content"]
+        evidence_prompt = fake_client.calls[0]["messages"][1]["content"]
+        self.assertIn("项目是什么", system_prompt)
+        self.assertIn("项目用途: A tool that applies repository rules to coding agents.", evidence_prompt)
+        self.assertIn("本次 Release v1.4.0: Adds repository rule packs", evidence_prompt)
+
     def test_duplicate_or_missing_index_retries_once_then_uses_source_fallback(self):
         batch_response = _json({"items": [
             {"index": 1, "chinese_title": "重复一", "summary": "摘要一"},

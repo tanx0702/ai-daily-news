@@ -170,6 +170,32 @@ class EditorialSelectionTests(unittest.TestCase):
         self.assertEqual(report["community_radar_excluded_count"], 1)
         self.assertIn("GitHub activity", [item["title"] for item in reserves])
 
+    def test_selection_keeps_release_without_explainable_evidence_in_reserve(self):
+        incomplete_release = _editorial_item(
+            "GitHub release without notes",
+            "GitHub",
+            100,
+            tier="community",
+            source_type="github",
+            editorial_score=9.5,
+            event_type="github_release",
+        )
+        incomplete_release["github_evidence"] = {
+            "project_description": "A tool that applies repository rules to coding agents.",
+            "release_notes": "",
+        }
+        media_story = _editorial_item("Verified media story", "Publisher", 90, editorial_score=8.8)
+
+        selected, reserves, report = select_editorial_candidates(
+            [incomplete_release, media_story],
+            target_count=1,
+            min_primary_or_research=0,
+        )
+
+        self.assertEqual([item["title"] for item in selected], ["Verified media story"])
+        self.assertEqual([item["title"] for item in reserves], ["GitHub release without notes"])
+        self.assertEqual(report["community_radar_excluded_count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
