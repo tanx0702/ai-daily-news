@@ -1,10 +1,14 @@
 """
-腾讯云 SCF 推送客户端
+腾讯云 SCF 推送客户端（历史方案）
 
-GitHub Actions 调用此模块，将生成的新闻数据 POST 到腾讯云 SCF HTTP 触发器，
-由 SCF 负责存入 COS 供微信客服消息读取使用。
+历史上此模块用于把生成的新闻数据 POST 到腾讯云 SCF HTTP 触发器，
+由 SCF 存入 COS 供微信客服消息读取使用。
 
-环境变量（GitHub Actions secrets）：
+当前生产链路已经迁移到 VPS + Docker Compose：
+cron 每天执行 `python -m src.main`，nginx 托管 `docs/`，Flask 处理微信回调，
+`src.wechat_draft` 只创建公众号草稿，后台手动发布。
+
+环境变量（旧 SCF 方案）：
   NEWS_SCF_URL    - SCF HTTP 触发器地址，如 https://service-xxxxx.ap-guangzhou.myqcloud.com/release/
 
 调用方式：
@@ -36,7 +40,7 @@ def push_to_tencent_scf(
     Args:
         news_list: 新闻列表，每项包含 title, chinese_title, summary, url, source 等字段
         date_str: 日期字符串，如 "2026-07-02"
-        pages_url: GitHub Pages 日报页面 URL
+        pages_url: 日报页面 URL
         scf_url: SCF HTTP 触发器地址，默认从环境变量 NEWS_SCF_URL 读取
         cover_image_url: 封面图 URL
 

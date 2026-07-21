@@ -4,7 +4,44 @@ __pycache__/
 *.egg-info/
 .venv/
 .claude/
-.agents/
 AGENTS.md
 CLAUDE.md
 personMdDosc
+.tmp/
+tmp/
+.worktrees/
+*.tgz
+
+# 运行产物 — 每天由管道重新生成，不入库
+docs/
+
+# 日志文件 — 按天切割，不入库
+logs/
+
+# spec-superflow 项目级工作流资产需要随仓库提交；
+# 其他本地 agent 资产继续忽略。
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/bug-investigator/
+!.agents/skills/bug-investigator/**
+!.agents/skills/build-executor/
+!.agents/skills/build-executor/**
+!.agents/skills/code-reviewer/
+!.agents/skills/code-reviewer/**
+!.agents/skills/contract-builder/
+!.agents/skills/contract-builder/**
+!.agents/skills/need-explorer/
+!.agents/skills/need-explorer/**
+!.agents/skills/release-archivist/
+!.agents/skills/release-archivist/**
+!.agents/skills/spec-merger/
+!.agents/skills/spec-merger/**
+!.agents/skills/spec-writer/
+!.agents/skills/spec-writer/**
+!.agents/skills/workflow-start/
+!.agents/skills/workflow-start/**
+!.agents/spec-superflow/
+!.agents/spec-superflow/**
+!.agents/spec-superflow/docs/
+!.agents/spec-superflow/docs/**

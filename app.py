@@ -6,7 +6,7 @@ Flask 服务 — AI 日报微信回调 + 新闻 API
   GET /health        — 健康检查
   GET /api/news      — 返回最新新闻 JSON
 
-部署：docker compose up -d（Caddy 自动 HTTPS，反代到本服务 :5000）
+部署：docker compose up -d（nginx 负责 HTTPS、静态文件和 /wechat 反代）
 """
 
 import hashlib
@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from flask import Flask, jsonify, request
+from src.time_utils import report_date_str
 
 # ==================== 配置 ====================
 
@@ -37,6 +38,18 @@ WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "")
 WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "")
 WECHAT_TOKEN = os.environ.get("WECHAT_TOKEN", "")
 NEWS_DATA_FILE = os.environ.get("NEWS_DATA_FILE", "/app/docs/latest.json")
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    val = os.environ.get(name, "").strip().lower()
+    if not val:
+        return default
+    if val in ("1", "true", "yes", "on"):
+        return True
+    if val in ("0", "false", "no", "off"):
+        return False
+    return default
+
 
 # ==================== 微信 API ====================
 
@@ -130,8 +143,13 @@ def _build_xml_reply(to_user: str, content: str) -> str:
 def _verify_signature(signature: str, timestamp: str, nonce: str) -> bool:
     """验证微信签名。"""
     if not WECHAT_TOKEN:
-        logger.warning("WECHAT_TOKEN not configured, skipping signature verification")
-        return True
+        if _env_bool("ALLOW_INSECURE_WECHAT_TOKEN", False):
+            logger.warning(
+                "WECHAT_TOKEN not configured; insecure signature bypass is enabled"
+            )
+            return True
+        logger.error("WECHAT_TOKEN not configured; rejecting WeChat request")
+        return False
     tmp = sorted([WECHAT_TOKEN, timestamp, nonce])
     return hashlib.sha1("".join(tmp).encode()).hexdigest() == signature
 
@@ -153,13 +171,24 @@ def _load_news() -> list[dict]:
         return []
 
 
+def _load_publication_status() -> dict:
+    """Read the latest pipeline publication result without failing the web service."""
+    try:
+        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        publication = data.get("publication", {})
+        return publication if isinstance(publication, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 def _format_summary(news_list: list[dict], full: bool = False) -> str:
     """格式化新闻摘要文本。"""
     if not news_list:
         return "暂无今日 AI 新闻，请稍后再试。"
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    lines = [f"🤖 AI 日报 {today}", f"共 {len(news_list)} 条新闻\n"]
+    today = report_date_str()
+    lines = [f"今日AI要闻 · {today}", f"共 {len(news_list)} 条精选\n"]
 
     limit = min(len(news_list), 20) if full else min(len(news_list), 10)
     for i, item in enumerate(news_list[:limit], 1):
@@ -181,7 +210,7 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
         lines.append(f"\n... 还有 {len(news_list) - limit} 条新闻")
 
     pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
-    lines.append(f"\n👉 完整日报: {pages_url}")
+    lines.append(f"\n完整内容: {pages_url}")
     return "\n".join(lines)
 
 
@@ -191,11 +220,12 @@ def _format_summary(news_list: list[dict], full: bool = False) -> str:
 @app.route("/wechat", methods=["GET", "POST"])
 def wechat_callback():
     """微信服务器回调。"""
+    signature = request.args.get("signature", "")
+    timestamp = request.args.get("timestamp", "")
+    nonce = request.args.get("nonce", "")
+
     if request.method == "GET":
         # 首次配置时的 URL 验证
-        signature = request.args.get("signature", "")
-        timestamp = request.args.get("timestamp", "")
-        nonce = request.args.get("nonce", "")
         echostr = request.args.get("echostr", "")
 
         if echostr and _verify_signature(signature, timestamp, nonce):
@@ -203,6 +233,9 @@ def wechat_callback():
         return "signature verify failed", 403
 
     # POST: 接收用户消息
+    if not _verify_signature(signature, timestamp, nonce):
+        return "signature verify failed", 403
+
     xml_body = request.data
     parsed = _parse_wechat_xml(xml_body)
     if not parsed:
@@ -238,7 +271,7 @@ def wechat_callback():
 
     # 默认回复
     help_text = (
-        "欢迎使用 AI 日报！\n\n"
+        "欢迎阅读今日AI要闻。\n\n"
         "发送「日报」获取今日 AI 新闻摘要\n"
         "发送「完整」获取完整新闻列表\n\n"
         "每天 8:00 自动更新。"
@@ -250,10 +283,16 @@ def wechat_callback():
 @app.route("/health")
 def health():
     """健康检查端点。"""
+    publication = _load_publication_status()
+    publication_status = publication.get("status", "not_run")
+    callback_configured = bool(WECHAT_TOKEN)
+    degraded = not callback_configured or publication_status in {"blocked", "failed"}
     return jsonify({
-        "status": "running",
+        "status": "degraded" if degraded else "running",
         "service": "ai-daily-news",
         "time": datetime.now(timezone.utc).isoformat(),
+        "wechat_callback": {"configured": callback_configured},
+        "publication": publication or {"status": "not_run"},
     })
 
 

@@ -2,7 +2,7 @@
 腾讯云 SCF 函数入口
 
 双路由设计：
-  - ?source=github  : 接收 GitHub Actions 推送的新闻 JSON，存入 COS
+  - ?source=github  : 历史兼容入口；旧 GitHub Actions/SCF 方案曾通过此参数推送新闻 JSON
   - ?source=wechat  : 接收微信服务器 XML 回调，解析关键词，推送客服消息
 
 环境变量（SCF 控制台配置）：
@@ -225,7 +225,7 @@ def _download_from_cos() -> list[dict]:
 
 def handle_github_post(body: bytes) -> dict:
     """
-    处理 GitHub Actions 推送的新闻数据。
+    处理旧 GitHub Actions/SCF 方案推送的新闻数据。
 
     期望 JSON body:
     {

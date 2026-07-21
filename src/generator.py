@@ -10,7 +10,10 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from jinja2 import Environment, BaseLoader
+from jinja2 import BaseLoader, Environment
+from src.llm_config import resolve_text_llm_config
+from src.text_utils import clean_display_text, safe_http_url
+from src.time_utils import report_date_str
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +24,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI 日报 {{ date }}</title>
+    <title>今日AI要闻 {{ date }}</title>
     <style>
         /* --- Reset & Base --- */
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -266,9 +269,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="wrapper">
         <div class="header">
             <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
-            <h1>🤖 AI 日报</h1>
+            <h1>今日AI要闻</h1>
             <div class="date">{{ date }}</div>
-            <div class="count">今日 {{ news|length }} 条 AI 新闻</div>
+            <div class="count">{{ news|length }} 条精选</div>
         </div>
 
         {% for source_name, items in grouped_news.items() %}
@@ -313,7 +316,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                 {% endfor %}
             </div>
             <div class="powered">
-                Powered by <a href="https://github.com/{{ github_repo }}" target="_blank">AI Daily News Agent</a>
+                Powered by <a href="https://github.com/{{ github_repo }}" target="_blank">News Agent</a>
             </div>
         </div>
     </div>
@@ -354,7 +357,7 @@ def render_daily_html(
         HTML 字符串
     """
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if archive_links is None:
         archive_links = []
     if github_repo is None:
@@ -364,6 +367,11 @@ def render_daily_html(
     formatted_news = []
     for item in news_list:
         news_item = dict(item)
+        news_item["title"] = clean_display_text(news_item.get("title", ""))
+        news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
+        news_item["summary"] = clean_display_text(news_item.get("summary", ""))
+        news_item["source"] = clean_display_text(news_item.get("source", ""))
+        news_item["url"] = safe_http_url(news_item.get("url", ""))
         pub = news_item.get("published_at")
         if isinstance(pub, datetime):
             news_item["published_at"] = pub.strftime("%m/%d %H:%M")
@@ -378,13 +386,13 @@ def render_daily_html(
             grouped[region] = []
         grouped[region].append(item)
 
-    env = Environment(loader=BaseLoader())
+    env = Environment(loader=BaseLoader(), autoescape=True)
     template = env.from_string(HTML_TEMPLATE)
     return template.render(
         date=date_str,
         news=formatted_news,
         grouped_news=grouped,
-        archive_links=archive_links[-7:],
+        archive_links=[safe_http_url(link) for link in archive_links[-7:] if safe_http_url(link)],
         github_repo=github_repo,
     )
 
@@ -396,186 +404,278 @@ def render_wechat_article(
     cover_image_url: str = "",
 ) -> str:
     """
-    生成微信推文 HTML，遵循 md2wechat 专业排版规范。
+    生成微信推文 HTML —— 确定性内联样式模板。
 
-    关键规则（来自 md2wechat skill）：
-    - 所有全局样式在 wrapper <div> 上，非 <body>
-    - 每个 <p> 必须显式 color，防止微信编辑器重置为黑色
-    - 海洋静谧主题：深邃蓝灰色调，理性专业
+    设计原则：
+    - 纯内联 style，不使用 <style> 或 <script>
+    - 每个文本标签显式 color / font-size / line-height
+    - 克制、清爽的中文科技媒体风格
+    - 所有动态文本通过 html.escape() 处理
     """
+    import html as _html
+
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
+    pages_url = safe_http_url(pages_url) or "https://tankex.xyz"
+    cover_image_url = safe_http_url(cover_image_url)
 
-    # 按来源分组
-    grouped: dict[str, list[dict]] = {}
-    for item in news_list:
-        source = item.get("source", "Unknown")
-        region = _guess_region(source)
-        grouped.setdefault(region, []).append(item)
+    # ── 色板 ──
+    PAGE_BG = "#f7f8fa"
+    CARD_BG = "#ffffff"
+    TEXT_MAIN = "#111827"
+    TEXT_BODY = "#374151"
+    TEXT_MUTED = "#6b7280"
+    ACCENT = "#2563eb"
+    ACCENT_BG = "#eff6ff"
+    BORDER = "#e5e7eb"
+    DIVIDER = "#d1d5db"
 
-    # ── Ocean Calm 色板（来自 md2wechat 主题规范）──
-    BG = "#ffffff"
-    TEXT = "#3a4150"
-    TITLE_C = "#2c3e50"
-    ACCENT = "#3d6a8a"
-    ACCENT_LIGHT = "#edf3f8"
-    MUTED = "#8a94a0"
-    DIVIDER = "rgba(58,65,80,0.12)"
-    GLOW = "0 0 10px rgba(74,124,155,0.35)"
-
-    p: list[str] = []
-
-    # ══════════════════════════════════════
-    # Wrapper — md2wechat 规范：全局样式必须在此
-    # 精致网格纹理背景（ocean-calm 风格）
-    # ══════════════════════════════════════
-    p.append(
-        f'<div style="background-color:{BG};'
-        f'background-image:linear-gradient(rgba(74,124,155,0.03) 1px,transparent 1px),'
-        f'linear-gradient(90deg,rgba(74,124,155,0.03) 1px,transparent 1px);'
-        f'background-size:24px 24px;padding:0;">'
-    )
-
-    # ══════════════════════════════════════
-    # Hero 封面图
-    # ══════════════════════════════════════
-    if cover_image_url:
-        p.append(
-            f'<img src="{cover_image_url}" '
-            f'style="display:block;width:100%;height:auto;margin:0;padding:0;" '
-            f'alt="AI 日报封面" />'
+    def esc(s: str, *, collapse_whitespace: bool = True) -> str:
+        return _html.escape(
+            clean_display_text(s, collapse_whitespace=collapse_whitespace),
+            quote=True,
         )
 
-    # ══════════════════════════════════════
-    # 头部 — 居中标题 + 下方短装饰线
-    # ══════════════════════════════════════
-    p.append(
-        f'<section style="text-align:center;padding:44px 16px 32px;">'
-        f'<p style="margin:0 0 8px;font-size:30px;font-weight:700;'
-        f'color:{TITLE_C};letter-spacing:1px;">'
-        f'AI 日报</p>'
-        f'<p style="margin:0 0 16px;font-size:14px;color:{MUTED};">'
-        f'{date_str}  ·  今日精选 {len(news_list)} 条</p>'
-        f'<span style="display:inline-block;width:36px;'
-        f'border-bottom:3px solid {ACCENT};border-radius:2px;">'
-        f'</span>'
+    # 来源名称标准化表
+    _source_name_map: dict[str, str] = {
+        "hacker": "Hacker News",
+        "hackernews": "Hacker News",
+        "hn": "Hacker News",
+    }
+
+    def _normalize_source(raw: str, source_type: str = "") -> tuple[str, str]:
+        """
+        标准化来源名称，返回 (display_name, display_label)。
+
+        规则：
+        - 跨源合并取主源（+ 之前的部分）
+        - 裁剪冗余后缀
+        - 映射常见缩写到完整名称
+        - label 用于显示格式 "来源：XXX · 阅读原文"
+        """
+        raw = clean_display_text(raw)
+        if not raw:
+            if source_type == "hn":
+                return "Hacker News", "来源：Hacker News"
+            if source_type == "github":
+                return "GitHub", "来源：GitHub"
+            if source_type == "huggingface":
+                return "Hugging Face", "来源：Hugging Face"
+            if source_type == "arxiv":
+                return "arXiv", "来源：arXiv"
+            return "", ""
+
+        # 取第一个 "+" 之前的部分作为主源
+        main = raw.split(" + ")[0].strip()
+        # 常见冗余后缀清理
+        for suffix in [" AI", " News", " - AI", " - Tech", "-ai", ".ai"]:
+            if main.lower().endswith(suffix.lower()):
+                main = main[:-len(suffix)]
+
+        # 小写标准化映射
+        main_lower = main.lower().strip()
+        if main_lower in _source_name_map:
+            main = _source_name_map[main_lower]
+
+        # 来源类型兜底
+        if not main or len(main) < 2:
+            type_map = {"hn": "Hacker News", "github": "GitHub",
+                       "huggingface": "Hugging Face", "arxiv": "arXiv", "rss": "RSS"}
+            main = type_map.get(source_type, main)
+
+        label = f"来源：{main}"
+        return main, label
+
+    # ── 常见错别字/怪词修正 ──
+    _typo_fixes: dict[str, str] = {
+        "特朗普通": "特朗普",
+        "特朗普通政府": "特朗普政府",
+    }
+
+    def _fix_typos(text: str) -> str:
+        """修正常见错别字/怪词。"""
+        for wrong, correct in _typo_fixes.items():
+            text = text.replace(wrong, correct)
+        return text
+
+    # NOTE: _make_insight() 已移除 — 用户要求删除正文"看点：..."渲染逻辑
+
+    parts: list[str] = []
+
+    # ── Wrapper ──
+    parts.append(
+        f'<div style="background-color:{PAGE_BG};padding:0;max-width:680px;margin:0 auto;">'
+    )
+
+    # ── 封面图 ──
+    if cover_image_url:
+        parts.append(
+            f'<img src="{esc(cover_image_url, collapse_whitespace=False)}" '
+            f'style="display:block;width:100%;height:auto;margin:0;padding:0;" '
+            f'alt="" />'
+        )
+
+    # ── 头部 ──
+    parts.append(
+        f'<section style="text-align:center;padding:32px 20px 24px;">'
+        f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:22px;'
+        f'font-weight:700;line-height:1.4;">今日AI要闻</p>'
+        f'<p style="margin:0;color:{TEXT_MUTED};font-size:14px;line-height:1.6;">'
+        f'{esc(date_str)}  ·  {len(news_list)} 条精选</p>'
         f'</section>'
     )
 
-    # ══════════════════════════════════════
-    # 新闻列表（按地区分组）
-    # ══════════════════════════════════════
-    global_index = 0
-    region_order = [r for r in ["china", "overseas"] if r in grouped]
-    region_order += [r for r in grouped if r not in region_order]
+    # ── 今日重点（前 3 条编辑摘要，跳过低置信度/质检排除项）──
+    highlight_candidates = [
+        item for item in news_list
+        if not item.get("_highlight_excluded")
+        and item.get("highlight_text")
+    ][:3]
+    if highlight_candidates:
+        parts.append(
+            f'<section style="margin:0 16px 20px;padding:16px 18px;'
+            f'background:{ACCENT_BG};border-radius:8px;">'
+            f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
+            f'font-weight:600;line-height:1.4;">📌 今日重点</p>'
+        )
+        for i, item in enumerate(highlight_candidates):
+            highlight_text = clean_display_text(item.get("highlight_text", ""))
+            if not highlight_text:
+                highlight_text = clean_display_text(
+                    item.get("chinese_title") or item.get("title", "")
+                )
+            parts.append(
+                f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
+                f'line-height:1.6;">{esc(str(i + 1))}. {esc(highlight_text)}</p>'
+            )
+        parts.append('</section>')
 
-    is_first_section = True
-    for region in region_order:
-        items = grouped[region]
-        if not items:
-            continue
+    # ── 新闻列表 ──
+    ACCENT_BAR = "#3b82f6"  # 纯文字卡片左侧强调线颜色
+    TEXT_ONLY_BG = "#f8fafc"  # 纯文字卡片微背景
 
-        if region == "china":
-            label = "国内精选"
-        elif region == "overseas":
-            label = "海外精选"
-        else:
-            label = region
+    for idx, item in enumerate(news_list):
+        title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
+        title = _fix_typos(title)
+        summary = clean_display_text(item.get("summary", ""))
+        summary = _fix_typos(summary)
+        source_name = clean_display_text(item.get("source", ""))
+        source_type = item.get("source_type", "")
+        url = safe_http_url(item.get("url", ""))
+        article_img = safe_http_url(item.get("article_image_url", ""))
+        image_type = item.get("image_type", "")
 
-        margin_top = "36px" if is_first_section else "32px"
-        is_first_section = False
-
-        # 分组标题 — ◆ 符号 + text-shadow 发光效果
-        p.append(
-            f'<section style="margin:{margin_top} 20px 14px;">'
-            f'<p style="margin:0;font-size:13px;font-weight:600;'
-            f'color:{ACCENT};letter-spacing:2px;">'
-            f'<span style="color:{ACCENT};text-shadow:{GLOW};">◆</span>'
-            f'  {label}'
-            f'<span style="font-weight:400;font-size:12px;color:{MUTED};">'
-            f'  ·  {len(items)} 条</span>'
-            f'</p></section>'
+        # 判断是否为图文卡片。
+        # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
+        # image_type="original" 但 article_image_url 不可用时，wechat.py 的
+        # _enrich_news_with_images() 会将其降级为 text_only，此处再次兜底。
+        has_image = bool(
+            article_img
+            and image_type == "original"
+            and article_img.strip() != ""
         )
 
-        for item in items:
-            global_index += 1
-            title = item.get("chinese_title") or item.get("title", "")
-            summary = item.get("summary", "")
-            source_name = item.get("source", "")
-            url = item.get("url", "")
-            article_img = item.get("article_image_url", "")
+        # 标准化来源名
+        clean_source, source_label = _normalize_source(source_name, source_type)
 
-            # 序号：前3名用强调色 + 发光，其余灰色
-            if global_index <= 3:
-                num_style = f'color:{ACCENT};font-weight:700;text-shadow:{GLOW};'
-            else:
-                num_style = f'color:{MUTED};font-weight:600;'
-
-            p.append(
-                f'<section style="margin:0 20px 28px;">'
+        # 卡片样式选择
+        if has_image:
+            # ── 图文卡片 ──
+            parts.append(
+                f'<section style="margin:0 16px 16px;padding:0 0 16px 0;'
+                f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};overflow:hidden;">'
             )
-
-            # 文章配图
-            if article_img:
-                p.append(
-                    f'<img src="{article_img}" '
-                    f'style="display:block;width:100%;height:auto;'
-                    f'margin:0 0 12px;border-radius:4px;" '
-                    f'alt="" />'
-                )
-
-            # 标题行
-            p.append(
-                f'<p style="margin:0 0 8px;line-height:1.5;">'
-                f'<span style="font-size:14px;{num_style}'
-                f'margin-right:8px;">{global_index:02d}</span>'
-                f'<span style="font-size:16px;font-weight:600;'
-                f'color:{TITLE_C};">{title}</span>'
-                f'</p>'
+            # 顶部配图
+            parts.append(
+                f'<img src="{esc(article_img, collapse_whitespace=False)}" '
+                f'style="display:block;width:100%;max-height:240px;'
+                f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
             )
-
+            # 编号（图片下方）
+            parts.append(
+                f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
+                f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d}</p>'
+            )
+            # 标题
+            parts.append(
+                f'<p style="margin:0 16px 10px;color:{TEXT_MAIN};font-size:18px;'
+                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+            )
             # 摘要
             if summary:
-                p.append(
-                    f'<p style="margin:0 0 8px;font-size:14px;'
-                    f'color:{TEXT};line-height:1.7;'
-                    f'padding-left:24px;">{summary}</p>'
+                parts.append(
+                    f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
+                    f'line-height:1.8;">{esc(summary)}</p>'
                 )
-
-            # 来源 + 链接
-            p.append(
-                f'<p style="margin:0;padding-left:24px;font-size:13px;'
-                f'color:{MUTED};">{source_name}'
+            # 来源
+            parts.append(
+                f'<p style="margin:0 16px 14px;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                f'{esc(source_label)}'
             )
             if url:
-                p.append(
-                    f' <span style="color:{MUTED};">·</span> '
-                    f'<a href="{url}" style="color:{ACCENT};'
-                    f'text-decoration:none;font-size:13px;">阅读原文</a>'
+                parts.append(
+                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
+                    f'阅读原文</a>'
                 )
-            p.append('</p></section>')
+            parts.append('</p></section>')
 
-    # ══════════════════════════════════════
-    # 尾部
-    # ══════════════════════════════════════
-    p.append(
-        f'<section style="margin:32px 20px 24px;padding:24px 0 0;'
+        else:
+            # ── 纯文字卡片（无配图，紧凑布局，左侧强调线） ──
+            parts.append(
+                f'<section style="margin:0 16px 16px;padding:14px 16px 14px 20px;'
+                f'border-left:3px solid {ACCENT_BAR};'
+                f'border-top:1px solid {BORDER};border-right:1px solid {BORDER};'
+                f'border-bottom:1px solid {BORDER};'
+                f'border-radius:6px;background:{TEXT_ONLY_BG};">'
+            )
+            # 标签行：编号 + "快讯"（所有无图卡片统一标签）
+            parts.append(
+                f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
+                f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
+                f'NEWS {idx + 1:02d} · 快讯'
+                f'</p>'
+            )
+            # 标题（略小于图文卡片）
+            parts.append(
+                f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:17px;'
+                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+            )
+            # 摘要（紧凑）
+            if summary:
+                parts.append(
+                    f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
+                    f'line-height:1.7;">{esc(summary)}</p>'
+                )
+            # 来源
+            parts.append(
+                f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                f'{esc(source_label)}'
+            )
+            if url:
+                parts.append(
+                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
+                    f'阅读原文</a>'
+                )
+            parts.append('</p></section>')
+
+    # ── 尾部 ──
+    parts.append(
+        f'<section style="margin:8px 16px 24px;padding:20px 0 0;'
         f'text-align:center;border-top:1px solid {DIVIDER};">'
-        f'<p style="margin:0 0 8px;font-size:14px;color:{TEXT};">'
-        f'<a href="{pages_url}" style="color:{ACCENT};font-weight:600;'
-        f'text-decoration:none;">查看完整日报（精美排版 + 暗色模式）</a>'
-        f'</p>'
-        f'<p style="margin:0;font-size:12px;color:{MUTED};">'
-        f'AI Daily News Agent  ·  每日自动生成'
-        f'</p></section>'
+        f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:14px;line-height:1.6;">'
+        f'<a href="{esc(pages_url, collapse_whitespace=False)}" style="color:{ACCENT};font-weight:600;'
+        f'text-decoration:none;">查看完整日报</a></p>'
+        f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
+        f'每日AI资讯整理</p>'
+        f'</section>'
     )
 
-    # 关闭 wrapper div
-    p.append('</div>')
+    # 关闭 wrapper
+    parts.append('</div>')
 
-    return "".join(p)
+    return "".join(parts)
 
 
 def _news_to_markdown(
@@ -591,9 +691,9 @@ def _news_to_markdown(
         grouped.setdefault(region, []).append(item)
 
     lines: list[str] = []
-    lines.append("# AI 日报")
+    lines.append("# 今日AI要闻")
     lines.append("")
-    lines.append(f"{date_str} · 今日精选 {len(news_list)} 条")
+    lines.append(f"{date_str} · {len(news_list)} 条精选")
     lines.append("")
 
     region_order = [r for r in ["overseas", "china"] if r in grouped]
@@ -612,11 +712,11 @@ def _news_to_markdown(
         lines.append("")
 
         for item in items:
-            title = item.get("chinese_title") or item.get("title", "")
-            summary = item.get("summary", "")
-            source_name = item.get("source", "")
-            url = item.get("url", "")
-            img = item.get("article_image_url", "")
+            title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            summary = clean_display_text(item.get("summary", ""))
+            source_name = clean_display_text(item.get("source", ""))
+            url = safe_http_url(item.get("url", ""))
+            img = safe_http_url(item.get("article_image_url", ""))
 
             lines.append(f"### {title}")
             lines.append("")
@@ -636,7 +736,7 @@ def _news_to_markdown(
     lines.append("")
     lines.append(f"👉 [查看完整日报（精美排版 + 暗色模式）]({pages_url})")
     lines.append("")
-    lines.append("AI Daily News Agent · 每日自动生成")
+    lines.append("每日AI资讯整理")
 
     return "\n".join(lines)
 
@@ -719,7 +819,7 @@ def render_wechat_article_ai(
         date_str: 日期
         pages_url: 日报 URL
         cover_image_url: 封面图 URL
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: LLM 模型名
         base_url: API 地址
         timeout: LLM 超时秒数
@@ -729,13 +829,14 @@ def render_wechat_article_ai(
     """
     import re as _re
 
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    text_config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = text_config.api_key
     if not api_key:
         logger.warning("No API key for AI HTML generation, falling back")
         return ""
 
     if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
 
@@ -744,14 +845,14 @@ def render_wechat_article_ai(
 
     # 2. 注入封面图（如果有的话）到 Markdown 头部
     if cover_image_url:
-        md_content = f"![封面]({cover_image_url})\n\n{md_content}"
+        md_content = f"![封面]({clean_display_text(cover_image_url, collapse_whitespace=False)})\n\n{md_content}"
 
     # 3. 拼接完整 prompt
     prompt = _MD2WECHAT_OCEAN_CALM_PROMPT.format(markdown_content=md_content)
 
     # 4. 调用 LLM
-    model = model or os.environ.get("AGNES_MODEL", "agnes-2.0-flash")
-    base_url = base_url or os.environ.get("AGNES_API_BASE", "https://apihub.agnes-ai.com/v1")
+    model = text_config.model
+    base_url = text_config.base_url
 
     try:
         from openai import OpenAI
@@ -800,7 +901,7 @@ def _guess_region(source: str) -> str:
 
 def save_html(html: str, output_path: str) -> None:
     """将 HTML 保存到文件。"""
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    from src.file_utils import atomic_write_text
+
+    atomic_write_text(output_path, html)
     logger.info("Saved HTML to %s", output_path)

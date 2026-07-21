@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "order": ["proposal", "specs", "design", "tasks"],
+    "skip": []
+  },
+  "execution": {
+    "inlineThreshold": 3,
+    "defaultLanguage": "zh-CN"
+  },
+  "verification": {
+    "language": "zh-CN"
+  }
+}

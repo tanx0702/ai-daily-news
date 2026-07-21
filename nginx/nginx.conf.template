@@ -1,0 +1,52 @@
+# HTTP -> 自动跳转 HTTPS
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS 主服务
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 调试产物可能包含候选证据、质量判断和内部诊断，不对公网提供。
+    location ^~ /debug/ {
+        return 404;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location = /wechat {
+        proxy_pass http://web:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /health {
+        proxy_pass http://web:5000;
+    }
+
+    location /api/ {
+        proxy_pass http://web:5000;
+    }
+}

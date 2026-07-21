@@ -1,125 +1,121 @@
-# 🤖 AI Daily News Agent
+# AI Daily News Agent
 
-每天自动采集 AI 圈重要新闻，生成精美日报，通过微信推送。
+每日自动采集 AI 新闻，使用 LLM 完成翻译和摘要，生成网页日报与微信公众号草稿。草稿创建后仍由公众号后台手动发布。
 
-> 用户发送「日报」到公众号，即可收到当天 AI 新闻摘要；点击链接查看完整日报。
+## 当前架构
 
-## 功能
+```text
+cron (每天 8:00) -> docker compose exec -T web python -m src.main
+                                             |
+                                             v
+                                           docs/
+                                           |- index.html
+                                           |- cover.jpg
+                                           |- latest.json
+                                           |- wechat.html
+                                           `- archive/
 
-- **多源采集** — 从 Hacker News、TechCrunch、The Verge、Ars Technica、36氪、机器之心等 RSS 源并行抓取
-- **智能筛选** — 自动过滤非 AI 相关内容，去重排序
-- **LLM 翻译 + 摘要** — 调用 Agnes-2.0-Flash 将英文标题翻译为中文，并生成中文摘要
-- **AI 封面** — 调用 Agnes Image 2.1 Flash 根据当日新闻自动生成封面图
-- **精美日报** — 生成手机端适配的 HTML 日报页面，支持暗色模式
-- **历史归档** — 每天自动归档，首页展示最近 7 天历史
-- **微信推送** — 用户发送「日报」关键词，通过客服消息接口推送当天新闻摘要
-- **零运维** — 完全基于 GitHub Actions + Cloudflare Workers，免费运行
-
-## 快速开始
-
-### 1. 克隆仓库
-
-```bash
-git clone https://github.com/YOUR_USERNAME/ai-daily-news.git
-cd ai-daily-news
+nginx        -> 托管 docs/ 静态文件，反代 /wechat；从 DOMAIN 渲染证书与站点配置
+Flask app.py -> 微信公众号 GET 验证和 POST 消息回调
+wechat_draft -> 上传封面并创建微信公众号草稿
 ```
-
-### 2. 配置 GitHub Pages
-
-1. 进入仓库 Settings → Pages
-2. Source 选择 `gh-pages` 分支的 `/ (root)` 文件夹
-3. 保存后页面将部署到 `https://YOUR_USERNAME.github.io/ai-daily-news/`
-
-### 3. 配置 GitHub Secrets
-
-进入仓库 Settings → Secrets and variables → Actions，添加：
-
-| Secret | 说明 |
-|--------|------|
-| `AGNES_API_KEY` | Agnes AI API Key（用于新闻摘要 + 封面图） |
-| `AGNES_MODEL` | 模型名称，默认 `agnes-2.0-flash` |
-| `AGNES_API_BASE` | API 基础地址（可选，默认 `https://apihub.agnes-ai.com/v1`） |
-| `WECHAT_APP_ID` | 微信公众号 AppID |
-| `WECHAT_APP_SECRET` | 微信公众号 AppSecret |
-| `NEWS_WORKER_URL` | Cloudflare Worker 地址（用于微信个人推送） |
-
-### 4. 配置 Cloudflare Worker
-
-1. 注册 [Cloudflare](https://dash.cloudflare.com) 账号
-2. 购买域名（推荐 `.xyz`，Cloudflare Registrar 首年约 1 元）
-3. 创建 Worker，绑定 KV 命名空间
-4. 部署 `workers/weixin-worker.js`（见项目代码）
-5. 在公众号后台配置服务器地址：`https://<worker>.<domain>.workers.dev/callback`
-
-### 5. 注册微信公众号
-
-1. 打开 https://mp.weixin.qq.com ，注册订阅号
-2. 在"开发 → 基本配置"中获取 AppID 和 AppSecret
-3. 在"开发 → 服务器配置"中配置回调地址（指向 Cloudflare Worker）
-
-### 6. 手动触发
-
-进入 Actions 页面，点击 "Run workflow" 手动执行一次测试。
 
 ## 本地开发
 
 ```bash
 pip install -r requirements.txt
 python -m src.main
+python app.py
 ```
 
-生成的日报页面保存在 `docs/index.html`。
+日报产物会写入 `docs/index.html`、`docs/latest.json`、
+`docs/wechat.html` 与 `docs/archive/<date>.html`。
 
-## RSS 源配置
+## 编辑质量
 
-编辑 `config/rss_sources.json` 添加或移除源：
+候选会先检查来源证据、时效和事件键，再按来源、主题与独立事件选择。摘要完成后，质检模型会跨候选归并同一事件并重新排序；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
 
-```json
-{
-    "sources": [
-        {
-            "name": "Hacker News AI",
-            "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude",
-            "region": "overseas"
-        }
-    ]
-}
+最终 `latest.json` 的 `quality_gate.editorial_quality` 会记录整期 0-10 编辑分及扣分原因。9 分代表建议人工发布的目标；该诊断用于提升草稿质量，不替代公众号后台的人工审核。
+
+## Docker 部署
+
+```bash
+git clone https://github.com/tanx0702/ai-daily-news.git /opt/ai-news
+cd /opt/ai-news
+
+cp .env.example .env
+# 填写文本模型、图片模型、微信公众号和域名配置。
+# 只有需要调参时，才从 .env.advanced.example 复制单个配置到 .env。
+
+docker compose up -d
 ```
 
-## 项目结构
+每日定时任务示例（草稿创建失败或日报未达到发布门槛会返回非零状态）：
 
-```
-├── .github/workflows/daily.yml   # GitHub Actions 定时调度
-├── config/rss_sources.json       # RSS 源配置
-├── docs/                         # 生成的日报 HTML
-├── workers/
-│   └── weixin-worker.js          # Cloudflare Worker（微信回调 + 新闻存储）
-├── src/
-│   ├── main.py                  # 主程序
-│   ├── collector.py             # RSS 采集
-│   ├── summarizer.py            # LLM 翻译 + 摘要
-│   ├── cover.py                 # AI 封面图生成
-│   ├── generator.py             # HTML 渲染
-│   ├── wechat.py                # 微信推送
-│   └── wechat_push.py           # 新闻导出到 Worker
-├── requirements.txt
-└── docs/PRD.md                  # 产品需求文档
+```bash
+echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -
 ```
 
-## 技术栈
+手动运行并直接查看日志：
 
-| 环节 | 技术 |
+```bash
+cd /opt/ai-news
+docker compose exec -T web python -m src.main
+```
+
+## 核心环境变量
+
+首次部署只需要编辑 `.env.example` 中的 11 项：
+
+| 变量 | 用途 |
 |------|------|
-| 语言 | Python 3.10+ |
-| RSS 解析 | feedparser |
-| HTML 模板 | Jinja2 |
-| LLM | Agnes-2.0-Flash (OpenAI 兼容 API) |
-| 图像生成 | Agnes Image 2.1 Flash |
-| 调度 | GitHub Actions |
-| 托管 | GitHub Pages (gh-pages 分支) |
-| 微信推送 | Cloudflare Workers + KV |
-| 推送 | 微信客服消息 API |
+| `LLM_API_KEY` | 文本摘要和标题生成的 API Key |
+| `LLM_MODEL` | 文本模型名称 |
+| `LLM_API_BASE` | 文本 OpenAI 兼容 API 地址 |
+| `IMAGE_API_KEY` | 封面图片生成 API Key；留空时使用本地封面降级 |
+| `IMAGE_MODEL` | 图片模型名称 |
+| `IMAGE_API_BASE` | 图片生成 API 地址 |
+| `WECHAT_APP_ID` | 公众号 AppID |
+| `WECHAT_APP_SECRET` | 公众号 AppSecret |
+| `WECHAT_TOKEN` | 公众号回调验证 Token |
+| `DOMAIN` | 日报站点域名 |
+| `PAGES_URL` | 日报完整 URL |
 
-## License
+## 高级环境变量
 
-MIT
+`.env.advanced.example` 是注释形式的参考文件，不能直接替换 `.env`。
+需要覆盖默认值时，只复制所需的一行到现有 `.env`，然后执行：
+
+```bash
+docker compose up -d --force-recreate
+```
+
+高级变量按以下用途分组：
+
+- `QUALITY_LLM_*`：独立质检模型。未设置时会继承对应的 `LLM_*`，同时用于证据质检和跨候选编辑复核，大多数部署不需要填写。
+- 日报选择：候选池、来源和主题配额、新闻时效窗口、超时与任务锁。
+- 采集源：Hacker News、GitHub、Hugging Face、arXiv 开关，以及可选的 `GITHUB_TOKEN` 和 `HF_TOKEN`。
+- 证据质检：发布安全回填、质检超时和 Token 上限。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不会阻止当天草稿创建。
+- 图片与封面：原文图抓取、AI 封面、安全封面、重试和超时。
+- 本地调试：跳过公众号草稿、日志目录、Flask 回调端口和公众号标题展示。
+
+代码仍兼容旧的 `AGNES_*` 与 `OPENAI_*` 变量，供已有部署继续运行；新部署请只使用 `LLM_*`、`IMAGE_*` 与可选的 `QUALITY_LLM_*`，不要混用别名。
+
+## 微信模块边界
+
+| 文件 | 职责 |
+|------|------|
+| `app.py` | Flask 微信回调服务，处理 URL 验证、用户文本消息和客服回复 |
+| `src/wechat_draft.py` | 上传封面素材、生成正文、创建公众号草稿 |
+| `src/wechat.py` | 兼容入口；新代码不应继续依赖 |
+| `src/tencent_push.py` / `src/tencent_scf/` | 历史 SCF 方案，不属于当前 Docker 主流程 |
+
+## 测试
+
+```bash
+python -m pytest -q
+```
+
+## 兼容与安全
+
+单条新闻的 high risk 质检结果不会停止整天任务：系统会从备用候选回填，或将证据稀疏的条目降级为原标题、来源和原文链接。不要提交真实 `.env`、API Key、公众号密钥或生成的 `docs/` 产物。

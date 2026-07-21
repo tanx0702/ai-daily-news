@@ -6,27 +6,136 @@ LLM 摘要模块
 
 import json
 import logging
-import os
 import re
 from datetime import datetime, timezone
 from typing import Optional
 
 from openai import OpenAI
 
+from src.llm_config import (
+    DEFAULT_TEXT_API_BASE,
+    DEFAULT_TEXT_MODEL,
+    resolve_text_llm_config,
+)
+from src.text_utils import clean_display_text
+
 logger = logging.getLogger(__name__)
 
-# Agnes API 配置
-AGNES_BASE_URL = os.environ.get(
-    "AGNES_API_BASE", "https://apihub.agnes-ai.com/v1"
+# ── 幻觉检测：常见 AI 型号/产品名 pattern，用于校验 LLM 输出 ──
+# 如果 LLM 生成的中文标题出现了原文没有的这些词，触发降级
+_MODEL_PATTERN = re.compile(
+    r'\b(GPT[-\s]?\d[\d.]*|Claude\s?\d[\d.]*|Gemini\s?\d[\d.]*|Llama\s?\d[\d.]*|'
+    r'Grok[-\s]?\d[\d.]*|Mistral[-\s]?\d[\d.]*|Qwen[-\s]?\d[\d.]*|'
+    r'DeepSeek[-\s]?[A-Za-z0-9.]*|Phi[-\s]?\d[\d.]*|Stable\s?Diffusion\s?\d[\d.]*|'
+    r'DALL[-\s]?E\s?\d[\d.]*|Midjourney\s?\d[\d.]*|Sora[-\s]?\d[\d.]*|'
+    r'Terra|Luna|Atlas|Helios|Nova|Orion|Falcon|Titan|Aurora)\b',
+    re.IGNORECASE | re.ASCII,
 )
-DEFAULT_MODEL = "agnes-2.0-flash"
+
+# 低置信度 brand claim 标记 key（从 collector 传入）
+_LOW_CONFIDENCE_KEY = "low_confidence_brand_claim"
+_NON_RETRYABLE_LLM_STATUS_CODES = {400, 401, 403}
+BATCH_MAX_ATTEMPTS = 2
+
+
+def _is_non_retryable_llm_error(error: Exception) -> bool:
+    """Avoid multiplying configuration and authentication failures per item."""
+    if getattr(error, "status_code", None) in _NON_RETRYABLE_LLM_STATUS_CODES:
+        return True
+    message = str(error).lower()
+    return any(token in message for token in (
+        "invalid api key",
+        "authentication",
+        "permission denied",
+        "unsupported_model",
+        "model not found",
+        "invalid model",
+    ))
+
+
+def _apply_non_retryable_summary_fallback(news: dict) -> None:
+    """Keep source text intact when the configured LLM cannot serve the request."""
+    news["chinese_title"] = clean_display_text(
+        news.get("source_title") or news.get("title", "")
+    )
+    source_summary = clean_display_text(news.get("source_summary", ""))
+    news["summary"] = source_summary[:200] if re.search(r"[\u3400-\u9fff]", source_summary) else ""
+    news["llm_summary_status"] = "non_retryable_error"
+
+
+def _apply_invalid_response_fallback(news: dict) -> None:
+    """Preserve source evidence after an LLM response cannot be validated."""
+    _apply_non_retryable_summary_fallback(news)
+    news["llm_summary_status"] = "invalid_response"
+
+
+def validate_summary_facts(chinese_title: str, original: dict) -> dict:
+    """
+    轻量后校验：检测 LLM 生成的中文标题是否编造了原文没有的型号/产品名。
+
+    Args:
+        chinese_title: LLM 生成的中文标题
+        original: 原始新闻 dict，包含 title, summary, url, source 等
+
+    Returns:
+        {"valid": bool, "suspicious_terms": [str], "action": "keep"|"fallback"}
+    """
+    if not chinese_title or not original:
+        return {"valid": True, "suspicious_terms": [], "action": "keep"}
+
+    # 提取原文中出现的所有型号/产品名
+    original_text = (
+        original.get("source_title", original.get("title", "")) + " " +
+        original.get("source_summary", original.get("summary", "")) + " " +
+        original.get("source_url", original.get("url", "")) + " " +
+        original.get("source_name", original.get("source", ""))
+    )
+    original_matches = set(m.lower() for m in _MODEL_PATTERN.findall(original_text))
+
+    # 提取中文标题中的型号/产品名
+    title_matches = set(m.lower() for m in _MODEL_PATTERN.findall(chinese_title))
+
+    # 找出新增的（标题有但原文没有的）
+    suspicious = title_matches - original_matches
+
+    if suspicious:
+        logger.warning(
+            "validate_summary_facts: suspicious terms %s found in title but not in original",
+            suspicious,
+        )
+        return {
+            "valid": False,
+            "suspicious_terms": list(suspicious),
+            "action": "fallback",
+        }
+
+    return {"valid": True, "suspicious_terms": [], "action": "keep"}
+
+
+# Backward-compatible constants for older callers.
+AGNES_BASE_URL = DEFAULT_TEXT_API_BASE
+DEFAULT_MODEL = DEFAULT_TEXT_MODEL
 
 # 批量处理：每次最多处理 5 条新闻
 BATCH_SIZE = 5
 
+# 中文新闻文风约束：借鉴 humanizer-zh 的去 AI 腔规则，但保留新闻摘要需要的中立和事实边界。
+_CHINESE_NEWS_STYLE_PROMPT = (
+    "【中文新闻文风】\n"
+    "1. 摘要要像编辑写的新闻简报：具体、克制、直接，不写宣传稿或营销腔。\n"
+    "2. 删除空泛套话，避免使用「此外」「值得注意的是」「至关重要」「深入探讨」"
+    "「不断演变的格局」「标志着」「展现了」「证明了」等 AI 腔表达。\n"
+    "3. 不要写泛泛的积极结论，例如「未来前景广阔」「迈出重要一步」。"
+    "只写原文能支持的影响、风险或后续看点。\n"
+    "4. 少用三段式排比和「不只是……而是……」结构；能用一句话说清楚就不要铺垫。\n"
+    "5. 归因要具体。原文没有明确来源时，用「有报道称」「社区讨论称」等弱表述，"
+    "不要写成「专家认为」「行业报告显示」。\n"
+    "6. 保持新闻中立，不加入第一人称、情绪化判断或原文没有的观点。"
+)
 
-def _extract_json(text: str) -> Optional[dict]:
-    """从 LLM 响应中提取 JSON 对象。"""
+
+def _extract_json(text: str):
+    """从 LLM 响应中提取 JSON 值。"""
     text = text.strip()
 
     # 尝试直接解析
@@ -54,12 +163,190 @@ def _extract_json(text: str) -> Optional[dict]:
     return None
 
 
+def _completion_content(response) -> str:
+    """Return non-empty assistant content with a diagnostic error for empty choices."""
+    try:
+        choice = response.choices[0]
+        content = choice.message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        raise ValueError("LLM response has no assistant choice") from exc
+
+    if not isinstance(content, str) or not content.strip():
+        finish_reason = getattr(choice, "finish_reason", "unknown")
+        raise ValueError(f"LLM response has no text content (finish_reason={finish_reason})")
+    return content.strip()
+
+
+def _response_items(result) -> object:
+    """Read the items array from the JSON-object response contract."""
+    if isinstance(result, dict):
+        return result.get("items")
+    return result
+
+
+def _parse_result_index(value) -> Optional[int]:
+    """Parse LLM-returned item indexes while rejecting ambiguous values."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _normalize_batch_results(
+    results,
+    batch_indices: list[int],
+) -> list[dict]:
+    """
+    Validate and order a batch summary response.
+
+    The safest path is an explicit 1-based `index` matching the numbered input.
+    Legacy responses without indexes are accepted only when the count matches
+    exactly, because otherwise positional mapping can silently shift summaries.
+    """
+    if not isinstance(results, list):
+        raise ValueError(f"Expected list, got {type(results).__name__}")
+
+    expected_count = len(batch_indices)
+    if len(results) != expected_count:
+        raise ValueError(
+            f"Batch result count mismatch: expected {expected_count}, got {len(results)}"
+        )
+    if not all(isinstance(item, dict) for item in results):
+        raise ValueError("Batch result must contain JSON objects only")
+
+    has_index = ["index" in item for item in results]
+    if not any(has_index):
+        return results
+    if not all(has_index):
+        raise ValueError("Batch result mixes indexed and unindexed items")
+
+    expected_indexes = [idx + 1 for idx in batch_indices]
+    by_index: dict[int, dict] = {}
+    for item in results:
+        item_index = _parse_result_index(item.get("index"))
+        if item_index is None:
+            raise ValueError(f"Invalid batch result index: {item.get('index')!r}")
+        if item_index in by_index:
+            raise ValueError(f"Duplicate batch result index: {item_index}")
+        by_index[item_index] = item
+
+    if set(by_index) != set(expected_indexes):
+        raise ValueError(
+            f"Batch result indexes mismatch: expected {expected_indexes}, "
+            f"got {sorted(by_index)}"
+        )
+
+    return [by_index[idx] for idx in expected_indexes]
+
+
+def _apply_summary_item(news: dict, item: dict, label: str) -> None:
+    """Apply one validated summary result to one news item."""
+    c_title = clean_display_text(item.get("chinese_title", ""))
+    if c_title:
+        validation = validate_summary_facts(c_title, news)
+        if validation["action"] == "fallback":
+            logger.warning(
+                "  Summary %s flagged: suspicious terms %s in '%s'",
+                label, validation["suspicious_terms"], c_title[:40],
+            )
+            news["_summary_flagged"] = True
+            news["_suspicious_terms"] = validation["suspicious_terms"]
+
+    news["chinese_title"] = c_title or clean_display_text(news["title"])
+    news["summary"] = clean_display_text(item.get("summary", ""))[:200]
+    _apply_github_activity_language_guard(news)
+
+
+def _apply_github_activity_language_guard(news: dict) -> None:
+    """Do not let a repository push be presented as a product launch."""
+    if news.get("source_type") != "github":
+        return
+    activity_type = str((news.get("metrics") or {}).get("github_activity_type") or "")
+    if activity_type not in {"recent_push", "new_repository"}:
+        return
+
+    source_title = clean_display_text(news.get("source_title") or news.get("title", ""))
+    repository = source_title.split(":", 1)[0].strip() or "开源项目"
+    source_summary = clean_display_text(news.get("source_summary") or "")[:200]
+    if activity_type == "recent_push":
+        news["chinese_title"] = f"GitHub 项目近期活跃：{repository}"
+    else:
+        news["chinese_title"] = f"GitHub 新开源项目：{repository}"
+    if source_summary:
+        news["summary"] = source_summary
+
+
+def _format_news_evidence(index: int, news: dict) -> str:
+    """Build the source-bound evidence packet used by the summary model."""
+    title = clean_display_text(news.get("source_title") or news.get("title", ""))
+    source = clean_display_text(news.get("source_name") or news.get("source", ""))
+    source_type = clean_display_text(news.get("source_type", ""))
+    source_summary = clean_display_text(news.get("source_summary") or news.get("summary", ""))
+
+    lines = [f"{index}. 原始标题: {title}"]
+    if source:
+        lines.append(f"来源: {source}")
+    if source_type:
+        lines.append(f"来源类型: {source_type}")
+    lines.append(f"原始摘要: {source_summary or '（未提供）'}")
+    github_evidence = news.get("github_evidence") or {}
+    if source_type == "github" and github_evidence:
+        project_description = clean_display_text(
+            github_evidence.get("project_description") or ""
+        )
+        release_notes = clean_display_text(github_evidence.get("release_notes") or "")
+        release_tag = clean_display_text(github_evidence.get("release_tag") or "")
+        if project_description:
+            lines.append(f"GitHub 项目用途: {project_description}")
+        if release_notes:
+            lines.append(f"GitHub 本次 Release {release_tag or '（版本未提供）'}: {release_notes}")
+    return "\n".join(lines)
+
+
+def _summarize_single_news(client, news: dict, model: str) -> None:
+    """Fallback path for one item when batch output is malformed."""
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "请根据以下原始新闻证据改写成自然的中文公众号标题，"
+                        "避免生硬直译，保留核心事实不标题党。"
+                        "禁止编造原文没有的型号、版本号、时间、金额。"
+                        f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
+                        "同时生成一段中文摘要（80-140 字，通常 2 句），"
+                        "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
+                        "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。"
+                        "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
+                    ),
+                },
+                {"role": "user", "content": _format_news_evidence(1, news)},
+            ],
+            temperature=0.3,
+            max_tokens=350,
+        )
+        content = _completion_content(response)
+        result = _extract_json(content)
+        if isinstance(result, dict):
+            _apply_summary_item(news, result, "single")
+        else:
+            news["chinese_title"] = clean_display_text(news["title"])
+            news["summary"] = ""
+    except Exception as e:
+        logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e)
+        news["chinese_title"] = clean_display_text(news["title"])
+        news["summary"] = ""
+
+
 def summarize_news(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     timeout: int = 30,
-    base_url: str = AGNES_BASE_URL,
+    base_url: Optional[str] = None,
 ) -> list[dict]:
     """
     批量为新闻列表生成中文翻译标题和摘要。
@@ -69,17 +356,20 @@ def summarize_news(
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
-        api_key: Agnes API Key，默认从 AGNES_API_KEY 环境变量读取
+        api_key: Text LLM API Key，默认从 LLM_API_KEY 环境变量读取，兼容 AGNES_API_KEY / OPENAI_API_KEY
         model: 模型名称，默认 agnes-2.0-flash
         timeout: 单次调用超时秒数（建议 >= 30）
-        base_url: API 基础地址，默认 Agnes hub
+        base_url: API 基础地址，默认文本 LLM API 地址
 
     Returns:
         补充了 chinese_title 和 summary 的新闻列表
     """
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
-        logger.warning("AGNES_API_KEY not set, skipping LLM summary")
+        logger.warning("LLM API key not set, skipping LLM summary")
         return news_list
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
@@ -104,93 +394,352 @@ def summarize_news(
                      batch_start + 1, batch_start + len(batch_indices), len(batch_indices))
 
         # 构建批量 prompt
-        headlines = "\n".join(
-            f"{idx+1}. {news['title']}"
-            for idx, news in enumerate(batch_news, start=batch_start)
+        headlines = "\n\n".join(
+            _format_news_evidence(news_index + 1, news)
+            for news_index, news in zip(batch_indices, batch_news)
         )
 
         system_prompt = (
-            "你是一个专业的 AI 新闻编辑。"
-            "请将以下每条英文新闻标题翻译成中文，并为它生成一句中文摘要。"
-            "严格按以下 JSON 数组格式回复，不要有其他内容："
-            "[{\"chinese_title\": \"翻译后的标题\", \"summary\": \"摘要内容\"}]"
-            "数组中每个元素的顺序对应输入的标题顺序（第一条对应第一个标题）。"
+            "你是一个专业的 AI 新闻编辑，擅长撰写自然流畅的中文科技新闻。"
+            "请根据以下每条原始新闻证据改写成中文公众号标题，要求：\n\n"
+            "【语法与可读性】\n"
+            "1. 标题必须语法正确，读起来通顺自然\n"
+            "2. 避免生硬直译，用中文读者习惯的表达方式\n"
+            "3. 如果使用冒号，冒号前后都要是完整的短句，不要出现「XX与XX」这种不完整结构\n"
+            "4. 标题控制在 15-30 个中文字符\n\n"
+            "【内容准确性】\n"
+            "5. 保留核心事实，不夸张不标题党\n"
+            "6. 【重要】禁止编造原文没有的型号、版本号、时间、公司动作、融资金额\n"
+            "   - 不要把社区讨论写成官方发布\n"
+            "   - 不要把传闻写成事实\n"
+            "   - 不确定时使用弱表述：「据社区讨论」「有报道称」「开发者讨论」\n"
+            "   - 如果原文没有给出具体版本号（如 GPT-5.6），绝对不要添加\n\n"
+            "【标题风格】\n"
+            "7. 优先使用陈述句，确保信息完整\n"
+            "8. 可使用设问句，但必须确保语法正确\n"
+            "9. 不要为了吸引眼球改写事实\n\n"
+            "【GitHub Release】\n"
+            "10. 对 GitHub 正式 Release，标题和摘要必须先说明项目是什么，再说明本次发布改了什么及其实际影响；"
+            "不得把 stars、forks 或近期 push 写成新闻主体。\n\n"
+            f"{_CHINESE_NEWS_STYLE_PROMPT}\n\n"
+            "同时为每条新闻生成一段中文摘要（80-140 字，通常 2 句），"
+            "第一句说明发生了什么，第二句说明影响、风险或不确定性。"
+            "只有原文信息足够时才写第 3 句，不要为了凑字数补充原文没有的信息。\n\n"
+            "严格按以下 JSON 对象格式回复，不要有其他内容：\n"
+            "{\"items\":[{\"index\":1,\"chinese_title\":\"中文标题\",\"summary\":\"摘要内容\"}]}\n"
+            "index 必须等于输入标题前的编号；必须返回每一条，不能少、不能重复、不能乱配。"
         )
 
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": headlines},
-                ],
-                temperature=0.3,
-                max_tokens=1000,
+        non_retryable_error = None
+        for attempt in range(1, BATCH_MAX_ATTEMPTS + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": headlines},
+                    ],
+                    temperature=0.3,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"},
+                )
+                result = _extract_json(_completion_content(response))
+                normalized_results = _normalize_batch_results(
+                    _response_items(result),
+                    batch_indices,
+                )
+                for pos, item in enumerate(normalized_results):
+                    _apply_summary_item(batch_news[pos], item, f"batch #{pos + 1}")
+                    logger.info("  Batch summary #%d: %s", pos + 1,
+                                batch_news[pos]["chinese_title"][:40])
+                break
+            except Exception as exc:
+                logger.warning(
+                    "Batch attempt %d/%d failed for items %d-%d: %s",
+                    attempt, BATCH_MAX_ATTEMPTS,
+                    batch_start + 1, batch_start + len(batch_indices), exc,
+                )
+                if _is_non_retryable_llm_error(exc):
+                    non_retryable_error = exc
+                    break
+                if attempt == BATCH_MAX_ATTEMPTS:
+                    for news in batch_news:
+                        _apply_invalid_response_fallback(news)
+
+        if non_retryable_error is not None:
+            logger.error(
+                "LLM batch error is non-retryable; skipping remaining summary requests: %s",
+                non_retryable_error,
             )
-            content = response.choices[0].message.content.strip()
-            results = _extract_json(content)
-
-            if isinstance(results, list):
-                # 按顺序映射，不依赖 LLM 返回的 index（LLM 可能返回全局序号）
-                for pos, item in enumerate(results):
-                    if pos < len(batch_news):
-                        batch_news[pos]["chinese_title"] = item.get("chinese_title", batch_news[pos]["title"])
-                        batch_news[pos]["summary"] = item.get("summary", "")[:200]
-                        logger.info("  Batch summary #%d: %s", pos + 1,
-                                    batch_news[pos]["chinese_title"][:40])
-            else:
-                raise ValueError(f"Expected list, got {type(results).__name__}")
-
-        except Exception as e:
-            logger.warning("Batch failed for items %d-%d: %s",
-                           batch_start + 1, batch_start + len(batch_indices), e)
-            # 降级：逐条处理这批
-            for news in batch_news:
-                try:
-                    response = client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": (
-                                    "请将以下英文新闻标题翻译成中文，并为它生成一句摘要。"
-                                    "按 JSON 格式回复：{\"chinese_title\": \"...\", \"summary\": \"...\"}"
-                                ),
-                            },
-                            {"role": "user", "content": news["title"]},
-                        ],
-                        temperature=0.3,
-                        max_tokens=200,
-                    )
-                    content = response.choices[0].message.content.strip()
-                    result = _extract_json(content)
-                    if result:
-                        news["chinese_title"] = result.get("chinese_title", news["title"])
-                        news["summary"] = result.get("summary", "")[:200]
-                    else:
-                        news["chinese_title"] = news["title"]
-                        news["summary"] = ""
-                except Exception as e2:
-                    logger.warning("Fallback single summary failed for '%s': %s", news["title"][:30], e2)
-                    news["chinese_title"] = news["title"]
-                    news["summary"] = ""
+            for remaining_index in need_summarize[batch_start:]:
+                _apply_non_retryable_summary_fallback(news_list[remaining_index])
+            break
 
     return news_list
+
+
+def generate_highlights(
+    news_list: list[dict],
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
+    timeout: int = 30,
+) -> list[str]:
+    """
+    为当日新闻生成编辑式「今日重点」（25-45 字/条）。
+
+    今日重点回答"今天 AI 圈最值得关注的变化是什么"，
+    包含影响判断，不是简单列标题。
+
+    低置信度大厂传闻不会进入今日重点候选。
+
+    Args:
+        news_list: 新闻列表（需已有 chinese_title + summary + _confidence_level）
+        api_key: Text LLM API Key
+        model: 模型名称
+        base_url: API 地址
+        timeout: 超时秒数
+
+    Returns:
+        最多 3 条编辑摘要字符串列表，失败返回空列表
+    """
+    if not news_list:
+        return []
+
+    # 过滤：只从高置信度新闻中提取今日重点
+    eligible = []
+    for item in news_list:
+        if item.get("_highlight_excluded"):
+            continue
+        bc = item.get("_brand_claim", {})
+        if bc.get("confidence") == "low":
+            # 低置信度大厂传闻：跳过，不进入今日重点
+            item["_highlight_excluded"] = f"低置信度品牌声明: {bc.get('reason', '')}"
+            continue
+        if item.get("_confidence_level") == "low":
+            item["_highlight_excluded"] = "低置信度"
+            continue
+        eligible.append(item)
+
+    if not eligible:
+        logger.info("No eligible items for highlights (all low confidence)")
+        return []
+
+    top_items = eligible[:3]
+
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
+    if not api_key:
+        logger.info("No API key for highlights, using chinese_title fallback")
+        return [
+            clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            for item in top_items
+        ]
+
+    # 构建输入：标题 + 摘要 + 来源
+    items_text = "\n".join(
+        f"{i+1}. 标题：{item.get('chinese_title') or item.get('title', '')}\n"
+        f"   摘要：{item.get('summary', '')}\n"
+        f"   来源：{item.get('source', '')} ({item.get('source_type', '')})"
+        for i, item in enumerate(top_items)
+    )
+
+    system_prompt = (
+        "你是一个 AI 科技新闻主编，负责撰写每日「今日重点」。\n"
+        "今日重点应该回答「今天 AI 圈最值得关注的变化是什么」，不是简单复述标题。\n"
+        "要求：\n"
+        "1. 每条重点是一句完整的话，控制在 25-45 个中文字符\n"
+        "2. 尽量包含影响判断或趋势解读，例如：\n"
+        "   - 「开源工具热度上升，开发者工作流仍是今日主线」\n"
+        "   - 「大模型发布继续加速，但需优先确认官方来源」\n"
+        "   - 「论文与模型社区动态补充了产业新闻之外的技术线索」\n"
+        "3. 自然流畅的中文，适合公众号读者阅读\n"
+        "4. 不要编造原文没有的事实、型号、版本号\n"
+        "5. 不要把传闻写成官宣，不确定时使用弱表述\n"
+        "6. 如果当天没有足够强的重点，宁可写得保守，不要硬凑爆点\n"
+        f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
+        "严格按 JSON 对象格式回复："
+        "{\"items\":[{\"index\":1,\"highlight\":\"重点1\"},{\"index\":2,\"highlight\":\"重点2\"}]}。"
+        "index 必须对应输入编号，不要重排或省略。"
+    )
+
+    try:
+        client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": items_text},
+            ],
+            temperature=0.4,
+            max_tokens=800,
+            response_format={"type": "json_object"},
+        )
+        results = _response_items(_extract_json(_completion_content(response)))
+
+        if isinstance(results, list) and len(results) >= 1:
+            highlights_by_index: dict[int, str] = {}
+            positional_results: list[str] = []
+
+            for pos, result in enumerate(results):
+                idx = None
+                text = ""
+
+                if isinstance(result, dict):
+                    try:
+                        idx = int(result.get("index", 0)) - 1
+                    except (TypeError, ValueError):
+                        idx = None
+                    text = (
+                        result.get("highlight")
+                        or result.get("highlight_text")
+                        or result.get("text")
+                        or ""
+                    )
+                elif isinstance(result, str):
+                    idx = pos
+                    text = result
+
+                text = clean_display_text(str(text)) if text else ""
+                if not text:
+                    continue
+                if len(text) > 50:
+                    text = text[:45] + "…"
+                if idx is not None and 0 <= idx < len(top_items) and idx not in highlights_by_index:
+                    highlights_by_index[idx] = text
+                elif isinstance(result, str):
+                    positional_results.append(text)
+
+            highlights = []
+            for i in range(len(top_items)):
+                if i in highlights_by_index:
+                    highlights.append(highlights_by_index[i])
+                elif i < len(positional_results):
+                    highlights.append(positional_results[i])
+                else:
+                    fallback = clean_display_text(
+                        top_items[i].get("chinese_title") or top_items[i].get("title", "")
+                    )
+                    highlights.append(fallback)
+            logger.info("Generated %d highlights", len(highlights))
+            return highlights
+        else:
+            raise ValueError(f"Expected list, got {type(results).__name__}")
+
+    except Exception as e:
+        logger.warning("Highlights generation failed: %s, using fallback", e)
+        return [
+            clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            for item in top_items
+        ]
+
+
+def generate_cover_title(
+    news_list: list[dict],
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    base_url: Optional[str] = None,
+    timeout: int = 30,
+) -> str:
+    """
+    从 Top 1 新闻生成 12-20 个中文字符的封面标题。
+
+    Args:
+        news_list: 新闻列表（取第 1 条，需已有 chinese_title + summary）
+        api_key: Text LLM API Key
+        model: 模型名称
+        base_url: API 地址
+        timeout: 超时秒数
+
+    Returns:
+        封面标题字符串，失败时返回 "AI 日报"
+    """
+    if not news_list:
+        return "AI 日报"
+
+    top = news_list[0]
+
+    # 可信度门禁：头条低置信度 → 使用通用标题
+    bc = top.get("_brand_claim", {})
+    if (bc.get("confidence") == "low"
+            or top.get("_confidence_level") == "low"
+            or top.get("_cover_excluded")):
+        logger.info("Cover title: top item low confidence or excluded by quality gate, using generic title")
+        return "今日 AI 热点速览"
+
+    topic = clean_display_text(top.get("chinese_title") or top.get("title", ""))
+
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
+    if not api_key:
+        # 无 API：截取 chinese_title 的前 20 个字符
+        short = topic[:20].rstrip("，。；：！？、")
+        return short if len(short) >= 8 else "AI 日报"
+
+    system_prompt = (
+        "你是一个 AI 新闻封面编辑。"
+        "请根据以下新闻标题和摘要，提炼出一个封面主标题。"
+        "要求：\n"
+        "1. 中文，12-20 个中文字符\n"
+        "2. 概括核心主题，有阅读吸引力\n"
+        "3. 不夸张不标题党\n"
+        "4. 避免「重塑」「引领」「关键时刻」「新格局」等空泛大词\n"
+        "5. 只返回标题文字，不要标点符号，不要引号\n"
+        "严格按 JSON 格式回复：{\"cover_title\": \"封面标题\"}"
+    )
+
+    summary = clean_display_text(top.get("summary", ""))
+
+    try:
+        client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"标题：{topic}\n摘要：{summary}"},
+            ],
+            temperature=0.4,
+            max_tokens=256,
+            response_format={"type": "json_object"},
+        )
+        content = _completion_content(response)
+        result = _extract_json(content)
+
+        if isinstance(result, dict) and result.get("cover_title"):
+            title = clean_display_text(result["cover_title"]).strip("“”\"'")
+            # 确保在合理长度范围内
+            if 8 <= len(title) <= 30:
+                logger.info("Cover title generated: %s", title)
+                return title
+            # 过长就截断
+            if len(title) > 30:
+                return title[:20].rstrip("，。；：！？、")
+
+        raise ValueError(f"Invalid cover title response: {content[:80]}")
+
+    except Exception as e:
+        logger.warning("Cover title generation failed: %s, using fallback", e)
+        short = topic[:20].rstrip("，。；：！？、")
+        return short if len(short) >= 8 else "AI 日报"
 
 
 def summarize_for_wechat(
     news_list: list[dict],
     api_key: Optional[str] = None,
-    model: str = DEFAULT_MODEL,
+    model: Optional[str] = None,
     top_n: int = 5,
-    base_url: str = AGNES_BASE_URL,
+    base_url: Optional[str] = None,
 ) -> str:
     """
     为微信推送生成摘要文本。
 
     Args:
         news_list: 新闻列表
-        api_key: Agnes API Key
+        api_key: Text LLM API Key
         model: 模型名称
         top_n: 取前 N 条新闻生成摘要
         base_url: API 基础地址
@@ -198,10 +747,13 @@ def summarize_for_wechat(
     Returns:
         格式化后的微信推送摘要文本
     """
-    api_key = api_key or os.environ.get("AGNES_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    config = resolve_text_llm_config(api_key=api_key, model=model, base_url=base_url)
+    api_key = config.api_key
+    model = config.model
+    base_url = config.base_url
     if not api_key:
         items = news_list[:top_n]
-        titles = [item.get("chinese_title") or item["title"] for item in items]
+        titles = [clean_display_text(item.get("chinese_title") or item["title"]) for item in items]
         return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))
 
     client = OpenAI(api_key=api_key, base_url=base_url, timeout=15)
@@ -222,6 +774,7 @@ def summarize_for_wechat(
                         "以下为今日 AI 新闻标题列表，"
                         "请从中挑选最重要的 3-5 条，用简洁的语言生成一段微信推送摘要。"
                         "格式要求：每条一行，以 emoji 开头，不超过 80 字。"
+                        f"{_CHINESE_NEWS_STYLE_PROMPT}\n"
                         "不要输出日期和条数统计。"
                     ),
                 },
@@ -230,8 +783,15 @@ def summarize_for_wechat(
             temperature=0.5,
             max_tokens=300,
         )
-        return response.choices[0].message.content.strip()
+        return "\n".join(
+            clean_display_text(line)
+            for line in response.choices[0].message.content.strip().splitlines()
+            if clean_display_text(line)
+        )
     except Exception as e:
         logger.warning("Failed to generate WeChat summary: %s", e)
-        titles = [item.get("chinese_title") or item["title"] for item in news_list[:top_n]]
+        titles = [
+            clean_display_text(item.get("chinese_title") or item["title"])
+            for item in news_list[:top_n]
+        ]
         return "\n".join(f"  {i+1}. {t}" for i, t in enumerate(titles))

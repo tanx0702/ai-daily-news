@@ -3,7 +3,8 @@
         {
             "name": "Hacker News AI",
             "url": "https://hnrss.org/frontpage?q=AI+OR+LLM+OR+GPT+OR+Claude+OR+Agent+OR+Foundation+Model",
-            "region": "overseas"
+            "region": "overseas",
+            "tier": "community"
         },
         {
             "name": "TechCrunch AI",
@@ -17,22 +18,54 @@
         },
         {
             "name": "OpenAI Blog",
-            "url": "https://openai.com/blog",
-            "region": "overseas"
+            "url": "https://openai.com/blog/rss.xml",
+            "region": "overseas",
+            "tier": "primary"
         },
         {
             "name": "Google DeepMind",
-            "url": "https://blog.google/technology/ai/",
-            "region": "overseas"
+            "url": "https://deepmind.google/blog/rss.xml",
+            "region": "overseas",
+            "tier": "primary"
+        },
+        {
+            "name": "Google AI Blog",
+            "url": "https://blog.google/technology/ai/rss/",
+            "region": "overseas",
+            "tier": "primary"
+        },
+        {
+            "name": "NVIDIA AI Blog",
+            "url": "https://blogs.nvidia.com/blog/category/deep-learning/feed/",
+            "region": "overseas",
+            "tier": "primary"
         },
         {
             "name": "MIT Technology Review AI",
-            "url": "https://www.technologyreview.com/topic/artificial-intelligence/",
+            "url": "https://www.technologyreview.com/feed/",
             "region": "overseas"
         },
         {
+            "name": "VentureBeat AI",
+            "url": "https://venturebeat.com/category/ai/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "Ars Technica Technology Lab",
+            "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "IEEE Spectrum AI",
+            "url": "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
             "name": "36氪 AI",
-            "url": "https://36kr.com/information/AI_news/",
+            "url": "https://36kr.com/feed",
             "region": "china"
         },
         {
