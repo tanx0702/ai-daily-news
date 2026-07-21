@@ -21,6 +21,11 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertIn("healthcheck:", compose)
         self.assertIn("condition: service_healthy", compose)
 
+    def test_dockerignore_excludes_environment_backup_files(self):
+        patterns = (self.root / ".dockerignore").read_text(encoding="utf-8").splitlines()
+
+        self.assertIn(".env.bak*", patterns)
+
 
 if __name__ == "__main__":
     unittest.main()
