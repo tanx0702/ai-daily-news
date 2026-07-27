@@ -13,11 +13,14 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertIn("/etc/letsencrypt/live/${DOMAIN}/fullchain.pem", template)
         self.assertIn("location ^~ /debug/", template)
         self.assertIn("return 404;", template)
+        self.assertIn("location ^~ /editorial-review", template)
+        self.assertIn("proxy_pass http://web:5000;", template)
 
     def test_compose_mounts_nginx_template_and_defines_web_healthcheck(self):
         compose = (self.root / "docker-compose.yml").read_text(encoding="utf-8")
 
         self.assertIn("./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro", compose)
+        self.assertIn("./templates:/app/templates:ro", compose)
         self.assertIn("healthcheck:", compose)
         self.assertIn("condition: service_healthy", compose)
 
