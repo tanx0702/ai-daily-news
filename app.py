@@ -10,18 +10,23 @@ Flask 服务 — AI 日报微信回调 + 新闻 API
 """
 
 import hashlib
+import hmac
 import json
 import logging
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, render_template, request
+from src.domain.models import FeedbackLabel
+from src.services.editorial_review import list_review_runs, load_review_run
+from src.services.shadow_history import record_feedback
 from src.time_utils import report_date_str
 
 # ==================== 配置 ====================
@@ -38,6 +43,11 @@ WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "")
 WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "")
 WECHAT_TOKEN = os.environ.get("WECHAT_TOKEN", "")
 NEWS_DATA_FILE = os.environ.get("NEWS_DATA_FILE", "/app/docs/latest.json")
+EDITORIAL_REVIEW_USERNAME = os.environ.get("EDITORIAL_REVIEW_USERNAME", "")
+EDITORIAL_REVIEW_PASSWORD = os.environ.get("EDITORIAL_REVIEW_PASSWORD", "")
+SHADOW_HISTORY_DIR = Path(
+    os.environ.get("SHADOW_HISTORY_DIR", "/app/docs/debug/shadow")
+)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -49,6 +59,39 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if val in ("0", "false", "no", "off"):
         return False
     return default
+
+
+def _editorial_review_enabled() -> bool:
+    return bool(EDITORIAL_REVIEW_USERNAME and EDITORIAL_REVIEW_PASSWORD)
+
+
+def _editorial_review_unauthorized() -> Response:
+    return Response(
+        "authentication required",
+        401,
+        {"WWW-Authenticate": 'Basic realm="Editorial Review", charset="UTF-8"'},
+    )
+
+
+def _require_editorial_review_auth(view):
+    """Protect private editorial data without exposing a public URL token."""
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not _editorial_review_enabled():
+            return "not found", 404
+        auth = request.authorization
+        username_matches = bool(auth) and hmac.compare_digest(
+            auth.username or "", EDITORIAL_REVIEW_USERNAME
+        )
+        password_matches = bool(auth) and hmac.compare_digest(
+            auth.password or "", EDITORIAL_REVIEW_PASSWORD
+        )
+        if not username_matches or not password_matches:
+            return _editorial_review_unauthorized()
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 # ==================== 微信 API ====================
@@ -305,6 +348,48 @@ def api_news():
     except FileNotFoundError:
         return jsonify({"error": "no news data yet", "news": []}), 404
     return jsonify(data)
+
+
+@app.route("/editorial-review")
+@_require_editorial_review_auth
+def editorial_review_page():
+    """Render saved shadow candidates for one authenticated human editor."""
+    requested_run_id = request.args.get("run_id", "").strip()
+    review = load_review_run(SHADOW_HISTORY_DIR, run_id=requested_run_id or None)
+    return render_template(
+        "editorial_review.html",
+        review=review,
+        runs=list_review_runs(SHADOW_HISTORY_DIR),
+        labels=[label.value for label in FeedbackLabel],
+    )
+
+
+@app.route("/editorial-review/feedback", methods=["POST"])
+@_require_editorial_review_auth
+def editorial_review_feedback():
+    """Append one human label to an existing shadow-run feedback history."""
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON object required"}), 400
+
+    run_id = payload.get("run_id")
+    candidate_id = payload.get("candidate_id")
+    label = payload.get("label")
+    note = payload.get("note", "")
+    if not all(isinstance(value, str) for value in (run_id, candidate_id, label, note)):
+        return jsonify({"error": "run_id, candidate_id, label, and note must be strings"}), 400
+
+    try:
+        event, _ = record_feedback(
+            history_dir=SHADOW_HISTORY_DIR,
+            run_id=run_id,
+            candidate_id=candidate_id,
+            label=label,
+            note=note,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"event": event})
 
 
 # ==================== 入口 ====================

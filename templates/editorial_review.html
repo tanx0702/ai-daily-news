@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>影子选题审核</title>
+  <style>
+    :root {
+      color: #1d2433;
+      background: #f4f6f8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #102b46; color: #fff; padding: 24px max(20px, calc((100vw - 1120px) / 2)); }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0; }
+    header p { margin: 7px 0 0; color: #cfdae5; font-size: 14px; }
+    main { width: min(1120px, calc(100% - 32px)); margin: 24px auto 48px; }
+    .toolbar, .empty, article { border: 1px solid #d8dde5; background: #fff; border-radius: 6px; }
+    .toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px; margin-bottom: 16px; }
+    .run-meta { color: #536173; font-size: 14px; }
+    label { font-size: 14px; font-weight: 600; }
+    select, textarea { border: 1px solid #aeb8c5; border-radius: 4px; font: inherit; padding: 8px; }
+    select { margin-left: 8px; max-width: 280px; }
+    .candidate-list { display: grid; gap: 14px; }
+    article { padding: 18px; }
+    .topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    h2 { margin: 0; font-size: 19px; line-height: 1.35; letter-spacing: 0; }
+    .source { color: #536173; font-size: 13px; margin: 8px 0 0; }
+    .status { flex: 0 0 auto; border-radius: 4px; padding: 5px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .write { background: #d9f3e5; color: #1d6a45; }
+    .reserve { background: #e5ecf5; color: #294e77; }
+    .reject { background: #fbe2e0; color: #96382d; }
+    .summary { margin: 14px 0; line-height: 1.6; white-space: pre-wrap; }
+    a { color: #075e9d; }
+    .metrics { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    .metric { background: #f0f3f7; border: 1px solid #dce2e8; border-radius: 4px; padding: 5px 8px; font-size: 13px; }
+    details { border-top: 1px solid #e4e8ed; padding-top: 12px; }
+    summary { cursor: pointer; color: #294e77; font-size: 14px; font-weight: 600; }
+    .reasons { margin: 10px 0 0; display: grid; gap: 6px; color: #465467; font-size: 14px; line-height: 1.5; }
+    .feedback { border-top: 1px solid #e4e8ed; margin-top: 16px; padding-top: 16px; }
+    .feedback textarea { display: block; width: 100%; min-height: 58px; margin: 8px 0 10px; resize: vertical; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { border: 1px solid #8c9aaa; border-radius: 4px; background: #fff; color: #1d2433; cursor: pointer; font: inherit; font-size: 14px; padding: 8px 11px; }
+    button:hover, button.selected { background: #102b46; border-color: #102b46; color: #fff; }
+    .saved { min-height: 20px; margin: 10px 0 0; color: #1d6a45; font-size: 13px; }
+    .saved.error { color: #a1332a; }
+    .empty { padding: 32px; color: #536173; text-align: center; }
+    @media (max-width: 640px) {
+      main { width: min(100% - 20px, 1120px); margin-top: 10px; }
+      .toolbar, .topline { align-items: stretch; flex-direction: column; }
+      select { margin: 6px 0 0; max-width: 100%; width: 100%; }
+      .status { align-self: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>影子选题审核</h1>
+    <p>标注仅用于校准 Collector、Analyst 与 Editorial 的影子决策，不影响当日日报和微信草稿。</p>
+  </header>
+  <main>
+    {% if review %}
+      <section class="toolbar" aria-label="运行选择">
+        <div class="run-meta">运行 {{ review.run_id }} · 生成于 {{ review.generated_at }} · {{ review.candidates | length }} 条候选</div>
+        <label>查看历史运行
+          <select id="run-selector" aria-label="选择影子运行">
+            {% for run in runs %}
+              <option value="{{ run.run_id }}" {% if run.run_id == review.run_id %}selected{% endif %}>{{ run.generated_at }} · {{ run.run_id }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </section>
+      <section class="candidate-list" aria-label="候选新闻">
+        {% for candidate in review.candidates %}
+          <article data-run-id="{{ review.run_id }}" data-candidate-id="{{ candidate.candidate_id }}">
+            <div class="topline">
+              <div>
+                <h2>{{ candidate.title or "未命名候选" }}</h2>
+                <p class="source">{{ candidate.source or "未知来源" }}{% if candidate.published_at %} · {{ candidate.published_at }}{% endif %}</p>
+              </div>
+              <span class="status {{ candidate.decision.action or "reserve" }}">{{ candidate.decision.action or "待定" }}</span>
+            </div>
+            <p class="summary">{{ candidate.summary or "该来源没有提供摘要。" }}</p>
+            {% if candidate.source_url %}<a href="{{ candidate.source_url }}" target="_blank" rel="noopener noreferrer">阅读原文</a>{% endif %}
+            <div class="metrics">
+              <span class="metric">重要性 {{ candidate.analysis.importance_score if candidate.analysis.importance_score is not none else "-" }}</span>
+              <span class="metric">证据 {{ candidate.analysis.evidence_score if candidate.analysis.evidence_score is not none else "-" }}</span>
+              <span class="metric">影响 {{ candidate.analysis.impact_score if candidate.analysis.impact_score is not none else "-" }}</span>
+              <span class="metric">风险 {{ candidate.analysis.risk_level or "-" }}</span>
+            </div>
+            <details>
+              <summary>查看 AI 判断依据</summary>
+              <div class="reasons">
+                {% if candidate.analysis.importance_reason %}<div>重要性：{{ candidate.analysis.importance_reason }}</div>{% endif %}
+                {% if candidate.analysis.verifiability_reason %}<div>证据：{{ candidate.analysis.verifiability_reason }}</div>{% endif %}
+                {% if candidate.analysis.impact_analysis %}<div>影响：{{ candidate.analysis.impact_analysis }}</div>{% endif %}
+                {% if candidate.decision.reason %}<div>选题决定：{{ candidate.decision.reason }}</div>{% endif %}
+                {% if candidate.decision.audience %}<div>目标读者：{{ candidate.decision.audience }}</div>{% endif %}
+                {% if candidate.decision.angle %}<div>文章角度：{{ candidate.decision.angle }}</div>{% endif %}
+              </div>
+            </details>
+            <section class="feedback" aria-label="人工标注">
+              <label for="note-{{ loop.index }}">你的备注（可选）</label>
+              <textarea id="note-{{ loop.index }}" placeholder="例如：适合日报的产品更新；或与上一条属于同一事件。">{{ candidate.feedback.note if candidate.feedback else "" }}</textarea>
+              <div class="actions">
+                {% for label in labels %}
+                  <button type="button" data-label="{{ label }}" {% if candidate.feedback and candidate.feedback.label == label %}class="selected"{% endif %}>{{ {"good_topic": "值得写", "bad_topic": "跑题", "duplicate": "重复", "not_interesting": "不够有意思"}[label] }}</button>
+                {% endfor %}
+              </div>
+              <p class="saved" aria-live="polite">{% if candidate.feedback %}当前标注：{{ candidate.feedback.label }} · {{ candidate.feedback.recorded_at }}{% endif %}</p>
+            </section>
+          </article>
+        {% endfor %}
+      </section>
+    {% else %}
+      <section class="empty">暂无可审核的已完成影子运行。请等待下一次影子任务完成后刷新本页。</section>
+    {% endif %}
+  </main>
+  <script>
+    const selector = document.getElementById("run-selector");
+    if (selector) {
+      selector.addEventListener("change", () => {
+        window.location.search = `?run_id=${encodeURIComponent(selector.value)}`;
+      });
+    }
+    document.querySelectorAll("article[data-candidate-id]").forEach((card) => {
+      card.querySelectorAll("button[data-label]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const saved = card.querySelector(".saved");
+          const label = button.dataset.label;
+          const note = card.querySelector("textarea").value;
+          button.disabled = true;
+          saved.classList.remove("error");
+          saved.textContent = "正在保存...";
+          try {
+            const response = await fetch("{{ url_for('editorial_review_feedback') }}", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({
+                run_id: card.dataset.runId,
+                candidate_id: card.dataset.candidateId,
+                label,
+                note,
+              }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.error || "保存失败");
+            card.querySelectorAll("button[data-label]").forEach((item) => item.classList.remove("selected"));
+            button.classList.add("selected");
+            saved.textContent = `当前标注：${payload.event.label} · 已保存`;
+          } catch (error) {
+            saved.classList.add("error");
+            saved.textContent = error.message || "保存失败";
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

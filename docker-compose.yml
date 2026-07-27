@@ -8,6 +8,7 @@ services:
       - ./logs:/app/logs
       - ./src:/app/src
       - ./app.py:/app/app.py
+      - ./templates:/app/templates:ro
       - ./config:/app/config
     env_file:
       - .env
