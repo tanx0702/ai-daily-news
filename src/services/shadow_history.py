@@ -13,6 +13,7 @@ from src.file_utils import atomic_write_text
 
 
 _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+MAX_FEEDBACK_NOTE_LENGTH = 1000
 
 
 def save_shadow_report(report: dict[str, Any], *, history_dir: Path) -> Path:
@@ -36,6 +37,13 @@ def record_feedback(
 ) -> tuple[dict[str, str], Path]:
     """Append a validated human-feedback event without changing the report."""
     run_id = _require_run_id(run_id)
+    if not isinstance(note, str):
+        raise ValueError("Feedback note must be a string")
+    note = note.strip()
+    if len(note) > MAX_FEEDBACK_NOTE_LENGTH:
+        raise ValueError(
+            f"Feedback note must be at most {MAX_FEEDBACK_NOTE_LENGTH} characters"
+        )
     try:
         feedback_label = FeedbackLabel(label)
     except ValueError as exc:
@@ -59,7 +67,7 @@ def record_feedback(
         "run_id": run_id,
         "candidate_id": candidate_id,
         "label": feedback_label.value,
-        "note": note.strip(),
+        "note": note,
         "recorded_at": timestamp.isoformat(),
     }
     feedback_path = history_dir / f"{run_id}.feedback.json"

@@ -1,4 +1,4 @@
-"""Generate a local retrospective from shadow history and human feedback."""
+"""Generate a local calibration retrospective from shadow history and human feedback."""
 
 from __future__ import annotations
 
@@ -20,7 +20,10 @@ from src.services.editorial_retrospective import (
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate an editorial retrospective from shadow-run history.",
+        description=(
+            "Generate a local editorial calibration report from shadow-run history. "
+            "This command never runs the production news pipeline."
+        ),
     )
     parser.add_argument(
         "--history-dir",

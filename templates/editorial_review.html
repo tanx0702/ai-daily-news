@@ -41,6 +41,8 @@
     .feedback { border-top: 1px solid #e4e8ed; margin-top: 16px; padding-top: 16px; }
     .feedback textarea { display: block; width: 100%; min-height: 58px; margin: 8px 0 10px; resize: vertical; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .feedback-tools { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .note-state { color: #805a00; font-size: 13px; }
     button { border: 1px solid #8c9aaa; border-radius: 4px; background: #fff; color: #1d2433; cursor: pointer; font: inherit; font-size: 14px; padding: 8px 11px; }
     button:hover, button.selected { background: #102b46; border-color: #102b46; color: #fff; }
     .saved { min-height: 20px; margin: 10px 0 0; color: #1d6a45; font-size: 13px; }
@@ -108,6 +110,10 @@
                   <button type="button" data-label="{{ label }}" {% if candidate.feedback and candidate.feedback.label == label %}class="selected"{% endif %}>{{ {"good_topic": "值得写", "bad_topic": "跑题", "duplicate": "重复", "not_interesting": "不够有意思"}[label] }}</button>
                 {% endfor %}
               </div>
+              <div class="feedback-tools">
+                <button type="button" data-save-note disabled>保存备注</button>
+                <span class="note-state" aria-live="polite"></span>
+              </div>
               <p class="saved" aria-live="polite">{% if candidate.feedback %}当前标注：{{ candidate.feedback.label }} · {{ candidate.feedback.recorded_at }}{% endif %}</p>
             </section>
           </article>
@@ -125,38 +131,74 @@
       });
     }
     document.querySelectorAll("article[data-candidate-id]").forEach((card) => {
+      const note = card.querySelector("textarea");
+      const saveNote = card.querySelector("[data-save-note]");
+      const noteState = card.querySelector(".note-state");
+      const saved = card.querySelector(".saved");
+      let currentLabel = card.querySelector("button.selected")?.dataset.label || "";
+      let savedNote = note.value;
+
+      const updateNoteState = () => {
+        const isDirty = note.value !== savedNote;
+        saveNote.disabled = !isDirty;
+        noteState.textContent = isDirty ? "备注尚未保存" : "";
+      };
+
+      const saveFeedback = async (label, control, isLabelButton) => {
+        control.disabled = true;
+        saved.classList.remove("error");
+        saved.textContent = "正在保存...";
+        try {
+          const response = await fetch("{{ url_for('editorial_review_feedback') }}", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              run_id: card.dataset.runId,
+              candidate_id: card.dataset.candidateId,
+              label,
+              note: note.value,
+            }),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || "保存失败");
+          currentLabel = payload.event.label;
+          savedNote = payload.event.note;
+          note.value = savedNote;
+          card.querySelectorAll("button[data-label]").forEach((item) => {
+            item.classList.toggle("selected", item.dataset.label === currentLabel);
+          });
+          saved.textContent = `当前标注：${currentLabel} · 已保存`;
+        } catch (error) {
+          saved.classList.add("error");
+          saved.textContent = error.message || "保存失败";
+        } finally {
+          if (isLabelButton) control.disabled = false;
+          updateNoteState();
+        }
+      };
+
+      note.addEventListener("input", updateNoteState);
+      saveNote.addEventListener("click", async () => {
+        if (!currentLabel) {
+          saved.classList.add("error");
+          saved.textContent = "请先选择反馈标签，再保存备注";
+          return;
+        }
+        await saveFeedback(currentLabel, saveNote, false);
+      });
       card.querySelectorAll("button[data-label]").forEach((button) => {
         button.addEventListener("click", async () => {
-          const saved = card.querySelector(".saved");
-          const label = button.dataset.label;
-          const note = card.querySelector("textarea").value;
-          button.disabled = true;
-          saved.classList.remove("error");
-          saved.textContent = "正在保存...";
-          try {
-            const response = await fetch("{{ url_for('editorial_review_feedback') }}", {
-              method: "POST",
-              headers: {"Content-Type": "application/json"},
-              body: JSON.stringify({
-                run_id: card.dataset.runId,
-                candidate_id: card.dataset.candidateId,
-                label,
-                note,
-              }),
-            });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.error || "保存失败");
-            card.querySelectorAll("button[data-label]").forEach((item) => item.classList.remove("selected"));
-            button.classList.add("selected");
-            saved.textContent = `当前标注：${payload.event.label} · 已保存`;
-          } catch (error) {
-            saved.classList.add("error");
-            saved.textContent = error.message || "保存失败";
-          } finally {
-            button.disabled = false;
-          }
+          await saveFeedback(button.dataset.label, button, true);
         });
       });
+    });
+    window.addEventListener("beforeunload", (event) => {
+      const hasUnsavedNote = Array.from(document.querySelectorAll(".note-state"))
+        .some((element) => element.textContent);
+      if (hasUnsavedNote) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
     });
   </script>
 </body>

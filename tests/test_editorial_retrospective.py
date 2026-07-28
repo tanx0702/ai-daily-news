@@ -199,10 +199,111 @@ class EditorialRetrospectiveTests(unittest.TestCase):
             saved = json.loads(json_path.read_text(encoding="utf-8"))
             markdown = markdown_path.read_text(encoding="utf-8")
 
-        self.assertEqual(saved["schema_version"], "editorial-retrospective-v1")
+        self.assertEqual(saved["schema_version"], "editorial-retrospective-v2")
         self.assertEqual(json_path.name, "editorial-retrospective-20260720T120000Z.json")
         self.assertIn("# 编辑复盘报告", markdown)
+        self.assertIn("## 来源表现", markdown)
+        self.assertIn("## Analyst 偏差", markdown)
+        self.assertIn("## Editorial 偏差", markdown)
+        self.assertIn("## 人工备注", markdown)
         self.assertIn("没有可用的影子运行历史", markdown)
+
+    def test_reports_source_quality_score_mismatches_and_latest_notes(self):
+        from src.services.editorial_retrospective import (
+            build_editorial_retrospective,
+            save_editorial_retrospective,
+        )
+
+        now = datetime(2026, 7, 20, 12, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_dir = Path(temp_dir)
+            _write_json(
+                history_dir / "shadow-high.json",
+                _shadow_report(
+                    "shadow-high",
+                    now - timedelta(days=1),
+                    candidate_id="candidate-high",
+                    source="Community Source",
+                    importance_score=9.1,
+                    risk_level="low",
+                    action="write",
+                    reason="high score",
+                ),
+            )
+            _write_json(
+                history_dir / "shadow-low.json",
+                _shadow_report(
+                    "shadow-low",
+                    now - timedelta(days=2),
+                    candidate_id="candidate-low",
+                    source="Primary Source",
+                    importance_score=6.2,
+                    risk_level="medium",
+                    action="reserve",
+                    reason="pool limit",
+                ),
+            )
+            _write_json(
+                history_dir / "shadow-high.feedback.json",
+                {
+                    "events": [
+                        {
+                            "run_id": "shadow-high",
+                            "candidate_id": "candidate-high",
+                            "label": "good_topic",
+                            "note": "旧备注",
+                            "recorded_at": (now - timedelta(hours=6)).isoformat(),
+                        },
+                        {
+                            "run_id": "shadow-high",
+                            "candidate_id": "candidate-high",
+                            "label": "not_interesting",
+                            "note": "宣传性太强",
+                            "recorded_at": (now - timedelta(hours=1)).isoformat(),
+                        },
+                    ]
+                },
+            )
+            _write_json(
+                history_dir / "shadow-low.feedback.json",
+                {
+                    "events": [
+                        {
+                            "run_id": "shadow-low",
+                            "candidate_id": "candidate-low",
+                            "label": "good_topic",
+                            "note": "影响分析很有价值",
+                            "recorded_at": (now - timedelta(hours=2)).isoformat(),
+                        }
+                    ]
+                },
+            )
+
+            report = build_editorial_retrospective(history_dir, days=7, now=now)
+            _, markdown_path = save_editorial_retrospective(
+                report,
+                output_dir=history_dir / "reviews",
+                generated_at=now,
+            )
+            markdown = markdown_path.read_text(encoding="utf-8")
+
+        self.assertEqual(report["schema_version"], "editorial-retrospective-v2")
+        coverage = {item["source"]: item for item in report["feedback"]["source_coverage"]}
+        self.assertEqual(coverage["Community Source"]["candidate_count"], 1)
+        self.assertEqual(coverage["Community Source"]["negative_feedback_count"], 1)
+        self.assertEqual(coverage["Primary Source"]["good_topic_count"], 1)
+        high = report["analyst_calibration"]["high_score_misjudgments"]
+        low = report["analyst_calibration"]["low_score_missed_opportunities"]
+        self.assertEqual(high[0]["candidate_id"], "candidate-high")
+        self.assertEqual(high[0]["note"], "宣传性太强")
+        self.assertEqual(low[0]["candidate_id"], "candidate-low")
+        self.assertEqual(low[0]["editorial_action"], "reserve")
+        self.assertEqual(
+            [item["note"] for item in report["feedback"]["notes"]],
+            ["宣传性太强", "影响分析很有价值"],
+        )
+        self.assertIn("candidate-high title", markdown)
+        self.assertIn("宣传性太强", markdown)
 
 
 if __name__ == "__main__":
