@@ -1,8 +1,9 @@
 """Typed contracts shared by v2 agents without changing v1 payloads."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from types import MappingProxyType
 from typing import Any, Mapping
 
 from src.domain.states import WorkflowState
@@ -18,6 +19,9 @@ class SourceEvidence:
     source: str
     source_type: str
     published_at: datetime | None
+    content_quality: str = "ready"
+    content_quality_reason: str = ""
+    details: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 
 
 @dataclass(frozen=True, slots=True)

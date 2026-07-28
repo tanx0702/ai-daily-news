@@ -17,6 +17,9 @@ def _shadow_report(run_id="shadow-review-1", title="<script>unsafe title</script
                 "source_summary": "Source summary",
                 "source_url": "https://example.com/source",
                 "source": "Example Source",
+                "content_quality": "metadata_only",
+                "content_quality_reason": "HN RSS only contains metadata.",
+                "evidence_details": {"article_url": "https://example.com/source"},
                 "published_at": "2026-07-27T00:00:00+00:00",
             }
         ],
@@ -91,6 +94,9 @@ class EditorialReviewServiceTests(unittest.TestCase):
         self.assertEqual(review["run_id"], "shadow-review-1")
         self.assertEqual(candidate["analysis"]["importance_score"], 8.8)
         self.assertEqual(candidate["decision"]["action"], "write")
+        self.assertEqual(candidate["content_quality"], "metadata_only")
+        self.assertEqual(candidate["content_quality_reason"], "HN RSS only contains metadata.")
+        self.assertEqual(candidate["evidence_details"]["article_url"], "https://example.com/source")
         self.assertEqual(candidate["feedback"]["label"], "good_topic")
         self.assertEqual(candidate["feedback"]["note"], "Changed after reading source")
         self.assertIsNone(unknown)
@@ -136,6 +142,8 @@ class EditorialReviewRouteTests(unittest.TestCase):
         self.assertIn("&lt;script&gt;unsafe title&lt;/script&gt;", page)
         self.assertNotIn("<script>unsafe title</script>", page)
         self.assertIn("Source summary", page)
+        self.assertIn("metadata_only", page)
+        self.assertIn("HN RSS only contains metadata.", page)
 
     def test_feedback_endpoint_appends_valid_label_and_rejects_invalid_payload(self):
         report_path = self.history_dir / "shadow-review-1.json"
