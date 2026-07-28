@@ -2,7 +2,14 @@ import unittest
 from datetime import datetime, timezone
 
 
-def _candidate(candidate_id, *, tier, score):
+def _candidate(
+    candidate_id,
+    *,
+    tier,
+    score,
+    content_quality="ready",
+    content_quality_reason="",
+):
     from src.domain.models import NewsCandidate, SourceEvidence
 
     return NewsCandidate(
@@ -14,6 +21,8 @@ def _candidate(candidate_id, *, tier, score):
             source=f"Source {candidate_id}",
             source_type="rss",
             published_at=datetime(2026, 7, 20, tzinfo=timezone.utc),
+            content_quality=content_quality,
+            content_quality_reason=content_quality_reason,
         ),
         source_tier=tier,
         legacy_payload={
@@ -69,6 +78,26 @@ class EditorialAgentTests(unittest.TestCase):
         self.assertTrue(by_candidate["first"].brief.audience)
         self.assertTrue(by_candidate["first"].brief.angle)
         self.assertTrue(by_candidate["first"].brief.title_direction)
+    def test_select_rejects_missing_evidence_with_an_explicit_reason(self):
+        from src.agents.editorial_agent import EditorialAction, EditorialAgent
+
+        candidate = _candidate(
+            "hn-rss-1",
+            tier="community",
+            score=9.0,
+            content_quality="metadata_only",
+            content_quality_reason="HN RSS only contains metadata.",
+        )
+
+        plan = EditorialAgent().select(
+            (candidate,),
+            (_analysis("hn-rss-1", "high"),),
+            min_primary_or_research=0,
+        )
+
+        decision = plan.decisions[0]
+        self.assertEqual(decision.action, EditorialAction.REJECT)
+        self.assertIn("HN RSS only contains metadata.", decision.reason)
 
 
 if __name__ == "__main__":

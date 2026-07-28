@@ -56,7 +56,12 @@ class EditorialAgent:
         for candidate in candidates:
             analysis = analysis_by_id.get(candidate.candidate_id, _unknown_analysis(candidate))
             payload_id = id(candidate.legacy_payload)
-            if analysis.risk_level == "high":
+            if candidate.evidence.content_quality != "ready":
+                action = EditorialAction.REJECT
+                rank = None
+                detail = candidate.evidence.content_quality_reason or "source content is unavailable"
+                reason = f"\u8bc1\u636e\u4e0d\u8db3 ({candidate.evidence.content_quality}): {detail}"
+            elif analysis.risk_level == "high":
                 action = EditorialAction.REJECT
                 rank = None
                 reason = "分析阶段标记为高风险，不能进入自动写作。"

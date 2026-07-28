@@ -85,6 +85,9 @@
             </div>
             <p class="summary">{{ candidate.summary or "该来源没有提供摘要。" }}</p>
             {% if candidate.source_url %}<a href="{{ candidate.source_url }}" target="_blank" rel="noopener noreferrer">阅读原文</a>{% endif %}
+            {% if candidate.content_quality %}
+              <p class="source">证据状态：{{ candidate.content_quality }}{% if candidate.content_quality_reason %} · {{ candidate.content_quality_reason }}{% endif %}</p>
+            {% endif %}
             <div class="metrics">
               <span class="metric">重要性 {{ candidate.analysis.importance_score if candidate.analysis.importance_score is not none else "-" }}</span>
               <span class="metric">证据 {{ candidate.analysis.evidence_score if candidate.analysis.evidence_score is not none else "-" }}</span>
@@ -94,6 +97,9 @@
             <details>
               <summary>查看 AI 判断依据</summary>
               <div class="reasons">
+                {% for key, value in candidate.evidence_details.items() %}
+                  <div>证据详情 {{ key }}：{{ value }}</div>
+                {% endfor %}
                 {% if candidate.analysis.importance_reason %}<div>重要性：{{ candidate.analysis.importance_reason }}</div>{% endif %}
                 {% if candidate.analysis.verifiability_reason %}<div>证据：{{ candidate.analysis.verifiability_reason }}</div>{% endif %}
                 {% if candidate.analysis.impact_analysis %}<div>影响：{{ candidate.analysis.impact_analysis }}</div>{% endif %}

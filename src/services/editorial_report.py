@@ -51,6 +51,7 @@ def build_editorial_report(
             "final_editorial_dedup_removed": metrics.final_editorial_dedup_removed,
             "dedup_removed_total": metrics.dedup_removed_total,
             "returned_candidate_count": metrics.returned_candidate_count,
+            "content_quality_distribution": _content_quality_distribution(result),
         },
         "candidates": [_candidate_payload(candidate) for candidate in result.candidates],
         "analysis": {
@@ -81,6 +82,11 @@ def _score_distribution(result: WorkflowResult, field: str) -> dict[str, int]:
 def _risk_distribution(result: WorkflowResult) -> dict[str, int]:
     counts = Counter(str(analysis.risk_level) for analysis in result.analyses)
     return {risk: counts[risk] for risk in _RISK_LEVELS}
+
+
+def _content_quality_distribution(result: WorkflowResult) -> dict[str, int]:
+    counts = Counter(candidate.evidence.content_quality for candidate in result.candidates)
+    return dict(sorted(counts.items()))
 
 
 def _score_bucket(score: float) -> str:
@@ -117,6 +123,9 @@ def _candidate_payload(candidate: Any) -> dict[str, Any]:
         "source_type": evidence.source_type,
         "source_tier": candidate.source_tier,
         "published_at": evidence.published_at.isoformat() if evidence.published_at else "",
+        "content_quality": evidence.content_quality,
+        "content_quality_reason": evidence.content_quality_reason,
+        "evidence_details": dict(evidence.details),
     }
 
 

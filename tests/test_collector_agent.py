@@ -79,6 +79,48 @@ class CollectorAgentTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             candidates[0].legacy_payload["title"] = "changed"
 
+    def test_collect_uses_normalized_shadow_evidence_without_changing_v1_item(self):
+        from src.agents.collector_agent import CollectorAgent
+        from src.evidence import NormalizedEvidence
+
+        legacy_item = {
+            "id": "hn-1",
+            "title": "HN title",
+            "summary": "Article URL: https://example.test/story",
+            "url": "https://news.ycombinator.com/item?id=1",
+            "source": "Hacker News AI",
+            "source_type": "rss",
+            "published_at": datetime(2026, 7, 20, tzinfo=timezone.utc),
+        }
+        normalized = NormalizedEvidence(
+            title="HN title",
+            summary="",
+            url="https://example.test/story",
+            content_quality="metadata_only",
+            content_quality_reason="HN RSS only contains metadata.",
+            details={"article_url": "https://example.test/story"},
+        )
+        seen_items = []
+
+        def normalize(item):
+            seen_items.append(item)
+            return normalized
+
+        agent = CollectorAgent(
+            collect_news=lambda **_: [legacy_item],
+            annotate_candidates=lambda items: items,
+            normalize_evidence=normalize,
+        )
+
+        candidate = agent.collect()[0]
+
+        self.assertEqual(seen_items, [legacy_item])
+        self.assertEqual(candidate.evidence.summary, "")
+        self.assertEqual(candidate.evidence.url, "https://example.test/story")
+        self.assertEqual(candidate.evidence.content_quality, "metadata_only")
+        self.assertEqual(candidate.evidence.details["article_url"], "https://example.test/story")
+        self.assertEqual(legacy_item["summary"], "Article URL: https://example.test/story")
+
     def test_collect_returns_an_empty_tuple_when_v1_has_no_candidates(self):
         from src.agents.collector_agent import CollectorAgent
 

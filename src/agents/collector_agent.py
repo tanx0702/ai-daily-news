@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
 from src.domain.models import CollectionDiagnostics, NewsCandidate, SourceEvidence
+from src.evidence import NormalizedEvidence, normalize_shadow_evidence
 
 
 def _freeze(value: Any) -> Any:
@@ -28,6 +29,7 @@ class CollectorAgent:
         *,
         collect_news: Callable[..., list[dict]] | None = None,
         annotate_candidates: Callable[[list[dict]], list[dict]] | None = None,
+        normalize_evidence: Callable[[Mapping[str, object]], NormalizedEvidence] | None = None,
     ) -> None:
         if collect_news is None:
             from src.collector import collect_news as default_collect_news
@@ -40,6 +42,7 @@ class CollectorAgent:
 
         self._collect_news = collect_news
         self._annotate_candidates = annotate_candidates
+        self._normalize_evidence = normalize_evidence or normalize_shadow_evidence
 
     def collect(self, *, top_n: int = 30, rss_timeout: int = 30) -> tuple[NewsCandidate, ...]:
         """Collect, annotate, and convert current v1 candidates for v2 consumers."""
@@ -87,16 +90,19 @@ class CollectorAgent:
         self._annotate_candidates(items)
         return tuple(self._to_candidate(item, index) for index, item in enumerate(items, start=1))
 
-    @staticmethod
-    def _to_candidate(item: dict, index: int) -> NewsCandidate:
+    def _to_candidate(self, item: dict, index: int) -> NewsCandidate:
         published_at = item.get("published_at")
+        normalized = self._normalize_evidence(item)
         evidence = SourceEvidence(
-            title=str(item.get("source_title") or item.get("title") or ""),
-            summary=str(item.get("source_summary") or item.get("summary") or ""),
-            url=str(item.get("source_url") or item.get("url") or ""),
+            title=normalized.title,
+            summary=normalized.summary,
+            url=normalized.url,
             source=str(item.get("source") or ""),
             source_type=str(item.get("source_type") or "rss"),
             published_at=published_at if isinstance(published_at, datetime) else None,
+            content_quality=normalized.content_quality,
+            content_quality_reason=normalized.content_quality_reason,
+            details=MappingProxyType(dict(normalized.details)),
         )
         candidate_id = str(item.get("id") or item.get("url") or f"candidate-{index}")
         return NewsCandidate(

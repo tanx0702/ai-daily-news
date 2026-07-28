@@ -67,6 +67,9 @@ def load_review_run(history_dir: Path, run_id: str | None = None) -> dict[str, A
                 "source_type": _string(candidate.get("source_type")),
                 "published_at": _string(candidate.get("published_at")),
                 "source_url": _safe_http_url(_string(candidate.get("source_url"))),
+                "content_quality": _string(candidate.get("content_quality")),
+                "content_quality_reason": _string(candidate.get("content_quality_reason")),
+                "evidence_details": _string_mapping(candidate.get("evidence_details")),
                 "analysis": _analysis_display(analyses.get(candidate_id, {})),
                 "decision": _decision_display(decisions.get(candidate_id, {})),
                 "feedback": latest_feedback.get(candidate_id),
@@ -174,6 +177,14 @@ def _is_valid_run_id(value: str) -> bool:
 
 def _mapping(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
+
+
+def _string_mapping(value: object) -> dict[str, str]:
+    return {
+        str(key): _string(item)
+        for key, item in _mapping(value).items()
+        if isinstance(key, str) and _string(item)
+    }
 
 
 def _items(value: object) -> list[Mapping[str, Any]]:

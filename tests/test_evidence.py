@@ -1,10 +1,91 @@
 import unittest
 
-from src.evidence import preserve_source_evidence, source_evidence_text
+from src.evidence import (
+    normalize_shadow_evidence,
+    preserve_source_evidence,
+    source_evidence_text,
+)
 from src.llm_config import resolve_quality_llm_config
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_github_changelog_pointer_is_not_treated_as_release_evidence(self):
+        result = normalize_shadow_evidence(
+            {
+                "source_type": "github",
+                "source_title": "acme/agent-kit v1.2.0",
+                "source_url": "https://github.com/acme/agent-kit/releases/tag/v1.2.0",
+                "github_evidence": {
+                    "project_description": (
+                        '<p align="center"><img src="https://example.test/logo.png"></p>\n'
+                        "# Agent Kit\n\nA toolkit for reliable coding agents."
+                    ),
+                    "release_notes": "See CHANGELOG.md for this release's notes.",
+                    "release_tag": "v1.2.0",
+                },
+            }
+        )
+
+        self.assertEqual(result.content_quality, "missing")
+        self.assertIn("Agent Kit", result.details["project_purpose"])
+        self.assertNotIn("http", result.details["project_purpose"])
+        self.assertEqual(result.details["release_changes"], "")
+
+    def test_hn_rss_metadata_is_not_treated_as_news_summary(self):
+        result = normalize_shadow_evidence(
+            {
+                "source": "Hacker News AI",
+                "source_type": "rss",
+                "source_title": "A useful AI launch",
+                "source_url": "https://news.ycombinator.com/item?id=123",
+                "source_summary": (
+                    "Article URL: https://example.com/launch\n"
+                    "Comments URL: https://news.ycombinator.com/item?id=123\n"
+                    "Points: 77"
+                ),
+            }
+        )
+
+        self.assertEqual(result.content_quality, "metadata_only")
+        self.assertEqual(result.url, "https://example.com/launch")
+        self.assertEqual(result.summary, "")
+
+    def test_hn_text_is_cleaned_before_being_used_as_shadow_evidence(self):
+        result = normalize_shadow_evidence(
+            {
+                "source": "Hacker News",
+                "source_type": "hn",
+                "source_title": "Show HN: Useful tool",
+                "source_url": "https://news.ycombinator.com/item?id=124",
+                "source_summary": "<p>A concise explanation of an AI tool for research teams.</p>",
+            }
+        )
+
+        self.assertEqual(result.content_quality, "ready")
+        self.assertEqual(result.summary, "A concise explanation of an AI tool for research teams.")
+
+    def test_hn_external_article_is_used_when_story_has_no_hn_text(self):
+        fetched_urls = []
+
+        def fetch_article_text(url):
+            fetched_urls.append(url)
+            return "The company released an AI search product with enterprise controls."
+
+        result = normalize_shadow_evidence(
+            {
+                "source": "Hacker News",
+                "source_type": "hn",
+                "source_title": "Company launches AI search",
+                "source_url": "https://example.com/ai-search",
+                "source_summary": "",
+            },
+            fetch_article_text=fetch_article_text,
+        )
+
+        self.assertEqual(fetched_urls, ["https://example.com/ai-search"])
+        self.assertEqual(result.content_quality, "ready")
+        self.assertEqual(result.summary, "The company released an AI search product with enterprise controls.")
+
     def test_source_summary_survives_generated_summary_replacement(self):
         item = preserve_source_evidence(
             {

@@ -27,8 +27,11 @@ class NewsAnalystAgent:
         cross_source_count = _number(metrics.get("cross_source_count"))
         evidence_score += min(cross_source_count * 0.5, 1.0)
         evidence_score = _clamp(evidence_score)
+        content_quality = candidate.evidence.content_quality
+        if content_quality != "ready":
+            evidence_score = min(evidence_score, 2.0)
 
-        risk_level = _risk_level(payload, evidence_score)
+        risk_level = _risk_level(payload, evidence_score, content_quality)
         impact_score = _clamp(importance_score * 0.7 + evidence_score * 0.3)
         return NewsAnalysis(
             candidate_id=candidate.candidate_id,
@@ -37,7 +40,12 @@ class NewsAnalystAgent:
             impact_score=impact_score,
             risk_level=risk_level,
             importance_reason=_importance_reason(importance_score),
-            verifiability_reason=_verifiability_reason(evidence_score, cross_source_count),
+            verifiability_reason=_verifiability_reason(
+                evidence_score,
+                cross_source_count,
+                content_quality=content_quality,
+                content_quality_reason=candidate.evidence.content_quality_reason,
+            ),
             impact_analysis=_impact_analysis(impact_score, risk_level),
         )
 
@@ -58,7 +66,9 @@ def _clamp(value: float) -> float:
     return round(max(0.0, min(value, 10.0)), 1)
 
 
-def _risk_level(payload: Mapping[str, object], evidence_score: float) -> str:
+def _risk_level(payload: Mapping[str, object], evidence_score: float, content_quality: str) -> str:
+    if content_quality != "ready":
+        return "high"
     quality_gate = _mapping(payload.get("_quality_gate"))
     if payload.get("_publish_risk") or quality_gate.get("risk_level") == "high":
         return "high"
@@ -75,7 +85,16 @@ def _importance_reason(score: float) -> str:
     return "既有编辑信号不足以支持优先报道。"
 
 
-def _verifiability_reason(score: float, cross_source_count: float) -> str:
+def _verifiability_reason(
+    score: float,
+    cross_source_count: float,
+    *,
+    content_quality: str,
+    content_quality_reason: str,
+) -> str:
+    if content_quality != "ready":
+        detail = content_quality_reason or "source content is unavailable"
+        return f"\u8bc1\u636e\u72b6\u6001 {content_quality}: {detail}"
     if score >= 8.0:
         return f"来源证据完整，且有 {int(cross_source_count)} 个跨源佐证信号。"
     return "来源证据或跨源佐证不足，应保持保守表述。"
