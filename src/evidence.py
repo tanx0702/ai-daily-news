@@ -224,6 +224,7 @@ def _clean_text(value: object, *, limit: int) -> str:
     except Exception:
         pass
     text = re.sub(r"!\[[^]]*\]\([^)]*\)", " ", text)
+    text = re.sub(r"\[\]\([^)]*\)", " ", text)
     text = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"<https?://[^>]+>", " ", text)
     text = re.sub(r"https?://\S+", " ", text)

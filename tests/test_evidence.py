@@ -31,6 +31,30 @@ class EvidenceTests(unittest.TestCase):
         self.assertNotIn("http", result.details["project_purpose"])
         self.assertEqual(result.details["release_changes"], "")
 
+    def test_github_empty_markdown_links_and_badges_are_removed_from_project_purpose(self):
+        result = normalize_shadow_evidence(
+            {
+                "source_type": "github",
+                "source_title": "acme/agent-kit v1.2.1",
+                "source_url": "https://github.com/acme/agent-kit/releases/tag/v1.2.1",
+                "github_evidence": {
+                    "project_description": (
+                        "[](LICENSE) [![Build](https://img.example.test/build.svg)]"
+                        "(https://example.test/build) Agent Kit is a toolkit for coding agents."
+                    ),
+                    "release_notes": (
+                        "Adds a stable command-line interface and fixes repository rule parsing."
+                    ),
+                    "release_tag": "v1.2.1",
+                },
+            }
+        )
+
+        self.assertEqual(result.content_quality, "ready")
+        self.assertEqual(result.details["project_purpose"], "Agent Kit is a toolkit for coding agents.")
+        self.assertNotIn("[](", result.summary)
+        self.assertNotIn("http", result.summary.lower())
+
     def test_hn_rss_metadata_is_not_treated_as_news_summary(self):
         result = normalize_shadow_evidence(
             {
