@@ -61,6 +61,26 @@ class ShadowHistoryTests(unittest.TestCase):
                     label="duplicate",
                 )
 
+    def test_record_feedback_rejects_note_longer_than_1000_characters(self):
+        from src.services.shadow_history import record_feedback, save_shadow_report
+
+        report = {
+            "run_id": "shadow-003",
+            "editorial": {"decisions": [{"candidate_id": "candidate-3"}]},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            history_dir = Path(temp_dir)
+            save_shadow_report(report, history_dir=history_dir)
+
+            with self.assertRaisesRegex(ValueError, "1000"):
+                record_feedback(
+                    history_dir=history_dir,
+                    run_id="shadow-003",
+                    candidate_id="candidate-3",
+                    label="good_topic",
+                    note="x" * 1001,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

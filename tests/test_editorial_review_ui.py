@@ -162,6 +162,59 @@ class EditorialReviewRouteTests(unittest.TestCase):
         self.assertTrue((self.history_dir / "shadow-review-1.feedback.json").is_file())
         self.assertEqual(invalid.status_code, 400)
 
+    def test_page_offers_explicit_note_save_and_displays_latest_saved_note(self):
+        first = self.client.post(
+            "/editorial-review/feedback",
+            headers=self._auth_header(),
+            json={
+                "run_id": "shadow-review-1",
+                "candidate_id": "candidate-1",
+                "label": "good_topic",
+                "note": "",
+            },
+        )
+        second = self.client.post(
+            "/editorial-review/feedback",
+            headers=self._auth_header(),
+            json={
+                "run_id": "shadow-review-1",
+                "candidate_id": "candidate-1",
+                "label": "good_topic",
+                "note": "适合从产业影响角度写。",
+            },
+        )
+        page = self.client.get("/editorial-review", headers=self._auth_header())
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(page.status_code, 200)
+        rendered = page.get_data(as_text=True)
+        self.assertIn("data-save-note", rendered)
+        self.assertIn("保存备注", rendered)
+        self.assertIn("备注尚未保存", rendered)
+        self.assertIn("适合从产业影响角度写。", rendered)
+        feedback = json.loads(
+            (self.history_dir / "shadow-review-1.feedback.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(len(feedback["events"]), 2)
+        self.assertEqual(feedback["events"][-1]["label"], "good_topic")
+        self.assertEqual(feedback["events"][-1]["note"], "适合从产业影响角度写。")
+
+    def test_feedback_endpoint_rejects_note_longer_than_1000_characters(self):
+        response = self.client.post(
+            "/editorial-review/feedback",
+            headers=self._auth_header(),
+            json={
+                "run_id": "shadow-review-1",
+                "candidate_id": "candidate-1",
+                "label": "good_topic",
+                "note": "x" * 1001,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("1000", response.get_json()["error"])
+
     @staticmethod
     def _auth_header():
         token = b64encode(b"editor:review-password").decode()
