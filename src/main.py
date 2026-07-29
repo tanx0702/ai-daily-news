@@ -40,6 +40,15 @@ def _env_bool(name: str, default: bool = True) -> bool:
     return default
 
 
+def _editorial_mode() -> str:
+    """Return the only production editorial modes that are safe to execute."""
+    value = os.environ.get("DAILY_EDITORIAL_MODE", "v1").strip().lower()
+    if value in {"v1", "v2_assist"}:
+        return value
+    logger.warning("Unknown DAILY_EDITORIAL_MODE=%r; falling back to v1", value)
+    return "v1"
+
+
 def _should_skip_wechat_draft() -> bool:
     """Return whether this run is a local/CI dry run without a draft API call."""
     return _env_bool("SKIP_WECHAT_DRAFT", False)
@@ -136,6 +145,22 @@ def _run_pipeline():
         max_items_per_topic=max_items_per_topic,
         min_primary_or_research=min_primary_or_research,
     )
+    from src.workflows.production_editorial import run_production_editorial
+
+    production_editorial_result = run_production_editorial(
+        mode=_editorial_mode(),
+        all_candidates=news_list,
+        v1_selected=selected_candidates,
+        v1_reserves=reserve_candidates,
+        target_count=top_n,
+        max_items_per_source=max_items_per_source,
+        max_items_per_topic=max_items_per_topic,
+        min_primary_or_research=min_primary_or_research,
+    )
+    selected_candidates = production_editorial_result.selected
+    reserve_candidates = production_editorial_result.reserves
+    production_editorial_report = production_editorial_result.report
+    v2_editorial_applied = production_editorial_report.get("status") == "applied"
     candidate_news = [*selected_candidates, *reserve_candidates]
     if not selected_candidates:
         logger.error("Editorial selection produced no candidates! Aborting.")
@@ -253,21 +278,24 @@ def _run_pipeline():
                 base_url=editorial_llm.base_url,
                 timeout=qg_timeout,
             )
-            selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
-                eligible_candidates,
-                target_count=top_n,
-                pool_size=candidate_pool_n,
-                max_items_per_source=max_items_per_source,
-                max_items_per_topic=max_items_per_topic,
-                min_primary_or_research=min_primary_or_research,
-            )
-            news_list = selected_candidates
+            if v2_editorial_applied:
+                logger.info("Keeping v2 assist selection after editorial review")
+            else:
+                selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
+                    eligible_candidates,
+                    target_count=top_n,
+                    pool_size=candidate_pool_n,
+                    max_items_per_source=max_items_per_source,
+                    max_items_per_topic=max_items_per_topic,
+                    min_primary_or_research=min_primary_or_research,
+                )
+                news_list = selected_candidates
             publish_filter_report = quality_report.get("publish_filter")
             if isinstance(publish_filter_report, dict):
                 publish_filter_report.update(
                     {
-                        "selected_count": len(selected_candidates),
-                        "insufficient_publishable_items": len(selected_candidates) < top_n,
+                        "selected_count": len(news_list),
+                        "insufficient_publishable_items": len(news_list) < top_n,
                         "selection": selection_report,
                     }
                 )
@@ -466,6 +494,7 @@ def _run_pipeline():
         media_report=media_report,
         selection_report=selection_report,
         source_health=source_health,
+        production_editorial=production_editorial_report,
     )
 
     # === 6. 创建微信草稿 ===
@@ -627,6 +656,7 @@ def _generate_debug_reports(
     media_report: dict | None = None,
     selection_report: dict | None = None,
     source_health: dict | None = None,
+    production_editorial: dict | None = None,
 ):
     """生成 debug 报告：candidates.json 和 ranking.md。"""
     debug_dir = os.path.join(docs_dir, "debug")
@@ -709,6 +739,7 @@ def _generate_debug_reports(
                 "quality_gate": quality_report or {},
                 "media": media_report or {},
                 "cover": cover_diagnostics,
+                "production_editorial": production_editorial or {},
             },
             f,
             ensure_ascii=False,
