@@ -29,6 +29,12 @@ class DeploymentConfigTests(unittest.TestCase):
 
         self.assertIn(".env.bak*", patterns)
 
+    def test_advanced_environment_template_documents_safe_editorial_assist_mode(self):
+        template = (self.root / ".env.advanced.example").read_text(encoding="utf-8")
+
+        self.assertIn("DAILY_EDITORIAL_MODE=v1", template)
+        self.assertIn("v2_assist", template)
+
 
 if __name__ == "__main__":
     unittest.main()

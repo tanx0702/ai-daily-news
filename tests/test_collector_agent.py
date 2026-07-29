@@ -131,6 +131,33 @@ class CollectorAgentTests(unittest.TestCase):
 
         self.assertEqual(agent.collect(), ())
 
+    def test_adapt_existing_skips_collection_annotation_and_preserves_ids(self):
+        from src.agents.collector_agent import CollectorAgent
+
+        items = [
+            {
+                "id": "rss-existing",
+                "title": "Already annotated candidate",
+                "summary": "Source summary.",
+                "url": "https://example.test/existing",
+                "source": "Example Feed",
+                "source_type": "rss",
+                "published_at": datetime(2026, 7, 28, tzinfo=timezone.utc),
+                "_editorial": {"score": 8.1},
+            }
+        ]
+        calls = []
+        agent = CollectorAgent(
+            collect_news=lambda **_: self.fail("adapt_existing must not collect news"),
+            annotate_candidates=lambda candidates: calls.append(candidates),
+        )
+
+        candidates = agent.adapt_existing(items)
+
+        self.assertEqual(calls, [])
+        self.assertEqual([candidate.candidate_id for candidate in candidates], ["rss-existing"])
+        self.assertEqual(candidates[0].legacy_payload["_editorial"]["score"], 8.1)
+
 
 if __name__ == "__main__":
     unittest.main()

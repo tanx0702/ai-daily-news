@@ -66,6 +66,14 @@ class CollectorAgent:
         raw_diagnostics["returned_candidate_count"] = len(candidates)
         return candidates, CollectionDiagnostics.from_mapping(raw_diagnostics)
 
+    def adapt_existing(self, items: list[dict]) -> tuple[NewsCandidate, ...]:
+        """Adapt candidates already collected and annotated by the production pipeline.
+
+        This entry point deliberately avoids collection and editorial annotation so a
+        production assist run can operate on the current pipeline's in-memory items.
+        """
+        return tuple(self._to_candidate(item, index) for index, item in enumerate(items, start=1))
+
     def _collect_items(
         self,
         *,
