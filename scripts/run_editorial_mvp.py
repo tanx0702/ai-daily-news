@@ -19,11 +19,17 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.domain.models import WorkflowResult
 from src.services.editorial_report import build_editorial_report
+from src.services.production_snapshot import load_production_snapshot
 from src.services.shadow_history import save_shadow_report
+from src.time_utils import report_date_str
 from src.workflows.daily_edition import DailyEditionWorkflow
 
 
 DEFAULT_HISTORY_DIR = PROJECT_ROOT / "docs" / "debug" / "shadow"
+
+
+def _default_snapshot_path() -> Path:
+    return DEFAULT_HISTORY_DIR / f"production-candidates-{report_date_str()}.json"
 
 
 def report_from_result(result: WorkflowResult) -> dict[str, Any]:
@@ -78,12 +84,27 @@ def main(argv: list[str] | None = None) -> int:
         description="Run the v2 editorial MVP without rendering or publishing.",
     )
     parser.add_argument("--top-n", type=int, default=10)
-    parser.add_argument("--rss-timeout", type=int, default=30)
+    parser.add_argument("--rss-timeout", type=int, default=30, help=argparse.SUPPRESS)
     parser.add_argument("--history-dir", default=str(DEFAULT_HISTORY_DIR))
+    parser.add_argument(
+        "--snapshot",
+        default=str(_default_snapshot_path()),
+        help="Production candidate snapshot to analyze.",
+    )
     args = parser.parse_args(argv)
 
     load_dotenv()
-    result = DailyEditionWorkflow().run(top_n=args.top_n, rss_timeout=args.rss_timeout)
+    try:
+        items, collection_diagnostics = load_production_snapshot(args.snapshot)
+    except ValueError as exc:
+        print(f"Cannot load production snapshot: {exc}", file=sys.stderr)
+        return 1
+
+    result = DailyEditionWorkflow().run_existing(
+        items,
+        top_n=args.top_n,
+        collection_diagnostics=collection_diagnostics,
+    )
     report, path = save_shadow_result(result, history_dir=Path(args.history_dir))
     report["history_path"] = str(path.resolve())
     print(json.dumps(report, ensure_ascii=False, indent=2))

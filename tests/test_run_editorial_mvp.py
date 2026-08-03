@@ -4,6 +4,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 class EditorialMvpRunnerTests(unittest.TestCase):
@@ -66,6 +67,82 @@ class EditorialMvpRunnerTests(unittest.TestCase):
         self.assertFalse(report["publishing_enabled"])
         self.assertEqual(report["state"], "completed")
         self.assertEqual(report["selection_report"]["selected_count"], 0)
+
+    def test_cli_loads_a_production_snapshot_and_runs_existing_candidates(self):
+        from scripts import run_editorial_mvp
+        from src.domain.models import CollectionDiagnostics, EditorialPlan, WorkflowResult
+        from src.domain.states import WorkflowState
+        from src.services.production_snapshot import save_production_snapshot
+
+        result = WorkflowResult(
+            state=WorkflowState.COMPLETED,
+            state_history=(WorkflowState.CREATED, WorkflowState.COMPLETED),
+            candidates=(),
+            analyses=(),
+            editorial_plan=EditorialPlan(decisions=(), selection_report={}),
+        )
+        workflow = Mock()
+        workflow.run_existing.return_value = result
+        items = [
+            {
+                "id": "production-1",
+                "title": "Production candidate",
+                "published_at": datetime(2026, 8, 3, tzinfo=timezone.utc),
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            snapshot = save_production_snapshot(
+                items,
+                date_str="2026-08-03",
+                snapshot_dir=temp_path,
+                collection_diagnostics=CollectionDiagnostics(
+                    fetched_total=8,
+                    returned_candidate_count=1,
+                ),
+            )
+            history_dir = temp_path / "history"
+            with patch("scripts.run_editorial_mvp.DailyEditionWorkflow", return_value=workflow):
+                exit_code = run_editorial_mvp.main(
+                    [
+                        "--snapshot",
+                        str(snapshot),
+                        "--history-dir",
+                        str(history_dir),
+                        "--top-n",
+                        "1",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(list(history_dir.glob("shadow-*.json")))
+
+        workflow.run_existing.assert_called_once()
+        call = workflow.run_existing.call_args
+        self.assertEqual(call.args[0][0]["id"], "production-1")
+        self.assertEqual(call.kwargs["top_n"], 1)
+        self.assertEqual(call.kwargs["collection_diagnostics"].fetched_total, 8)
+
+    def test_cli_missing_snapshot_fails_without_writing_a_shadow_report(self):
+        from scripts import run_editorial_mvp
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            history_dir = temp_path / "history"
+            with patch("scripts.run_editorial_mvp.DailyEditionWorkflow") as workflow:
+                exit_code = run_editorial_mvp.main(
+                    [
+                        "--snapshot",
+                        str(temp_path / "missing.json"),
+                        "--history-dir",
+                        str(history_dir),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 1)
+            workflow.assert_not_called()
+            self.assertEqual(list(history_dir.glob("*.json")) if history_dir.exists() else [], [])
 
 
 if __name__ == "__main__":
