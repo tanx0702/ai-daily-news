@@ -73,3 +73,57 @@ class DailyEditionWorkflow:
                 collection_diagnostics=collection_diagnostics,
                 error=str(exc),
             )
+
+    def run_existing(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        top_n: int = 10,
+        collection_diagnostics: CollectionDiagnostics | None = None,
+    ) -> WorkflowResult:
+        """Analyze production candidates without collecting or annotating them again."""
+        state = WorkflowState.CREATED
+        history = [state]
+        candidates = ()
+        analyses = ()
+        editorial_plan = None
+        diagnostics = collection_diagnostics or CollectionDiagnostics()
+
+        try:
+            candidates = self._collector.adapt_existing(items)
+            if collection_diagnostics is None:
+                diagnostics = CollectionDiagnostics(returned_candidate_count=len(candidates))
+            state = transition_to(state, WorkflowState.COLLECTED)
+            history.append(state)
+
+            analyses = self._analyst.analyze(candidates)
+            state = transition_to(state, WorkflowState.ANALYZED)
+            history.append(state)
+
+            editorial_plan = self._editorial.select(candidates, analyses, target_count=top_n)
+            state = transition_to(state, WorkflowState.SELECTED)
+            history.append(state)
+
+            state = transition_to(state, WorkflowState.COMPLETED)
+            history.append(state)
+            return WorkflowResult(
+                state=state,
+                state_history=tuple(history),
+                candidates=candidates,
+                analyses=analyses,
+                editorial_plan=editorial_plan,
+                collection_diagnostics=diagnostics,
+            )
+        except Exception as exc:
+            if state is not WorkflowState.FAILED:
+                state = transition_to(state, WorkflowState.FAILED)
+                history.append(state)
+            return WorkflowResult(
+                state=state,
+                state_history=tuple(history),
+                candidates=candidates,
+                analyses=analyses,
+                editorial_plan=editorial_plan,
+                collection_diagnostics=diagnostics,
+                error=str(exc),
+            )
