@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 from collections.abc import Iterator, Mapping
 from pathlib import Path
@@ -32,6 +33,36 @@ PUBLIC_TWEET_FIELDS = (
     "reply_count",
     "quote_count",
 )
+DOM_TWEET_SELECTOR = "article[data-testid='tweet']"
+STATUS_ID_PATTERN = re.compile(r"/status/(\d+)(?:[/?#]|$)")
+# 浏览器侧只读取页面已渲染卡片的公开字段，不保存 HTML、脚本或网络请求内容。
+DOM_CARD_EVALUATOR = r"""
+(cards) => cards.map((card) => {
+  const statusLink = Array.from(card.querySelectorAll("a[href*='/status/']"))
+    .find((link) => /\/status\/\d+/.test(link.href));
+  const text = Array.from(card.querySelectorAll("[data-testid='tweetText']"))
+    .map((node) => node.innerText.trim())
+    .filter(Boolean)
+    .join("\n");
+  const userName = card.querySelector("[data-testid='User-Name']");
+  const authorLink = userName
+    ? Array.from(userName.querySelectorAll("a[href]")).find((link) => {
+        const parts = new URL(link.href).pathname.split("/").filter(Boolean);
+        return parts.length === 1;
+      })
+    : null;
+  const author = authorLink
+    ? new URL(authorLink.href).pathname.split("/").filter(Boolean)[0] || ""
+    : "";
+  const timestamp = statusLink ? statusLink.querySelector("time") : null;
+  return {
+    status_url: statusLink ? statusLink.href : "",
+    text,
+    author,
+    created_at: timestamp ? timestamp.getAttribute("datetime") || "" : "",
+  };
+})
+"""
 
 
 def validate_target_url(value: str) -> str:
@@ -131,6 +162,44 @@ def extract_tweets(payload: object) -> list[dict[str, object]]:
     return tweets
 
 
+def _read_dom_cards(page: Any) -> list[dict[str, object]]:
+    """读取可见推文卡片的最小公开字段，不保留页面 HTML。"""
+    cards = page.locator(DOM_TWEET_SELECTOR).evaluate_all(DOM_CARD_EVALUATOR)
+    return cards if isinstance(cards, list) else []
+
+
+def extract_dom_tweets(cards: list[object]) -> list[dict[str, object]]:
+    """把页面可见推文卡片转换为与 XHR 相同的公开字段契约。"""
+    tweets: list[dict[str, object]] = []
+    seen_ids: set[str] = set()
+
+    for card in cards:
+        if not isinstance(card, Mapping):
+            continue
+        status_url = _string(card.get("status_url"))
+        match = STATUS_ID_PATTERN.search(status_url)
+        tweet_id = match.group(1) if match else ""
+        text = _string(card.get("text"))
+        if not tweet_id or not text or tweet_id in seen_ids:
+            continue
+
+        seen_ids.add(tweet_id)
+        tweets.append(
+            {
+                "tweet_id": tweet_id,
+                "text": text,
+                "author": _string(card.get("author")),
+                "created_at": _string(card.get("created_at")),
+                "like_count": 0,
+                "repost_count": 0,
+                "reply_count": 0,
+                "quote_count": 0,
+            }
+        )
+
+    return tweets
+
+
 def _public_tweet(value: object) -> dict[str, object] | None:
     """复制字段白名单，确保原始响应对象不会写入诊断报告。"""
     if not isinstance(value, Mapping):
@@ -161,6 +230,8 @@ def build_report(
     target_url: str,
     captured: list[dict[str, object]],
     errors: list[str],
+    *,
+    dom_tweets: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """构建仅含公开推文和脱敏诊断字段的探针报告。"""
     tweets: list[dict[str, object]] = []
@@ -177,10 +248,21 @@ def build_report(
                 seen_ids.add(str(tweet["tweet_id"]))
                 tweets.append(tweet)
 
+    extraction_method = "xhr" if tweets else "none"
+    if not tweets and dom_tweets:
+        for item in dom_tweets:
+            tweet = _public_tweet(item)
+            if tweet and tweet["tweet_id"] not in seen_ids:
+                seen_ids.add(str(tweet["tweet_id"]))
+                tweets.append(tweet)
+        if tweets:
+            extraction_method = "dom_fallback"
+
     return {
         "schema_version": "x-web-probe-v1",
         "target_url": validate_target_url(target_url),
         "captured_operations": operations,
+        "extraction_method": extraction_method,
         "tweet_count": len(tweets),
         "tweets": tweets,
         "errors": [_safe_error_code(error) for error in errors],
@@ -243,7 +325,22 @@ def run_probe(target_url: str, output_dir: Path, timeout_ms: int = 45_000) -> in
                     LOGGER.warning("加载公开 X 页面失败")
                     errors.append("page_load_error")
 
-                report = build_report(normalized_url, captured, errors)
+                xhr_report = build_report(normalized_url, captured, errors)
+                dom_tweets: list[dict[str, object]] = []
+                if probe_exit_code(xhr_report):
+                    try:
+                        # 仅在 XHR 未产出推文时从已渲染 DOM 回退，保留 XHR 优先级。
+                        dom_tweets = extract_dom_tweets(_read_dom_cards(page))
+                    except Exception:
+                        LOGGER.warning("解析页面可见推文卡片失败")
+                        errors.append("dom_extraction_error")
+
+                report = build_report(
+                    normalized_url,
+                    captured,
+                    errors,
+                    dom_tweets=dom_tweets,
+                )
                 write_report(report, output_dir)
                 if probe_exit_code(report):
                     try:

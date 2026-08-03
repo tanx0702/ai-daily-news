@@ -33,11 +33,11 @@
   - 本机定时运行：依赖个人电脑持续开机。
   - 公共 RSS 镜像：稳定性不足，无法作为每日候选核心来源。
 
-### 决策 2：只捕获允许列表中的结构化响应
+### 决策 2：XHR 优先，DOM 作为公开首屏回退
 
-- **选择**：监听页面响应，只接受 URL 中包含 `TweetResultByRestId`、`UserTweets`、`UserByScreenName` 或 `SearchTimeline` 的 JSON 响应。
-- **理由**：页面 DOM 易变化，XHR JSON 是文章中采用的稳定数据边界；允许列表避免把无关资源、认证数据或页面脚本写入报告。
-- **考虑的替代方案**：直接解析页面 DOM。该方式对选择器和页面布局高度敏感，且不利于获取发布时间、作者和互动指标。
+- **选择**：优先监听页面响应，只接受 X 网页域名或 `api.x.com` 中包含 `TweetResultByRestId`、`UserTweets`、`UserByScreenName` 或 `SearchTimeline` 的 JSON 响应；当 XHR 没有推文时，从公开页面已渲染的 `article[data-testid="tweet"]` 卡片回退提取。
+- **理由**：XHR JSON 保留结构化字段，DOM 回退覆盖 X 将公开时间线直接渲染到首屏但没有命中允许操作名的情况；两条路径都只复制公开字段，不写入原始响应或页面 HTML。
+- **考虑的替代方案**：只解析页面 DOM。该方式对选择器和页面布局高度敏感，因此仅作为 XHR 空结果时的回退，并在报告中标记 `dom_fallback`。
 
 ### 决策 3：探针以公开 URL 为输入，不引入登录态
 
@@ -52,12 +52,13 @@ workflow_dispatch(target_url)
   -> 安装 Python 与 Playwright Chromium
   -> 打开公开 X 页面
   -> 捕获允许列表 XHR/GraphQL JSON
+  -> XHR 无推文时读取已渲染 tweet 卡片
   -> 提取 tweet_id、文本、作者、发布时间、互动计数
   -> 写入脱敏 probe-report.json 与失败截图
   -> 上传 GitHub Actions Artifact
 ```
 
-成功条件：工作流退出码为 0，报告中至少有一条结构化推文记录，且不包含 Cookie、`Authorization`、请求头或 Token。
+成功条件：工作流退出码为 0，报告中至少有一条结构化推文记录，`extraction_method` 为 `xhr` 或 `dom_fallback`，且不包含 Cookie、`Authorization`、请求头或 Token。
 
 失败条件：页面无法加载、未捕获允许操作、响应无法解析或所有记录缺少推文 ID/文本。工作流退出非零，并上传截图和简短诊断。
 
@@ -74,6 +75,7 @@ workflow_dispatch(target_url)
 
 - GitHub Runner 可能被 X 识别为自动化环境：探针必须以真实捕获结果判定，不将“工作流完成”视为数据可用。
 - X 的前端操作名或 JSON 结构可能变化：操作 URL 使用小范围允许列表；解析器返回缺失字段而非猜测补全。
+- X 的 DOM 选择器可能变化：DOM 仅作为 XHR 空结果回退，失败时保留 `dom_extraction_error` 诊断代码。
 - 运行器日志可能泄露网络数据：日志只输出操作名、状态码、计数和字段名；原始响应不写入 Artifact。
 - Playwright 安装时间较长：仅在探针工作流安装，不修改 VPS Docker 镜像。
 
