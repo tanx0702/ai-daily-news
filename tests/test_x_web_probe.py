@@ -26,12 +26,17 @@ def test_validate_target_url_only_accepts_x_public_hosts():
     with pytest.raises(ValueError, match="仅支持公开 X 页面"):
         validate_target_url("https://x.com.example.com/OpenAI")
 
+    with pytest.raises(ValueError, match="仅支持公开 X 页面"):
+        validate_target_url("https://api.x.com/i/api/graphql/a/UserTweets")
+
 
 def test_allowed_response_url_is_limited_to_x_tweet_operations():
     assert is_allowed_response_url("https://x.com/i/api/graphql/a/TweetResultByRestId")
     assert is_allowed_response_url("https://x.com/i/api/graphql/a/UserTweets")
+    assert is_allowed_response_url("https://api.x.com/i/api/graphql/a/UserTweets")
     assert not is_allowed_response_url("https://x.com/i/api/graphql/a/Viewer")
     assert not is_allowed_response_url("https://example.com/TweetResultByRestId")
+    assert not is_allowed_response_url("https://api.x.com.evil.test/UserTweets")
 
 
 def test_extract_tweets_reads_nested_payload_and_deduplicates_id():
