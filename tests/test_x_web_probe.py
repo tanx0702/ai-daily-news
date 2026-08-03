@@ -1,4 +1,7 @@
 import json
+import sys
+from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -7,7 +10,9 @@ from scripts.x_web_probe import (
     extract_tweets,
     is_allowed_response_url,
     probe_exit_code,
+    run_probe,
     validate_target_url,
+    write_report,
 )
 
 
@@ -87,3 +92,82 @@ def test_report_contains_only_public_fields_and_empty_report_fails():
     assert "authorization" not in serialized
     assert "cookie" not in serialized
     assert probe_exit_code(report) == 1
+
+
+def test_write_report_creates_only_probe_report_json(tmp_path: Path):
+    path = write_report({"schema_version": "x-web-probe-v1", "tweet_count": 0}, tmp_path)
+
+    assert path == tmp_path / "probe-report.json"
+    assert json.loads(path.read_text(encoding="utf-8"))["tweet_count"] == 0
+    assert [item.name for item in tmp_path.iterdir()] == ["probe-report.json"]
+
+
+def test_run_probe_writes_failure_screenshot_before_closing_browser(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    class FakeResponse:
+        url = "https://x.com/i/api/graphql/a/UserTweets"
+
+        @staticmethod
+        def json():
+            return {"data": {}}
+
+    class FakePage:
+        def __init__(self, browser):
+            self.browser = browser
+            self.callback = None
+
+        def on(self, event, callback):
+            assert event == "response"
+            self.callback = callback
+
+        def goto(self, *_args, **_kwargs):
+            self.callback(FakeResponse())
+
+        @staticmethod
+        def wait_for_timeout(_timeout):
+            return None
+
+        def screenshot(self, path, full_page):
+            assert full_page is True
+            assert self.browser.closed is False
+            Path(path).write_bytes(b"failure screenshot")
+
+    class FakeBrowser:
+        def __init__(self):
+            self.closed = False
+            self.page = FakePage(self)
+
+        def new_page(self):
+            return self.page
+
+        def close(self):
+            self.closed = True
+
+    class FakePlaywright:
+        def __init__(self):
+            self.browser = FakeBrowser()
+            self.chromium = self
+
+        def __enter__(self):
+            return self
+
+        @staticmethod
+        def __exit__(_exc_type, _exc_value, _traceback):
+            return None
+
+        def launch(self, headless):
+            assert headless is True
+            return self.browser
+
+    playwright = FakePlaywright()
+    sync_api = ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = lambda: playwright
+    package = ModuleType("playwright")
+    package.sync_api = sync_api
+    monkeypatch.setitem(sys.modules, "playwright", package)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+
+    assert run_probe("https://x.com/OpenAI", tmp_path) == 1
+    assert (tmp_path / "failure.png").read_bytes() == b"failure screenshot"
+    assert playwright.browser.closed is True

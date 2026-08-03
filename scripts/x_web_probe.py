@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import argparse
+import json
+import logging
+import sys
 from collections.abc import Iterator, Mapping
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 
+LOGGER = logging.getLogger(__name__)
 ALLOWED_HOSTS = frozenset({"x.com", "www.x.com", "twitter.com", "www.twitter.com"})
 ALLOWED_OPERATIONS = (
     "TweetResultByRestId",
@@ -182,3 +188,108 @@ def build_report(
 def probe_exit_code(report: dict[str, object]) -> int:
     """至少捕获一条公开推文时返回成功退出码。"""
     return 0 if _count(report.get("tweet_count")) >= 1 else 1
+
+
+def write_report(report: dict[str, object], output_dir: Path) -> Path:
+    """把脱敏报告写入唯一固定文件名，方便 Actions 上传产物。"""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "probe-report.json"
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def run_probe(target_url: str, output_dir: Path, timeout_ms: int = 45_000) -> int:
+    """在隔离浏览器中捕获公开 X 响应，并写入脱敏诊断报告。"""
+    normalized_url = validate_target_url(target_url)
+    captured: list[dict[str, object]] = []
+    errors: list[str] = []
+    browser: Any = None
+    page: Any = None
+    report: dict[str, object] | None = None
+    browser_closed = False
+
+    try:
+        # 延迟导入使解析层测试和生产 Docker 均不依赖 Playwright。
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        LOGGER.error("未安装 Playwright，无法启动 X 网页探针")
+        errors.append("playwright_unavailable")
+    else:
+        try:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                page = browser.new_page()
+
+                def capture(response: Any) -> None:
+                    """仅解析允许列表中的推文响应，不保存原始网络数据。"""
+                    if not is_allowed_response_url(response.url):
+                        return
+                    operation = operation_name(response.url)
+                    try:
+                        tweets = extract_tweets(response.json())
+                    except Exception:
+                        LOGGER.warning("解析 %s 响应失败", operation)
+                        errors.append(f"{operation.lower()}:json_error")
+                        return
+                    captured.append({"operation": operation, "tweets": tweets})
+
+                page.on("response", capture)
+                try:
+                    page.goto(normalized_url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.wait_for_timeout(8_000)
+                except Exception:
+                    LOGGER.warning("加载公开 X 页面失败")
+                    errors.append("page_load_error")
+
+                report = build_report(normalized_url, captured, errors)
+                write_report(report, output_dir)
+                if probe_exit_code(report):
+                    try:
+                        # 截图必须在浏览器关闭前生成，才能保留失败页面证据。
+                        page.screenshot(path=str(output_dir / "failure.png"), full_page=True)
+                    except Exception:
+                        LOGGER.warning("保存探针失败截图失败")
+
+                try:
+                    browser.close()
+                    browser_closed = True
+                except Exception:
+                    LOGGER.warning("关闭探针浏览器失败")
+        except Exception:
+            LOGGER.exception("X 网页探针浏览器执行失败")
+            errors.append("browser_execution_error")
+        finally:
+            if browser is not None and not browser_closed:
+                try:
+                    browser.close()
+                except Exception:
+                    LOGGER.warning("关闭探针浏览器失败")
+
+    if report is None:
+        report = build_report(normalized_url, captured, errors)
+        write_report(report, output_dir)
+
+    return probe_exit_code(report)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """解析手动探针的公开 URL 与报告输出目录参数。"""
+    parser = argparse.ArgumentParser(description="公开 X 网页采集探针")
+    parser.add_argument("--target-url", required=True, help="公开 X 页面 URL")
+    parser.add_argument("--output-dir", required=True, type=Path, help="探针报告目录")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """运行命令行入口，并为无效 URL 返回稳定的退出码。"""
+    args = parse_args(argv)
+    try:
+        target_url = validate_target_url(args.target_url)
+    except ValueError as exc:
+        LOGGER.error("参数错误：%s", exc)
+        return 2
+    return run_probe(target_url, args.output_dir)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
