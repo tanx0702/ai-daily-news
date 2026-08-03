@@ -114,7 +114,12 @@ def _run_pipeline():
             collect_top_n, top_n, max(safety_reserve_n, 0),
         )
 
-    news_list = collect_news(top_n=collect_top_n, rss_timeout=rss_timeout)
+    collection_diagnostics = {}
+    news_list = collect_news(
+        top_n=collect_top_n,
+        rss_timeout=rss_timeout,
+        diagnostics=collection_diagnostics,
+    )
 
     if not news_list:
         logger.error("No news collected! Aborting.")
@@ -136,6 +141,19 @@ def _run_pipeline():
     from src.editorial_quality import annotate_editorial_candidates
 
     annotate_editorial_candidates(news_list)
+
+    from src.services.production_snapshot import save_production_snapshot
+
+    try:
+        snapshot_path = save_production_snapshot(
+            news_list,
+            date_str=date_str,
+            snapshot_dir=os.path.join(docs_dir, "debug", "shadow"),
+            collection_diagnostics=collection_diagnostics,
+        )
+        logger.info("Production candidate snapshot saved to %s", snapshot_path)
+    except Exception:
+        logger.warning("Production candidate snapshot was not saved", exc_info=True)
 
     selected_candidates, reserve_candidates, selection_report = select_editorial_candidates(
         news_list,

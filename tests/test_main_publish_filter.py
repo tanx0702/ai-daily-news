@@ -320,6 +320,81 @@ class MainPublishFilterTests(unittest.TestCase):
         self.assertEqual(review_kwargs["target_count"], 10)
         self.assertEqual(annotate.call_args.args[0], collected)
 
+    def test_pipeline_saves_annotated_candidates_before_v1_selection(self):
+        collected = _news_items(1)
+        events = []
+        annotate = Mock(side_effect=lambda items: events.append("annotate") or items)
+
+        def select_candidates(*args, **kwargs):
+            events.append("select")
+            return collected, [], {"selected_count": 1}
+
+        env = {
+            "DAILY_TOP_N": "1",
+            "DAILY_CANDIDATE_POOL_N": "1",
+            "ENABLE_LLM_QUALITY_GATE": "0",
+            "ENABLE_PUBLISH_SAFETY_FILTER": "0",
+            "ENABLE_ARTICLE_IMAGE_FETCH": "0",
+            "LLM_API_KEY": "",
+            "IMAGE_API_KEY": "",
+            "AGNES_API_KEY": "",
+            "OPENAI_API_KEY": "",
+        }
+
+        with patch.dict(os.environ, env, clear=True), \
+             patch("src.collector.collect_news", return_value=collected), \
+             patch("src.editorial_quality.annotate_editorial_candidates", annotate), \
+             patch("src.editorial_selection.select_editorial_candidates", side_effect=select_candidates), \
+             patch(
+                 "src.services.production_snapshot.save_production_snapshot",
+                 side_effect=lambda *args, **kwargs: events.append("snapshot"),
+             ) as save_snapshot, \
+             patch("src.summarizer.summarize_news", side_effect=lambda items, **kwargs: items), \
+             patch("src.pipeline_artifacts.render_and_save_daily_html"), \
+             patch("src.pipeline_artifacts.render_and_save_wechat_preview"), \
+             patch("src.pipeline_artifacts.build_latest_data", return_value={}), \
+             patch("src.pipeline_artifacts.save_latest_data", return_value="latest.json"), \
+             patch("src.cover.select_cover_subject", return_value={"mode": "generic", "cover_title": "Today"}), \
+             patch("src.cover.generate_cover_from_news", return_value="cover.jpg"), \
+             patch("src.main._generate_debug_reports"):
+            daily_main._run_pipeline()
+
+        self.assertEqual(events, ["annotate", "snapshot", "select"])
+        self.assertIs(save_snapshot.call_args.args[0], collected)
+
+    def test_snapshot_write_failure_does_not_stop_v1_artifact_generation(self):
+        collected = _news_items(1)
+        env = {
+            "DAILY_TOP_N": "1",
+            "DAILY_CANDIDATE_POOL_N": "1",
+            "ENABLE_LLM_QUALITY_GATE": "0",
+            "ENABLE_PUBLISH_SAFETY_FILTER": "0",
+            "ENABLE_ARTICLE_IMAGE_FETCH": "0",
+            "LLM_API_KEY": "",
+            "IMAGE_API_KEY": "",
+            "AGNES_API_KEY": "",
+            "OPENAI_API_KEY": "",
+        }
+
+        with patch.dict(os.environ, env, clear=True), \
+             patch("src.collector.collect_news", return_value=collected), \
+             patch(
+                 "src.services.production_snapshot.save_production_snapshot",
+                 side_effect=OSError("disk full"),
+             ) as save_snapshot, \
+             patch("src.summarizer.summarize_news", side_effect=lambda items, **kwargs: items), \
+             patch("src.pipeline_artifacts.render_and_save_daily_html") as render_daily, \
+             patch("src.pipeline_artifacts.render_and_save_wechat_preview"), \
+             patch("src.pipeline_artifacts.build_latest_data", return_value={}), \
+             patch("src.pipeline_artifacts.save_latest_data", return_value="latest.json"), \
+             patch("src.cover.select_cover_subject", return_value={"mode": "generic", "cover_title": "Today"}), \
+             patch("src.cover.generate_cover_from_news", return_value="cover.jpg"), \
+             patch("src.main._generate_debug_reports"):
+            daily_main._run_pipeline()
+
+        save_snapshot.assert_called_once()
+        render_daily.assert_called_once()
+
     def test_pipeline_reviews_only_quality_ready_candidates_before_final_selection(self):
         collected = [
             {
