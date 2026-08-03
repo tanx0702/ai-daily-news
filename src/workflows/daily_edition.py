@@ -41,38 +41,24 @@ class DailyEditionWorkflow:
             )
             state = transition_to(state, WorkflowState.COLLECTED)
             history.append(state)
-
-            analyses = self._analyst.analyze(candidates)
-            state = transition_to(state, WorkflowState.ANALYZED)
-            history.append(state)
-
-            editorial_plan = self._editorial.select(candidates, analyses, target_count=top_n)
-            state = transition_to(state, WorkflowState.SELECTED)
-            history.append(state)
-
-            state = transition_to(state, WorkflowState.COMPLETED)
-            history.append(state)
-            return WorkflowResult(
-                state=state,
-                state_history=tuple(history),
-                candidates=candidates,
-                analyses=analyses,
-                editorial_plan=editorial_plan,
-                collection_diagnostics=collection_diagnostics,
-            )
         except Exception as exc:
-            if state is not WorkflowState.FAILED:
-                state = transition_to(state, WorkflowState.FAILED)
-                history.append(state)
-            return WorkflowResult(
+            return self._failed_result(
                 state=state,
-                state_history=tuple(history),
+                history=history,
                 candidates=candidates,
                 analyses=analyses,
                 editorial_plan=editorial_plan,
                 collection_diagnostics=collection_diagnostics,
                 error=str(exc),
             )
+
+        return self._analyze_and_select(
+            candidates=candidates,
+            collection_diagnostics=collection_diagnostics,
+            top_n=top_n,
+            state=state,
+            history=history,
+        )
 
     def run_existing(
         self,
@@ -95,7 +81,37 @@ class DailyEditionWorkflow:
                 diagnostics = CollectionDiagnostics(returned_candidate_count=len(candidates))
             state = transition_to(state, WorkflowState.COLLECTED)
             history.append(state)
+        except Exception as exc:
+            return self._failed_result(
+                state=state,
+                history=history,
+                candidates=candidates,
+                analyses=analyses,
+                editorial_plan=editorial_plan,
+                collection_diagnostics=diagnostics,
+                error=str(exc),
+            )
 
+        return self._analyze_and_select(
+            candidates=candidates,
+            collection_diagnostics=diagnostics,
+            top_n=top_n,
+            state=state,
+            history=history,
+        )
+
+    def _analyze_and_select(
+        self,
+        *,
+        candidates: tuple[Any, ...],
+        collection_diagnostics: CollectionDiagnostics,
+        top_n: int,
+        state: WorkflowState,
+        history: list[WorkflowState],
+    ) -> WorkflowResult:
+        analyses = ()
+        editorial_plan = None
+        try:
             analyses = self._analyst.analyze(candidates)
             state = transition_to(state, WorkflowState.ANALYZED)
             history.append(state)
@@ -112,18 +128,39 @@ class DailyEditionWorkflow:
                 candidates=candidates,
                 analyses=analyses,
                 editorial_plan=editorial_plan,
-                collection_diagnostics=diagnostics,
+                collection_diagnostics=collection_diagnostics,
             )
         except Exception as exc:
-            if state is not WorkflowState.FAILED:
-                state = transition_to(state, WorkflowState.FAILED)
-                history.append(state)
-            return WorkflowResult(
+            return self._failed_result(
                 state=state,
-                state_history=tuple(history),
+                history=history,
                 candidates=candidates,
                 analyses=analyses,
                 editorial_plan=editorial_plan,
-                collection_diagnostics=diagnostics,
+                collection_diagnostics=collection_diagnostics,
                 error=str(exc),
             )
+
+    @staticmethod
+    def _failed_result(
+        *,
+        state: WorkflowState,
+        history: list[WorkflowState],
+        candidates: tuple[Any, ...],
+        analyses: tuple[Any, ...],
+        editorial_plan: Any,
+        collection_diagnostics: CollectionDiagnostics,
+        error: str,
+    ) -> WorkflowResult:
+        if state is not WorkflowState.FAILED:
+            state = transition_to(state, WorkflowState.FAILED)
+            history.append(state)
+        return WorkflowResult(
+            state=state,
+            state_history=tuple(history),
+            candidates=candidates,
+            analyses=analyses,
+            editorial_plan=editorial_plan,
+            collection_diagnostics=collection_diagnostics,
+            error=error,
+        )
