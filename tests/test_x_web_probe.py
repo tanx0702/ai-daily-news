@@ -171,3 +171,18 @@ def test_run_probe_writes_failure_screenshot_before_closing_browser(
     assert run_probe("https://x.com/OpenAI", tmp_path) == 1
     assert (tmp_path / "failure.png").read_bytes() == b"failure screenshot"
     assert playwright.browser.closed is True
+
+
+def test_workflow_is_manual_and_does_not_reference_vps_or_secrets():
+    workflow = Path(".github/workflows/x-web-probe.yml").read_text(encoding="utf-8")
+    normalized = workflow.lower()
+
+    assert "workflow_dispatch:" in workflow
+    assert "schedule:" not in workflow
+    assert "secrets." not in normalized
+    assert "x_bearer_token" not in normalized
+    assert "ssh " not in normalized
+    assert "scp " not in normalized
+    assert "vps" not in normalized
+    assert "actions/upload-artifact@v4" in workflow
+    assert "if: always()" in workflow
