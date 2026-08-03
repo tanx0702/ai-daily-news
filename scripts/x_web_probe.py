@@ -13,7 +13,9 @@ from urllib.parse import urlparse
 
 
 LOGGER = logging.getLogger(__name__)
-ALLOWED_HOSTS = frozenset({"x.com", "www.x.com", "twitter.com", "www.twitter.com"})
+PUBLIC_PAGE_HOSTS = frozenset({"x.com", "www.x.com", "twitter.com", "www.twitter.com"})
+# X 网页前端会把公开 GraphQL 响应发往 api.x.com，页面入口仍限制为网页域名。
+ALLOWED_RESPONSE_HOSTS = PUBLIC_PAGE_HOSTS | frozenset({"api.x.com"})
 ALLOWED_OPERATIONS = (
     "TweetResultByRestId",
     "UserTweets",
@@ -36,7 +38,7 @@ def validate_target_url(value: str) -> str:
     """限制探针只打开公开 X 页面，避免工作流被当作通用浏览器使用。"""
     normalized = value.strip()
     parsed = urlparse(normalized)
-    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
+    if parsed.scheme != "https" or parsed.hostname not in PUBLIC_PAGE_HOSTS:
         raise ValueError("仅支持公开 X 页面 URL")
     return normalized
 
@@ -51,7 +53,7 @@ def is_allowed_response_url(url: str) -> bool:
     parsed = urlparse(url)
     return (
         parsed.scheme == "https"
-        and parsed.hostname in ALLOWED_HOSTS
+        and parsed.hostname in ALLOWED_RESPONSE_HOSTS
         and bool(operation_name(url))
     )
 
