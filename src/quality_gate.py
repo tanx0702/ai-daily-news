@@ -609,16 +609,66 @@ def _run_llm_review(
     base_url: str,
     timeout: int,
 ) -> tuple[list[dict], list[dict], list[dict]]:
-    """
-    调用 LLM 做质检。
+    """Run the structured quality review in bounded batches.
 
-    Returns:
-        (llm_issues, llm_fixes, global_notes)
+    A single response for every selected and reserve candidate can exceed the
+    model's completion budget. Every batch is retried once, but a batch that
+    still fails keeps the existing fail-closed publication behavior.
     """
     from openai import OpenAI
 
-    compact_input = _build_llm_input(news_list)
+    batch_size = _quality_review_batch_size()
+    llm_issues: list[dict] = []
+    llm_fixes: list[dict] = []
+    global_notes: list[str] = []
 
+    try:
+        client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+        for offset in range(0, len(news_list), batch_size):
+            batch = news_list[offset:offset + batch_size]
+            batch_number = offset // batch_size + 1
+            issues, fixes, notes = _run_llm_review_batch(
+                client,
+                batch,
+                model=model,
+                batch_number=batch_number,
+            )
+            llm_issues.extend(_offset_item_indexes(issues, offset))
+            llm_fixes.extend(_offset_item_indexes(fixes, offset))
+            global_notes.extend(notes)
+
+        logger.info(
+            "LLM quality review done: batches=%d, issues=%d, fixes=%d",
+            (len(news_list) + batch_size - 1) // batch_size,
+            len(llm_issues),
+            len(llm_fixes),
+        )
+        return llm_issues, llm_fixes, global_notes
+    except Exception as exc:
+        logger.warning("LLM quality review failed: %s, keeping local rule results only", exc)
+        return [], [], [f"LLM quality review failed: {exc}"]
+
+
+def _quality_review_batch_size() -> int:
+    raw_value = os.environ.get("QUALITY_GATE_REVIEW_BATCH_SIZE", "6")
+    try:
+        return max(int(raw_value), 1)
+    except ValueError:
+        logger.warning(
+            "QUALITY_GATE_REVIEW_BATCH_SIZE=%r is invalid; using 6",
+            raw_value,
+        )
+        return 6
+
+
+def _run_llm_review_batch(
+    client,
+    news_list: list[dict],
+    *,
+    model: str,
+    batch_number: int,
+) -> tuple[list[dict], list[dict], list[dict]]:
+    compact_input = _build_llm_input(news_list)
     user_prompt = json.dumps(
         {
             "news_items": compact_input,
@@ -635,8 +685,8 @@ def _run_llm_review(
         ensure_ascii=False,
     )
 
-    try:
-        client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
+    last_error: ValueError | None = None
+    for attempt in range(1, 3):
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -647,34 +697,53 @@ def _run_llm_review(
             max_tokens=int(os.environ.get("QUALITY_GATE_MAX_TOKENS", "4000")),
             response_format={"type": "json_object"},
         )
-        content = response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        content = getattr(choice.message, "content", None)
+        finish_reason = getattr(choice, "finish_reason", "unknown")
+        if not isinstance(content, str) or not content.strip():
+            last_error = ValueError(
+                "LLM structured response is empty "
+                f"(batch={batch_number}, attempt={attempt}, finish_reason={finish_reason})"
+            )
+        else:
+            result = _extract_json_safe(content)
+            if isinstance(result, dict):
+                issues = result.get("issues", [])
+                fixes = result.get("fixes", [])
+                notes = result.get("global_notes", [])
+                if isinstance(notes, str):
+                    notes = [notes] if notes.strip() else []
+                if not isinstance(issues, list) or not isinstance(fixes, list) or not isinstance(notes, list):
+                    last_error = ValueError(
+                        f"LLM structured response has invalid collection types (batch={batch_number}, attempt={attempt})"
+                    )
+                else:
+                    return (
+                        [issue for issue in issues if isinstance(issue, dict)],
+                        [fix for fix in fixes if isinstance(fix, dict)],
+                        [str(note) for note in notes if str(note).strip()],
+                    )
+            else:
+                last_error = ValueError(
+                    "Failed to extract valid JSON from LLM response "
+                    f"(batch={batch_number}, attempt={attempt}, finish_reason={finish_reason}): {content[:200]}"
+                )
 
-        # 使用容错 JSON 提取
-        result = _extract_json_safe(content)
-        if result is None:
-            raise ValueError(f"Failed to extract valid JSON from LLM response: {content[:200]}")
+        if attempt == 1:
+            logger.warning("LLM quality review batch will retry: %s", last_error)
 
-        if not isinstance(result, dict):
-            raise ValueError(f"Expected dict, got {type(result).__name__}")
+    raise last_error or ValueError(f"LLM quality review batch {batch_number} failed")
 
-        llm_issues = result.get("issues", [])
-        llm_fixes = result.get("fixes", [])
-        global_notes = result.get("global_notes", [])
-        # 标准化：如果 LLM 返回字符串而非列表
-        if isinstance(global_notes, str):
-            global_notes = [global_notes] if global_notes.strip() else []
 
-        logger.info(
-            "LLM quality review done: pass=%s, risk=%s, issues=%d, fixes=%d",
-            result.get("pass"), result.get("risk_level"),
-            len(llm_issues), len(llm_fixes),
-        )
-
-        return llm_issues, llm_fixes, global_notes
-
-    except Exception as e:
-        logger.warning("LLM quality review failed: %s, keeping local rule results only", e)
-        return [], [], [f"LLM quality review failed: {e}"]
+def _offset_item_indexes(items: list[dict], offset: int) -> list[dict]:
+    adjusted: list[dict] = []
+    for item in items:
+        normalized = dict(item)
+        item_index = normalized.get("item_index")
+        if isinstance(item_index, int) and item_index > 0:
+            normalized["item_index"] = item_index + offset
+        adjusted.append(normalized)
+    return adjusted
 
 
 def _apply_llm_fixes(news_list: list[dict], llm_fixes: list[dict]) -> list[dict]:
