@@ -1,0 +1,30 @@
+{
+  "schema_version": "x-sources-v1",
+  "sources": [
+    {"name": "OpenAI", "handle": "OpenAI", "tier": "primary", "official": true},
+    {"name": "Anthropic", "handle": "AnthropicAI", "tier": "primary", "official": true},
+    {"name": "Google DeepMind", "handle": "GoogleDeepMind", "tier": "primary", "official": true},
+    {"name": "Hugging Face", "handle": "huggingface", "tier": "primary", "official": true},
+    {"name": "Mistral AI", "handle": "MistralAI", "tier": "primary", "official": true},
+    {"name": "NVIDIA AI", "handle": "NVIDIAAI", "tier": "primary", "official": true},
+    {"name": "Qwen", "handle": "Alibaba_Qwen", "tier": "primary", "official": true},
+    {"name": "DeepSeek", "handle": "deepseek_ai", "tier": "primary", "official": true},
+    {"name": "Kimi", "handle": "Kimi_Moonshot", "tier": "primary", "official": true},
+    {"name": "MiniMax", "handle": "MiniMax_AI", "tier": "primary", "official": true},
+    {"name": "Zhipu AI", "handle": "ZhipuAI", "tier": "primary", "official": true},
+    {"name": "Baichuan AI", "handle": "BaichuanAI", "tier": "primary", "official": true},
+    {"name": "01.AI", "handle": "01AI_Yi", "tier": "primary", "official": true},
+    {"name": "Tencent Hunyuan", "handle": "TencentHunyuan", "tier": "primary", "official": true},
+    {"name": "Yann LeCun", "handle": "ylecun", "tier": "research", "official": false},
+    {"name": "Andrej Karpathy", "handle": "karpathy", "tier": "research", "official": false},
+    {"name": "Sam Altman", "handle": "sama", "tier": "research", "official": false},
+    {"name": "Andrew Ng", "handle": "AndrewYNg", "tier": "research", "official": false},
+    {"name": "Jim Fan", "handle": "DrJimFan", "tier": "research", "official": false},
+    {"name": "Ethan Mollick", "handle": "emollick", "tier": "research", "official": false},
+    {"name": "Francois Chollet", "handle": "fchollet", "tier": "research", "official": false},
+    {"name": "Artificial Analysis", "handle": "ArtificialAnlys", "tier": "media", "official": false},
+    {"name": "The Rundown AI", "handle": "TheRundownAI", "tier": "media", "official": false},
+    {"name": "swyx", "handle": "swyx", "tier": "media", "official": false},
+    {"name": "Simon Willison", "handle": "simonw", "tier": "media", "official": false}
+  ]
+}

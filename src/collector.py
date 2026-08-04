@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # 布尔环境变量真值/假值（大小写不敏感）
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 _FALSY = frozenset({"0", "false", "no", "off"})
+DEFAULT_X_FEED_URL = "https://raw.githubusercontent.com/tanx0702/ai-daily-news/x-feed/x-feed.json"
 
 
 def _env_enabled(name: str, default: bool = True) -> bool:
@@ -45,6 +46,18 @@ def _env_enabled(name: str, default: bool = True) -> bool:
         name, os.environ.get(name, ""), default,
     )
     return default
+
+
+def _env_nonnegative_int(name: str, default: int) -> int:
+    """读取非负整数配置，非法值回退默认值以避免中断日报。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return max(int(raw), 0)
+    except ValueError:
+        logger.warning("Env var %s has invalid integer value %r, using %d", name, raw, default)
+        return default
 
 # AI 相关关键词，用于过滤非 AI 新闻
 # 分为高权重（标题中出现直接命中）和低权重（需在标题+摘要中综合判断）
@@ -525,6 +538,7 @@ def _score_item(item: dict, all_items: list[dict]) -> float:
     brand_check = _check_brand_claim(
         item.get("title", ""), item.get("url", ""),
         item.get("source", ""), source_type, metrics,
+        trusted_x_source=(source_type == "x" and bool(item.get("x_official", False))),
     )
     item["_brand_claim"] = brand_check
     if brand_check["is_brand_claim"] and brand_check["confidence"] == "low":
@@ -884,7 +898,8 @@ _BRAND_CLAIM_ACTIONS_EN = [
 
 
 def _check_brand_claim(title: str, url: str, source: str,
-                       source_type: str, metrics: dict) -> dict:
+                       source_type: str, metrics: dict,
+                       *, trusted_x_source: bool = False) -> dict:
     """
     检测标题是否包含大厂品牌声明，返回置信度评估。
 
@@ -933,7 +948,8 @@ def _check_brand_claim(title: str, url: str, source: str,
 
     # 3. 检查来源是否是官方域名
     official_domains = _OFFICIAL_BRAND_DOMAINS.get(matched_brand, [])
-    is_official_source = any(d in url_lower for d in official_domains)
+    # X 的官方身份只能来自仓库维护的受控账号配置，不能由网页内容自行声明。
+    is_official_source = any(d in url_lower for d in official_domains) or trusted_x_source
 
     # 4. 检查跨源确认
     cross_count = metrics.get("cross_source_count", 0) or 0
@@ -948,7 +964,10 @@ def _check_brand_claim(title: str, url: str, source: str,
         return {
             "is_brand_claim": True, "confidence": "high",
             "brand": matched_brand,
-            "reason": f"官方源确认: {url_lower[:60]}",
+            "reason": (
+                f"官方 X 账号确认: {source}" if trusted_x_source
+                else f"官方源确认: {url_lower[:60]}"
+            ),
         }
 
     if has_cross_source and (has_rss_authority or cross_count >= 2):
@@ -1395,6 +1414,22 @@ def _fetch_arxiv(timeout: int = 30) -> list[dict]:
         return []
 
 
+def _fetch_x(timeout: int = 30) -> list[dict]:
+    """读取 GitHub Runner 发布的 X 快照，失败时保持 RSS 流程可用。"""
+    try:
+        from src.collectors.x_feed import XFeedCollector
+
+        collector = XFeedCollector(
+            feed_url=os.environ.get("X_FEED_URL", DEFAULT_X_FEED_URL),
+            timeout=timeout,
+            max_age_hours=_env_nonnegative_int("X_FEED_MAX_AGE_HOURS", 6) or 6,
+        )
+        return collector.fetch()
+    except Exception as e:
+        logger.warning("X feed collector failed: %s", e)
+        return []
+
+
 def collect_news(
     config_path: str = None,
     hours: int = None,
@@ -1464,9 +1499,17 @@ def collect_news(
     else:
         logger.info("arXiv collector disabled (ENABLE_ARXIV_COLLECTOR=0)")
 
-    # ---- 7. 多源合并（URL dedup + 标题去重 + cross_source 标记） ----
+    # ---- 7. X 快照采集（ENABLE_X_COLLECTOR=1，默认开启） ----
+    x_candidates = []
+    if _env_enabled("ENABLE_X_COLLECTOR"):
+        x_candidates = _fetch_x(rss_timeout)
+        logger.info("X feed fetched: %d candidates", len(x_candidates))
+    else:
+        logger.info("X feed collector disabled (ENABLE_X_COLLECTOR=0)")
+
+    # ---- 8. 多源合并（URL dedup + 标题去重 + cross_source 标记） ----
     all_candidates = (rss_candidates + hn_candidates + gh_candidates +
-                      hf_candidates + arxiv_candidates)
+                      hf_candidates + arxiv_candidates + x_candidates)
     merged = _merge_candidates(all_candidates)
     from src.evidence import preserve_source_evidence
     from src.editorial_selection import assign_source_tier
@@ -1501,7 +1544,7 @@ def collect_news(
             stats["too_old"] += 1
             continue
 
-        # AI 相关性（对非 RSS 源放宽：HN/GitHub 自带 AI 过滤）
+        # AI 相关性（非 RSS 来源已在各自受控来源中完成筛选）
         source_type = item.get("source_type", "rss")
         if source_type == "rss":
             if not _is_ai_related(item["title"], item.get("summary", "")):
@@ -1607,7 +1650,7 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
 
     规则：
     - HN max 50%（上限），RSS/官方/媒体 min 40%（下限）
-    - arXiv 硬上限 2，HuggingFace 硬上限 2
+    - arXiv 硬上限 2，HuggingFace 硬上限 2，X 默认为 3
     - 同一公司/产品最多 2 条
     - 同一发布源和单源融资类发布风险稿设置软上限，有替补时优先分散
     - 超限项放入 reserve，不足时补充
@@ -1618,6 +1661,7 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
     hn_cap = max(int(top_n * 0.5), 4)     # HN 最多 50%
     rss_min = max(int(top_n * 0.4), 3)    # RSS/官方 最少 40%
     source_cap = max(2, int(top_n * 0.3))  # top10 时同一发布源最多 3 条
+    x_cap = _env_nonnegative_int("DAILY_X_MAX_ITEMS", 3)
     risk_caps = {
         "single_source_financial_claim": max(1, int(top_n * 0.2)),
         "community_model_comparison": max(1, int(top_n * 0.1)),
@@ -1627,6 +1671,7 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
         "arxiv": 2,
         "huggingface": 2,
         "hn": hn_cap,
+        "x": x_cap,
     }
 
     type_counts: dict[str, int] = {}
@@ -1727,7 +1772,11 @@ def _apply_source_balance(items: list[dict], top_n: int) -> list[dict]:
             reserves.remove(item)
 
     while len(selected) < top_n and reserves:
-        add_selected(reserves.pop(0), "候选不足，放宽全部均衡上限补齐日报")
+        fallback = reserves.pop(0)
+        # X 来源上限是发布安全约束，候选不足时也不放宽。
+        if fallback.get("source_type") == "x" and type_counts.get("x", 0) >= x_cap:
+            continue
+        add_selected(fallback, "候选不足，放宽全部均衡上限补齐日报")
 
     # ── 多样性后处理：小 top_n 时检查同实体分布 ──
     if top_n <= 10:
