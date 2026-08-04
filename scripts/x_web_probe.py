@@ -33,33 +33,53 @@ PUBLIC_TWEET_FIELDS = (
     "reply_count",
     "quote_count",
 )
-DOM_TWEET_SELECTOR = "article[data-testid='tweet']"
+# 兼容旧版 data-testid 与当前 X 页面使用的 Schema.org 推文卡片标记。
+DOM_TWEET_SELECTOR = (
+    "article[data-testid='tweet'], "
+    "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+)
 STATUS_ID_PATTERN = re.compile(r"/status/(\d+)(?:[/?#]|$)")
 # 浏览器侧只读取页面已渲染卡片的公开字段，不保存 HTML、脚本或网络请求内容。
 DOM_CARD_EVALUATOR = r"""
 (cards) => cards.map((card) => {
+  const readMeta = (property) => {
+    const node = card.querySelector("meta[itemprop='" + property + "']");
+    return node ? (node.getAttribute("content") || "").trim() : "";
+  };
   const statusLink = Array.from(card.querySelectorAll("a[href*='/status/']"))
-    .find((link) => /\/status\/\d+/.test(link.href));
-  const text = Array.from(card.querySelectorAll("[data-testid='tweetText']"))
+    .find((link) => /\/status\/\d+(?:[/?#]|$)/.test(link.href));
+  const statusUrl = readMeta("url") || (statusLink ? statusLink.href : "");
+  const text = readMeta("articleBody") || Array.from(card.querySelectorAll("[data-testid='tweetText']"))
     .map((node) => node.innerText.trim())
     .filter(Boolean)
     .join("\n");
+  const authorMeta = card.querySelector("[itemprop='author'] meta[itemprop='alternateName']");
   const userName = card.querySelector("[data-testid='User-Name']");
   const authorLink = userName
     ? Array.from(userName.querySelectorAll("a[href]")).find((link) => {
         const parts = new URL(link.href).pathname.split("/").filter(Boolean);
         return parts.length === 1;
-      })
+    })
     : null;
-  const author = authorLink
-    ? new URL(authorLink.href).pathname.split("/").filter(Boolean)[0] || ""
+  const statusParts = statusUrl
+    ? new URL(statusUrl).pathname.split("/").filter(Boolean)
+    : [];
+  const statusIndex = statusParts.indexOf("status");
+  const authorFromStatus = statusIndex > 0 && statusParts[statusIndex - 1] !== "i"
+    ? statusParts[statusIndex - 1]
     : "";
+  const author = authorMeta
+    ? (authorMeta.getAttribute("content") || "").trim()
+    : authorLink
+    ? new URL(authorLink.href).pathname.split("/").filter(Boolean)[0] || ""
+    : authorFromStatus;
   const timestamp = statusLink ? statusLink.querySelector("time") : null;
   return {
-    status_url: statusLink ? statusLink.href : "",
+    status_url: statusUrl,
     text,
     author,
-    created_at: timestamp ? timestamp.getAttribute("datetime") || "" : "",
+    created_at: readMeta("datePublished")
+      || (timestamp ? timestamp.getAttribute("datetime") || "" : ""),
   };
 })
 """
