@@ -1,12 +1,133 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-04T14:44:49.742496Z",
+  "generated_at": "2026-08-04T18:08:27.248956Z",
   "source_count": 25,
   "successful_source_count": 25,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 121,
   "tweets": [
+    {
+      "tweet_id": "2084702191466725669",
+      "text": "Announcing the Artificial Analysis Endpoint Accuracy Index, measuring how much of an open weights model's accuracy each serverless API endpoint preserves. We are initiating coverage with GLM-5.2, gpt-oss-120b and DeepSeek V4 Pro, with Kimi K3 coming soon\n\nProviders trade off https://t.co/vnqkobtd12",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-04T18:05:08.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2084702191466725669",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084700936623272123",
+      "text": "How a Chess Grandmaster Built an Autonomous Business | Nemotron Labs https://t.co/vdzoTvY54e",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-04T18:00:09.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2084700936623272123",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084698630653641092",
+      "text": "yes https://t.co/yWb8PQwaxS",
+      "author": "swyx",
+      "created_at": "2026-08-04T17:51:00.000Z",
+      "url": "https://x.com/swyx/status/2084698630653641092",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084695630237311086",
+      "text": "we are huge airtable fans - aie runs on airtable - so seeing this number might seem surprising, but don't count @howietl out! \n\nif you were at WF26 you would already have seen @hyperagentapp which is the next chapter of team Airtable! https://t.co/yQhb4VUue4",
+      "author": "swyx",
+      "created_at": "2026-08-04T17:39:04.000Z",
+      "url": "https://x.com/swyx/status/2084695630237311086",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084695242880729311",
+      "text": "120+ members and counting!\n\nHere’s what they’re saying 🧵",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-04T17:37:32.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2084695242880729311",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084684735725379637",
+      "text": "🛡️Introducing Shieldstral, Mistral’s 3B open-weights model for content safety that can be deployed on-device 🧵 https://t.co/SXBTWIJO9p https://t.co/Hhjw8o0gft",
+      "author": "MistralAI",
+      "created_at": "2026-08-04T16:55:47.000Z",
+      "url": "https://x.com/MistralAI/status/2084684735725379637",
+      "source_name": "Mistral AI",
+      "source_handle": "MistralAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084683919937634507",
+      "text": "Qwen3.8-Max is available in Hermes Agent now!  Let's build! 🚀🚀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-04T16:52:32.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084683919937634507",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084674586462007458",
+      "text": "Qwen-Image-3.0-Pro has made a massive leap from the previous generation, now ranking #5 globally. Appreciate the recognition! We will keep building.🚀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-04T16:15:27.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084674586462007458",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084670730734838003",
+      "text": "Build NemoClaw Agents on Jetson | NVIDIA Jetson AI Lab https://t.co/JUSahmfEG4",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-04T16:00:08.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2084670730734838003",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084667167212245170",
+      "text": "I try not to get excited about models before they've been released, but I gotta admit I'm very much looking forward to the upcoming laptop-sized Qwen 3.8 models",
+      "author": "simonw",
+      "created_at": "2026-08-04T15:45:58.000Z",
+      "url": "https://x.com/simonw/status/2084667167212245170",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084663673570971990",
+      "text": "i would rather be an optimist and work hard than a pessimist posting about why things won't work.\n\nit's much more difficult and the most likely path is failure, but society fails if people don't try.\n\nno amount of \"it will never work\" essays will drive society forward.",
+      "author": "sama",
+      "created_at": "2026-08-04T15:32:05.000Z",
+      "url": "https://x.com/sama/status/2084663673570971990",
+      "source_name": "Sam Altman",
+      "source_handle": "sama",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2084648341980225701",
       "text": "Top stories in tech today:\n\n- Silicon Valley’s push to sell experimental drugs\n- SpaceX to nab Louisiana’s damaged coast\n- Even more bad buzz for Flock’s AI cameras\n- Apple steers buyers away from MacBook Air\n- Quick hits on other tech news https://t.co/ysej0aid1x",
@@ -107,17 +228,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084473121818779668",
-      "text": "Live and ready to build. Thanks for having us! @OpenRouter. Open weights dropping soon.⚡️",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-04T02:54:54.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084473121818779668",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084459212281962833",
       "text": "Sure, 3js in webpages are neat but, Codex: \"you have access to Blender &amp; Unity. I want you to make a new game, with full assets, in which you play as an otter who can get into mech suits shaped like animals and that are critical to game play\"\n\nTook over my computer &amp; gave me this https://t.co/SjTTmOUPNt",
       "author": "emollick",
@@ -206,17 +316,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084310189239579130",
-      "text": "Hermes Agent 🤝 NeMo Relay",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-03T16:07:28.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084310189239579130",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084285750963540400",
       "text": "Top stories in robotics today:\n\n- Armed drones are coming to U.S. schools\n- Gemini now runs humanoids, legs included\n- This demon centaur robot wants to save you\n- Zoox starts charging for robotaxi rides \n- Quick hits on other robotics news https://t.co/wauikI3xXQ",
       "author": "TheRundownAI",
@@ -226,17 +325,6 @@
       "source_handle": "TheRundownAI",
       "source_tier": "media",
       "official": false
-    },
-    {
-      "tweet_id": "2084280439909589230",
-      "text": "Ask anything, anonymously. Qwen3.8-Max has landed on Venice. Give it a try!",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-03T14:09:15.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084280439909589230",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2084245860339298423",
@@ -382,17 +470,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083753582160191988",
-      "text": "one of my curses as organizer is i rarely get to attend the conference i run. so i basically 24/7 watch back talks with everyone else after the show\n\nthis one was VERY well paced and argued: fighting slop with slop — @vaibcode, Boundary https://t.co/eWDDyGkjws \n\n@btaylor asked",
-      "author": "swyx",
-      "created_at": "2026-08-02T03:15:42.000Z",
-      "url": "https://x.com/swyx/status/2083753582160191988",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2083749667410727319",
       "text": "We're starting to leave the territory where you'd test an LLM by e.g. \"create an svg of pelican on a bicycle\". As one idea to generalize it, I was interested what Opus 5 would do if I gave it the first paragraph of the Lord of the Rings, a 1M token budget (~$10) and asked for https://t.co/ybIpXhYSsj",
       "author": "karpathy",
@@ -415,17 +492,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083654369095156219",
-      "text": "started work on forge agents today https://t.co/u3nBCzF7sM",
-      "author": "swyx",
-      "created_at": "2026-08-01T20:41:28.000Z",
-      "url": "https://x.com/swyx/status/2083654369095156219",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2083560847889023219",
       "text": "team humanity",
       "author": "sama",
@@ -434,17 +500,6 @@
       "source_name": "Sam Altman",
       "source_handle": "sama",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2083342783071621224",
-      "text": "Got a disappointing pelican from DeepSeek-V4-Flash-0731 at default reasoning mode - on the left - but then I bumped reasoning up to high (via OpenRouter) and got the much better one on the right https://t.co/iBEov5peB6",
-      "author": "simonw",
-      "created_at": "2026-08-01T00:03:20.000Z",
-      "url": "https://x.com/simonw/status/2083342783071621224",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -492,17 +547,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083258269875798275",
-      "text": "Humans count the boxes in this image, hidden ones included, with 82.1% accuracy. The best off-the-shelf multimodal model manages 17.7%.\n\nSpatial-IQ is a diagnostic benchmark from NVIDIA Research that breaks 3D object counting into nine perceptual and cognitive sub-tasks, from https://t.co/yj5QCJ87s0",
-      "author": "NVIDIAAI",
-      "created_at": "2026-07-31T18:27:31.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2083258269875798275",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2083221585792762171",
       "text": "cool use case of chatgpt work i heard last night:\n\nconnect your family calendars and explain your kids' interests.\n\nevery morning for the drive to school, have it make a podcast that talks about one kid's soccer game that afternoon, one kid's upcoming birthday, some news, etc.",
       "author": "sama",
@@ -533,28 +577,6 @@
       "source_name": "Sam Altman",
       "source_handle": "sama",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2083191024264819044",
-      "text": "Code with Me: Run Your Polars Code on the GPU https://t.co/gY0yQQS3ww",
-      "author": "NVIDIAAI",
-      "created_at": "2026-07-31T14:00:18.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2083191024264819044",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2083123180869496865",
-      "text": "DeepSeek V4 Flash 0731 scores 50 on the Artificial Analysis Intelligence Index, a 10-point jump over DeepSeek V4 Flash (released April 2026) that puts it 6 points ahead of DeepSeek V4 Pro. It shares identical architecture and pricing with the earlier DeepSeek V4 Flash, and lands https://t.co/WZd1vvj9pF",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-07-31T09:30:43.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2083123180869496865",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -611,17 +633,6 @@
       "source_handle": "GoogleDeepMind",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2082881262679642281",
-      "text": "good job little bro",
-      "author": "sama",
-      "created_at": "2026-07-30T17:29:25.000Z",
-      "url": "https://x.com/sama/status/2082881262679642281",
-      "source_name": "Sam Altman",
-      "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2082878156483219672",
@@ -1051,17 +1062,6 @@
       "source_handle": "karpathy",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2069420263825895917",
-      "text": "Introducing Mistral OCR 4. It creates structure with bounding boxes, block classification, and inline confidence scores in 170 languages. 🧵👇 https://t.co/jR78NkL4xK",
-      "author": "MistralAI",
-      "created_at": "2026-06-23T14:00:13.000Z",
-      "url": "https://x.com/MistralAI/status/2069420263825895917",
-      "source_name": "Mistral AI",
-      "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2065490793092337691",
