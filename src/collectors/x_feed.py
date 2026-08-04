@@ -1,0 +1,153 @@
+"""读取 GitHub 静态分支上的公开 X 信息源快照。"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Mapping
+from urllib.parse import urlparse
+
+import requests
+
+from src.collectors import BaseCollector
+from src.text_utils import clean_display_text
+
+
+LOGGER = logging.getLogger(__name__)
+FEED_SCHEMA_VERSION = "x-feed-v1"
+DEFAULT_MAX_AGE_HOURS = 6
+
+
+class XFeedCollector(BaseCollector):
+    """将 GitHub Runner 生成的公开 X 快照转换为统一日报候选。"""
+
+    def __init__(
+        self,
+        feed_url: str,
+        timeout: int = 30,
+        max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
+        now: datetime | None = None,
+    ) -> None:
+        super().__init__(timeout)
+        self.feed_url = feed_url.strip()
+        self.max_age_hours = max(int(max_age_hours), 1)
+        self.now = now
+
+    def fetch(self) -> list[dict]:
+        """获取新鲜快照；网络或契约异常不影响其他采集器。"""
+        if not _is_https_url(self.feed_url):
+            LOGGER.warning("X feed URL is not a valid HTTPS URL")
+            return []
+        try:
+            response = requests.get(
+                self.feed_url,
+                timeout=self.timeout,
+                headers={"User-Agent": "AI-Daily-News-XFeed/1.0"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            LOGGER.warning("X feed fetch failed: %s", exc)
+            return []
+
+        if not isinstance(payload, Mapping) or payload.get("schema_version") != FEED_SCHEMA_VERSION:
+            LOGGER.warning("X feed schema is invalid")
+            return []
+        if not _is_fresh_snapshot(payload.get("generated_at"), self._current_time(), self.max_age_hours):
+            LOGGER.warning("X feed snapshot is stale or has an invalid generation time")
+            return []
+
+        tweets = payload.get("tweets")
+        if not isinstance(tweets, list):
+            LOGGER.warning("X feed does not contain a tweet list")
+            return []
+
+        candidates: list[dict] = []
+        seen_ids: set[str] = set()
+        for tweet in tweets:
+            candidate = _tweet_to_candidate(tweet)
+            if candidate is None or candidate["id"] in seen_ids:
+                continue
+            seen_ids.add(candidate["id"])
+            candidates.append(candidate)
+        LOGGER.info("X feed fetched %d valid candidates", len(candidates))
+        return candidates
+
+    def _current_time(self) -> datetime:
+        """返回统一 UTC 当前时间，便于在测试中固定快照时效。"""
+        return (self.now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+
+
+def _tweet_to_candidate(tweet: object) -> dict | None:
+    """转换单条已脱敏公开推文，并拒绝不完整或非 X 链接记录。"""
+    if not isinstance(tweet, Mapping):
+        return None
+    tweet_id = str(tweet.get("tweet_id") or "").strip()
+    text = clean_display_text(str(tweet.get("text") or ""), collapse_whitespace=False)
+    url = str(tweet.get("url") or "").strip()
+    source_name = clean_display_text(str(tweet.get("source_name") or ""))
+    author = clean_display_text(str(tweet.get("author") or ""))
+    source_tier = str(tweet.get("source_tier") or "").strip()
+    published_at = _parse_timestamp(tweet.get("created_at"))
+    if (
+        not tweet_id.isdigit()
+        or not text
+        or not source_name
+        or not author
+        or source_tier not in {"primary", "research", "media"}
+        or published_at is None
+        or not _is_x_status_url(url, tweet_id)
+    ):
+        return None
+
+    title_text = " ".join(text.split())
+    candidate = BaseCollector.make_candidate(
+        id_=f"x-{tweet_id}",
+        title=f"{source_name}: {title_text[:180]}"[:200],
+        url=url,
+        source=f"{source_name} (X)",
+        source_type="x",
+        published_at=published_at,
+        published_source="x_feed",
+        summary=text[:900],
+        author=author,
+        tags=["x", "official"] if bool(tweet.get("official", False)) else ["x"],
+    )
+    candidate["source_tier"] = source_tier
+    candidate["x_official"] = bool(tweet.get("official", False))
+    return candidate
+
+
+def _parse_timestamp(value: object) -> datetime | None:
+    """解析快照中的 ISO 8601 UTC 时间。"""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _is_fresh_snapshot(value: object, now: datetime, max_age_hours: int) -> bool:
+    """快照必须在允许窗口内，避免旧 X 内容进入当天日报。"""
+    generated_at = _parse_timestamp(value)
+    if generated_at is None:
+        return False
+    age = now - generated_at
+    # 允许短暂时钟偏差，但拒绝未来时间和超出发布周期的旧快照。
+    return timedelta(minutes=-5) <= age <= timedelta(hours=max_age_hours)
+
+
+def _is_https_url(value: str) -> bool:
+    """只允许公开 HTTPS 快照地址。"""
+    parsed = urlparse(value)
+    return parsed.scheme == "https" and bool(parsed.netloc)
+
+
+def _is_x_status_url(value: str, tweet_id: str) -> bool:
+    """只接收与快照 ID 一致的公开 X 推文链接。"""
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or parsed.hostname not in {"x.com", "www.x.com"}:
+        return False
+    return parsed.path.endswith(f"/status/{tweet_id}")
