@@ -1,12 +1,23 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-04T10:55:21.979547Z",
+  "generated_at": "2026-08-04T14:44:49.742496Z",
   "source_count": 25,
   "successful_source_count": 25,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 121,
   "tweets": [
+    {
+      "tweet_id": "2084648341980225701",
+      "text": "Top stories in tech today:\n\n- Silicon Valley’s push to sell experimental drugs\n- SpaceX to nab Louisiana’s damaged coast\n- Even more bad buzz for Flock’s AI cameras\n- Apple steers buyers away from MacBook Air\n- Quick hits on other tech news https://t.co/ysej0aid1x",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-04T14:31:10.000Z",
+      "url": "https://x.com/TheRundownAI/status/2084648341980225701",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2084587751727337589",
       "text": "Top stories in AI today:\n\n- AI labs head to the White House to discuss safety\n- HeyGen founder replaced himself with an AI clone\n- Build a project room where humans and agents work\n- Finance execs find AI skills more valuable than MBA https://t.co/1ta2dAooCt",
@@ -578,17 +589,6 @@
       "source_handle": "TencentHunyuan",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2082977597311361112",
-      "text": "We now have dueling security incidents between the frontier rivals",
-      "author": "TheRundownAI",
-      "created_at": "2026-07-30T23:52:13.000Z",
-      "url": "https://x.com/TheRundownAI/status/2082977597311361112",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2082965101083320543",
