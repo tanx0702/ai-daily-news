@@ -1,12 +1,56 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-04T06:53:49.045847Z",
+  "generated_at": "2026-08-04T10:55:21.979547Z",
   "source_count": 25,
   "successful_source_count": 25,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 121,
   "tweets": [
+    {
+      "tweet_id": "2084587751727337589",
+      "text": "Top stories in AI today:\n\n- AI labs head to the White House to discuss safety\n- HeyGen founder replaced himself with an AI clone\n- Build a project room where humans and agents work\n- Finance execs find AI skills more valuable than MBA https://t.co/1ta2dAooCt",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-04T10:30:24.000Z",
+      "url": "https://x.com/TheRundownAI/status/2084587751727337589",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084579829303615497",
+      "text": "AI that finally hears you. 👂\n\nHy ASR 3.0 preview drops today. \n\nPowered by Hy3’s language brain \n→ precision ASR + deep semantic understanding\n\nWins on:\n• general recognition\n• context awareness\n• multi-scenario robustness\n• dialect coverage\n\nMessy real-world audio? Clean, https://t.co/vFdypZyI7J",
+      "author": "TencentHunyuan",
+      "created_at": "2026-08-04T09:58:55.000Z",
+      "url": "https://x.com/TencentHunyuan/status/2084579829303615497",
+      "source_name": "Tencent Hunyuan",
+      "source_handle": "TencentHunyuan",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084552484648042776",
+      "text": "Qwen3.8-Max, better and cheaper. Try it out. 👀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-04T08:10:16.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084552484648042776",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084549830643274090",
+      "text": "I really believe that a majority of people, perhap…",
+      "author": "fchollet",
+      "created_at": "2026-08-04T07:59:43.000Z",
+      "url": "https://x.com/fchollet/status/2084549830643274090",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2084497674112254059",
       "text": "Given today, it is surprising how daring Microsoft &amp; Google were initially with AI.\n\nMicrosoft released GPT-4 before OpenAI, didn't back down after Sydney &amp; got Copilot to market quickly (the 1st professional AI tool)\n\nGoogle had the first deep research &amp; pivoted fast with Bard.",
@@ -204,17 +248,6 @@
       "source_handle": "TheRundownAI",
       "source_tier": "media",
       "official": false
-    },
-    {
-      "tweet_id": "2084210646737100983",
-      "text": "Live in Command Code!🎉",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-03T09:31:55.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084210646737100983",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2084185368950456421",
@@ -602,17 +635,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082871871607836950",
-      "text": "Google just announced Gemini Robotics 2, extending its physical AI models beyond tabletop manipulation.\n\nA robot tying a trash bag sounds routine, but might be a bigger breakthrough than it seems: https://t.co/rwx6Xrnot7",
-      "author": "TheRundownAI",
-      "created_at": "2026-07-30T16:52:06.000Z",
-      "url": "https://x.com/TheRundownAI/status/2082871871607836950",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2082844162928381956",
       "text": "One brain. For any robot. 🤖\n\nWe’re launching Gemini Robotics 2: our next-generation physical AI bringing full body intelligence to humanoids, advanced dexterity, multi-robot teamwork and more. https://t.co/1rFw3NUytb",
       "author": "GoogleDeepMind",
@@ -622,17 +644,6 @@
       "source_handle": "GoogleDeepMind",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2082732210436575669",
-      "text": "Quick reminder of what's ok vs not ok with harnesses used for playing ARC-AGI-3:\n\n1. Not okay: harnesses that were custom-made to solve the benchmark or that contain knowledge about the benchmark format / contents.\n\n2. Fine: general-purpose API settings that were not developed",
-      "author": "fchollet",
-      "created_at": "2026-07-30T07:37:08.000Z",
-      "url": "https://x.com/fchollet/status/2082732210436575669",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2082655737541726636",
@@ -884,17 +895,6 @@
       "url": "https://x.com/GoogleDeepMind/status/2080321516814647630",
       "source_name": "Google DeepMind",
       "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2080127118286176342",
-      "text": "Test Hy3 in GO.  💗",
-      "author": "TencentHunyuan",
-      "created_at": "2026-07-23T03:05:26.000Z",
-      "url": "https://x.com/TencentHunyuan/status/2080127118286176342",
-      "source_name": "Tencent Hunyuan",
-      "source_handle": "TencentHunyuan",
       "source_tier": "primary",
       "official": true
     },
