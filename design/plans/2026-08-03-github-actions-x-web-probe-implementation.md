@@ -4,7 +4,7 @@
 
 **Goal:** 在 GitHub 托管 Runner 上验证 Playwright 能否从公开 X 页面捕获结构化推文 XHR 数据，不调用 X API，也不触碰日报生产链路。
 
-**Architecture:** 探针脚本只接受公开 X URL，在 Chromium 内监听页面响应，只解析四类 Tweet 操作，抽取最小公开字段并写入脱敏报告。GitHub Actions 手动运行并上传报告 Artifact；VPS、Docker、src/main.py 与微信草稿均不参与。
+**Architecture:** 探针脚本只接受公开 X URL，在 Chromium 内优先监听页面响应并解析四类 Tweet 操作；XHR 没有推文时回退读取已渲染的公开推文卡片，抽取最小公开字段并写入脱敏报告。GitHub Actions 手动运行并上传报告 Artifact；VPS、Docker、src/main.py 与微信草稿均不参与。
 
 **Tech Stack:** Python 3.12、Playwright 1.52.0、pytest、GitHub Actions Ubuntu Runner、Chromium。
 
@@ -20,6 +20,12 @@
 - Git 提交信息使用中文。
 
 ---
+
+## 执行补充
+
+- XHR/GraphQL 仍为首选提取路径；当页面已渲染但允许操作没有推文时，Task 2 额外从 `article[data-testid='tweet']` 提取公开卡片字段。
+- 页面入口白名单继续只允许 `x.com`、`www.x.com`、`twitter.com` 和 `www.twitter.com`；响应白名单额外允许 `api.x.com`，不会因此放宽目标 URL。
+- 报告新增 `extraction_method`，值为 `xhr`、`dom_fallback` 或 `none`；DOM 回退不保存 HTML、Cookie、请求头或原始响应。
 
 ## 文件结构
 
@@ -409,4 +415,3 @@ tweet_count 可以大于 1；每条 tweets 只含 tweet_id、text、author、cre
 - 规格中的 GitHub Runner、允许操作、公开 URL、脱敏 Artifact、失败截图、手动触发、生产隔离和回滚边界由 Task 1 至 Task 4 覆盖。
 - 计划包含精确文件、接口、测试代码、命令和通过条件。
 - 定时采集、登录态管理与 VPS 候选导入不在本计划范围内；必须在探针通过后单独设计。
-
