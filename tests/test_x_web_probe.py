@@ -138,7 +138,8 @@ def test_extract_dom_tweets_uses_status_url_and_deduplicates_visible_cards():
     ]
 
 
-def test_read_dom_cards_uses_only_visible_tweet_card_selector():
+def test_read_dom_cards_supports_current_schema_org_tweet_cards():
+    # 当前 X 公开页面用 Schema.org 属性标识推文卡片，不再提供旧 data-testid。
     cards = [{"status_url": "https://x.com/OpenAI/status/42", "text": "模型已发布"}]
 
     class FakeLocator:
@@ -149,7 +150,10 @@ def test_read_dom_cards_uses_only_visible_tweet_card_selector():
     class FakePage:
         @staticmethod
         def locator(selector):
-            assert selector == "article[data-testid='tweet']"
+            assert selector == (
+                "article[data-testid='tweet'], "
+                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+            )
             return FakeLocator()
 
     assert _read_dom_cards(FakePage()) == cards
@@ -293,7 +297,10 @@ def test_run_probe_uses_dom_fallback_after_empty_xhr(
 
         @staticmethod
         def locator(selector):
-            assert selector == "article[data-testid='tweet']"
+            assert selector == (
+                "article[data-testid='tweet'], "
+                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+            )
             return FakeLocator()
 
         @staticmethod
