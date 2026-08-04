@@ -1,7 +1,9 @@
+import os
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.quality_gate import review_daily
+from src.quality_gate import _run_llm_review, review_daily
 
 
 def _item(title, source_type="rss"):
@@ -17,7 +19,87 @@ def _item(title, source_type="rss"):
     }
 
 
+def _llm_response(content, finish_reason="stop"):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=content),
+                finish_reason=finish_reason,
+            )
+        ]
+    )
+
+
+class _FakeLlmClient:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+        self.chat = SimpleNamespace(completions=self)
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.responses.pop(0)
+
+
 class QualityGatePublishFilterTests(unittest.TestCase):
+    def test_llm_review_merges_item_indexes_across_small_batches(self):
+        client = _FakeLlmClient([
+            _llm_response('{"issues":[{"item_index":1,"severity":"high"}],'
+                          '"fixes":[{"item_index":2,"reason":"soften"}],'
+                          '"global_notes":["first"]}'),
+            _llm_response('{"issues":[{"item_index":1,"severity":"medium"}],'
+                          '"fixes":[],"global_notes":["second"]}'),
+        ])
+
+        with patch.dict(os.environ, {"QUALITY_GATE_REVIEW_BATCH_SIZE": "2"}), patch(
+            "openai.OpenAI", return_value=client
+        ):
+            issues, fixes, notes = _run_llm_review(
+                [_item("One"), _item("Two"), _item("Three")],
+                api_key="test-key",
+                model="test-model",
+                base_url="https://example.test/v1",
+                timeout=5,
+            )
+
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual([issue["item_index"] for issue in issues], [1, 3])
+        self.assertEqual([fix["item_index"] for fix in fixes], [2])
+        self.assertEqual(notes, ["first", "second"])
+
+    def test_llm_review_retries_an_empty_length_response_once(self):
+        client = _FakeLlmClient([
+            _llm_response("", finish_reason="length"),
+            _llm_response('{"issues":[],"fixes":[],"global_notes":[]}'),
+        ])
+
+        with patch.dict(os.environ, {"QUALITY_GATE_REVIEW_BATCH_SIZE": "1"}), patch(
+            "openai.OpenAI", return_value=client
+        ):
+            issues, fixes, notes = _run_llm_review(
+                [_item("One")],
+                api_key="test-key",
+                model="test-model",
+                base_url="https://example.test/v1",
+                timeout=5,
+            )
+
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual((issues, fixes, notes), ([], [], []))
+
+    def test_llm_review_keeps_the_fail_closed_fallback_when_client_creation_fails(self):
+        with patch("openai.OpenAI", side_effect=RuntimeError("client unavailable")):
+            issues, fixes, notes = _run_llm_review(
+                [_item("One")],
+                api_key="test-key",
+                model="test-model",
+                base_url="https://example.test/v1",
+                timeout=5,
+            )
+
+        self.assertEqual((issues, fixes), ([], []))
+        self.assertEqual(notes, ["LLM quality review failed: client unavailable"])
+
     def test_high_risk_selected_item_uses_only_quota_compliant_reserve(self):
         selected = [
             {**_item("Unsafe source"), "source": "Unsafe publisher", "topic_key": "unsafe", "_score": 100},
