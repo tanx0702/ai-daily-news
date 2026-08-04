@@ -30,7 +30,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
       - name: Collect public X feed
         run: >-
-          python scripts/x_web_feed.py
+          python -m scripts.x_web_feed
           --sources config/x_sources.json
           --work-dir artifacts/x-feed
           --output artifacts/x-feed/x-feed.json

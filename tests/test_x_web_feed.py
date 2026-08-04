@@ -111,6 +111,7 @@ def test_x_feed_workflow_publishes_a_scheduled_snapshot_without_vps_access():
     assert "contents: write" in normalized
     assert "ref: x-feed" in normalized
     assert "x-feed.json" in workflow
+    assert "python -m scripts.x_web_feed" in workflow
     assert "vps" not in normalized
     assert "ssh " not in normalized
     assert "scp " not in normalized
