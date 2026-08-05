@@ -1,12 +1,133 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-04T21:41:10.123539Z",
+  "generated_at": "2026-08-05T03:38:07.524155Z",
   "source_count": 25,
   "successful_source_count": 25,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 121,
   "tweets": [
+    {
+      "tweet_id": "2084836757095526689",
+      "text": "🚀 Hy3 is now live in WorkBuddy global—free for users worldwide through August 31, 2026 (PT).\n\nResearch, analyze data, create documents and presentations, and handle workplace communications in an agentic AI workspace—no setup required.\n\nHy3 is also available through Tencent https://t.co/dzhfniK3SK",
+      "author": "TencentHunyuan",
+      "created_at": "2026-08-05T02:59:51.000Z",
+      "url": "https://x.com/TencentHunyuan/status/2084836757095526689",
+      "source_name": "Tencent Hunyuan",
+      "source_handle": "TencentHunyuan",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084834140516676093",
+      "text": "Qwen3.8-Max hits #2 in Image-to-WebDev Arena! It sees, it builds~😎",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-05T02:49:28.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084834140516676093",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084832553895444570",
+      "text": "smol aha moment at @_chenglou’s @midjourney meetup today - \n\none reason that ontologies and graph knowledge are finally trending now rather than 3 years ago is  that “good enough” intelligence is finally too cheap to meter\n\nthis is why talks like @coyle_frankp and @emileifrem’s https://t.co/AkuQaMVzzv",
+      "author": "swyx",
+      "created_at": "2026-08-05T02:43:09.000Z",
+      "url": "https://x.com/swyx/status/2084832553895444570",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084831888729072121",
+      "text": "Qwen-Image-3.0-Pro is live on Qwen Cloud now! \nTry it out👇\nhttps://t.co/wG5vtLAYVp",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-05T02:40:31.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084831888729072121",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084826713922355207",
+      "text": "This time Fable built me the Van Gogh city building game that I faked in an AI video last year.\n\nThe key mechanic the AI came up with is painting the landscape with big brushstrokes &amp; an environment that evolves with weather and seasons.\n\nChill and pretty: https://t.co/AVcaQbOfGy https://t.co/qRtfImGtlC",
+      "author": "emollick",
+      "created_at": "2026-08-05T02:19:57.000Z",
+      "url": "https://x.com/emollick/status/2084826713922355207",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2084806293617807448",
+      "text": "Also I think AISI is a great model of a government agency tasked with AI security. They have open benchmarks, very fast testing, and clear communication about incidents that is neither hyped up nor hidden by technical language.",
+      "author": "emollick",
+      "created_at": "2026-08-05T00:58:48.000Z",
+      "url": "https://x.com/emollick/status/2084806293617807448",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2084804785853616603",
+      "text": "Yes, the AIs were given a cybersecurity challenge, with internet access enabled and safety filters disabled.\n\nBut the extent to which Mythos 5 pursued its mission (fake identities, social engineering, inserting malicious code into a real open-source project) seems very notable. https://t.co/YvZZKoK9bM",
+      "author": "emollick",
+      "created_at": "2026-08-05T00:52:49.000Z",
+      "url": "https://x.com/emollick/status/2084804785853616603",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2084792341572001871",
+      "text": "Big new release of my LLM CLI tool and Python library for talking to hundreds of different LLMs - reasoning traces, OpenAI Responses support, server-side tools, smarter logging and a whole lot more\nhttps://t.co/IgGoMlV4Br",
+      "author": "simonw",
+      "created_at": "2026-08-05T00:03:22.000Z",
+      "url": "https://x.com/simonw/status/2084792341572001871",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2084783822667932137",
+      "text": "Across infrastructure, creative platforms, and open communities, our partners share a belief in what open models can unlock.\n\nGrateful to @fal, @pika_labs, and @HelloCivitai for building alongside us. 💜\n\n#MiniMaxH3 https://t.co/y7x5fCeBRU",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-04T23:29:31.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2084783822667932137",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084759576692363460",
+      "text": "We're working with the Open Secure Alliance on guidelines for incident learning, to collectively develop better review, disclosure, and controls of and for security incidents.",
+      "author": "huggingface",
+      "created_at": "2026-08-04T21:53:10.000Z",
+      "url": "https://x.com/huggingface/status/2084759576692363460",
+      "source_name": "Hugging Face",
+      "source_handle": "huggingface",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084758511737847853",
+      "text": "Inference shapes the speed, cost, and quality of every AI request, but choosing the right provider for your use case involves more than just picking the fastest or cheapest option\n\nOn Wednesday, August 12, we're bringing together engineers, inference providers, and AI leaders in",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-04T21:48:56.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2084758511737847853",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2084748111239344556",
       "text": "The UK’s @AISecurityInst (AISI) has published a report on their recent cybersecurity evaluation of Anthropic’s Claude Mythos 5 and OpenAI’s GPT-5.6 Sol. The models attempted to complete an assignment in a setup where their normal safeguards were removed and they were deliberately",
@@ -206,17 +327,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084552484648042776",
-      "text": "Qwen3.8-Max, better and cheaper. Try it out. 👀",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-04T08:10:16.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084552484648042776",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084549830643274090",
       "text": "I really believe that a majority of people, perhap…",
       "author": "fchollet",
@@ -250,66 +360,11 @@
       "official": true
     },
     {
-      "tweet_id": "2084485221286563938",
-      "text": "An unexpectedly stress-reducing use of Codex/Code is just fixing problems with my various Windows machines: weird driver issues, game incompatibilities, even just tiny stuff that used to annoy me (why does the program that I set to run at startup not run at startup?). Hours saved",
-      "author": "emollick",
-      "created_at": "2026-08-04T03:42:59.000Z",
-      "url": "https://x.com/emollick/status/2084485221286563938",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084474950463967237",
-      "text": "Appreciate it! High performance, low cost. Try it out today. 💻",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-04T03:02:10.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084474950463967237",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084459212281962833",
-      "text": "Sure, 3js in webpages are neat but, Codex: \"you have access to Blender &amp; Unity. I want you to make a new game, with full assets, in which you play as an otter who can get into mech suits shaped like animals and that are critical to game play\"\n\nTook over my computer &amp; gave me this https://t.co/SjTTmOUPNt",
-      "author": "emollick",
-      "created_at": "2026-08-04T01:59:38.000Z",
-      "url": "https://x.com/emollick/status/2084459212281962833",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2084447186742345753",
       "text": "The road to AGI was never meant to be traveled alone.\n\nFrom Hailuo 01 to H3, we've been incredibly lucky to build alongside so many friends, partners, and fellow builders who believed in the same thing we did.\n\nThat's why we open-sourced H3. Because progress moves faster when",
       "author": "MiniMax_AI",
       "created_at": "2026-08-04T01:11:51.000Z",
       "url": "https://x.com/MiniMax_AI/status/2084447186742345753",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084433995534574042",
-      "text": "The article is AI written, but does make some useful points. However, editors need to be up-to-date enough on AI research to ban references to deeply methodologically suspect NANDA paper, especially a year later when we much better information about what is happening in companies https://t.co/s9120rijZi",
-      "author": "emollick",
-      "created_at": "2026-08-04T00:19:26.000Z",
-      "url": "https://x.com/emollick/status/2084433995534574042",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084433790081061168",
-      "text": "The power of open source! 🩵\n\nKudos to the local host community, it was released within a day and we’re already seeing MiniMax H3 running on Mac!",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-04T00:18:37.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084433790081061168",
       "source_name": "MiniMax",
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
@@ -459,17 +514,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083993378258288976",
-      "text": "one way i'm developing Forge (https://t.co/yxbUhrdSqQ) is to use it to host all my projects going forward. so I often find myself having to bounce back and forth between platform and product.\n\nsharing neat trick - in @openai codex you can @ a thread + queue up the @, so if your https://t.co/fzMdotfQ5i",
-      "author": "swyx",
-      "created_at": "2026-08-02T19:08:34.000Z",
-      "url": "https://x.com/swyx/status/2083993378258288976",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2083956479888126102",
       "text": "Today, we launched the Community AI Workflow Hub.\n\nOur most requested feature of all time.\n\nA place for builders, everyday knowledge workers, and the AI curious to learn from real people doing real work with AI 🤝 https://t.co/ciBHOcnW1K",
       "author": "TheRundownAI",
@@ -477,17 +521,6 @@
       "url": "https://x.com/TheRundownAI/status/2083956479888126102",
       "source_name": "The Rundown AI",
       "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2083904679826849918",
-      "text": "Here's my attempt at summarizing the various \"open letters\" about AI development that have been doing the rounds over the past few weeks https://t.co/VXA7OMIAgJ",
-      "author": "simonw",
-      "created_at": "2026-08-02T13:16:07.000Z",
-      "url": "https://x.com/simonw/status/2083904679826849918",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
       "source_tier": "media",
       "official": false
     },
@@ -555,17 +588,6 @@
       "source_name": "Yann LeCun",
       "source_handle": "ylecun",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2083289538068357403",
-      "text": "Mureka V9 debuts at #2 on both Artificial Analysis Music Leaderboards, within 1 Elo point of the #1 spot in Instrumental only music\n\nMureka V9 is the latest flagship music generation model from Mureka, the music AI platform from Skywork AI. It generates full songs of typically 2 https://t.co/J3bJp7ekOZ",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-07-31T20:31:46.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2083289538068357403",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -719,17 +741,6 @@
       "url": "https://x.com/huggingface/status/2082502249784451163",
       "source_name": "Hugging Face",
       "source_handle": "huggingface",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082447023626944936",
-      "text": "🚀 We’ve  open-sourced AngelSpec, an end-to-end speculative decoding framework supporting both training and deployment.\n\nOn Hy3-A21B, DFly delivers a 1.98–2.40× end-to-end speedup over autoregressive decoding across tested concurrency levels from 4 to 64, with 10.5–11.8% higher",
-      "author": "TencentHunyuan",
-      "created_at": "2026-07-29T12:43:55.000Z",
-      "url": "https://x.com/TencentHunyuan/status/2082447023626944936",
-      "source_name": "Tencent Hunyuan",
-      "source_handle": "TencentHunyuan",
       "source_tier": "primary",
       "official": true
     },
@@ -950,17 +961,6 @@
       "url": "https://x.com/MistralAI/status/2079598447234064801",
       "source_name": "Mistral AI",
       "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2079597899592438209",
-      "text": "Local AI 201 https://t.co/AgKvdJMqWv",
-      "author": "huggingface",
-      "created_at": "2026-07-21T16:02:30.000Z",
-      "url": "https://x.com/huggingface/status/2079597899592438209",
-      "source_name": "Hugging Face",
-      "source_handle": "huggingface",
       "source_tier": "primary",
       "official": true
     },
