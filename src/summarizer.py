@@ -35,7 +35,7 @@ _MODEL_PATTERN = re.compile(
 # 低置信度 brand claim 标记 key（从 collector 传入）
 _LOW_CONFIDENCE_KEY = "low_confidence_brand_claim"
 _NON_RETRYABLE_LLM_STATUS_CODES = {400, 401, 403}
-BATCH_MAX_ATTEMPTS = 2
+SUMMARY_MAX_ATTEMPTS = 2
 
 
 def _is_non_retryable_llm_error(error: Exception) -> bool:
@@ -116,8 +116,8 @@ def validate_summary_facts(chinese_title: str, original: dict) -> dict:
 AGNES_BASE_URL = DEFAULT_TEXT_API_BASE
 DEFAULT_MODEL = DEFAULT_TEXT_MODEL
 
-# 批量处理：每次最多处理 5 条新闻
-BATCH_SIZE = 5
+# 每次请求只处理一条新闻，避免模型响应容量影响同批候选。
+SUMMARY_ITEMS_PER_REQUEST = 1
 
 # 中文新闻文风约束：借鉴 humanizer-zh 的去 AI 腔规则，但保留新闻摘要需要的中立和事实边界。
 _CHINESE_NEWS_STYLE_PROMPT = (
@@ -351,8 +351,8 @@ def summarize_news(
     """
     批量为新闻列表生成中文翻译标题和摘要。
 
-    采用分批处理策略：每 BATCH_SIZE 条新闻合并为一次 LLM 调用，
-    大幅降低 API 调用次数和超时概率。
+    每条新闻独立请求，单条临时失败只重试该条一次，
+    避免模型响应容量问题影响同一批候选。
 
     Args:
         news_list: 新闻列表，每条包含 title, url, source, summary 等
@@ -385,19 +385,15 @@ def summarize_news(
         logger.info("All news already have summaries, skipping LLM")
         return news_list
 
-    # 分批处理
-    for batch_start in range(0, len(need_summarize), BATCH_SIZE):
-        batch_indices = need_summarize[batch_start:batch_start + BATCH_SIZE]
+    # 逐条处理，避免一个模型响应异常影响其他候选。
+    for batch_start in range(0, len(need_summarize), SUMMARY_ITEMS_PER_REQUEST):
+        batch_indices = need_summarize[batch_start:batch_start + SUMMARY_ITEMS_PER_REQUEST]
         batch_news = [news_list[i] for i in batch_indices]
 
-        logger.info("Processing batch %d-%d (%d items)",
-                     batch_start + 1, batch_start + len(batch_indices), len(batch_indices))
+        logger.info("Processing summary %d/%d", batch_start + 1, len(need_summarize))
 
-        # 构建批量 prompt
-        headlines = "\n\n".join(
-            _format_news_evidence(news_index + 1, news)
-            for news_index, news in zip(batch_indices, batch_news)
-        )
+        # 每次请求只带一条来源证据，并使用局部编号 1。
+        headlines = _format_news_evidence(1, batch_news[0])
 
         system_prompt = (
             "你是一个专业的 AI 新闻编辑，擅长撰写自然流畅的中文科技新闻。"
@@ -431,7 +427,7 @@ def summarize_news(
         )
 
         non_retryable_error = None
-        for attempt in range(1, BATCH_MAX_ATTEMPTS + 1):
+        for attempt in range(1, SUMMARY_MAX_ATTEMPTS + 1):
             try:
                 response = client.chat.completions.create(
                     model=model,
@@ -446,29 +442,32 @@ def summarize_news(
                 result = _extract_json(_completion_content(response))
                 normalized_results = _normalize_batch_results(
                     _response_items(result),
-                    batch_indices,
+                    [0],
                 )
                 for pos, item in enumerate(normalized_results):
-                    _apply_summary_item(batch_news[pos], item, f"batch #{pos + 1}")
-                    logger.info("  Batch summary #%d: %s", pos + 1,
+                    _apply_summary_item(batch_news[pos], item, "single")
+                    batch_news[pos]["llm_summary_status"] = (
+                        "success" if attempt == 1 else "retry_success"
+                    )
+                    logger.info("  Summary: %s",
                                 batch_news[pos]["chinese_title"][:40])
                 break
             except Exception as exc:
                 logger.warning(
-                    "Batch attempt %d/%d failed for items %d-%d: %s",
-                    attempt, BATCH_MAX_ATTEMPTS,
-                    batch_start + 1, batch_start + len(batch_indices), exc,
+                    "Summary attempt %d/%d failed for item %d: %s",
+                    attempt, SUMMARY_MAX_ATTEMPTS,
+                    batch_start + 1, exc,
                 )
                 if _is_non_retryable_llm_error(exc):
                     non_retryable_error = exc
                     break
-                if attempt == BATCH_MAX_ATTEMPTS:
+                if attempt == SUMMARY_MAX_ATTEMPTS:
                     for news in batch_news:
                         _apply_invalid_response_fallback(news)
 
         if non_retryable_error is not None:
             logger.error(
-                "LLM batch error is non-retryable; skipping remaining summary requests: %s",
+                "LLM summary error is non-retryable; skipping remaining requests: %s",
                 non_retryable_error,
             )
             for remaining_index in need_summarize[batch_start:]:
