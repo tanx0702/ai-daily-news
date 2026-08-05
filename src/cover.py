@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
+from src.editorial_cover import render_editorial_cover
 from src.llm_config import DEFAULT_IMAGE_MODEL, resolve_image_llm_config
 from src.text_utils import clean_display_text
 
@@ -29,6 +30,12 @@ def _env_enabled_cover(name: str, default: bool = True) -> bool:
     if val in ("0", "false", "no", "off"):
         return False
     return default
+
+
+def _cover_render_mode() -> str:
+    """Return the selected renderer, defaulting to the v1-compatible path."""
+    mode = os.environ.get("COVER_RENDER_MODE", "legacy").strip().lower()
+    return mode if mode in {"legacy", "editorial"} else "legacy"
 
 
 # 封面策略：
@@ -475,6 +482,39 @@ def generate_cover_from_news(
     cover_subject["cover_title"] = clean_display_text(cover_title)
     if not cover_subject.get("visual_prompt_topic"):
         cover_subject["visual_prompt_topic"] = cover_subject["cover_title"]
+
+    if _cover_render_mode() == "editorial":
+        bound_item = cover_subject.get("item") or {}
+        source_label = (
+            bound_item.get("source")
+            or bound_item.get("source_name")
+            or cover_subject.get("source_label")
+            or "AI Daily News"
+        )
+        image, metadata = render_editorial_cover(
+            title=cover_subject["cover_title"],
+            date_str=date_str,
+            source_label=str(source_label),
+            story_type=cover_subject.get("story_type", "general"),
+        )
+        if output_path is None:
+            output_path = os.path.join("docs", "cover.jpg")
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        image.save(output_path, "JPEG", quality=92)
+        cover_subject.update(
+            {
+                "cover_source": "editorial_template",
+                "render_mode": "editorial",
+                **metadata,
+            }
+        )
+        logger.info(
+            "Editorial cover rendered to %s (palette=%s, diagram=%s)",
+            output_path,
+            metadata["palette_id"],
+            metadata["diagram_type"],
+        )
+        return output_path
 
     image_config = resolve_image_llm_config(api_key=api_key, model=model, base_url=base_url)
     api_key = image_config.api_key

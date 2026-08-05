@@ -9,6 +9,46 @@ from src import cover
 
 
 class CoverStrategyTests(unittest.TestCase):
+    def test_editorial_mode_renders_local_template_and_skips_legacy_sources(self):
+        item = {
+            "title": "OpenAI launches a new product",
+            "chinese_title": "OpenAI 发布新产品",
+            "source": "OpenAI",
+            "cover_image_url": "https://example.com/cover.jpg",
+            "media_state": "trusted",
+        }
+        subject = {
+            "mode": "trusted",
+            "story_type": "product",
+            "item": item,
+            "cover_title": "OpenAI 发布新产品",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "cover.jpg")
+            with patch.dict(os.environ, {"COVER_RENDER_MODE": "editorial"}, clear=False):
+                with patch("src.cover._generate_cover_from_article_image") as article_image:
+                    with patch("src.cover._generate_ai_cover_image") as ai_image:
+                        result = cover.generate_cover_from_news(
+                            [item],
+                            "2026-01-01",
+                            output_path=output_path,
+                            api_key="image-key",
+                            cover_subject=subject,
+                        )
+
+            with Image.open(output_path) as saved:
+                self.assertEqual(saved.size, (900, 500))
+
+        self.assertEqual(result, output_path)
+        self.assertEqual(subject["cover_source"], "editorial_template")
+        self.assertEqual(subject["render_mode"], "editorial")
+        self.assertEqual(subject["palette_id"], "terracotta")
+        self.assertEqual(subject["palette_index"], 0)
+        self.assertEqual(subject["diagram_type"], "growth")
+        article_image.assert_not_called()
+        ai_image.assert_not_called()
+
     def test_trusted_article_image_is_used_before_ai_generation(self):
         subject = {
             "mode": "trusted",

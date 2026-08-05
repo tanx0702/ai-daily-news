@@ -48,6 +48,12 @@ class PipelineArtifactsTests(unittest.TestCase):
                 "mode": "story",
                 "cover_title": "今日AI要闻",
                 "cover_headline": "OpenAI news",
+                "story_type": "product",
+                "cover_source": "editorial_template",
+                "render_mode": "editorial",
+                "palette_id": "terracotta",
+                "palette_index": 0,
+                "diagram_type": "growth",
                 "item": first_item,
             },
             media_report={
@@ -61,6 +67,10 @@ class PipelineArtifactsTests(unittest.TestCase):
         self.assertEqual(data["quality_gate"]["fixes_count"], 1)
         self.assertEqual(data["quality_gate"]["editorial_quality"]["score"], 9.2)
         self.assertTrue(data["cover_subject"]["matches_top1"])
+        self.assertEqual(data["cover_subject"]["render_mode"], "editorial")
+        self.assertEqual(data["cover_subject"]["palette_id"], "terracotta")
+        self.assertEqual(data["cover_subject"]["palette_index"], 0)
+        self.assertEqual(data["cover_subject"]["diagram_type"], "growth")
         self.assertEqual(data["media"]["with_original_image"], 1)
 
     def test_build_latest_data_includes_evidence_quality_diagnostics(self):

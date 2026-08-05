@@ -140,3 +140,13 @@ python app.py
 - RSS 源在 `config/rss_sources.json` 维护。
 - Git 提交信息默认使用中文；只有用户明确要求时才使用其他语言。
 - 不要提交真实 `.env`、密钥、日志或 `docs/` 生成产物。
+
+## Cover render modes
+
+`COVER_RENDER_MODE` is an optional advanced setting. It defaults to `legacy`,
+which preserves the v1 article-image, AI-image, and local fallback chain.
+Set `COVER_RENDER_MODE=editorial` to use the local 900x500 deterministic
+editorial template with an eight-palette date rotation and a story-type line
+diagram. The output path remains `docs/cover.jpg`, so WeChat and existing
+HTML consumers do not need to change. Remove the override or set it to
+`legacy` to roll back.
