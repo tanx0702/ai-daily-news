@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T18:00:09.621472Z",
+  "generated_at": "2026-08-05T21:39:01.701995Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,116 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085116732231028882",
+      "text": "Meta has released Muse Spark 1.2. It's their third release in four months and scores 54 on the Artificial Analysis Intelligence Index, significantly improving agentic knowledge work capabilities over prior releases and putting Meta next to SpaceXAI in a tie for third place https://t.co/460hp9zIxB",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-05T21:32:23.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085116732231028882",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085102766217699713",
+      "text": "Today was narrowly a green day for my trading acco…",
+      "author": "fchollet",
+      "created_at": "2026-08-05T20:36:53.000Z",
+      "url": "https://x.com/fchollet/status/2085102766217699713",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085102097653985485",
+      "text": "The s̶t̶u̶d̶e̶n̶t̶ transformer has become the master https://t.co/x6bGdgquBf",
+      "author": "cohere",
+      "created_at": "2026-08-05T20:34:14.000Z",
+      "url": "https://x.com/cohere/status/2085102097653985485",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085089518223602058",
+      "text": "Four years ago today I tweeted about having GPT-3 and DALL-E come up with descriptions and concept art for imaginary computer games\n\nThis morning I had Fable build the actual game, using the images from that four year old tweet as the spec https://t.co/aItxU6QwH0",
+      "author": "simonw",
+      "created_at": "2026-08-05T19:44:14.000Z",
+      "url": "https://x.com/simonw/status/2085089518223602058",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085087229567995912",
+      "text": "The time for local AI is here. \n\nSo many great models have been released recently, here's a guide from @MiaAI_lab on chaining DGX Sparks together to run them.\n\nDrop a pic of your setup and let us know what you're running 👇",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-05T19:35:09.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2085087229567995912",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085084709277565213",
+      "text": "Introducing Muse Code (beta), a terminal coding agent built for long-horizon software engineering, powered by our new Muse Spark 1.2 model.\n\nMuse Code plans, implements, and validates complex, multi-file changes across large repositories with persistent sub-agents that solve https://t.co/uEMb1XL9Y0",
+      "author": "AIatMeta",
+      "created_at": "2026-08-05T19:25:08.000Z",
+      "url": "https://x.com/AIatMeta/status/2085084709277565213",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085083490056589784",
+      "text": "Only two labs occupy the Time per Task Pareto frontier: all frontier models under two minutes are from OpenAI, and four of the six above are from Anthropic\n\nWe show the tradeoff between the Artificial Analysis Intelligence Index and how long it takes models to complete a https://t.co/yXjHYDCzrI",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-05T19:20:17.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085083490056589784",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085074277884465274",
+      "text": "Anyone seen convincing attempts at using AI to pick the \"best\" photos from a bunch of photos?\n\n(I'm quite a lazy photographer)",
+      "author": "simonw",
+      "created_at": "2026-08-05T18:43:41.000Z",
+      "url": "https://x.com/simonw/status/2085074277884465274",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085073764551962960",
+      "text": "if you have been following his excellent work, @shloked has been breaking down every frontier labs' harness engineering for the last few months.\n\nexcited to publish his deepest dive into ChatGPT yet as our newest guest on @Latentspacepod! https://t.co/MEuW0VzYBA",
+      "author": "swyx",
+      "created_at": "2026-08-05T18:41:38.000Z",
+      "url": "https://x.com/swyx/status/2085073764551962960",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085066024442110150",
+      "text": "Open weights = access → possibility.\n\nOpen communities. Better performance. Deeper customization. Faster innovation.\n\nThank you, @ComfyUI, @magnific, and @OpenRouter  for backing H3 and building the open future with us. 💜 https://t.co/8p5fvdEOCp",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-05T18:10:53.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085066024442110150",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2085056542341271840",
       "text": "Congratulations @JeffDean, @Sanjay_Ghemawat,\n@OriolVinyalsML and @quocleix! Knowing you guys, this will be amazing. Cheering you on and wishing you well on your important work!",
@@ -321,17 +431,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084670730734838003",
-      "text": "Build NemoClaw Agents on Jetson | NVIDIA Jetson AI Lab https://t.co/JUSahmfEG4",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-04T16:00:08.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084670730734838003",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084667167212245170",
       "text": "I try not to get excited about models before they've been released, but I gotta admit I'm very much looking forward to the upcoming laptop-sized Qwen 3.8 models",
       "author": "simonw",
@@ -409,17 +508,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084447186742345753",
-      "text": "The road to AGI was never meant to be traveled alone.\n\nFrom Hailuo 01 to H3, we've been incredibly lucky to build alongside so many friends, partners, and fellow builders who believed in the same thing we did.\n\nThat's why we open-sourced H3. Because progress moves faster when",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-04T01:11:51.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084447186742345753",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084378415818579975",
       "text": "GPT-Live can listen while it speaks.\n\nTo make that feel natural at ChatGPT scale, we rebuilt the voice stack from client to model.\n\nThis new architecture keeps audio flowing continuously, so deeper reasoning and tool use don't interrupt the conversation. https://t.co/53VTTsqXg0",
       "author": "OpenAI",
@@ -464,17 +552,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084185368950456421",
-      "text": "lol what are we even doing here anymore guys https://t.co/fqu3W2tMm4",
-      "author": "swyx",
-      "created_at": "2026-08-03T07:51:28.000Z",
-      "url": "https://x.com/swyx/status/2084185368950456421",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2084178584046821859",
       "text": "I get occasionally reminded that environmentalists…",
       "author": "fchollet",
@@ -483,17 +560,6 @@
       "source_name": "Francois Chollet",
       "source_handle": "fchollet",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084122690189918549",
-      "text": "Qwen 3.8 Max and MiniMax-H3 within hours of each other",
-      "author": "simonw",
-      "created_at": "2026-08-03T03:42:25.000Z",
-      "url": "https://x.com/simonw/status/2084122690189918549",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -517,28 +583,6 @@
       "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084067875258839546",
-      "text": "Artificial Analysis website traffic is up 40% month on month 📈 https://t.co/jRJ1dXJuDi",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-03T00:04:36.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2084067875258839546",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2084046721148145809",
-      "text": "First time I've noticed this: I was eating outside at a Hawaiian restaurant and they had music piping into the courtyard - generic songs about being at the beach\n\nA little TOO generic... it turned out Shazam could identify none of then\n\nSlop.",
-      "author": "simonw",
-      "created_at": "2026-08-02T22:40:32.000Z",
-      "url": "https://x.com/simonw/status/2084046721148145809",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2083956479888126102",
@@ -594,28 +638,6 @@
       "source_handle": "xAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2083306229074739285",
-      "text": "DeepSeek V4 Flash 0731 is now open weights!\n\n@deepseek_ai has just released the weights for its new flash tier model, DeepSeek V4 Flash 0731. With a score of 50 on the Artificial Analysis Intelligence Index, it lands among the top 3 open weights models on the leaderboard. The https://t.co/DHfvqqAl7O",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-07-31T21:38:05.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2083306229074739285",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2083290842882510873",
-      "text": "We need open frameworks to evaluate model behavior. Discussions need to be grounded in auditable measurements rather than \"us vs them\" vibes.\n\n@cyrilgorlla and the team at CTGT are doing important work in this space",
-      "author": "fchollet",
-      "created_at": "2026-07-31T20:36:57.000Z",
-      "url": "https://x.com/fchollet/status/2083290842882510873",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2083290542956224643",
@@ -900,17 +922,6 @@
       "url": "https://x.com/huggingface/status/2082502249784451163",
       "source_name": "Hugging Face",
       "source_handle": "huggingface",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082499845659484655",
-      "text": "Cohere Transcribe is now available on @superwhisper 💬\n\nPush to talk and get your transcription back almost instantly. With Superwhisper, you can use Transcribe offline, integrate it into your favorite apps, and recall specialist vocabulary.\n\nhttps://t.co/cCXxNODcRf",
-      "author": "cohere",
-      "created_at": "2026-07-29T16:13:48.000Z",
-      "url": "https://x.com/cohere/status/2082499845659484655",
-      "source_name": "Cohere",
-      "source_handle": "cohere",
       "source_tier": "primary",
       "official": true
     },
@@ -1404,17 +1415,6 @@
       "author": "AIatMeta",
       "created_at": "2026-07-09T19:53:11.000Z",
       "url": "https://x.com/AIatMeta/status/2075307298432676259",
-      "source_name": "Meta AI",
-      "source_handle": "AIatMeta",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2075221088821518394",
-      "text": "We’re excited to introduce Muse Spark 1.1, a significant upgrade from the first Muse Spark model we released earlier this year.\n\nAlong with this release, we are launching a public preview of the new Meta Model API where developers can access Muse Spark 1.1.\n\nThe model is also https://t.co/bpwPlxwWDq",
-      "author": "AIatMeta",
-      "created_at": "2026-07-09T14:10:37.000Z",
-      "url": "https://x.com/AIatMeta/status/2075221088821518394",
       "source_name": "Meta AI",
       "source_handle": "AIatMeta",
       "source_tier": "primary",
