@@ -98,7 +98,7 @@ def test_x_feed_collector_rejects_stale_snapshot(monkeypatch):
 
 
 def test_source_balance_limits_x_candidates_to_configured_daily_cap(monkeypatch):
-    monkeypatch.setenv("DAILY_X_MAX_ITEMS", "3")
+    monkeypatch.setenv("DAILY_X_MAX_ITEMS", "5")
     x_items = [
         {
             "title": f"X update {index}",
@@ -109,7 +109,7 @@ def test_source_balance_limits_x_candidates_to_configured_daily_cap(monkeypatch)
             "summary": "AI update",
             "metrics": {},
         }
-        for index in range(5)
+        for index in range(8)
     ]
     rss_items = [
         {
@@ -126,7 +126,7 @@ def test_source_balance_limits_x_candidates_to_configured_daily_cap(monkeypatch)
 
     selected = collector._apply_source_balance([*x_items, *rss_items], top_n=10)[:10]
 
-    assert sum(item["source_type"] == "x" for item in selected) == 3
+    assert sum(item["source_type"] == "x" for item in selected) == 5
 
 
 def test_collect_news_merges_x_feed_candidates_with_existing_pipeline(monkeypatch):

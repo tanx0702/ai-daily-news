@@ -65,6 +65,7 @@ class EnvironmentTemplateTests(unittest.TestCase):
         )
 
         advanced_text = self.advanced_template.read_text(encoding="utf-8")
+        self.assertRegex(advanced_text, r"(?m)^# DAILY_X_MAX_ITEMS=5$")
         self.assertNotRegex(advanced_text, r"(?m)^#\s*(?:AGNES|OPENAI)_[A-Z0-9_]*=")
 
     def test_deployment_docs_point_to_the_advanced_template(self):
