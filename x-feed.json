@@ -1,12 +1,23 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T10:53:23.489342Z",
+  "generated_at": "2026-08-05T14:40:56.296857Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 170,
   "tweets": [
+    {
+      "tweet_id": "2084996581288288497",
+      "text": "The evidence of the impact of AI chatbots on loneliness is still really unclear &amp; depends on the chatbot approach.\n\nThis new study finds AI conversations increase loneliness, but previous published experiments find significant reduction or ambiguous results depending on usage. https://t.co/rwAlzo3Ye1",
+      "author": "emollick",
+      "created_at": "2026-08-05T13:34:56.000Z",
+      "url": "https://x.com/emollick/status/2084996581288288497",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2084950126632607941",
       "text": "Top stories in AI today: \n\n- Anthropic and OpenAI agents went rogue again\n- Apple and OpenAI trade fresh blows over trade secrets\n- Redline any contract with Claude and Microsoft Word\n- Business students go all in on AI amid demand surge https://t.co/EqxxRS7TYH",
@@ -334,17 +345,6 @@
       "url": "https://x.com/fchollet/status/2084549830643274090",
       "source_name": "Francois Chollet",
       "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084497674112254059",
-      "text": "Given today, it is surprising how daring Microsoft &amp; Google were initially with AI.\n\nMicrosoft released GPT-4 before OpenAI, didn't back down after Sydney &amp; got Copilot to market quickly (the 1st professional AI tool)\n\nGoogle had the first deep research &amp; pivoted fast with Bard.",
-      "author": "emollick",
-      "created_at": "2026-08-04T04:32:28.000Z",
-      "url": "https://x.com/emollick/status/2084497674112254059",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
       "source_tier": "research",
       "official": false
     },
