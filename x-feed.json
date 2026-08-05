@@ -1,12 +1,34 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T03:38:07.524155Z",
-  "source_count": 25,
-  "successful_source_count": 25,
+  "generated_at": "2026-08-05T08:37:21.674437Z",
+  "source_count": 35,
+  "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 121,
+  "tweet_count": 170,
   "tweets": [
+    {
+      "tweet_id": "2084856462434807977",
+      "text": "Let's create with Qwen-Image-3.0-Pro on fal! 🎨",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-05T04:18:10.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084856462434807977",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2084855446595408121",
+      "text": "Try npm i -g cline on Cline!👀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-05T04:14:07.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2084855446595408121",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2084836757095526689",
       "text": "🚀 Hy3 is now live in WorkBuddy global—free for users worldwide through August 31, 2026 (PT).\n\nResearch, analyze data, create documents and presentations, and handle workplace communications in an agentic AI workspace—no setup required.\n\nHy3 is also available through Tencent https://t.co/dzhfniK3SK",
@@ -28,17 +50,6 @@
       "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084832553895444570",
-      "text": "smol aha moment at @_chenglou’s @midjourney meetup today - \n\none reason that ontologies and graph knowledge are finally trending now rather than 3 years ago is  that “good enough” intelligence is finally too cheap to meter\n\nthis is why talks like @coyle_frankp and @emileifrem’s https://t.co/AkuQaMVzzv",
-      "author": "swyx",
-      "created_at": "2026-08-05T02:43:09.000Z",
-      "url": "https://x.com/swyx/status/2084832553895444570",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084831888729072121",
@@ -235,28 +246,6 @@
       "url": "https://x.com/MistralAI/status/2084684735725379637",
       "source_name": "Mistral AI",
       "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084683919937634507",
-      "text": "Qwen3.8-Max is available in Hermes Agent now!  Let's build! 🚀🚀",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-04T16:52:32.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084683919937634507",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084674586462007458",
-      "text": "Qwen-Image-3.0-Pro has made a massive leap from the previous generation, now ranking #5 globally. Appreciate the recognition! We will keep building.🚀",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-04T16:15:27.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084674586462007458",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
     },
@@ -514,6 +503,17 @@
       "official": false
     },
     {
+      "tweet_id": "2083993378258288976",
+      "text": "one way i'm developing Forge (https://t.co/yxbUhrdSqQ) is to use it to host all my projects going forward. so I often find myself having to bounce back and forth between platform and product.\n\nsharing neat trick - in @openai codex you can @ a thread + queue up the @, so if your https://t.co/fzMdotfQ5i",
+      "author": "swyx",
+      "created_at": "2026-08-02T19:08:34.000Z",
+      "url": "https://x.com/swyx/status/2083993378258288976",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
       "tweet_id": "2083956479888126102",
       "text": "Today, we launched the Community AI Workflow Hub.\n\nOur most requested feature of all time.\n\nA place for builders, everyday knowledge workers, and the AI curious to learn from real people doing real work with AI 🤝 https://t.co/ciBHOcnW1K",
       "author": "TheRundownAI",
@@ -547,6 +547,17 @@
       "official": false
     },
     {
+      "tweet_id": "2083566916476469622",
+      "text": "Our Twitch streams with @Cohere_Labs are #1 in the tech category⚡️\n\nCohere Labs' free ML Summer School series has brought together viewers from 20+ countries to learn about everything from NLP in LLMs to building your career in tech.\n\nSee you next week to learn more: https://t.co/flesfYZGkW",
+      "author": "cohere",
+      "created_at": "2026-08-01T14:53:58.000Z",
+      "url": "https://x.com/cohere/status/2083566916476469622",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2083560847889023219",
       "text": "team humanity",
       "author": "sama",
@@ -556,6 +567,17 @@
       "source_handle": "sama",
       "source_tier": "research",
       "official": false
+    },
+    {
+      "tweet_id": "2083312089620222378",
+      "text": "Connect Superwhisper to Grok Build with your SuperGrok or X Premium subscription",
+      "author": "SpaceXAI",
+      "created_at": "2026-07-31T22:01:22.000Z",
+      "url": "https://x.com/xAI/status/2083312089620222378",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
     },
     {
       "tweet_id": "2083306229074739285",
@@ -602,6 +624,17 @@
       "official": false
     },
     {
+      "tweet_id": "2083221445375668654",
+      "text": "It’s been a busy couple of weeks! ICYMI, here’s the recap ⬇️\n\n— Gemini Robotics 2 from @GoogleDeepmind brings whole-body intelligence to robots\n\n— Gemini 3.5 Flash-Lite is our fastest, most cost-effective model optimized for high-speed agentic workflows\n\n— Gemini 3.6 Flash",
+      "author": "GoogleAI",
+      "created_at": "2026-07-31T16:01:11.000Z",
+      "url": "https://x.com/GoogleAI/status/2083221445375668654",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2083203642975502640",
       "text": "i see your moore's law and i raise you 20x",
       "author": "sama",
@@ -622,6 +655,17 @@
       "source_handle": "sama",
       "source_tier": "research",
       "official": false
+    },
+    {
+      "tweet_id": "2083193321611018639",
+      "text": "AI is useless if you can't trust it. It's important to build differently.\n\nThat's why Cohere has signed the EU Code of Practice on Transparency of AI-Generated Content, one the first companies worldwide to do so. https://t.co/LvKtf7WkGo",
+      "author": "cohere",
+      "created_at": "2026-07-31T14:09:26.000Z",
+      "url": "https://x.com/cohere/status/2083193321611018639",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
     },
     {
       "tweet_id": "2083108527854252112",
@@ -668,6 +712,17 @@
       "official": true
     },
     {
+      "tweet_id": "2082932590567100510",
+      "text": "Cohere has joined @NVIDIA alongside industry leaders in founding the Open Secure AI Alliance.\n\nEverybody should have the capability to keep their infrastructure secure. Everybody deserves access to models they can trust.\n\nAI for some means safety for none. https://t.co/tI0DGefgDZ https://t.co/1IUjVZGIzs",
+      "author": "cohere",
+      "created_at": "2026-07-30T20:53:23.000Z",
+      "url": "https://x.com/cohere/status/2082932590567100510",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2082904276293062994",
       "text": "This is how Gemini Robotics 2 helps @Apptronik’s Apollo 2 use whole body intelligence to pack for a sports game ↓ https://t.co/rPYsclzJHR",
       "author": "GoogleDeepMind",
@@ -679,6 +734,28 @@
       "official": true
     },
     {
+      "tweet_id": "2082902334984609936",
+      "text": "What if you could see a city as it looked 100 years ago, or visualize a new basketball court at your local community center?\n\nStarting today, we're bringing our latest image generation capabilities to @GoogleEarth on the web. Powered by Nano Banana 2, you can combine rich https://t.co/xbOnmr8Dr5",
+      "author": "GoogleAI",
+      "created_at": "2026-07-30T18:53:09.000Z",
+      "url": "https://x.com/GoogleAI/status/2082902334984609936",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082883806323728416",
+      "text": "Gemini Robotics 2 is here, with our new suite of models, robots can now reason through every movement to manage tasks that weren’t possible before, like tying delicate knots - and even team up to solve complex workflows. Huge congrats to the robotics team on this great milestone!",
+      "author": "demishassabis",
+      "created_at": "2026-07-30T17:39:32.000Z",
+      "url": "https://x.com/demishassabis/status/2082883806323728416",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2082878156483219672",
       "text": "We are committed to pushing the model frontier across cost efficiency, capability, and speed.\n\nStarting today, we are reducing prices for GPT-5.6 Luna by 80% and GPT-5.6 Terra by 20% , and offering a faster option for GPT-5.6 Sol in the API.\n\nLuna and Terra’s lower prices are https://t.co/rFhK7XKedp",
       "author": "OpenAI",
@@ -686,6 +763,39 @@
       "url": "https://x.com/OpenAI/status/2082878156483219672",
       "source_name": "OpenAI",
       "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082866707438415932",
+      "text": "Today we're launching Projects, an evolution of Spaces.\n\nProjects are hubs for ongoing work in Computer. A single place to manage, create, and collaborate on tasks with a shared file system and persistent memory. https://t.co/TFKEQ4jeCn",
+      "author": "perplexity_ai",
+      "created_at": "2026-07-30T16:31:35.000Z",
+      "url": "https://x.com/perplexity_ai/status/2082866707438415932",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082855363154497880",
+      "text": "Consistent with what I found with Qwen3.6 a while back: Claude Code uses 2-3x as many tokens than (many) other harnesses at similar success rate.\n\n- Unoptimized?\n- Buggy?\n- Deliberate (coz that helps it in more challenging cases)?\n\nNeed to find some time to investigate more...",
+      "author": "rasbt",
+      "created_at": "2026-07-30T15:46:30.000Z",
+      "url": "https://x.com/rasbt/status/2082855363154497880",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2082844740446253125",
+      "text": "For decades, we’ve dreamed of robots that can seamlessly step into our world and lend a hand.\n\nToday, we take a major stride toward making that dream a reality:\n\nIntroducing Gemini Robotics 2 from @GoogleDeepMind, the intelligence layer powering the next generation of truly https://t.co/f4AsXTzQxB",
+      "author": "GoogleAI",
+      "created_at": "2026-07-30T15:04:18.000Z",
+      "url": "https://x.com/GoogleAI/status/2082844740446253125",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
       "source_tier": "primary",
       "official": true
     },
@@ -734,6 +844,39 @@
       "official": true
     },
     {
+      "tweet_id": "2082529280341553209",
+      "text": "Announcing Grok Voice Think Fast 2.0, our next-generation voice model with improved intelligence, transcription accuracy, and conversational capabilities.\n\nhttps://t.co/XUiX1CouKz https://t.co/Nel3zwzkwY",
+      "author": "SpaceXAI",
+      "created_at": "2026-07-29T18:10:46.000Z",
+      "url": "https://x.com/xAI/status/2082529280341553209",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082517754712842386",
+      "text": "Use the TinyFish plugin in Grok Build to give your agent powerful search and retrieval capabilities on the web",
+      "author": "SpaceXAI",
+      "created_at": "2026-07-29T17:24:58.000Z",
+      "url": "https://x.com/xAI/status/2082517754712842386",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082511900580196596",
+      "text": "Today we’re open-sourcing Numbat, an agent-detection and response layer that is designed to work across agent harnesses.\n\nNumbat gives security teams visibility into agent activity, with controls to block selected actions before execution.\n\nRead more: https://t.co/LVhkCJ2sMt",
+      "author": "perplexity_ai",
+      "created_at": "2026-07-29T17:01:42.000Z",
+      "url": "https://x.com/perplexity_ai/status/2082511900580196596",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2082502249784451163",
       "text": "Pro tip: add in a \"Sign-In with Hugging Face\" OAuth button to your website/app so that community members can easily share their email, create model/dataset repos, store data in Buckets, or even kick off GPU-backed Jobs!\n\nhttps://t.co/JyWISzScRJ https://t.co/XbQnYiB6wp",
       "author": "huggingface",
@@ -741,6 +884,28 @@
       "url": "https://x.com/huggingface/status/2082502249784451163",
       "source_name": "Hugging Face",
       "source_handle": "huggingface",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082499845659484655",
+      "text": "Cohere Transcribe is now available on @superwhisper 💬\n\nPush to talk and get your transcription back almost instantly. With Superwhisper, you can use Transcribe offline, integrate it into your favorite apps, and recall specialist vocabulary.\n\nhttps://t.co/cCXxNODcRf",
+      "author": "cohere",
+      "created_at": "2026-07-29T16:13:48.000Z",
+      "url": "https://x.com/cohere/status/2082499845659484655",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082466336228122711",
+      "text": "https://t.co/AhuQq9za6Y",
+      "author": "GoogleAI",
+      "created_at": "2026-07-29T14:00:39.000Z",
+      "url": "https://x.com/GoogleAI/status/2082466336228122711",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
       "source_tier": "primary",
       "official": true
     },
@@ -767,6 +932,17 @@
       "official": false
     },
     {
+      "tweet_id": "2082188732585972120",
+      "text": "We've added Kimi K3 to Perplexity and Perplexity Computer for Pro and Max subscribers.\n\nKimi K3 in Perplexity is hosted exclusively on U.S.-based servers. https://t.co/sKl7gOCqQy",
+      "author": "perplexity_ai",
+      "created_at": "2026-07-28T19:37:33.000Z",
+      "url": "https://x.com/perplexity_ai/status/2082188732585972120",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2082153297670992134",
       "text": "New Anthropic research: Discovering cryptographic weaknesses with Claude.\n\nClaude Mythos Preview has helped our researchers find weaknesses in cryptographic algorithms—the mathematical methods that are used to keep data private.\n\nRead more: https://t.co/TYKLjb3Q7V",
       "author": "AnthropicAI",
@@ -776,6 +952,28 @@
       "source_handle": "AnthropicAI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2082142599671107737",
+      "text": "Model Council is now available inside Computer.\n\nRun independent analysis across multiple frontier models, choose your analysis depth, and get a single cited report on where models agree, where they disagree, and what each found that others missed. https://t.co/r74olFGucR",
+      "author": "perplexity_ai",
+      "created_at": "2026-07-28T16:34:14.000Z",
+      "url": "https://x.com/perplexity_ai/status/2082142599671107737",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082137335052075298",
+      "text": "When SceniX joined World Labs, we said spatial intelligence was never only about perceiving and generating virtual and physical worlds, but also interacting with them. Today, we’re sharing early results from that vision: building worlds that train robots. 🌎🤖↓ https://t.co/U0UKE5nmZN",
+      "author": "drfeifei",
+      "created_at": "2026-07-28T16:13:19.000Z",
+      "url": "https://x.com/drfeifei/status/2082137335052075298",
+      "source_name": "Fei-Fei Li",
+      "source_handle": "drfeifei",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2082122787880333596",
@@ -798,6 +996,39 @@
       "source_handle": "Kimi_Moonshot",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2082103880155046176",
+      "text": "Personal Computer is now available in the Perplexity app for Windows.\n\nPersonal Computer is the local agent harness for your work. It orchestrates agents across your local files, connected apps, and the web.\n\nResearch, code, browse, and build all inside one unified system. https://t.co/9W7lweCG8k",
+      "author": "perplexity_ai",
+      "created_at": "2026-07-28T14:00:23.000Z",
+      "url": "https://x.com/perplexity_ai/status/2082103880155046176",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082101241908249014",
+      "text": "Yes, LLM architectures are getting a little more complicated https://t.co/jII112pJbO",
+      "author": "rasbt",
+      "created_at": "2026-07-28T13:49:54.000Z",
+      "url": "https://x.com/rasbt/status/2082101241908249014",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2082098201247600765",
+      "text": "The Kimi K3 architecture figure for yesterday's big open-weight model release, along with some observations and thoughts.\n\n1. Yes, it looks relatively complicated, but it's essentially a scaled-up production version of their Kimi Linear model they released last year (scaled up https://t.co/oEG8cJKUUT",
+      "author": "rasbt",
+      "created_at": "2026-07-28T13:37:49.000Z",
+      "url": "https://x.com/rasbt/status/2082098201247600765",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2081864750296658008",
@@ -833,6 +1064,17 @@
       "official": true
     },
     {
+      "tweet_id": "2081796647135166547",
+      "text": "Introducing MAI-Cyber-1-Flash, our new in-house cybersecurity model running inside of MDASH, our multi-agent harness that detects and remediates vulnerabilities across large-scale code bases. \n\nMDASH: MAI-Cyber-1-Flash+GPT-5.4 model combination out-performs Mythos by 12 points on https://t.co/qHz5Ika6Fz",
+      "author": "MicrosoftAI",
+      "created_at": "2026-07-27T17:39:33.000Z",
+      "url": "https://x.com/MicrosoftAI/status/2081796647135166547",
+      "source_name": "Microsoft AI",
+      "source_handle": "MicrosoftAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2081787106062746002",
       "text": "Good move by @JensenHuang. The Nvidia letter is well written and worth reading. As we saw with the OpenAI-Hugging Face hack, we need open models and harnesses for defense. \n\nLets stop believing the PR that closed models are safer. - that's just regulatory capture.",
       "author": "AndrewYNg",
@@ -853,6 +1095,28 @@
       "source_handle": "Kimi_Moonshot",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2081756537249202319",
+      "text": "Introducing North Automations\n\nUse plain language to design automated workflows with accurate results. Regardless of technical ability, Cohere enables all employees to harness the power of AI. https://t.co/599Bhfu9wg",
+      "author": "cohere",
+      "created_at": "2026-07-27T15:00:10.000Z",
+      "url": "https://x.com/cohere/status/2081756537249202319",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2081733770449658181",
+      "text": "Looking forward to chatting with @hugobowne today (July 27) at 4 pm PT on the Vanishing Gradient livestream on YouTube.\n\nWill cover open source, the newest LLMs &amp; trends, agent frameworks, and whatever else comes up.\n\nBasically, all the exciting stuff. Should be fun!",
+      "author": "rasbt",
+      "created_at": "2026-07-27T13:29:42.000Z",
+      "url": "https://x.com/rasbt/status/2081733770449658181",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2081718698608402818",
@@ -877,6 +1141,17 @@
       "official": true
     },
     {
+      "tweet_id": "2081039623422177765",
+      "text": "A strong and secure open ecosystem is important for the world to benefit from AI. We’ve always supported and contributed heavily to open source and science from Jax to Transformers to AlphaFold to Gemma open models which have now been downloaded 300M+ times. And the standards",
+      "author": "demishassabis",
+      "created_at": "2026-07-25T15:31:24.000Z",
+      "url": "https://x.com/demishassabis/status/2081039623422177765",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2080798306566045756",
       "text": "Stay hungry, stay foolish. Absolute legend https://t.co/PMHyBdkxGT",
       "author": "DrJimFan",
@@ -886,6 +1161,17 @@
       "source_handle": "DrJimFan",
       "source_tier": "research",
       "official": false
+    },
+    {
+      "tweet_id": "2080749255183245691",
+      "text": "Try Grok STT on OpenRouter",
+      "author": "SpaceXAI",
+      "created_at": "2026-07-24T20:17:35.000Z",
+      "url": "https://x.com/xAI/status/2080749255183245691",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
     },
     {
       "tweet_id": "2080660454184226908",
@@ -921,6 +1207,17 @@
       "official": false
     },
     {
+      "tweet_id": "2080332282028507234",
+      "text": "Congratulations @KanishkaNarayan on your new role as UK's AI Minister in the Cabinet, great news for the UK AI ecosystem!",
+      "author": "demishassabis",
+      "created_at": "2026-07-23T16:40:41.000Z",
+      "url": "https://x.com/demishassabis/status/2080332282028507234",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2080321516814647630",
       "text": "Gemini 3.5 Flash Cyber is our specialized, lightweight model built to help security teams spot and patch vulnerabilities before they can be exploited. 🧵 https://t.co/XpiKcvwjeI",
       "author": "GoogleDeepMind",
@@ -939,6 +1236,28 @@
       "url": "https://x.com/GoogleDeepMind/status/2079925576077324552",
       "source_name": "Google DeepMind",
       "source_handle": "GoogleDeepMind",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2079617029473182132",
+      "text": "As AI models are now finding vulnerabilities faster than we can fix them, our approach to securing software must be built on highly efficient and capable models.\n\nWhich brings us to our third (!) model launch of the day: Gemini 3.5 Flash Cyber ⚡🛡️\n\nBuilt on top of 3.5 Flash, in https://t.co/8N63Ws6laR",
+      "author": "GoogleAI",
+      "created_at": "2026-07-21T17:18:31.000Z",
+      "url": "https://x.com/GoogleAI/status/2079617029473182132",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2079614176725442912",
+      "text": "To accelerate scientific discovery and support @ENERGY’s Genesis Mission, the @BerkeleyLab-led SYNAPS-I project is using SAM 3 and DINOv3 to automate image segmentation.\n\nBy pairing DINOv3’s global semantic context and fine-grained spatial localization with SAM 3’s pixel-level https://t.co/e2tBha3Lu1",
+      "author": "AIatMeta",
+      "created_at": "2026-07-21T17:07:11.000Z",
+      "url": "https://x.com/AIatMeta/status/2079614176725442912",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
       "source_tier": "primary",
       "official": true
     },
@@ -965,6 +1284,28 @@
       "official": true
     },
     {
+      "tweet_id": "2079597384510898377",
+      "text": "The world is not just made of words, and spatial intelligence was never just about perceiving and generating worlds. It's about interacting with them.\n\nToday, SceniX is joining World Labs. 🌎🤖👇 https://t.co/qThtkjgd3f",
+      "author": "drfeifei",
+      "created_at": "2026-07-21T16:00:28.000Z",
+      "url": "https://x.com/drfeifei/status/2079597384510898377",
+      "source_name": "Fei-Fei Li",
+      "source_handle": "drfeifei",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2078471977237450829",
+      "text": "How can an LLM switch between low-, medium-, and high-effort reasoning? And how does an LLM learn to reason more or less?\n\nI put together a “little” article explaining how these effort levels are implemented at inference time and during training. https://t.co/mc4qiCnq0C",
+      "author": "rasbt",
+      "created_at": "2026-07-18T13:28:30.000Z",
+      "url": "https://x.com/rasbt/status/2078471977237450829",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2078150032575082616",
       "text": "My morning ritual: coffee, then watch our robot assemble stuff. The model isn't fast, but it measures every grasp, obsesses over every alignment, and handles every piece like an heirloom. Watching is therapeutic, even meditative. Simple pleasure from the execution of a task well https://t.co/ZYc0av3eL2",
       "author": "DrJimFan",
@@ -987,6 +1328,28 @@
       "official": false
     },
     {
+      "tweet_id": "2077804869826613422",
+      "text": "We heard you and are happy to announce that Muse Spark 1.1 is now available on @OpenRouter for US-based developers. \n\nWe look forward to seeing what the community builds.",
+      "author": "AIatMeta",
+      "created_at": "2026-07-16T17:17:39.000Z",
+      "url": "https://x.com/AIatMeta/status/2077804869826613422",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2077497317255737422",
+      "text": "I’m very excited by this test time training work for robotic learning! It’s an awesome collaboration between @StanfordSVL and @NVIDIARobotics !",
+      "author": "drfeifei",
+      "created_at": "2026-07-15T20:55:33.000Z",
+      "url": "https://x.com/drfeifei/status/2077497317255737422",
+      "source_name": "Fei-Fei Li",
+      "source_handle": "drfeifei",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2077414142340988962",
       "text": "We scaled a robot model natively to 8,000 timesteps of context, 5 minutes worth of muscle memory, with constant inference cost. Robot policies used to live their lives a few frames at a time (&lt; 0.1 sec), instantly forgetting what just happened. We pushed to 3 orders of magnitude https://t.co/TQNqE1wtyD",
       "author": "DrJimFan",
@@ -994,6 +1357,39 @@
       "url": "https://x.com/DrJimFan/status/2077414142340988962",
       "source_name": "Jim Fan",
       "source_handle": "DrJimFan",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2077173058700460378",
+      "text": "AI’s next chapter will be defined not only by technical progress, but by how responsibly and thoughtfully we bring it into the world.\n\nI’m looking forward to be speaking on stage at Ai4 2026, Aug 4–6 in Vegas. Register here at https://t.co/iAWUZf994t\n\n#Ai42026",
+      "author": "drfeifei",
+      "created_at": "2026-07-14T23:27:03.000Z",
+      "url": "https://x.com/drfeifei/status/2077173058700460378",
+      "source_name": "Fei-Fei Li",
+      "source_handle": "drfeifei",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2077138553210028042",
+      "text": "To demonstrate Meta AI's advanced reasoning and multimodal capabilities, we submitted a model to participate in the Asian Physics Olympiad’s theoretical exam. We’re happy to share that our model achieved a perfect score of 30/30, tying with the top 3 student contestants.\n\nWe https://t.co/ZnlUlfLFQW",
+      "author": "AIatMeta",
+      "created_at": "2026-07-14T21:09:57.000Z",
+      "url": "https://x.com/AIatMeta/status/2077138553210028042",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2076957440109625718",
+      "text": "https://t.co/PTeDiv1b6L",
+      "author": "demishassabis",
+      "created_at": "2026-07-14T09:10:16.000Z",
+      "url": "https://x.com/demishassabis/status/2076957440109625718",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
       "source_tier": "research",
       "official": false
     },
@@ -1009,6 +1405,28 @@
       "official": false
     },
     {
+      "tweet_id": "2075307298432676259",
+      "text": "We gave a few leaders early access to Muse Spark 1.1, here's what they had to say: https://t.co/66Evscf2TM",
+      "author": "AIatMeta",
+      "created_at": "2026-07-09T19:53:11.000Z",
+      "url": "https://x.com/AIatMeta/status/2075307298432676259",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2075221088821518394",
+      "text": "We’re excited to introduce Muse Spark 1.1, a significant upgrade from the first Muse Spark model we released earlier this year.\n\nAlong with this release, we are launching a public preview of the new Meta Model API where developers can access Muse Spark 1.1.\n\nThe model is also https://t.co/bpwPlxwWDq",
+      "author": "AIatMeta",
+      "created_at": "2026-07-09T14:10:37.000Z",
+      "url": "https://x.com/AIatMeta/status/2075221088821518394",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2075131809638088865",
       "text": "The Solutions team @MistralAI is hiring globally!\n\nIf you’re entrepreneurial, hands-on, and want to shape how enterprises adopt AI, let’s talk.\n\nApply: https://t.co/MV0YiejYgb https://t.co/hgLP8rFTYE",
       "author": "MistralAI",
@@ -1016,6 +1434,17 @@
       "url": "https://x.com/MistralAI/status/2075131809638088865",
       "source_name": "Mistral AI",
       "source_handle": "MistralAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2075128513741385807",
+      "text": "Say how you feel. Get a poem that meets you there.\n\nOde connects you with a poem for your moment. Guided by William Sieghart. Powered by Microsoft AI models.\n\nTry it out here: https://t.co/egu88NTf9C https://t.co/jQ3qm9sKnz",
+      "author": "MicrosoftAI",
+      "created_at": "2026-07-09T08:02:46.000Z",
+      "url": "https://x.com/MicrosoftAI/status/2075128513741385807",
+      "source_name": "Microsoft AI",
+      "source_handle": "MicrosoftAI",
       "source_tier": "primary",
       "official": true
     },
@@ -1053,6 +1482,39 @@
       "official": true
     },
     {
+      "tweet_id": "2071987125088600107",
+      "text": "AI is ultimately about people.\n\nUnderstanding every voice, building with empathy, and taking a responsible approach aren't side goals. They're part of the work itself.\n\nMeet some of the people behind MAI.\n\nWatch the full video here: https://t.co/B989RCkGXs https://t.co/ri9uJw0tj7",
+      "author": "MicrosoftAI",
+      "created_at": "2026-06-30T16:00:00.000Z",
+      "url": "https://x.com/MicrosoftAI/status/2071987125088600107",
+      "source_name": "Microsoft AI",
+      "source_handle": "MicrosoftAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2070588929196105733",
+      "text": "Thrilled to announce by popular demand MAI-Code-1-Flash is now generally available for GitHub Copilot Business and GitHub Copilot Enterprise - fast, efficient, and custom designed to help you build more for less on @github",
+      "author": "MicrosoftAI",
+      "created_at": "2026-06-26T19:24:05.000Z",
+      "url": "https://x.com/MicrosoftAI/status/2070588929196105733",
+      "source_name": "Microsoft AI",
+      "source_handle": "MicrosoftAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2070560220841951690",
+      "text": "We shipped a new coding model built for your everyday dev work. MAI-Code-1-Flash is fast, token-efficient, and trained inside real GitHub Copilot environments. It plans, builds, runs, and tests. All from Copilot Chat in VS Code.\n\nWatch it go from a single frost banner to a full",
+      "author": "MicrosoftAI",
+      "created_at": "2026-06-26T17:30:00.000Z",
+      "url": "https://x.com/MicrosoftAI/status/2070560220841951690",
+      "source_name": "Microsoft AI",
+      "source_handle": "MicrosoftAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2069547676849557725",
       "text": "This is a new paradigm for interacting with Claude that is significantly more \"inline\" with all the other human activity org-wide. Once you do all of the under the hood engineering work to make this \"just work\" (e.g. across tools, integrations, compute environments, memory,",
       "author": "karpathy",
@@ -1060,6 +1522,17 @@
       "url": "https://x.com/karpathy/status/2069547676849557725",
       "source_name": "Andrej Karpathy",
       "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2068002732250640603",
+      "text": "Thanks John for an extraordinary partnership and wonderful collaboration over the past 9 years! What we achieved with AlphaFold changed the world, and showed the field what was possible with AI for science and medicine, lighting the way for how AI can benefit humanity.",
+      "author": "demishassabis",
+      "created_at": "2026-06-19T16:07:27.000Z",
+      "url": "https://x.com/demishassabis/status/2068002732250640603",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
       "source_tier": "research",
       "official": false
     },
@@ -1106,6 +1579,17 @@
       "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2062247238143996275",
+      "text": "https://t.co/Kt50ttQRMJ",
+      "author": "drfeifei",
+      "created_at": "2026-06-03T18:57:10.000Z",
+      "url": "https://x.com/drfeifei/status/2062247238143996275",
+      "source_name": "Fei-Fei Li",
+      "source_handle": "drfeifei",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2057854261699195173",
@@ -1170,6 +1654,17 @@
       "url": "https://x.com/deepseek_ai/status/2048062777357750316",
       "source_name": "DeepSeek",
       "source_handle": "deepseek_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2035562571932024842",
+      "text": "In order to understand the universe, you must explore the universe → https://t.co/E9BY2xFmcL https://t.co/9bF1GLUQZR",
+      "author": "SpaceXAI",
+      "created_at": "2026-03-22T03:41:50.000Z",
+      "url": "https://x.com/xAI/status/2035562571932024842",
+      "source_name": "xAI",
+      "source_handle": "xAI",
       "source_tier": "primary",
       "official": true
     },
@@ -1324,6 +1819,50 @@
       "url": "https://x.com/ArtificialAnlys/status/1809670091778207901",
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "1697277839526052080",
+      "text": "AI art generators have been trying to accomplish this for a little while now. Pretty awesome stuff!",
+      "author": "TheAIBreakdown",
+      "created_at": "2023-08-31T15:59:05.000Z",
+      "url": "https://x.com/TheAIBreakdown/status/1697277839526052080",
+      "source_name": "The AI Breakdown",
+      "source_handle": "TheAIBreakdown",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "1686190821962371072",
+      "text": "🚨 Big news: GPT-5 coming soon. OpenAI just filed for the trademark July 18th. https://t.co/xJvc1ci0PM",
+      "author": "TheAIBreakdown",
+      "created_at": "2023-08-01T01:43:14.000Z",
+      "url": "https://x.com/TheAIBreakdown/status/1686190821962371072",
+      "source_name": "The AI Breakdown",
+      "source_handle": "TheAIBreakdown",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "1684278483646550016",
+      "text": "New generative models from https://t.co/4IcB2A7iIM are being released.\n\nThey are having a event on Discord in 30mins.\n\nSDXL 1.0\n- Higher quality\n- Freedom of expression\n- Enhanced intelligence\n- Simpler prompting\n- More accurate\n\nhttps://t.co/pxdgXaCHlW https://t.co/0QpjuJHUdW",
+      "author": "TheAIBreakdown",
+      "created_at": "2023-07-26T19:04:17.000Z",
+      "url": "https://x.com/TheAIBreakdown/status/1684278483646550016",
+      "source_name": "The AI Breakdown",
+      "source_handle": "TheAIBreakdown",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "1681726407817285632",
+      "text": "Apple GPT is on its way!\n\nApple is working on a large language model (LLM) offering. Executives haven't yet decided how or when to make these tools available to consumers.\n\nhttps://t.co/nwEQyOX1V2",
+      "author": "TheAIBreakdown",
+      "created_at": "2023-07-19T18:03:15.000Z",
+      "url": "https://x.com/TheAIBreakdown/status/1681726407817285632",
+      "source_name": "The AI Breakdown",
+      "source_handle": "TheAIBreakdown",
       "source_tier": "media",
       "official": false
     },
