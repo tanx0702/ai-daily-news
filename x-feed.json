@@ -1,12 +1,23 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T08:37:21.674437Z",
+  "generated_at": "2026-08-05T10:53:23.489342Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 170,
   "tweets": [
+    {
+      "tweet_id": "2084950126632607941",
+      "text": "Top stories in AI today: \n\n- Anthropic and OpenAI agents went rogue again\n- Apple and OpenAI trade fresh blows over trade secrets\n- Redline any contract with Claude and Microsoft Word\n- Business students go all in on AI amid demand surge https://t.co/EqxxRS7TYH",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-05T10:30:21.000Z",
+      "url": "https://x.com/TheRundownAI/status/2084950126632607941",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2084856462434807977",
       "text": "Let's create with Qwen-Image-3.0-Pro on fal! 🎨",
@@ -413,17 +424,6 @@
       "source_handle": "Kimi_Moonshot",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084225360271434023",
-      "text": "Top stories in AI today:\n\n- OpenAI’s ‘Astra’ cracks long-open math problems\n- The Rundown Roundtable: Our AI use cases\n- Run your workday by voice with ChatGPT\n- China’s Qwen now challenges the frontier https://t.co/BO6uGFhdxj",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-03T10:30:23.000Z",
-      "url": "https://x.com/TheRundownAI/status/2084225360271434023",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084185368950456421",
