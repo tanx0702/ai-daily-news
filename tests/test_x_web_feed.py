@@ -1,7 +1,19 @@
 import json
+from collections import Counter
 from pathlib import Path
 
 from scripts.x_web_feed import collect_x_feed, load_x_sources
+
+
+def test_production_x_sources_keep_expanded_tier_distribution():
+    sources = load_x_sources(Path("config/x_sources.json"))
+
+    assert len(sources) == 35
+    assert Counter(item["tier"] for item in sources) == Counter(
+        {"primary": 20, "research": 10, "media": 5}
+    )
+    assert all(item["url"].startswith("https://x.com/") for item in sources)
+    assert len({item["handle"].lower() for item in sources}) == 35
 
 
 def test_load_x_sources_returns_only_configured_public_profiles(tmp_path: Path):

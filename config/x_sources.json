@@ -7,6 +7,12 @@
     {"name": "Hugging Face", "handle": "huggingface", "tier": "primary", "official": true},
     {"name": "Mistral AI", "handle": "MistralAI", "tier": "primary", "official": true},
     {"name": "NVIDIA AI", "handle": "NVIDIAAI", "tier": "primary", "official": true},
+    {"name": "xAI", "handle": "xAI", "tier": "primary", "official": true},
+    {"name": "Meta AI", "handle": "AIatMeta", "tier": "primary", "official": true},
+    {"name": "Google AI", "handle": "GoogleAI", "tier": "primary", "official": true},
+    {"name": "Microsoft AI", "handle": "MicrosoftAI", "tier": "primary", "official": true},
+    {"name": "Perplexity", "handle": "perplexity_ai", "tier": "primary", "official": true},
+    {"name": "Cohere", "handle": "cohere", "tier": "primary", "official": true},
     {"name": "Qwen", "handle": "Alibaba_Qwen", "tier": "primary", "official": true},
     {"name": "DeepSeek", "handle": "deepseek_ai", "tier": "primary", "official": true},
     {"name": "Kimi", "handle": "Kimi_Moonshot", "tier": "primary", "official": true},
@@ -22,9 +28,13 @@
     {"name": "Jim Fan", "handle": "DrJimFan", "tier": "research", "official": false},
     {"name": "Ethan Mollick", "handle": "emollick", "tier": "research", "official": false},
     {"name": "Francois Chollet", "handle": "fchollet", "tier": "research", "official": false},
+    {"name": "Demis Hassabis", "handle": "demishassabis", "tier": "research", "official": false},
+    {"name": "Fei-Fei Li", "handle": "drfeifei", "tier": "research", "official": false},
+    {"name": "Sebastian Raschka", "handle": "rasbt", "tier": "research", "official": false},
     {"name": "Artificial Analysis", "handle": "ArtificialAnlys", "tier": "media", "official": false},
     {"name": "The Rundown AI", "handle": "TheRundownAI", "tier": "media", "official": false},
     {"name": "swyx", "handle": "swyx", "tier": "media", "official": false},
-    {"name": "Simon Willison", "handle": "simonw", "tier": "media", "official": false}
+    {"name": "Simon Willison", "handle": "simonw", "tier": "media", "official": false},
+    {"name": "The AI Breakdown", "handle": "TheAIBreakdown", "tier": "media", "official": false}
   ]
 }
