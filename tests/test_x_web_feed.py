@@ -120,6 +120,7 @@ def test_x_feed_workflow_publishes_a_scheduled_snapshot_without_vps_access():
 
     assert "workflow_dispatch:" in workflow
     assert "schedule:" in workflow
+    assert "timeout-minutes: 20" in workflow
     assert "contents: write" in normalized
     assert "ref: x-feed" in normalized
     assert "x-feed.json" in workflow
