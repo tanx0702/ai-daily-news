@@ -1,12 +1,83 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T14:40:56.296857Z",
+  "generated_at": "2026-08-05T18:00:09.621472Z",
   "source_count": 35,
-  "successful_source_count": 35,
-  "failed_source_count": 0,
-  "failures": [],
-  "tweet_count": 170,
+  "successful_source_count": 34,
+  "failed_source_count": 1,
+  "failures": [
+    {
+      "handle": "karpathy",
+      "reason": "no_public_tweets"
+    }
+  ],
+  "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085056542341271840",
+      "text": "Congratulations @JeffDean, @Sanjay_Ghemawat,\n@OriolVinyalsML and @quocleix! Knowing you guys, this will be amazing. Cheering you on and wishing you well on your important work!",
+      "author": "AndrewYNg",
+      "created_at": "2026-08-05T17:33:12.000Z",
+      "url": "https://x.com/AndrewYNg/status/2085056542341271840",
+      "source_name": "Andrew Ng",
+      "source_handle": "AndrewYNg",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085055055237914802",
+      "text": "Noticeable weird contradiction: models are getting better at following complex instructions, but also using more \"judgement\" about which parts of the instructions they focus on most &amp; which they de-emphasize.\n\nBig implications for skills, which may become suggestions, not orders.",
+      "author": "emollick",
+      "created_at": "2026-08-05T17:27:18.000Z",
+      "url": "https://x.com/emollick/status/2085055055237914802",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085053971090321773",
+      "text": "even the best founding team with all the money in the world is rate limited by bay area real estate smh https://t.co/6r81RY7o2b",
+      "author": "swyx",
+      "created_at": "2026-08-05T17:22:59.000Z",
+      "url": "https://x.com/swyx/status/2085053971090321773",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085034843805528268",
+      "text": "I find arguments that AI can't do judgement or creativity or taste to be especially obviously false in the time of agents. Any long task requires lots of taste, judgement, and creativity.\n\nI am much more sympathetic to arguments about the quality or diversity of the AI's choices.",
+      "author": "emollick",
+      "created_at": "2026-08-05T16:06:59.000Z",
+      "url": "https://x.com/emollick/status/2085034843805528268",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085034354376646892",
+      "text": "Dassault Systèmes Accelerates Simulation with NVIDIA AI &amp; GPUs https://t.co/2uRhCslgJ5",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-05T16:05:02.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2085034354376646892",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085034334914769203",
+      "text": "I’ve been working towards AGI my whole life, and as we enter this pivotal moment, I’m stepping into a new role as Chair of Google DeepMind &amp; Chief Scientist of Alphabet. This will allow me to focus on long-term strategy, and accelerating scientific breakthroughs, including",
+      "author": "demishassabis",
+      "created_at": "2026-08-05T16:04:58.000Z",
+      "url": "https://x.com/demishassabis/status/2085034334914769203",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2084996581288288497",
       "text": "The evidence of the impact of AI chatbots on loneliness is still really unclear &amp; depends on the chatbot approach.\n\nThis new study finds AI conversations increase loneliness, but previous published experiments find significant reduction or ambiguous results depending on usage. https://t.co/rwAlzo3Ye1",
@@ -90,28 +161,6 @@
       "author": "emollick",
       "created_at": "2026-08-05T02:19:57.000Z",
       "url": "https://x.com/emollick/status/2084826713922355207",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084806293617807448",
-      "text": "Also I think AISI is a great model of a government agency tasked with AI security. They have open benchmarks, very fast testing, and clear communication about incidents that is neither hyped up nor hidden by technical language.",
-      "author": "emollick",
-      "created_at": "2026-08-05T00:58:48.000Z",
-      "url": "https://x.com/emollick/status/2084806293617807448",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084804785853616603",
-      "text": "Yes, the AIs were given a cybersecurity challenge, with internet access enabled and safety filters disabled.\n\nBut the extent to which Mythos 5 pursued its mission (fake identities, social engineering, inserting malicious code into a real open-source project) seems very notable. https://t.co/YvZZKoK9bM",
-      "author": "emollick",
-      "created_at": "2026-08-05T00:52:49.000Z",
-      "url": "https://x.com/emollick/status/2084804785853616603",
       "source_name": "Ethan Mollick",
       "source_handle": "emollick",
       "source_tier": "research",
@@ -382,17 +431,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084374298530107465",
-      "text": "A long-context model's serving speed is largely decided before training starts.\n\nAttention used to be a small part of a model's inference cost, but its share grows sharply as context windows expand. Once attention is the majority of the work, faster kernels stop being enough, and https://t.co/UItzb49e16",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-03T20:22:13.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084374298530107465",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084352161404920316",
       "text": "An internal version of our next major model produced 10 new results on long-standing open problems in mathematics and theoretical computer science, using roughly $2,000 worth of tokens at GPT-5.6 Sol API rates. https://t.co/4cgowmPOpY",
       "author": "OpenAI",
@@ -503,17 +541,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083993378258288976",
-      "text": "one way i'm developing Forge (https://t.co/yxbUhrdSqQ) is to use it to host all my projects going forward. so I often find myself having to bounce back and forth between platform and product.\n\nsharing neat trick - in @openai codex you can @ a thread + queue up the @, so if your https://t.co/fzMdotfQ5i",
-      "author": "swyx",
-      "created_at": "2026-08-02T19:08:34.000Z",
-      "url": "https://x.com/swyx/status/2083993378258288976",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2083956479888126102",
       "text": "Today, we launched the Community AI Workflow Hub.\n\nOur most requested feature of all time.\n\nA place for builders, everyday knowledge workers, and the AI curious to learn from real people doing real work with AI 🤝 https://t.co/ciBHOcnW1K",
       "author": "TheRundownAI",
@@ -532,17 +559,6 @@
       "url": "https://x.com/fchollet/status/2083863030589231160",
       "source_name": "Francois Chollet",
       "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2083749667410727319",
-      "text": "We're starting to leave the territory where you'd test an LLM by e.g. \"create an svg of pelican on a bicycle\". As one idea to generalize it, I was interested what Opus 5 would do if I gave it the first paragraph of the Lord of the Rings, a 1M token budget (~$10) and asked for https://t.co/ybIpXhYSsj",
-      "author": "karpathy",
-      "created_at": "2026-08-02T03:00:09.000Z",
-      "url": "https://x.com/karpathy/status/2083749667410727319",
-      "source_name": "Andrej Karpathy",
-      "source_handle": "karpathy",
       "source_tier": "research",
       "official": false
     },
@@ -1262,17 +1278,6 @@
       "official": true
     },
     {
-      "tweet_id": "2079610838143623371",
-      "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10",
-      "author": "karpathy",
-      "created_at": "2026-07-21T16:53:55.000Z",
-      "url": "https://x.com/karpathy/status/2079610838143623371",
-      "source_name": "Andrej Karpathy",
-      "source_handle": "karpathy",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2079598447234064801",
       "text": "Mistral is announcing an expanded global strategic partnership with @Microsoft to give enterprises and regulated industries frontier AI they can control.\n\nAs Mistral is expanding its AI compute capacity in Europe, the companies are expanding their strategic partnership with https://t.co/tfK6pt3Ixz",
       "author": "MistralAI",
@@ -1313,17 +1318,6 @@
       "url": "https://x.com/DrJimFan/status/2078150032575082616",
       "source_name": "Jim Fan",
       "source_handle": "DrJimFan",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2078144569594761591",
-      "text": "New course: Build LLM applications that respond to user requests quickly by running on hardware designed for fast inference. This short course was built with  @Cerebras and taught by @zhennydez, @duerr_seb, and  @MilksandMatcha.\n\nWhen a model generates text, much of the time is https://t.co/JLAvqtpY92",
-      "author": "AndrewYNg",
-      "created_at": "2026-07-17T15:47:30.000Z",
-      "url": "https://x.com/AndrewYNg/status/2078144569594761591",
-      "source_name": "Andrew Ng",
-      "source_handle": "AndrewYNg",
       "source_tier": "research",
       "official": false
     },
@@ -1513,50 +1507,6 @@
       "source_handle": "MicrosoftAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2069547676849557725",
-      "text": "This is a new paradigm for interacting with Claude that is significantly more \"inline\" with all the other human activity org-wide. Once you do all of the under the hood engineering work to make this \"just work\" (e.g. across tools, integrations, compute environments, memory,",
-      "author": "karpathy",
-      "created_at": "2026-06-23T22:26:31.000Z",
-      "url": "https://x.com/karpathy/status/2069547676849557725",
-      "source_name": "Andrej Karpathy",
-      "source_handle": "karpathy",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2068002732250640603",
-      "text": "Thanks John for an extraordinary partnership and wonderful collaboration over the past 9 years! What we achieved with AlphaFold changed the world, and showed the field what was possible with AI for science and medicine, lighting the way for how AI can benefit humanity.",
-      "author": "demishassabis",
-      "created_at": "2026-06-19T16:07:27.000Z",
-      "url": "https://x.com/demishassabis/status/2068002732250640603",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2065490793092337691",
-      "text": "In awe of SpaceX and its story - past, present and the future. You can think about it in 10+ different ways and continue re-blowing your mind in circles. Huge congrats to the team! 🚀",
-      "author": "karpathy",
-      "created_at": "2026-06-12T17:45:54.000Z",
-      "url": "https://x.com/karpathy/status/2065490793092337691",
-      "source_name": "Andrej Karpathy",
-      "source_handle": "karpathy",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2064409694761054332",
-      "text": "This is a super exciting release - Claude Fable 5 is the same underlying model as Mythos but with added safeguards. The benchmarks are great and it's SOTA on everything by a margin but I'll add that *qualitatively* also, this is a major-version-bump-deserving step change forward",
-      "author": "karpathy",
-      "created_at": "2026-06-09T18:10:00.000Z",
-      "url": "https://x.com/karpathy/status/2064409694761054332",
-      "source_name": "Andrej Karpathy",
-      "source_handle": "karpathy",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2062645525111771521",
