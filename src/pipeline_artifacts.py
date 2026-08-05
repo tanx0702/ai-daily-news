@@ -106,6 +106,10 @@ def build_latest_data(
             "reason": cover_subject.get("reason", ""),
             "story_type": cover_subject.get("story_type", ""),
             "cover_source": cover_subject.get("cover_source", ""),
+            "render_mode": cover_subject.get("render_mode", ""),
+            "palette_id": cover_subject.get("palette_id", ""),
+            "palette_index": cover_subject.get("palette_index"),
+            "diagram_type": cover_subject.get("diagram_type", ""),
             "matches_top1": bool(
                 cover_subject.get("item") is news_list[0]
                 if news_list and cover_subject.get("item")
