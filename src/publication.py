@@ -28,7 +28,7 @@ def evaluate_publish_readiness(news_list: list[dict], quality_report: dict | Non
     review_status = quality_report.get("llm_review_status", "skipped")
     if review_status == "failed":
         reasons.append("quality_review_failed")
-    elif review_status != "passed":
+    elif review_status not in {"passed", "partial"}:
         reasons.append("quality_review_not_passed")
 
     if quality_report.get("risk_level") == "high":

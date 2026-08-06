@@ -33,6 +33,20 @@ class PublishReadinessTests(unittest.TestCase):
         self.assertIn("quality_review_failed", result["reasons"])
         self.assertIn("source_concentration", result["reasons"])
 
+    def test_allows_draft_after_failed_review_items_are_replaced(self):
+        items = [
+            _item("Source A"), _item("Source A"), _item("Source A"),
+            _item("Source B"), _item("Source C"), _item("Source D"),
+        ]
+
+        result = evaluate_publish_readiness(
+            items,
+            {"llm_review_status": "partial", "risk_level": "low"},
+        )
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["quality_review_status"], "partial")
+
     def test_blocks_draft_when_too_few_ready_items_remain(self):
         result = evaluate_publish_readiness(
             [_item("Source A"), _item("Source B"), _item("Source C", state="source_only")],

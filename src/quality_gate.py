@@ -608,58 +608,57 @@ def _run_llm_review(
     model: str,
     base_url: str,
     timeout: int,
-) -> tuple[list[dict], list[dict], list[dict]]:
-    """Run the structured quality review in bounded batches.
+) -> tuple[list[dict], list[dict], list[str], list[dict]]:
+    """Run one structured quality review per candidate.
 
-    A single response for every selected and reserve candidate can exceed the
-    model's completion budget. Every batch is retried once, but a batch that
-    still fails keeps the existing fail-closed publication behavior.
+    Each candidate receives an independent completion budget and one retry.
+    Failed candidates are returned separately so the caller can exclude and
+    replace only those items instead of losing the review for the whole issue.
     """
     from openai import OpenAI
 
-    batch_size = _quality_review_batch_size()
     llm_issues: list[dict] = []
     llm_fixes: list[dict] = []
     global_notes: list[str] = []
+    item_failures: list[dict] = []
 
     try:
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
-        for offset in range(0, len(news_list), batch_size):
-            batch = news_list[offset:offset + batch_size]
-            batch_number = offset // batch_size + 1
+    except Exception as exc:
+        logger.warning("LLM quality review client creation failed: %s", exc)
+        return [], [], [f"LLM quality review failed: {exc}"], [
+            {"item_index": index + 1, "attempts": 0, "reason": str(exc)}
+            for index in range(len(news_list))
+        ]
+
+    for offset, item in enumerate(news_list):
+        try:
             issues, fixes, notes = _run_llm_review_batch(
                 client,
-                batch,
+                [item],
                 model=model,
-                batch_number=batch_number,
+                batch_number=offset + 1,
             )
             llm_issues.extend(_offset_item_indexes(issues, offset))
             llm_fixes.extend(_offset_item_indexes(fixes, offset))
             global_notes.extend(notes)
+        except Exception as exc:
+            reason = str(exc)
+            logger.warning(
+                "LLM quality review failed for item %d: %s; excluding only this candidate",
+                offset + 1,
+                reason,
+            )
+            item_failures.append({"item_index": offset + 1, "attempts": 2, "reason": reason})
 
-        logger.info(
-            "LLM quality review done: batches=%d, issues=%d, fixes=%d",
-            (len(news_list) + batch_size - 1) // batch_size,
-            len(llm_issues),
-            len(llm_fixes),
-        )
-        return llm_issues, llm_fixes, global_notes
-    except Exception as exc:
-        logger.warning("LLM quality review failed: %s, keeping local rule results only", exc)
-        return [], [], [f"LLM quality review failed: {exc}"]
-
-
-def _quality_review_batch_size() -> int:
-    raw_value = os.environ.get("QUALITY_GATE_REVIEW_BATCH_SIZE", "6")
-    try:
-        return max(int(raw_value), 1)
-    except ValueError:
-        logger.warning(
-            "QUALITY_GATE_REVIEW_BATCH_SIZE=%r is invalid; using 6",
-            raw_value,
-        )
-        return 6
-
+    logger.info(
+        "LLM quality review done: reviewed=%d, failed=%d, issues=%d, fixes=%d",
+        len(news_list) - len(item_failures),
+        len(item_failures),
+        len(llm_issues),
+        len(llm_fixes),
+    )
+    return llm_issues, llm_fixes, global_notes, item_failures
 
 def _run_llm_review_batch(
     client,
@@ -673,13 +672,13 @@ def _run_llm_review_batch(
         {
             "news_items": compact_input,
             "instruction": (
-                "请对以上 news_items 逐条检查。返回 JSON 格式：\n"
-                '{"pass": true/false, "risk_level": "low|medium|high", '
-                '"issues": [...], "fixes": [...], "global_notes": [...]}\n\n'
-                "issues 每条包含: type, severity(high|medium|low), item_index, field, message, evidence\n"
-                "fixes 每条包含: item_index, chinese_title(修正后), summary(修正后), "
-                "highlight_text(修正后), exclude_from_highlights(bool), exclude_from_cover(bool), reason\n"
-                "global_notes: 全局性备注，如当天的整体风险倾向"
+                "仅检查这 1 条 news_item。只返回 JSON："
+                '{"issues":[],"fixes":[]}。'
+                "没有问题时两个数组都必须为空。"
+                "issues 每条仅含 type,severity,item_index,field,message,evidence；"
+                "fixes 每条仅含 item_index,chinese_title,summary,highlight_text,"
+                "exclude_from_highlights,exclude_from_cover,reason。"
+                "不得输出 pass、risk_level、global_notes、解释或输入外事实。"
             ),
         },
         ensure_ascii=False,
@@ -694,7 +693,7 @@ def _run_llm_review_batch(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
-            max_tokens=int(os.environ.get("QUALITY_GATE_MAX_TOKENS", "4000")),
+            max_tokens=int(os.environ.get("QUALITY_GATE_MAX_TOKENS", "1000")),
             response_format={"type": "json_object"},
         )
         choice = response.choices[0]
@@ -896,6 +895,30 @@ def _apply_llm_issue_marks(news_list: list[dict], llm_issues: list[dict]) -> Non
                 item["_cover_excluded"] = publish_reason
             if "exclude_from_publish_by_llm" not in qg["fixes"]:
                 qg["fixes"].append("exclude_from_publish_by_llm")
+
+
+def _apply_llm_review_failures(news_list: list[dict], item_failures: list[dict]) -> None:
+    """Exclude only candidates whose individual LLM review exhausted its retry."""
+    for failure in item_failures:
+        try:
+            index = int(failure.get("item_index", 0)) - 1
+        except (TypeError, ValueError):
+            continue
+        if index < 0 or index >= len(news_list):
+            logger.warning("QG LLM review failure: invalid item_index %r", failure.get("item_index"))
+            continue
+
+        item = news_list[index]
+        reason = str(failure.get("reason") or "LLM review failed")
+        item["_publish_excluded"] = f"quality_gate (LLM review unavailable): {reason}"
+        item["_highlight_excluded"] = item.get("_highlight_excluded") or item["_publish_excluded"]
+        item["_cover_excluded"] = item.get("_cover_excluded") or item["_publish_excluded"]
+        qg = item.setdefault("_quality_gate", {"risk_level": "low", "issues": [], "fixes": []})
+        qg["risk_level"] = _max_risk(qg.get("risk_level", "low"), "medium")
+        if "llm_review_unavailable" not in qg["issues"]:
+            qg["issues"].append("llm_review_unavailable")
+        if "exclude_from_publish_by_llm_review_failure" not in qg["fixes"]:
+            qg["fixes"].append("exclude_from_publish_by_llm_review_failure")
 
 
 def _publish_exclusion_reason(item: dict) -> str:
@@ -1188,7 +1211,7 @@ def review_daily(
     report["llm_input_count"] = len(reviewable_candidates)
     if quality_config.api_key and reviewable_candidates:
         logger.info("Quality gate: running LLM review...")
-        llm_issues, llm_fixes, global_notes = _run_llm_review(
+        llm_issues, llm_fixes, global_notes, item_failures = _run_llm_review(
             reviewable_candidates,
             api_key=quality_config.api_key,
             model=quality_config.model,
@@ -1198,20 +1221,18 @@ def review_daily(
 
         report["issues"].extend(llm_issues)
         report["global_notes"] = global_notes
-        def is_llm_failure(note: object) -> bool:
-            if not isinstance(note, str):
-                return False
-            normalized = note.lower()
-            return (
-                "llm quality review failed" in normalized
-                or "llm review failed" in normalized
-                or "LLM 质检请求失败" in note
-            )
-
-        report["llm_review_failed"] = any(is_llm_failure(note) for note in global_notes)
-        report["llm_reviewed"] = not report["llm_review_failed"]
-        report["llm_review_status"] = "failed" if report["llm_review_failed"] else "passed"
+        report["llm_review_item_failures"] = item_failures
+        report["llm_review_item_failure_count"] = len(item_failures)
+        report["llm_reviewed_count"] = len(reviewable_candidates) - len(item_failures)
+        report["llm_review_failed"] = bool(reviewable_candidates) and len(item_failures) == len(reviewable_candidates)
+        report["llm_reviewed"] = bool(reviewable_candidates) and not report["llm_review_failed"]
+        report["llm_review_status"] = (
+            "failed" if report["llm_review_failed"]
+            else "partial" if item_failures
+            else "passed"
+        )
         _apply_llm_issue_marks(reviewable_candidates, llm_issues)
+        _apply_llm_review_failures(reviewable_candidates, item_failures)
 
         # 应用 LLM 修正
         llm_applied = _apply_llm_fixes(reviewable_candidates, llm_fixes)
@@ -1234,6 +1255,9 @@ def review_daily(
         report["llm_reviewed"] = False
         report["global_notes"] = []
         report["llm_review_failed"] = False
+        report["llm_review_item_failures"] = []
+        report["llm_review_item_failure_count"] = 0
+        report["llm_reviewed_count"] = 0
 
     _apply_quality_states(candidates)
 

@@ -36,7 +36,12 @@ class EvidenceQualityGateTests(unittest.TestCase):
             "source_type": "rss",
             "metrics": {},
         }
-        with patch("src.quality_gate._run_llm_review", return_value=([], [], ["LLM review failed: timeout"])):
+        with patch(
+            "src.quality_gate._run_llm_review",
+            return_value=([], [], ["LLM quality review failed: timeout"], [
+                {"item_index": 1, "attempts": 2, "reason": "timeout"},
+            ]),
+        ):
             _, report = review_daily(
                 [item],
                 api_key="key",

@@ -1,4 +1,3 @@
-import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -42,30 +41,30 @@ class _FakeLlmClient:
 
 
 class QualityGatePublishFilterTests(unittest.TestCase):
-    def test_llm_review_merges_item_indexes_across_small_batches(self):
+    def test_llm_review_isolates_a_failed_item_and_continues_with_later_items(self):
         client = _FakeLlmClient([
-            _llm_response('{"issues":[{"item_index":1,"severity":"high"}],'
-                          '"fixes":[{"item_index":2,"reason":"soften"}],'
-                          '"global_notes":["first"]}'),
+            _llm_response("", finish_reason="length"),
+            _llm_response("", finish_reason="length"),
             _llm_response('{"issues":[{"item_index":1,"severity":"medium"}],'
-                          '"fixes":[],"global_notes":["second"]}'),
+                          '"fixes":[],"global_notes":["second item reviewed"]}'),
         ])
 
-        with patch.dict(os.environ, {"QUALITY_GATE_REVIEW_BATCH_SIZE": "2"}), patch(
-            "openai.OpenAI", return_value=client
-        ):
-            issues, fixes, notes = _run_llm_review(
-                [_item("One"), _item("Two"), _item("Three")],
+        with patch("openai.OpenAI", return_value=client):
+            issues, fixes, notes, failures = _run_llm_review(
+                [_item("One"), _item("Two")],
                 api_key="test-key",
                 model="test-model",
                 base_url="https://example.test/v1",
                 timeout=5,
             )
 
-        self.assertEqual(len(client.calls), 2)
-        self.assertEqual([issue["item_index"] for issue in issues], [1, 3])
-        self.assertEqual([fix["item_index"] for fix in fixes], [2])
-        self.assertEqual(notes, ["first", "second"])
+        self.assertEqual(len(client.calls), 3)
+        self.assertEqual([issue["item_index"] for issue in issues], [2])
+        self.assertEqual(fixes, [])
+        self.assertEqual(notes, ["second item reviewed"])
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["item_index"], 1)
+        self.assertIn("finish_reason=length", failures[0]["reason"])
 
     def test_llm_review_retries_an_empty_length_response_once(self):
         client = _FakeLlmClient([
@@ -73,10 +72,8 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             _llm_response('{"issues":[],"fixes":[],"global_notes":[]}'),
         ])
 
-        with patch.dict(os.environ, {"QUALITY_GATE_REVIEW_BATCH_SIZE": "1"}), patch(
-            "openai.OpenAI", return_value=client
-        ):
-            issues, fixes, notes = _run_llm_review(
+        with patch("openai.OpenAI", return_value=client):
+            issues, fixes, notes, failures = _run_llm_review(
                 [_item("One")],
                 api_key="test-key",
                 model="test-model",
@@ -85,11 +82,11 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             )
 
         self.assertEqual(len(client.calls), 2)
-        self.assertEqual((issues, fixes, notes), ([], [], []))
+        self.assertEqual((issues, fixes, notes, failures), ([], [], [], []))
 
     def test_llm_review_keeps_the_fail_closed_fallback_when_client_creation_fails(self):
         with patch("openai.OpenAI", side_effect=RuntimeError("client unavailable")):
-            issues, fixes, notes = _run_llm_review(
+            issues, fixes, notes, failures = _run_llm_review(
                 [_item("One")],
                 api_key="test-key",
                 model="test-model",
@@ -99,6 +96,54 @@ class QualityGatePublishFilterTests(unittest.TestCase):
 
         self.assertEqual((issues, fixes), ([], []))
         self.assertEqual(notes, ["LLM quality review failed: client unavailable"])
+        self.assertEqual([failure["item_index"] for failure in failures], [1])
+
+    def test_review_daily_replaces_an_item_with_failed_llm_review(self):
+        selected = [
+            {**_item("Failed review"), "source": "Source A", "topic_key": "failed", "_score": 100},
+            {**_item("Reviewed item"), "source": "Source B", "topic_key": "reviewed", "_score": 90},
+        ]
+        reserves = [
+            {**_item("Reviewed reserve"), "source": "Source C", "topic_key": "reserve", "_score": 80},
+        ]
+        failures = [{"item_index": 1, "attempts": 2, "reason": "finish_reason=length"}]
+
+        with patch("src.quality_gate._run_llm_review", return_value=([], [], [], failures)):
+            reviewed, report = review_daily(
+                selected,
+                reserves=reserves,
+                api_key="test-key",
+                model="test-model",
+                target_count=2,
+                filter_high_risk=True,
+                max_items_per_source=2,
+                max_items_per_topic=2,
+                min_primary_or_research=0,
+            )
+
+        self.assertEqual([item["title"] for item in reviewed], ["Reviewed item", "Reviewed reserve"])
+        self.assertEqual(report["llm_review_status"], "partial")
+        self.assertFalse(report["llm_review_failed"])
+        self.assertEqual(report["llm_review_item_failure_count"], 1)
+        self.assertEqual(report["publish_filter"]["removed_count"], 1)
+
+    def test_review_daily_keeps_fail_closed_status_when_every_llm_review_fails(self):
+        failures = [
+            {"item_index": 1, "attempts": 2, "reason": "finish_reason=length"},
+            {"item_index": 2, "attempts": 2, "reason": "finish_reason=length"},
+        ]
+
+        with patch("src.quality_gate._run_llm_review", return_value=([], [], [], failures)):
+            _, report = review_daily(
+                [_item("One"), _item("Two")],
+                api_key="test-key",
+                model="test-model",
+                target_count=2,
+                filter_high_risk=True,
+            )
+
+        self.assertEqual(report["llm_review_status"], "failed")
+        self.assertTrue(report["llm_review_failed"])
 
     def test_high_risk_selected_item_uses_only_quota_compliant_reserve(self):
         selected = [
@@ -119,7 +164,7 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             "evidence": "source evidence",
         }]
 
-        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [])):
+        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [], [])):
             reviewed, report = review_daily(
                 selected,
                 reserves=reserves,
@@ -232,7 +277,7 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             "evidence": "source evidence",
         }]
 
-        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [])):
+        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [], [])):
             reviewed, report = review_daily(
                 news,
                 api_key="test-key",
@@ -264,7 +309,7 @@ class QualityGatePublishFilterTests(unittest.TestCase):
             }
         ]
 
-        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [])):
+        with patch("src.quality_gate._run_llm_review", return_value=(llm_issues, [], [], [])):
             reviewed, report = review_daily(
                 news,
                 api_key="test-key",
@@ -300,7 +345,15 @@ class QualityGatePublishFilterTests(unittest.TestCase):
 
         with patch(
             "src.quality_gate._run_llm_review",
-            return_value=([], [], ["LLM 质检请求失败: invalid JSON"]),
+            return_value=(
+                [],
+                [],
+                ["LLM quality review failed: invalid JSON"],
+                [
+                    {"item_index": 1, "attempts": 2, "reason": "invalid JSON"},
+                    {"item_index": 2, "attempts": 2, "reason": "invalid JSON"},
+                ],
+            ),
         ):
             reviewed, report = review_daily(
                 news,
@@ -311,15 +364,12 @@ class QualityGatePublishFilterTests(unittest.TestCase):
                 filter_high_risk=True,
             )
 
-        self.assertEqual(
-            [item["chinese_title"] for item in reviewed],
-            ["中文标题：Official model update", "中文标题：Roblox AI tool"],
-        )
+        self.assertEqual(reviewed, [])
         self.assertTrue(report["pass"])
         self.assertEqual(report["risk_level"], "medium")
         self.assertFalse(report["blocked_publish"])
         self.assertTrue(report["llm_review_failed"])
-        self.assertIn("LLM 质检失败", report["summary"])
+        self.assertEqual(report["llm_review_item_failure_count"], 2)
 
     def test_llm_review_skips_candidates_without_publishable_source_evidence(self):
         sparse = {
@@ -333,7 +383,7 @@ class QualityGatePublishFilterTests(unittest.TestCase):
 
         def fake_review(items, **kwargs):
             reviewed_inputs.extend(items)
-            return [], [], []
+            return [], [], [], []
 
         with patch("src.quality_gate._run_llm_review", side_effect=fake_review):
             _, report = review_daily(
