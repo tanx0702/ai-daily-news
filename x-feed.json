@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-06T10:57:04.066032Z",
+  "generated_at": "2026-08-06T14:41:38.495858Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,28 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085373613478146520",
+      "text": "Top stories in robotics today:\n\n- SpaceX promises robot factories on the Moon\n- DoorDash hires gig workers to load delivery bots\n- Startup bids to replace banned Chinese humanoids\n- Xiaomi open-sources its robot brain \n- Quick hits on other robotics news https://t.co/pp0a1Gos4a",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-06T14:33:08.000Z",
+      "url": "https://x.com/TheRundownAI/status/2085373613478146520",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085323411903889876",
+      "text": "I would have assumed it was fairly obvious, but in case it's not: a million-line codebase (also known as a \"harness\"), running at inference time, orchestrating thousands of calls to a neural network for any given task, is the exact definition of a \"neurosymbolic architecture\"",
+      "author": "fchollet",
+      "created_at": "2026-08-06T11:13:39.000Z",
+      "url": "https://x.com/fchollet/status/2085323411903889876",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2085312524509937711",
       "text": "Top stories in AI today:\n\n- Google reshuffles AI leadership as rivals pull ahead\n- Nate's Notebook: Voice mode = real context\n- Build a website hands-free with Claude Voice\n- Meta joins coding-agent race with Muse Code https://t.co/o30Is9zMeD",
@@ -497,17 +519,6 @@
       "official": false
     },
     {
-      "tweet_id": "2084587751727337589",
-      "text": "Top stories in AI today:\n\n- AI labs head to the White House to discuss safety\n- HeyGen founder replaced himself with an AI clone\n- Build a project room where humans and agents work\n- Finance execs find AI skills more valuable than MBA https://t.co/1ta2dAooCt",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-04T10:30:24.000Z",
-      "url": "https://x.com/TheRundownAI/status/2084587751727337589",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2084579829303615497",
       "text": "AI that finally hears you. 👂\n\nHy ASR 3.0 preview drops today. \n\nPowered by Hy3’s language brain \n→ precision ASR + deep semantic understanding\n\nWins on:\n• general recognition\n• context awareness\n• multi-scenario robustness\n• dialect coverage\n\nMessy real-world audio? Clean, https://t.co/vFdypZyI7J",
       "author": "TencentHunyuan",
@@ -604,17 +615,6 @@
       "source_name": "The Rundown AI",
       "source_handle": "TheRundownAI",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2083863030589231160",
-      "text": "To address the limits of deep learning and avoid stalling, the field of AI started by applying patch (1), which started being demoed 9 months later in December 2024 and has now become completely ubiquitous. However, long term, it is simply inevitable that AI will move to patch",
-      "author": "fchollet",
-      "created_at": "2026-08-02T10:30:37.000Z",
-      "url": "https://x.com/fchollet/status/2083863030589231160",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
       "official": false
     },
     {
