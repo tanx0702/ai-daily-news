@@ -1,0 +1,86 @@
+# 项目架构与目录导航
+
+## 工程分类
+
+AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，附带一个轻量 Flask 服务和 Docker/nginx 部署。它不是前后端 Monorepo，也没有数据库、消息队列或长期任务服务作为当前主链路的前置依赖。
+
+工程按运行职责分为：
+
+1. 采集层：从 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照取得候选。
+2. 编辑决策层：保留原始证据、评分、按来源/主题/事件配额选择，并执行质量门禁和编辑复核。
+3. 内容生产层：调用 LLM 生成中文摘要，解析原文媒体，渲染日报、微信预览和封面。
+4. 发布触达层：写入静态日报产物、读取 `latest.json`，创建微信公众号草稿并响应微信客服消息。
+5. 运行支撑层：Docker Compose、nginx、cron、运行锁、日志和 shadow/editorial 反馈。
+6. 历史/实验层：v2 assist 工作流和 Tencent SCF 兼容代码，不是默认生产主链路。
+
+## 目录结构
+
+```text
+.
+├─ app.py                         Flask 微信回调、健康检查和新闻/审阅接口
+├─ config/
+│  ├─ rss_sources.json            RSS 源定义
+│  └─ x_sources.json              X 账号白名单和来源等级
+├─ src/
+│  ├─ main.py                     生产日报编排入口
+│  ├─ collector.py                采集兼容入口、合并、筛选、评分和最终去重
+│  ├─ collectors/                 HN/GitHub/HF/arXiv/X 等独立采集器
+│  ├─ agents/                     v2 分析、编辑选择和候选适配代理
+│  ├─ domain/                     v2 候选、证据、诊断和工作流状态模型
+│  ├─ services/                   生产快照、编辑审阅、复盘和反馈记录
+│  ├─ workflows/                  side-effect-free MVP 与 production editorial 适配
+│  ├─ editorial_*.py               编辑质量、选择和跨候选复核
+│  ├─ summarizer.py               LLM 批量摘要、逐条降级和重点生成
+│  ├─ quality_gate.py              发布前证据质量和风险门禁
+│  ├─ media_assets.py              原文配图解析和媒体状态
+│  ├─ generator.py                日报 HTML 和微信正文模板
+│  ├─ pipeline_artifacts.py       HTML、预览、JSON 和诊断产物保存
+│  ├─ cover.py                    原文图、AI 封面和本地封面降级链
+│  ├─ wechat_draft.py             封面上传、正文和公众号草稿创建
+│  ├─ publication.py              发布 readiness 判定
+│  ├─ llm_config.py               文本、质量和图片模型配置解析
+│  ├─ run_guard.py                单次日报运行锁
+│  └─ tencent_scf/                历史 Serverless 兼容入口
+├─ tests/                         单元、边界、采集器和工作流测试
+├─ project_docs/                  面向维护者的中文工程文档
+├─ docs/                          nginx 发布的运行时日报、媒体和诊断产物
+├─ Dockerfile                     Flask/Gunicorn 容器镜像
+├─ docker-compose.yml             web + nginx 服务编排
+└─ nginx/                         静态文件、反代和 TLS 模板
+```
+
+## 依赖方向
+
+生产主链路由 `src/main.py` 编排，依赖采集、编辑、摘要、质量、媒体、封面、产物和微信模块。采集器只产生候选，不创建发布产物；编辑模块只处理候选、证据、排序和诊断；产物模块负责落盘；微信模块只负责公众号 API 边界。
+
+```text
+cron / 手动命令
+        │
+        ▼
+src.main._run_pipeline
+        ├─ collector + collectors
+        ├─ evidence + editorial_quality + editorial_selection
+        ├─ workflows / agents（仅 v2/editorial 辅助）
+        ├─ summarizer + quality_gate + editorial_review
+        ├─ media_assets + cover
+        ├─ pipeline_artifacts + publication
+        └─ wechat_draft
+
+app.py ──读取──> docs/latest.json
+  ├─ /wechat              微信服务器验证和消息回调
+  ├─ /health              服务和 publication 状态
+  ├─ /api/news            最新新闻 JSON
+  └─ /editorial-review*   受 Basic Auth 保护的 shadow 审阅和反馈
+```
+
+`app.py` 不重新运行日报采集或 LLM 摘要；它只读取已保存的产物并提供服务端回调/审阅能力。`src/workflows/daily_edition.py` 是无副作用的 v2 MVP，`src/workflows/production_editorial.py` 只在 `DAILY_EDITORIAL_MODE=v2_assist` 时辅助当前 v1 选择，并在风险或 ready 候选不足时回退。
+
+## 代码边界
+
+- 新采集源放入 `src/collectors/`，并由 `src/collector.py` 统一编排和合并。
+- 领域状态和跨模块稳定结构放入 `src/domain/`，不得在 Flask 路由或模板中重复定义。
+- 可复用的快照、复盘、反馈和审阅读写放入 `src/services/`。
+- 纯编辑流程放入 `src/workflows/`，不得在其中写 HTML、文件、微信或外部 API 副作用。
+- 发布前门禁统一经过 `src/publication.py` 和 `src/quality_gate.py`；不能由单个来源或模板绕过。
+- `src/tencent_scf/` 仅用于历史兼容和排查；新 Docker 主流程不得依赖它。
+- `docs/` 中的 `index.html`、`latest.json`、封面、`wechat.html`、`archive/`、`debug/` 和 `media/` 都是运行时产物，不是源码文档。
