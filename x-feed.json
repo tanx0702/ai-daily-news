@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-06T03:44:51.371102Z",
+  "generated_at": "2026-08-06T06:53:02.333269Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,50 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085253030417461661",
+      "text": "a very primitive form of the near term multiagent agi future is setting up one thread to ping back once its done so you create an implicit kanban/waterfall graph of  dependent threads but each preserving their own work and agents\n\ni can't wait to setup a proper ui for this https://t.co/lxMdMex3HV",
+      "author": "swyx",
+      "created_at": "2026-08-06T06:33:59.000Z",
+      "url": "https://x.com/swyx/status/2085253030417461661",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085236400056877381",
+      "text": "TIL Paul Erdős prompted his fellow mathematicians with bribes like we did the early LLMs https://t.co/Bh8CFhGIn6",
+      "author": "swyx",
+      "created_at": "2026-08-06T05:27:54.000Z",
+      "url": "https://x.com/swyx/status/2085236400056877381",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085219237182726166",
+      "text": "It is past time to take AI &amp; security seriously at the individual level as well.\n\nIf its not the current OpenAI and Anthropic models doing it, then the coming open weights models will when they catch up.\n\nAssume if things can be found on the open internet, they will be found.",
+      "author": "emollick",
+      "created_at": "2026-08-06T04:19:42.000Z",
+      "url": "https://x.com/emollick/status/2085219237182726166",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085212700561285460",
+      "text": "I accidentally turned off bluetooth on my Windows machine, killing my mouse, and it turns out you can't easily re-enable BT using the keyboard.\n\nSo I opened up Codex and told it turn on bluetooth, it used computer controls, opened up settings, and did one click. Dumb but useful.",
+      "author": "emollick",
+      "created_at": "2026-08-06T03:53:43.000Z",
+      "url": "https://x.com/emollick/status/2085212700561285460",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2085188712342954326",
       "text": "Three categories. Three #1s. 🥇\n\nMiniMax H3 leads Multi-Image to Video, Image to Video, and Video Editing on @DesignArena\n\nFrontier performance, without the frontier price tag. And the weights are open. 😌",
@@ -196,39 +240,6 @@
       "url": "https://x.com/AndrewYNg/status/2085056542341271840",
       "source_name": "Andrew Ng",
       "source_handle": "AndrewYNg",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085055055237914802",
-      "text": "Noticeable weird contradiction: models are getting better at following complex instructions, but also using more \"judgement\" about which parts of the instructions they focus on most &amp; which they de-emphasize.\n\nBig implications for skills, which may become suggestions, not orders.",
-      "author": "emollick",
-      "created_at": "2026-08-05T17:27:18.000Z",
-      "url": "https://x.com/emollick/status/2085055055237914802",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085053971090321773",
-      "text": "even the best founding team with all the money in the world is rate limited by bay area real estate smh https://t.co/6r81RY7o2b",
-      "author": "swyx",
-      "created_at": "2026-08-05T17:22:59.000Z",
-      "url": "https://x.com/swyx/status/2085053971090321773",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085034843805528268",
-      "text": "I find arguments that AI can't do judgement or creativity or taste to be especially obviously false in the time of agents. Any long task requires lots of taste, judgement, and creativity.\n\nI am much more sympathetic to arguments about the quality or diversity of the AI's choices.",
-      "author": "emollick",
-      "created_at": "2026-08-05T16:06:59.000Z",
-      "url": "https://x.com/emollick/status/2085034843805528268",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
       "source_tier": "research",
       "official": false
     },
@@ -418,17 +429,6 @@
       "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084698630653641092",
-      "text": "yes https://t.co/yWb8PQwaxS",
-      "author": "swyx",
-      "created_at": "2026-08-04T17:51:00.000Z",
-      "url": "https://x.com/swyx/status/2084698630653641092",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084695242880729311",
