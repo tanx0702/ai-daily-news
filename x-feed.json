@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-05T21:39:01.701995Z",
+  "generated_at": "2026-08-06T03:44:51.371102Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,72 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085188712342954326",
+      "text": "Three categories. Three #1s. 🥇\n\nMiniMax H3 leads Multi-Image to Video, Image to Video, and Video Editing on @DesignArena\n\nFrontier performance, without the frontier price tag. And the weights are open. 😌",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-06T02:18:24.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085188712342954326",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085182466122272957",
+      "text": "This definitely seems like something worth noting, and illustrates the gap between Fable/Astra class models and the previous frontier that was \"merely\" good at hacking under human instructions.\n\nInitiative, creativity, whatever-you-want-to-call-it by capable models changes things",
+      "author": "emollick",
+      "created_at": "2026-08-06T01:53:35.000Z",
+      "url": "https://x.com/emollick/status/2085182466122272957",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085174123743842448",
+      "text": "This paper by researchers from MIT and Stanford finds that most people would be financially better off if they followed the financial advice of LLMs (GPT-5.2 &amp; Gemini 3 Flash)\n\nBut some people get a bit better advice than others, which largely depends on the questions they ask. https://t.co/F0DQhhMWjx",
+      "author": "emollick",
+      "created_at": "2026-08-06T01:20:26.000Z",
+      "url": "https://x.com/emollick/status/2085174123743842448",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085156425303830595",
+      "text": "One of the things the pelican benchmark is still useful for is visually representing (to a tiny extent) the improvements in a single model family\n\nHere's Meta AI's Spark (8th April), Spark 1.1 (9th July), and Spark 1.2 (today, 5th August)\n\nhttps://t.co/nPxV7Og3Mw https://t.co/cmZgik20Ed",
+      "author": "simonw",
+      "created_at": "2026-08-06T00:10:06.000Z",
+      "url": "https://x.com/simonw/status/2085156425303830595",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085150834741166238",
+      "text": "Just had to create an \"accidental-cyberattacks\" tag on my blog\n\nWe're up to four now: the original OpenAI+Hugging Face one, Anthropic's me-too attacks, then two new ones from the UK AI Safety Institute and Irregular that OpenAI reported yesterday https://t.co/51J9YUxyH3",
+      "author": "simonw",
+      "created_at": "2026-08-05T23:47:53.000Z",
+      "url": "https://x.com/simonw/status/2085150834741166238",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085143944258879784",
+      "text": "sign of the times https://t.co/uaXjEMzX3g",
+      "author": "swyx",
+      "created_at": "2026-08-05T23:20:31.000Z",
+      "url": "https://x.com/swyx/status/2085143944258879784",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2085116732231028882",
       "text": "Meta has released Muse Spark 1.2. It's their third release in four months and scores 54 on the Artificial Analysis Intelligence Index, significantly improving agentic knowledge work capabilities over prior releases and putting Meta next to SpaceXAI in a tie for third place https://t.co/460hp9zIxB",
@@ -189,17 +255,6 @@
       "official": false
     },
     {
-      "tweet_id": "2084996581288288497",
-      "text": "The evidence of the impact of AI chatbots on loneliness is still really unclear &amp; depends on the chatbot approach.\n\nThis new study finds AI conversations increase loneliness, but previous published experiments find significant reduction or ambiguous results depending on usage. https://t.co/rwAlzo3Ye1",
-      "author": "emollick",
-      "created_at": "2026-08-05T13:34:56.000Z",
-      "url": "https://x.com/emollick/status/2084996581288288497",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2084950126632607941",
       "text": "Top stories in AI today: \n\n- Anthropic and OpenAI agents went rogue again\n- Apple and OpenAI trade fresh blows over trade secrets\n- Redline any contract with Claude and Microsoft Word\n- Business students go all in on AI amid demand surge https://t.co/EqxxRS7TYH",
       "author": "TheRundownAI",
@@ -264,17 +319,6 @@
       "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084826713922355207",
-      "text": "This time Fable built me the Van Gogh city building game that I faked in an AI video last year.\n\nThe key mechanic the AI came up with is painting the landscape with big brushstrokes &amp; an environment that evolves with weather and seasons.\n\nChill and pretty: https://t.co/AVcaQbOfGy https://t.co/qRtfImGtlC",
-      "author": "emollick",
-      "created_at": "2026-08-05T02:19:57.000Z",
-      "url": "https://x.com/emollick/status/2084826713922355207",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2084792341572001871",
@@ -354,17 +398,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084719238569435469",
-      "text": "The MiniMax-H3 video generation model is a lot of fun - here's what I got on my M5 Pro Mac for the prompt \"a rainbow colored skunk leaps over a mossy log in a supermarket\" (~115GB model download, took around 45 minutes to generate) https://t.co/dYjE1VFFml",
-      "author": "simonw",
-      "created_at": "2026-08-04T19:12:53.000Z",
-      "url": "https://x.com/simonw/status/2084719238569435469",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2084702191466725669",
       "text": "Announcing the Artificial Analysis Endpoint Accuracy Index, measuring how much of an open weights model's accuracy each serverless API endpoint preserves. We are initiating coverage with GLM-5.2, gpt-oss-120b and DeepSeek V4 Pro, with Kimi K3 coming soon\n\nProviders trade off https://t.co/vnqkobtd12",
       "author": "ArtificialAnlys",
@@ -398,17 +431,6 @@
       "official": false
     },
     {
-      "tweet_id": "2084695630237311086",
-      "text": "we are huge airtable fans - aie runs on airtable - so seeing this number might seem surprising, but don't count @howietl out! \n\nif you were at WF26 you would already have seen @hyperagentapp which is the next chapter of team Airtable! https://t.co/yQhb4VUue4",
-      "author": "swyx",
-      "created_at": "2026-08-04T17:39:04.000Z",
-      "url": "https://x.com/swyx/status/2084695630237311086",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2084695242880729311",
       "text": "120+ members and counting!\n\nHere’s what they’re saying 🧵",
       "author": "NVIDIAAI",
@@ -429,17 +451,6 @@
       "source_handle": "MistralAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084667167212245170",
-      "text": "I try not to get excited about models before they've been released, but I gotta admit I'm very much looking forward to the upcoming laptop-sized Qwen 3.8 models",
-      "author": "simonw",
-      "created_at": "2026-08-04T15:45:58.000Z",
-      "url": "https://x.com/simonw/status/2084667167212245170",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084663673570971990",
@@ -495,17 +506,6 @@
       "source_handle": "fchollet",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2084490811652333633",
-      "text": "Claims that MiniMax H3 “cannot legally be used” in certain regions are incorrect.😅\n\nMiniMax H3 can be licensed for deployment in the US, EU, UK, and South Korea through MiniMax’s formal authorization process. To apply, please submit the MiniMax H3 License Request Form found in https://t.co/Ze6Fiuvm6H",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-04T04:05:12.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084490811652333633",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2084378415818579975",
