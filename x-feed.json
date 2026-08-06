@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-06T06:53:02.333269Z",
+  "generated_at": "2026-08-06T10:57:04.066032Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,50 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085312524509937711",
+      "text": "Top stories in AI today:\n\n- Google reshuffles AI leadership as rivals pull ahead\n- Nate's Notebook: Voice mode = real context\n- Build a website hands-free with Claude Voice\n- Meta joins coding-agent race with Muse Code https://t.co/o30Is9zMeD",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-06T10:30:23.000Z",
+      "url": "https://x.com/TheRundownAI/status/2085312524509937711",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085299356190802058",
+      "text": "A quick snapshot of where Qwen3.8-Max stands today:\n\nQwen3.8-Max now ranks #5 on the Artificial Analysis Intelligence Index, and #1 on the Agentic Index!🥇 \n\nWe'll keep pushing forward. 🚀 https://t.co/1bt811Rbvx",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-06T09:38:04.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2085299356190802058",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085270415614828675",
+      "text": "Alibaba's Qwen3.8 Max scores 56 on the Artificial Analysis Intelligence Index at $1.14 per task, but open weights leader Kimi K3 remains 1 point ahead at 25% lower cost per task ($0.86)\n\n@Alibaba_Qwen has released Qwen3.8 Max, which Alibaba states is a 2.4T total parameter MoE https://t.co/Wix4sXPd09",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-06T07:43:04.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085270415614828675",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085268749851255280",
+      "text": "3⃣3⃣3⃣",
+      "author": "TencentHunyuan",
+      "created_at": "2026-08-06T07:36:27.000Z",
+      "url": "https://x.com/TencentHunyuan/status/2085268749851255280",
+      "source_name": "Tencent Hunyuan",
+      "source_handle": "TencentHunyuan",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2085253030417461661",
       "text": "a very primitive form of the near term multiagent agi future is setting up one thread to ping back once its done so you create an implicit kanban/waterfall graph of  dependent threads but each preserving their own work and agents\n\ni can't wait to setup a proper ui for this https://t.co/lxMdMex3HV",
@@ -321,17 +365,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084831888729072121",
-      "text": "Qwen-Image-3.0-Pro is live on Qwen Cloud now! \nTry it out👇\nhttps://t.co/wG5vtLAYVp",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-05T02:40:31.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084831888729072121",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084792341572001871",
       "text": "Big new release of my LLM CLI tool and Python library for talking to hundreds of different LLMs - reasoning traces, OpenAI Responses support, server-side tools, smarter logging and a whole lot more\nhttps://t.co/IgGoMlV4Br",
       "author": "simonw",
@@ -407,17 +440,6 @@
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084702191466725669",
-      "text": "Announcing the Artificial Analysis Endpoint Accuracy Index, measuring how much of an open weights model's accuracy each serverless API endpoint preserves. We are initiating coverage with GLM-5.2, gpt-oss-120b and DeepSeek V4 Pro, with Kimi K3 coming soon\n\nProviders trade off https://t.co/vnqkobtd12",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-04T18:05:08.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2084702191466725669",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084700936623272123",
@@ -528,17 +550,6 @@
       "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084285750963540400",
-      "text": "Top stories in robotics today:\n\n- Armed drones are coming to U.S. schools\n- Gemini now runs humanoids, legs included\n- This demon centaur robot wants to save you\n- Zoox starts charging for robotaxi rides \n- Quick hits on other robotics news https://t.co/wauikI3xXQ",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-03T14:30:21.000Z",
-      "url": "https://x.com/TheRundownAI/status/2084285750963540400",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084245860339298423",
@@ -845,17 +856,6 @@
       "url": "https://x.com/GoogleDeepMind/status/2082844162928381956",
       "source_name": "Google DeepMind",
       "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082655737541726636",
-      "text": "For a finite set of integers (A), how much faster can (|A+A|) grow than (|A-A|)?\n\nA 1969 theorem gave an upper bound of 2 for the exponent. For more than 50 years, the best constructions barely exceeded 1.1.\n\nWith help from our research agent Hyra and the Hy3 model, we found an https://t.co/bYNC2phJ8M",
-      "author": "TencentHunyuan",
-      "created_at": "2026-07-30T02:33:16.000Z",
-      "url": "https://x.com/TencentHunyuan/status/2082655737541726636",
-      "source_name": "Tencent Hunyuan",
-      "source_handle": "TencentHunyuan",
       "source_tier": "primary",
       "official": true
     },
