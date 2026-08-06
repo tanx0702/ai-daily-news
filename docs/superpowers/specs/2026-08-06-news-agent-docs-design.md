@@ -36,6 +36,7 @@
 AGENTS.md                         顶层导航、硬约束和任务前检查
 project_docs/
   architecture.md                 目录、模块边界、依赖方向和工程分类
+  backend.md                      Python 服务端与流水线开发约束
   pipeline.md                     日报生产数据流、阶段输入输出和降级行为
   configuration.md                核心/高级环境变量、默认值和密钥规则
   sources.md                      RSS、HN、GitHub、HF、arXiv、X 来源与开关
@@ -60,6 +61,12 @@ project_docs/
 ### `project_docs/architecture.md`
 
 描述单体 Python 工程的目录树和职责边界，覆盖 `src/collectors`、`src/agents`、`src/domain`、`src/services`、`src/workflows`、顶层编排模块、Flask 入口、配置和测试。明确 `src/main.py` 是生产编排入口，`app.py` 是微信/新闻服务入口，并标识历史 Tencent SCF 代码。
+
+### `project_docs/backend.md`
+
+定义本项目的服务端和 Python 开发约束。内容包括：采集器、领域模型、服务、工作流和编排层的依赖方向；`app.py` 路由只负责协议转换和调用服务；外部 RSS、X feed、LLM、图片和微信 API 必须经过明确的适配边界；跨模块数据使用稳定字段和可序列化结构；网络/API 失败必须记录并降级而不是无日志吞异常；日志不得泄露密钥；时间统一使用项目时区/UTC 约定；生产主链路不能被 shadow/editorial 或历史 SCF 代码反向依赖；新增行为必须有针对性测试。
+
+该文档还应列出明确禁止事项：在路由中直接写采集、LLM、文件发布或微信 API 逻辑；在 collector 中修改发布状态；以 GitHub 活跃度替代正式发布证据；直接拼接外部 HTML/用户输入进入 XML 或正文；把真实 `.env`、响应密钥或完整外部响应写入日志；为解决单次 API 失败而中断整条日报流水线。
 
 ### `project_docs/pipeline.md`
 
@@ -89,7 +96,8 @@ project_docs/
 | 修改主流程阶段、降级或发布门槛 | `project_docs/pipeline.md`、`AGENTS.md` |
 | 新增/修改环境变量 | `project_docs/configuration.md`、对应 `.env*.example`、必要时 `operations.md` |
 | 修改 Docker、nginx、cron、Flask 或微信边界 | `project_docs/operations.md`、`AGENTS.md` |
-| 新增 domain/service/workflow/agent 模块 | `project_docs/architecture.md` |
+| 新增 domain/service/workflow/agent 模块 | `project_docs/architecture.md`、必要时 `backend.md` |
+| 修改 Python 分层、Flask 路由、外部 API 适配或错误/日志约束 | `project_docs/backend.md`、`AGENTS.md` |
 | 修改测试、提交或协作要求 | `project_docs/workflow.md`、`AGENTS.md` |
 
 ## 非目标
