@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-06T14:41:38.495858Z",
+  "generated_at": "2026-08-07T01:01:50.483015Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,237 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085517544795079014",
+      "text": "## eval competition idea: Help kill my SaaS \n\nmy team is proposing to pay &gt;$40k/year for enterprise saas we have never used and will never be able to customize.\n\nas a smol business owner, this feels shitty.\n\nthinking of doing a small remote hackathon:\n- i cover $1000 in tokens https://t.co/voO2eNwtOr",
+      "author": "swyx",
+      "created_at": "2026-08-07T00:05:04.000Z",
+      "url": "https://x.com/swyx/status/2085517544795079014",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085509023852572804",
+      "text": "Muse Spark 1.2 places Meta on the Cost per Task Pareto frontier, scoring 6 points below Claude Opus 5 at ~1/6th of the cost\n\nAt Meta's $1.25/$4.25 per 1M token pricing, Muse Spark 1.2 (xhigh) sits on the Pareto frontier of Intelligence Index vs Cost per Task. It delivers https://t.co/s2JS6ZTZkO",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-06T23:31:12.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085509023852572804",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085504717829058569",
+      "text": "man @waterloo_intern theses keep getting challenged*\n\n&gt; megakernels are dead\ncursor drops monster kitty kernel\n\n&gt; etched asics are dead\namd buys taalas, and etched is valued at $10b by SK Hynix and TSMC lol\n\nwhos gonna take on the remaining two theses?\n\n*note that he was making",
+      "author": "swyx",
+      "created_at": "2026-08-06T23:14:06.000Z",
+      "url": "https://x.com/swyx/status/2085504717829058569",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085500541707456908",
+      "text": "have you noticed an interesting correspondence between the plugins spec and the @harborframework spec...\n\nyou know what happens next right https://t.co/KgF7VdDNY6",
+      "author": "swyx",
+      "created_at": "2026-08-06T22:57:30.000Z",
+      "url": "https://x.com/swyx/status/2085500541707456908",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085481628160381070",
+      "text": "Anyone understand what the equivalent of GPT-5.6 Instant in ChatGPT is for the OpenAI API?",
+      "author": "simonw",
+      "created_at": "2026-08-06T21:42:21.000Z",
+      "url": "https://x.com/simonw/status/2085481628160381070",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085471158887923728",
+      "text": "The Keras community meeting will take place this Friday at 10am PT -- the team will present the latest developments in the Keras ecosystem, in particular the new vLLM integration.\n\nAnyone can join the call. Please use this link https://t.co/zy5oJ5KRiW to join when the meeting https://t.co/UrmPnpYJ7W",
+      "author": "fchollet",
+      "created_at": "2026-08-06T21:00:45.000Z",
+      "url": "https://x.com/fchollet/status/2085471158887923728",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085463559610200160",
+      "text": "Turning the frowns upside down https://t.co/g0ksXIq66k",
+      "author": "cohere",
+      "created_at": "2026-08-06T20:30:33.000Z",
+      "url": "https://x.com/cohere/status/2085463559610200160",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085458318269759746",
+      "text": "We have updated the Artificial Analysis Intelligence Index to v4.1.1 - this patch release upgrades our grader models, and brings the latest 𝜏³-Banking version to Artificial Analysis\n\nTo keep the Artificial Analysis Intelligence Index the most useful synthesis metric for https://t.co/GK7KKRRTcs",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-06T20:09:43.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085458318269759746",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085454964814753990",
+      "text": "5.6 Sol much better in chat now\n\nand unlimited text chat for free users!",
+      "author": "sama",
+      "created_at": "2026-08-06T19:56:24.000Z",
+      "url": "https://x.com/sama/status/2085454964814753990",
+      "source_name": "Sam Altman",
+      "source_handle": "sama",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085450774914756631",
+      "text": "i guess this is a good time to mention that smol forge is open for the first 100 alpha users. get your usernames! (tire kickers who dont make any commits will be kicked out by eod)\n\npoint clanker to forge.smol.​ai/llms.txt\n\nfor now its just a fast agent native git remote and u https://t.co/J4v7pkROpO",
+      "author": "swyx",
+      "created_at": "2026-08-06T19:39:45.000Z",
+      "url": "https://x.com/swyx/status/2085450774914756631",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085442634240438307",
+      "text": "GPT 5.6 Terra and Luna are now live in Perplexity Computer.\n\nTerra is the new default model for all Computer subagents, while Luna will serve as the primary model for scheduled automations.\n\nTerra is also available as an orchestrator model in Computer. https://t.co/yH6d6Oh5hw",
+      "author": "perplexity_ai",
+      "created_at": "2026-08-06T19:07:24.000Z",
+      "url": "https://x.com/perplexity_ai/status/2085442634240438307",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085434712429052386",
+      "text": "We’re making better intelligence easier to access in ChatGPT for everyone:\n\n- GPT-5.6 Sol now powers both Instant and deep reasoning for Plus &amp; Pro users, delivering more factual, focused responses.\n\n- Free &amp; Go users get unlimited text chats with GPT-5.6 Luna starting tomorrow. https://t.co/JXhmj5GLTH",
+      "author": "OpenAI",
+      "created_at": "2026-08-06T18:35:55.000Z",
+      "url": "https://x.com/OpenAI/status/2085434712429052386",
+      "source_name": "OpenAI",
+      "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085434143517950222",
+      "text": "H3 is live on @gmi_cloud. Time to make something iconic.",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-06T18:33:39.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085434143517950222",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085430224074760225",
+      "text": "Pretty big break happening in academia between the “AI is banned for reviews” journals and the “AI is mandatory for reviews” journals.",
+      "author": "emollick",
+      "created_at": "2026-08-06T18:18:05.000Z",
+      "url": "https://x.com/emollick/status/2085430224074760225",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085421134535610768",
+      "text": "It is not a novel observation at this point, but the collapse of Google’s Gemini as a frontier model series is still astonishing. Unlike Meta &amp; SpaceX, Google has captive Gemini customers at an enterprise level, so the fact that they are pushed towards Gemini 3.1 Pro is a problem",
+      "author": "emollick",
+      "created_at": "2026-08-06T17:41:58.000Z",
+      "url": "https://x.com/emollick/status/2085421134535610768",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085416724266983682",
+      "text": "One thing I want to make perfectly clear: back in 2023 and early 2024, I was wrong about the role that LLMs would come to play. I underestimated their long-term importance. I have acknowledged this many times.\n\nThis was the moment I changed my mind, in December 2024, following",
+      "author": "fchollet",
+      "created_at": "2026-08-06T17:24:26.000Z",
+      "url": "https://x.com/fchollet/status/2085416724266983682",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085412991424762357",
+      "text": "Let's ask any question with H3 Team 👋",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-06T17:09:36.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085412991424762357",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085406004431532106",
+      "text": "Now available in @LumaLabsAI Agents: H3 generating up to 15s of 2K video with native stereo sound.\n\nMore places to direct, create, and bring ideas to life. 🎬😉",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-06T16:41:51.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085406004431532106",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085403453245784495",
+      "text": "Canadians have led AI breakthroughs around the world. Cohere is helping the next generation do the same.\n\nWe're partnering with @UWaterloo on a new AI Transformation &amp; Change Management certificate that prepares students to help organizations adopt AI securely and responsibly. https://t.co/U894POXcjJ",
+      "author": "cohere",
+      "created_at": "2026-08-06T16:31:42.000Z",
+      "url": "https://x.com/cohere/status/2085403453245784495",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085395442347524506",
+      "text": "Predicting cyclones accurately can help save lives - and every hour of lead time counts.\n\nPublished in @Nature, our AI model WeatherNext achieves state-of-the-art accuracy in forecasting a storm’s track and intensity, giving us a critical extra 24 hours to prepare on average. 🧵 https://t.co/Noht1k1Zl7",
+      "author": "GoogleDeepMind",
+      "created_at": "2026-08-06T15:59:52.000Z",
+      "url": "https://x.com/GoogleDeepMind/status/2085395442347524506",
+      "source_name": "Google DeepMind",
+      "source_handle": "GoogleDeepMind",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085388945148297322",
+      "text": "To understand whether we're making genuine progress on reasoning, we entered our AI models in five STEM Olympiad competitions.\n\nThe results:\n🏅 Asian Physics Olympiad (APhO): Perfect score, theory exam\n🏅 International Physics Olympiad (IPhO): Perfect score, theory exam\n🥇 https://t.co/fh1h8I1d3S",
+      "author": "AIatMeta",
+      "created_at": "2026-08-06T15:34:03.000Z",
+      "url": "https://x.com/AIatMeta/status/2085388945148297322",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2085373613478146520",
       "text": "Top stories in robotics today:\n\n- SpaceX promises robot factories on the Moon\n- DoorDash hires gig workers to load delivery bots\n- Startup bids to replace banned Chinese humanoids\n- Xiaomi open-sources its robot brain \n- Quick hits on other robotics news https://t.co/pp0a1Gos4a",
@@ -79,28 +310,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085253030417461661",
-      "text": "a very primitive form of the near term multiagent agi future is setting up one thread to ping back once its done so you create an implicit kanban/waterfall graph of  dependent threads but each preserving their own work and agents\n\ni can't wait to setup a proper ui for this https://t.co/lxMdMex3HV",
-      "author": "swyx",
-      "created_at": "2026-08-06T06:33:59.000Z",
-      "url": "https://x.com/swyx/status/2085253030417461661",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085236400056877381",
-      "text": "TIL Paul Erdős prompted his fellow mathematicians with bribes like we did the early LLMs https://t.co/Bh8CFhGIn6",
-      "author": "swyx",
-      "created_at": "2026-08-06T05:27:54.000Z",
-      "url": "https://x.com/swyx/status/2085236400056877381",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085219237182726166",
       "text": "It is past time to take AI &amp; security seriously at the individual level as well.\n\nIf its not the current OpenAI and Anthropic models doing it, then the coming open weights models will when they catch up.\n\nAssume if things can be found on the open internet, they will be found.",
       "author": "emollick",
@@ -134,28 +343,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085182466122272957",
-      "text": "This definitely seems like something worth noting, and illustrates the gap between Fable/Astra class models and the previous frontier that was \"merely\" good at hacking under human instructions.\n\nInitiative, creativity, whatever-you-want-to-call-it by capable models changes things",
-      "author": "emollick",
-      "created_at": "2026-08-06T01:53:35.000Z",
-      "url": "https://x.com/emollick/status/2085182466122272957",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085174123743842448",
-      "text": "This paper by researchers from MIT and Stanford finds that most people would be financially better off if they followed the financial advice of LLMs (GPT-5.2 &amp; Gemini 3 Flash)\n\nBut some people get a bit better advice than others, which largely depends on the questions they ask. https://t.co/F0DQhhMWjx",
-      "author": "emollick",
-      "created_at": "2026-08-06T01:20:26.000Z",
-      "url": "https://x.com/emollick/status/2085174123743842448",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2085156425303830595",
       "text": "One of the things the pelican benchmark is still useful for is visually representing (to a tiny extent) the improvements in a single model family\n\nHere's Meta AI's Spark (8th April), Spark 1.1 (9th July), and Spark 1.2 (today, 5th August)\n\nhttps://t.co/nPxV7Og3Mw https://t.co/cmZgik20Ed",
       "author": "simonw",
@@ -174,17 +361,6 @@
       "url": "https://x.com/simonw/status/2085150834741166238",
       "source_name": "Simon Willison",
       "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085143944258879784",
-      "text": "sign of the times https://t.co/uaXjEMzX3g",
-      "author": "swyx",
-      "created_at": "2026-08-05T23:20:31.000Z",
-      "url": "https://x.com/swyx/status/2085143944258879784",
-      "source_name": "swyx",
-      "source_handle": "swyx",
       "source_tier": "media",
       "official": false
     },
@@ -255,17 +431,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085083490056589784",
-      "text": "Only two labs occupy the Time per Task Pareto frontier: all frontier models under two minutes are from OpenAI, and four of the six above are from Anthropic\n\nWe show the tradeoff between the Artificial Analysis Intelligence Index and how long it takes models to complete a https://t.co/yXjHYDCzrI",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-05T19:20:17.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2085083490056589784",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085074277884465274",
       "text": "Anyone seen convincing attempts at using AI to pick the \"best\" photos from a bunch of photos?\n\n(I'm quite a lazy photographer)",
       "author": "simonw",
@@ -275,28 +440,6 @@
       "source_handle": "simonw",
       "source_tier": "media",
       "official": false
-    },
-    {
-      "tweet_id": "2085073764551962960",
-      "text": "if you have been following his excellent work, @shloked has been breaking down every frontier labs' harness engineering for the last few months.\n\nexcited to publish his deepest dive into ChatGPT yet as our newest guest on @Latentspacepod! https://t.co/MEuW0VzYBA",
-      "author": "swyx",
-      "created_at": "2026-08-05T18:41:38.000Z",
-      "url": "https://x.com/swyx/status/2085073764551962960",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085066024442110150",
-      "text": "Open weights = access → possibility.\n\nOpen communities. Better performance. Deeper customization. Faster innovation.\n\nThank you, @ComfyUI, @magnific, and @OpenRouter  for backing H3 and building the open future with us. 💜 https://t.co/8p5fvdEOCp",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-05T18:10:53.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085066024442110150",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2085056542341271840",
@@ -387,28 +530,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084792341572001871",
-      "text": "Big new release of my LLM CLI tool and Python library for talking to hundreds of different LLMs - reasoning traces, OpenAI Responses support, server-side tools, smarter logging and a whole lot more\nhttps://t.co/IgGoMlV4Br",
-      "author": "simonw",
-      "created_at": "2026-08-05T00:03:22.000Z",
-      "url": "https://x.com/simonw/status/2084792341572001871",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2084783822667932137",
-      "text": "Across infrastructure, creative platforms, and open communities, our partners share a belief in what open models can unlock.\n\nGrateful to @fal, @pika_labs, and @HelloCivitai for building alongside us. 💜\n\n#MiniMaxH3 https://t.co/y7x5fCeBRU",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-04T23:29:31.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084783822667932137",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084759576692363460",
       "text": "We're working with the Open Secure Alliance on guidelines for incident learning, to collectively develop better review, disclosure, and controls of and for security incidents.",
       "author": "huggingface",
@@ -418,17 +539,6 @@
       "source_handle": "huggingface",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084758511737847853",
-      "text": "Inference shapes the speed, cost, and quality of every AI request, but choosing the right provider for your use case involves more than just picking the fastest or cheapest option\n\nOn Wednesday, August 12, we're bringing together engineers, inference providers, and AI leaders in",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-04T21:48:56.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2084758511737847853",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2084748111239344556",
@@ -449,17 +559,6 @@
       "url": "https://x.com/OpenAI/status/2084747580693426555",
       "source_name": "OpenAI",
       "source_handle": "OpenAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084745241589080491",
-      "text": "Maestro v1.5.5 with MiniMax H3 is out!  🩵\n\nThe community got H3 running on hardware we never tested - from a  gaming GPU to MacBooks running fully offline - and built tooling we didn't plan for within 48 hours. \n  \nWe're genuinely glad we opened it up. &lt;3 https://t.co/3I7khZcbnU",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-04T20:56:12.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084745241589080491",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -530,17 +629,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084549830643274090",
-      "text": "I really believe that a majority of people, perhap…",
-      "author": "fchollet",
-      "created_at": "2026-08-04T07:59:43.000Z",
-      "url": "https://x.com/fchollet/status/2084549830643274090",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2084378415818579975",
       "text": "GPT-Live can listen while it speaks.\n\nTo make that feel natural at ChatGPT scale, we rebuilt the voice stack from client to model.\n\nThis new architecture keeps audio flowing continuously, so deeper reasoning and tool use don't interrupt the conversation. https://t.co/53VTTsqXg0",
       "author": "OpenAI",
@@ -572,17 +660,6 @@
       "source_handle": "Kimi_Moonshot",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2084178584046821859",
-      "text": "I get occasionally reminded that environmentalists…",
-      "author": "fchollet",
-      "created_at": "2026-08-03T07:24:31.000Z",
-      "url": "https://x.com/fchollet/status/2084178584046821859",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2084106804032872591",
@@ -695,28 +772,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083198135812383197",
-      "text": "it could be faster",
-      "author": "sama",
-      "created_at": "2026-07-31T14:28:34.000Z",
-      "url": "https://x.com/sama/status/2083198135812383197",
-      "source_name": "Sam Altman",
-      "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2083193321611018639",
-      "text": "AI is useless if you can't trust it. It's important to build differently.\n\nThat's why Cohere has signed the EU Code of Practice on Transparency of AI-Generated Content, one the first companies worldwide to do so. https://t.co/LvKtf7WkGo",
-      "author": "cohere",
-      "created_at": "2026-07-31T14:09:26.000Z",
-      "url": "https://x.com/cohere/status/2083193321611018639",
-      "source_name": "Cohere",
-      "source_handle": "cohere",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2083108527854252112",
       "text": "Hy-MT2 keeps gaining momentum.\n\nSince its open-source release in May:\n→ 700K+ downloads 🌟\n→ Hy-MT2-1.8B reached #1 on the Hugging Face trending, with 30B-A3B reaching #4 🥇\n→ 70+ verified product and project integrations 💻\n→ Broader Hy-MT ecosystem support across Apple https://t.co/zfcVSJA6Rj",
       "author": "TencentHunyuan",
@@ -757,17 +812,6 @@
       "url": "https://x.com/AnthropicAI/status/2082965101083320543",
       "source_name": "Anthropic",
       "source_handle": "AnthropicAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082932590567100510",
-      "text": "Cohere has joined @NVIDIA alongside industry leaders in founding the Open Secure AI Alliance.\n\nEverybody should have the capability to keep their infrastructure secure. Everybody deserves access to models they can trust.\n\nAI for some means safety for none. https://t.co/tI0DGefgDZ https://t.co/1IUjVZGIzs",
-      "author": "cohere",
-      "created_at": "2026-07-30T20:53:23.000Z",
-      "url": "https://x.com/cohere/status/2082932590567100510",
-      "source_name": "Cohere",
-      "source_handle": "cohere",
       "source_tier": "primary",
       "official": true
     },
@@ -856,17 +900,6 @@
       "url": "https://x.com/GoogleDeepMind/status/2082844162928381956",
       "source_name": "Google DeepMind",
       "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082616636989952217",
-      "text": "GPT-5.6 Sol has been used to solve open problems in mathematics. So why was it struggling with ARC-AGI-3, a benchmark of 2D puzzle games?\n\nWe investigated. The harness was not letting it remember what it had learned. \n\nWe found that enabling two API settings tripled our scores https://t.co/0mv05MnSn2",
-      "author": "OpenAI",
-      "created_at": "2026-07-29T23:57:54.000Z",
-      "url": "https://x.com/OpenAI/status/2082616636989952217",
-      "source_name": "OpenAI",
-      "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
     },
@@ -977,17 +1010,6 @@
       "url": "https://x.com/AnthropicAI/status/2082153297670992134",
       "source_name": "Anthropic",
       "source_handle": "AnthropicAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082142599671107737",
-      "text": "Model Council is now available inside Computer.\n\nRun independent analysis across multiple frontier models, choose your analysis depth, and get a single cited report on where models agree, where they disagree, and what each found that others missed. https://t.co/r74olFGucR",
-      "author": "perplexity_ai",
-      "created_at": "2026-07-28T16:34:14.000Z",
-      "url": "https://x.com/perplexity_ai/status/2082142599671107737",
-      "source_name": "Perplexity",
-      "source_handle": "perplexity_ai",
       "source_tier": "primary",
       "official": true
     },
@@ -1256,17 +1278,6 @@
       "official": true
     },
     {
-      "tweet_id": "2079925576077324552",
-      "text": "We’re expanding our work with the US Dept. of @ENERGY on the Genesis Mission – an initiative to double the pace of scientific discovery within a decade. 🧪\n\nBy committing $40M in AI tokens and @GoogleCloud credits, more lab researchers will gain access to Gemini and other AI https://t.co/jsHtsiUNJC",
-      "author": "GoogleDeepMind",
-      "created_at": "2026-07-22T13:44:35.000Z",
-      "url": "https://x.com/GoogleDeepMind/status/2079925576077324552",
-      "source_name": "Google DeepMind",
-      "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2079617029473182132",
       "text": "As AI models are now finding vulnerabilities faster than we can fix them, our approach to securing software must be built on highly efficient and capable models.\n\nWhich brings us to our third (!) model launch of the day: Gemini 3.5 Flash Cyber ⚡🛡️\n\nBuilt on top of 3.5 Flash, in https://t.co/8N63Ws6laR",
       "author": "GoogleAI",
@@ -1408,17 +1419,6 @@
       "source_handle": "ylecun",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2075307298432676259",
-      "text": "We gave a few leaders early access to Muse Spark 1.1, here's what they had to say: https://t.co/66Evscf2TM",
-      "author": "AIatMeta",
-      "created_at": "2026-07-09T19:53:11.000Z",
-      "url": "https://x.com/AIatMeta/status/2075307298432676259",
-      "source_name": "Meta AI",
-      "source_handle": "AIatMeta",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2075131809638088865",
