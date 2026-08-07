@@ -60,4 +60,4 @@ git status --short
 
 报告必须列出实际运行的命令和结果；基线已有失败时，必须单独说明失败测试及其与本次变更的关系，不得声称未通过的检查为通过。
 
-提交前检查 `git diff --staged`，提交信息使用中文 Conventional Commit。不要使用 `git commit --no-verify` 绕过检查。
+提交前检查 `git diff --staged`。普通提交使用中文 Conventional Commit；合并提交统一使用英文 `Merge` 标识，例如 `Merge: 合并 X 来源采集`，通过 GitHub Pull Request 合并时保留 GitHub 默认的 `Merge pull request #...` 格式。不要使用 `git commit --no-verify` 绕过检查。

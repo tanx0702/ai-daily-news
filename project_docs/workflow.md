@@ -48,7 +48,7 @@ git status --short
 
 ## 提交规范
 
-提交信息使用中文 Conventional Commit：
+普通提交信息使用中文 Conventional Commit：
 
 ```text
 <type>(<scope>): <简洁、命令式的结果描述>
@@ -61,6 +61,15 @@ docs: 重构项目导航与开发规范
 fix(collector): 隔离 X 快照过期候选
 test(quality): 覆盖发布门槛回填路径
 ```
+
+合并提交不使用中文 `合并` 前缀，统一使用英文 `Merge` 标识：
+
+```text
+Merge: 合并 X 来源采集
+Merge pull request #12 from tanx0702/codex/quality-gate-batch-retry
+```
+
+本地合并可以使用 `Merge: <中文摘要>`；通过 GitHub Pull Request 合并时保留 GitHub 自动生成的 `Merge pull request #...` 标题。历史提交不做改写。
 
 提交前检查 `git diff --staged`，确认只包含当前任务文件，没有密钥、日志、产物和无关修改。不要使用 `git commit --no-verify` 绕过检查。
 
