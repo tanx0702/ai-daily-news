@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-07T03:16:45.186486Z",
+  "generated_at": "2026-08-07T07:43:21.596172Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,61 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085618024137330887",
+      "text": "This is an invitation to hang out with the core team behind H3 on r/StableDiffusion AMA!🩵",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-07T06:44:20.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085618024137330887",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085614043512127542",
+      "text": "Four days after we opened the weights, the community built what's usually a lab deliverable: a distillation LoRA that cuts sampling from 20 steps to 4–8.\n\nThis is why we open-sourced. 🫡",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-07T06:28:31.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085614043512127542",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085592855007871137",
+      "text": "When I ask Codex to win Nethack it cheats, elaborately. I can't tell if this is misalignment or alignment. https://t.co/D3f1N5SFJm",
+      "author": "emollick",
+      "created_at": "2026-08-07T05:04:19.000Z",
+      "url": "https://x.com/emollick/status/2085592855007871137",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085582623909265546",
+      "text": "And then there were four (given the Meta announcement that something similar happened). https://t.co/5bifisD5kn",
+      "author": "emollick",
+      "created_at": "2026-08-07T04:23:40.000Z",
+      "url": "https://x.com/emollick/status/2085582623909265546",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085580116143292850",
+      "text": "This paper, which got very skeptical reviews at the time, looks increasingly prescient in retrospect\n🦄",
+      "author": "emollick",
+      "created_at": "2026-08-07T04:13:42.000Z",
+      "url": "https://x.com/emollick/status/2085580116143292850",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2085557443166146951",
       "text": "Is all code becoming the same?\n\nOn one hand, 95% of Kaggle submissions that set a random seed now use 42 (a Hitchhiker's Guide joke LLMs love). But, it turns out that while coding syntax is converging, approaches to problems are not converging. Human prompters drive real variety. https://t.co/CqLo4lkNv8",
@@ -33,17 +88,6 @@
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2085553951034745154",
-      "text": "Basically every remaining good AI benchmark score has an implied asterisk next to it which reads:\n\n* could be signficantly higher with a better harness.",
-      "author": "emollick",
-      "created_at": "2026-08-07T02:29:44.000Z",
-      "url": "https://x.com/emollick/status/2085553951034745154",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2085548781244973365",
@@ -200,28 +244,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085430224074760225",
-      "text": "Pretty big break happening in academia between the “AI is banned for reviews” journals and the “AI is mandatory for reviews” journals.",
-      "author": "emollick",
-      "created_at": "2026-08-06T18:18:05.000Z",
-      "url": "https://x.com/emollick/status/2085430224074760225",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085421134535610768",
-      "text": "It is not a novel observation at this point, but the collapse of Google’s Gemini as a frontier model series is still astonishing. Unlike Meta &amp; SpaceX, Google has captive Gemini customers at an enterprise level, so the fact that they are pushed towards Gemini 3.1 Pro is a problem",
-      "author": "emollick",
-      "created_at": "2026-08-06T17:41:58.000Z",
-      "url": "https://x.com/emollick/status/2085421134535610768",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2085416724266983682",
       "text": "One thing I want to make perfectly clear: back in 2023 and early 2024, I was wrong about the role that LLMs would come to play. I underestimated their long-term importance. I have acknowledged this many times.\n\nThis was the moment I changed my mind, in December 2024, following",
       "author": "fchollet",
@@ -231,28 +253,6 @@
       "source_handle": "fchollet",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2085412991424762357",
-      "text": "Let's ask any question with H3 Team 👋",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-06T17:09:36.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085412991424762357",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2085406004431532106",
-      "text": "Now available in @LumaLabsAI Agents: H3 generating up to 15s of 2K video with native stereo sound.\n\nMore places to direct, create, and bring ideas to life. 🎬😉",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-06T16:41:51.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085406004431532106",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2085403453245784495",
