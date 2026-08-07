@@ -44,7 +44,7 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 ## X 快照来源
 
-X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，默认地址为仓库 `x-feed` 分支中的 `x-feed.json`；该快照由 GitHub Runner/相关工作流生成。
+X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，默认地址为仓库 `x-feed` 分支中的 `x-feed.json`；该快照由 GitHub Runner/相关工作流生成。工作流按 UTC `07` 分、`02/06/10/14/18/22` 点运行，对应 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07`；06:07 的快照必须先于 08:00 日报完成发布。
 
 `config/x_sources.json` 是受控账号白名单，账号按 `primary`、`research`、`media` 分层，并标记 `official`。快照中的每条记录必须满足：
 
