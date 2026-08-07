@@ -61,6 +61,8 @@ cron 在宿主机运行，不在 Compose 容器内运行。生产示例：
 
 cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防止宿主机命令并发，后者防止应用进程重复执行。锁 TTL 默认 6 小时；只有确认任务异常残留时才调整或清理。
 
+X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/workflows/x-feed.yml` 每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发；06:07 批次为 08:00 日报提供最新快照。若当天日报日志出现 X 快照过期，应先检查该工作流是否已成功发布 `x-feed` 分支的 `x-feed.json`。
+
 ## HTTP 入口
 
 | 地址 | 处理者 | 用途 |
