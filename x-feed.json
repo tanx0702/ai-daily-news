@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-07T07:43:21.596172Z",
+  "generated_at": "2026-08-07T11:06:49.371367Z",
   "source_count": 35,
   "successful_source_count": 34,
   "failed_source_count": 1,
@@ -12,6 +12,39 @@
   ],
   "tweet_count": 165,
   "tweets": [
+    {
+      "tweet_id": "2085674949256061005",
+      "text": "Top stories in AI today:\n\n- AI designs working viruses from scratch\n- Rowan’s Corner: The best AI use cases aren’t coming from labs\n- Turn any idea into an AI-powered site with Lovable \n- Anthropic solves Fable 5’s biggest problem https://t.co/d5inIoxmhI",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-07T10:30:32.000Z",
+      "url": "https://x.com/TheRundownAI/status/2085674949256061005",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085661188843794548",
+      "text": "The cloud was always a cat. Qwen3.8-Max just saw it first. 😼☁️ Try it yourself!",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-07T09:35:51.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2085661188843794548",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2085636256365740460",
+      "text": "Thanks for the thorough testing! With Qwen3.8-Max, everyone can observe the world in detail. 👀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-07T07:56:47.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2085636256365740460",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2085618024137330887",
       "text": "This is an invitation to hang out with the core team behind H3 on r/StableDiffusion AMA!🩵",
@@ -497,17 +530,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084855446595408121",
-      "text": "Try npm i -g cline on Cline!👀",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-05T04:14:07.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084855446595408121",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084836757095526689",
       "text": "🚀 Hy3 is now live in WorkBuddy global—free for users worldwide through August 31, 2026 (PT).\n\nResearch, analyze data, create documents and presentations, and handle workplace communications in an agentic AI workspace—no setup required.\n\nHy3 is also available through Tencent https://t.co/dzhfniK3SK",
       "author": "TencentHunyuan",
@@ -515,17 +537,6 @@
       "url": "https://x.com/TencentHunyuan/status/2084836757095526689",
       "source_name": "Tencent Hunyuan",
       "source_handle": "TencentHunyuan",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084834140516676093",
-      "text": "Qwen3.8-Max hits #2 in Image-to-WebDev Arena! It sees, it builds~😎",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-05T02:49:28.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084834140516676093",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
     },
@@ -604,17 +615,6 @@
       "source_name": "Sam Altman",
       "source_handle": "sama",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2084648341980225701",
-      "text": "Top stories in tech today:\n\n- Silicon Valley’s push to sell experimental drugs\n- SpaceX to nab Louisiana’s damaged coast\n- Even more bad buzz for Flock’s AI cameras\n- Apple steers buyers away from MacBook Air\n- Quick hits on other tech news https://t.co/ysej0aid1x",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-04T14:31:10.000Z",
-      "url": "https://x.com/TheRundownAI/status/2084648341980225701",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
       "official": false
     },
     {
