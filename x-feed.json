@@ -1,17 +1,100 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-07T22:53:08.200138Z",
+  "generated_at": "2026-08-08T03:46:16.999010Z",
   "source_count": 35,
-  "successful_source_count": 34,
-  "failed_source_count": 1,
-  "failures": [
-    {
-      "handle": "karpathy",
-      "reason": "no_public_tweets"
-    }
-  ],
-  "tweet_count": 210,
+  "successful_source_count": 35,
+  "failed_source_count": 0,
+  "failures": [],
+  "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2085914742414061886",
+      "text": "Really enjoyed talking to @bzcohen about AlphaGo's famous move 37 and the significance of it 10 years on for math and science breakthroughs in verifiable domains",
+      "author": "demishassabis",
+      "created_at": "2026-08-08T02:23:23.000Z",
+      "url": "https://x.com/demishassabis/status/2085914742414061886",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085894257651392763",
+      "text": "A decade ago, a computer did something that no human would have done. It was considered a breakthrough for AI. Now the world is full of them. https://t.co/lWcMb4tovy",
+      "author": "WSJ",
+      "created_at": "2026-08-08T01:01:59.000Z",
+      "url": "https://x.com/demishassabis/status/2085894257651392763",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2085884470306234676",
+      "text": "dear openai\n\njust make a new phone\n\neveryone wants openaiphone\n\nwe can read 2-4x faster than we talk and speak\n\nopenai alexa reachy hybrid is fine but pls just be a stepping stone to phone\n\nwe want phone\n\nsigned,\n\neverybody",
+      "author": "swyx",
+      "created_at": "2026-08-08T00:23:06.000Z",
+      "url": "https://x.com/swyx/status/2085884470306234676",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085878147782939064",
+      "text": "Ant Group has just released Ling 3.0 Flash, a 124B open weights model that scores 38 on the Artificial Analysis Intelligence Index. Ling 3.0 demonstrates a marked improvement over the previous generation and sits on the Pareto frontier for Intelligence versus Total Parameters https://t.co/gOEOE5o8Rv",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-07T23:57:58.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2085878147782939064",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085877951925801274",
+      "text": "Thanks to the video from the Black Hat security conference of OpenAI's presentation about \"The Hugging Face Incident\" we now have a detailed timeline of what happened from OpenAI's perspective - I wrote up the details here, it's pretty wild\nhttps://t.co/QZ1okup6jJ",
+      "author": "simonw",
+      "created_at": "2026-08-07T23:57:12.000Z",
+      "url": "https://x.com/simonw/status/2085877951925801274",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085866480001048776",
+      "text": "👀",
+      "author": "simonw",
+      "created_at": "2026-08-07T23:11:37.000Z",
+      "url": "https://x.com/simonw/status/2085866480001048776",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085863307106468143",
+      "text": "we should have called this post \"defeating the lethal trifecta\"\n\nhttps://t.co/iGPfHR9I9y https://t.co/b4UaLs8LaF",
+      "author": "trq212",
+      "created_at": "2026-08-07T22:59:00.000Z",
+      "url": "https://x.com/simonw/status/2085863307106468143",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085862292311396515",
+      "text": "astra is a powerful model and we are working to make it generally available.\n\nwe do not think it is a good strategy to keep powerful models to a chosen few.\n\ngiven its cyber capabilities, we need a little big longer to do do this safely. but hopefully not too long!",
+      "author": "sama",
+      "created_at": "2026-08-07T22:54:58.000Z",
+      "url": "https://x.com/sama/status/2085862292311396515",
+      "source_name": "Sam Altman",
+      "source_handle": "sama",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2085835071156883685",
       "text": "current end state of forge https://t.co/NXLsIdYtuf",
@@ -376,17 +459,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085548781244973365",
-      "text": "\"Felony humble-bragging\" is a great line",
-      "author": "simonw",
-      "created_at": "2026-08-07T02:09:11.000Z",
-      "url": "https://x.com/simonw/status/2085548781244973365",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085517544795079014",
       "text": "## eval competition idea: Help kill my SaaS \n\nmy team is proposing to pay &gt;$40k/year for enterprise saas we have never used and will never be able to customize.\n\nas a smol business owner, this feels shitty.\n\nthinking of doing a small remote hackathon:\n- i cover $1000 in tokens https://t.co/voO2eNwtOr",
       "author": "swyx",
@@ -398,17 +470,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085511345185960396",
-      "text": "At final Black Hat keynote (called a locknote, ha ha) panelists say they are surprised at how the OpenAI - Hugging Face incident debrief, as well as other reporting on AI agent escapees (Anthropic/Meta) - has turned into a marketing/PR play. \"Felony humble-bragging,\" said one. https://t.co/bhZAj0UNRt",
-      "author": "sharongoldman",
-      "created_at": "2026-08-06T23:40:26.000Z",
-      "url": "https://x.com/simonw/status/2085511345185960396",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085509023852572804",
       "text": "Muse Spark 1.2 places Meta on the Cost per Task Pareto frontier, scoring 6 points below Claude Opus 5 at ~1/6th of the cost\n\nAt Meta's $1.25/$4.25 per 1M token pricing, Muse Spark 1.2 (xhigh) sits on the Pareto frontier of Intelligence Index vs Cost per Task. It delivers https://t.co/s2JS6ZTZkO",
       "author": "ArtificialAnlys",
@@ -416,28 +477,6 @@
       "url": "https://x.com/ArtificialAnlys/status/2085509023852572804",
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085504717829058569",
-      "text": "man @waterloo_intern theses keep getting challenged*\n\n&gt; megakernels are dead\ncursor drops monster kitty kernel\n\n&gt; etched asics are dead\namd buys taalas, and etched is valued at $10b by SK Hynix and TSMC lol\n\nwhos gonna take on the remaining two theses?\n\n*note that he was making",
-      "author": "swyx",
-      "created_at": "2026-08-06T23:14:06.000Z",
-      "url": "https://x.com/swyx/status/2085504717829058569",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085481628160381070",
-      "text": "Anyone understand what the equivalent of GPT-5.6 Instant in ChatGPT is for the OpenAI API?",
-      "author": "simonw",
-      "created_at": "2026-08-06T21:42:21.000Z",
-      "url": "https://x.com/simonw/status/2085481628160381070",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
       "source_tier": "media",
       "official": false
     },
@@ -471,6 +510,17 @@
       "url": "https://x.com/ArtificialAnlys/status/2085458318269759746",
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2085457233194737931",
+      "text": "NEW: OpenAI’s device - a human-like smart speaker -\nwill look like a doughnut and be the size of a hockey puck. It meant to be held. It has a camera, speakers, microphones, lights and, most notably, moving parts to show interactivity. It’ll be $300-400. https://t.co/gDxQU6FB8E",
+      "author": "markgurman",
+      "created_at": "2026-08-06T20:05:24.000Z",
+      "url": "https://x.com/swyx/status/2085457233194737931",
+      "source_name": "swyx",
+      "source_handle": "swyx",
       "source_tier": "media",
       "official": false
     },
@@ -605,17 +655,6 @@
       "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2085270415614828675",
-      "text": "Alibaba's Qwen3.8 Max scores 56 on the Artificial Analysis Intelligence Index at $1.14 per task, but open weights leader Kimi K3 remains 1 point ahead at 25% lower cost per task ($0.86)\n\n@Alibaba_Qwen has released Qwen3.8 Max, which Alibaba states is a 2.4T total parameter MoE https://t.co/Wix4sXPd09",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-06T07:43:04.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2085270415614828675",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2085268749851255280",
@@ -904,17 +943,6 @@
       "official": false
     },
     {
-      "tweet_id": "2084426439034540297",
-      "text": "two weeks ago i went on @swyx's pod and said some things that i... should not have said. \n\na lot has happened since then, i owe you all an apology.\n\ni'm sorry that i was right about every single thing. \n\na) re megakernels are dead\nwhy are megakernels useful? you spend two months https://t.co/L3oxkoWQSG",
-      "author": "waterloo_intern",
-      "created_at": "2026-08-03T23:49:24.000Z",
-      "url": "https://x.com/swyx/status/2084426439034540297",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2084389471026323658",
       "text": "8.5 percentage points ahead of Gemini 3.5 Flash\n\ncongrats to @Alibaba_Qwen ! https://t.co/B71Mkq5oXe",
       "author": "skalskip92",
@@ -1003,6 +1031,17 @@
       "official": false
     },
     {
+      "tweet_id": "2083749667410727319",
+      "text": "We're starting to leave the territory where you'd test an LLM by e.g. \"create an svg of pelican on a bicycle\". As one idea to generalize it, I was interested what Opus 5 would do if I gave it the first paragraph of the Lord of the Rings, a 1M token budget (~$10) and asked for https://t.co/ybIpXhYSsj",
+      "author": "karpathy",
+      "created_at": "2026-08-02T03:00:09.000Z",
+      "url": "https://x.com/karpathy/status/2083749667410727319",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2083566916476469622",
       "text": "Our Twitch streams with @Cohere_Labs are #1 in the tech category⚡️\n\nCohere Labs' free ML Summer School series has brought together viewers from 20+ countries to learn about everything from NLP in LLMs to building your career in tech.\n\nSee you next week to learn more: https://t.co/flesfYZGkW",
       "author": "cohere",
@@ -1056,17 +1095,6 @@
       "source_handle": "xAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2083221585792762171",
-      "text": "cool use case of chatgpt work i heard last night:\n\nconnect your family calendars and explain your kids' interests.\n\nevery morning for the drive to school, have it make a podcast that talks about one kid's soccer game that afternoon, one kid's upcoming birthday, some news, etc.",
-      "author": "sama",
-      "created_at": "2026-07-31T16:01:45.000Z",
-      "url": "https://x.com/sama/status/2083221585792762171",
-      "source_name": "Sam Altman",
-      "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2083221445375668654",
@@ -1663,6 +1691,17 @@
       "official": true
     },
     {
+      "tweet_id": "2079610838143623371",
+      "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10",
+      "author": "karpathy",
+      "created_at": "2026-07-21T16:53:55.000Z",
+      "url": "https://x.com/karpathy/status/2079610838143623371",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
       "tweet_id": "2079598447234064801",
       "text": "Mistral is announcing an expanded global strategic partnership with @Microsoft to give enterprises and regulated industries frontier AI they can control.\n\nAs Mistral is expanding its AI compute capacity in Europe, the companies are expanding their strategic partnership with https://t.co/tfK6pt3Ixz",
       "author": "MistralAI",
@@ -1760,17 +1799,6 @@
       "source_handle": "AIatMeta",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2076957440109625718",
-      "text": "A Framework for Frontier AI and the Dawning of a New Age\n\nThis is a pivotal moment in human history. Artificial General Intelligence (AGI), a system that exhibits all the cognitive capabilities the brain has, is probably only a few short years away. When we",
-      "author": "demishassabis",
-      "created_at": "2026-07-14T09:10:16.000Z",
-      "url": "https://x.com/demishassabis/status/2076957440109625718",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2075574336656994736",
@@ -1925,6 +1953,61 @@
       "source_handle": "MicrosoftAI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2069547676849557725",
+      "text": "This is a new paradigm for interacting with Claude that is significantly more \"inline\" with all the other human activity org-wide. Once you do all of the under the hood engineering work to make this \"just work\" (e.g. across tools, integrations, compute environments, memory,",
+      "author": "karpathy",
+      "created_at": "2026-06-23T22:26:31.000Z",
+      "url": "https://x.com/karpathy/status/2069547676849557725",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2069468693017268244",
+      "text": "Introducing Claude Tag, a new way for teams to work with Claude.\n\nIn Slack, Claude joins as a team member with access to the channels and tools you choose. Tag Claude in and delegate tasks to it while you focus on other work. https://t.co/R2C6A5Kcye",
+      "author": "claudeai",
+      "created_at": "2026-06-23T17:12:39.000Z",
+      "url": "https://x.com/karpathy/status/2069468693017268244",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2065490793092337691",
+      "text": "In awe of SpaceX and its story - past, present and the future. You can think about it in 10+ different ways and continue re-blowing your mind in circles. Huge congrats to the team! 🚀",
+      "author": "karpathy",
+      "created_at": "2026-06-12T17:45:54.000Z",
+      "url": "https://x.com/karpathy/status/2065490793092337691",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2064409694761054332",
+      "text": "This is a super exciting release - Claude Fable 5 is the same underlying model as Mythos but with added safeguards. The benchmarks are great and it's SOTA on everything by a margin but I'll add that *qualitatively* also, this is a major-version-bump-deserving step change forward",
+      "author": "karpathy",
+      "created_at": "2026-06-09T18:10:00.000Z",
+      "url": "https://x.com/karpathy/status/2064409694761054332",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2064394151441863006",
+      "text": "Fable 5 is state-of-the-art on nearly all tested benchmarks, with exceptional performance in software engineering, knowledge work, scientific research, and vision.\n\nThe longer and more complex the task, the larger Fable 5’s lead over our other models. https://t.co/DxgSu0KUxh",
+      "author": "claudeai",
+      "created_at": "2026-06-09T17:08:14.000Z",
+      "url": "https://x.com/karpathy/status/2064394151441863006",
+      "source_name": "Andrej Karpathy",
+      "source_handle": "karpathy",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2062645525111771521",
