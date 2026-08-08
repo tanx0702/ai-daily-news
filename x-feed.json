@@ -1,12 +1,78 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-08T14:45:10.075920Z",
+  "generated_at": "2026-08-08T18:56:47.298796Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 219,
+  "tweet_count": 217,
   "tweets": [
+    {
+      "tweet_id": "2086157587205296255",
+      "text": "reading thru applications. over 600 people applied, 100 admitted last night.\n\nwe are going to kill\nSO\nMUCH\nSAAS https://t.co/nrZO3rXkkU",
+      "author": "swyx",
+      "created_at": "2026-08-08T18:28:22.000Z",
+      "url": "https://x.com/swyx/status/2086157587205296255",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086128512625254770",
+      "text": "I'm at 1/2, I have some of the worst …",
+      "author": "fchollet",
+      "created_at": "2026-08-08T16:32:50.000Z",
+      "url": "https://x.com/fchollet/status/2086128512625254770",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2086123848215450105",
+      "text": "Neat example here of the agents communicating purely through file names, including adding base64-encoded attachments and using \"zz\" prefixes to ensure their new message sorts to the bottom of the list",
+      "author": "simonw",
+      "created_at": "2026-08-08T16:14:18.000Z",
+      "url": "https://x.com/simonw/status/2086123848215450105",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086111975889670172",
+      "text": "Computer science is not the only useful discipline for understanding collective AI behavior, it may not even be the most useful. https://t.co/U4VBZmmYJz",
+      "author": "emollick",
+      "created_at": "2026-08-08T15:27:07.000Z",
+      "url": "https://x.com/emollick/status/2086111975889670172",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2086107729450389685",
+      "text": "+25% and +8% respectively since, in under 2 weeks.…",
+      "author": "fchollet",
+      "created_at": "2026-08-08T15:10:15.000Z",
+      "url": "https://x.com/fchollet/status/2086107729450389685",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2086101532890538192",
+      "text": "In hindsight, this was a pretty good investment thesis. GPUs, CPUs, memory, datacenter suppliers, etc. And the thesis is still intact.",
+      "author": "fchollet",
+      "created_at": "2026-08-08T14:45:37.000Z",
+      "url": "https://x.com/fchollet/status/2086101532890538192",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2086069179589783615",
       "text": "The reports of the demise of Google are greatly exaggerated. I wouldn't underestimate them",
@@ -206,28 +272,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085796727362052241",
-      "text": "In the era of base LLM scaling (2022-2024), I believed the LLM line of research would reach a capability plateau (as later seen with base LLMs).\n\nIn late 2024, after the o3 test-time compute demo, I changed my views: the new models were showing genuine fluid intelligence, and",
-      "author": "fchollet",
-      "created_at": "2026-08-07T18:34:26.000Z",
-      "url": "https://x.com/fchollet/status/2085796727362052241",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085790995569090966",
-      "text": "if you don't have a model that escaped sandbox during cybersecurity testing are you even a frontier lab anymore",
-      "author": "swyx",
-      "created_at": "2026-08-07T18:11:40.000Z",
-      "url": "https://x.com/swyx/status/2085790995569090966",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085781012978843972",
       "text": "OMG bioluminescent creatures invading!! 🫨\n\nMight be the most fun thing to make with H3 yet. Come try! ✨🪼",
       "author": "MiniMax_AI",
@@ -247,28 +291,6 @@
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085773575282143337",
-      "text": "The Keras community call is starting now -- link to join in tweet below.",
-      "author": "fchollet",
-      "created_at": "2026-08-07T17:02:26.000Z",
-      "url": "https://x.com/fchollet/status/2085773575282143337",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085769216515293639",
-      "text": "The Keras community call starts in 15 minutes!",
-      "author": "fchollet",
-      "created_at": "2026-08-07T16:45:07.000Z",
-      "url": "https://x.com/fchollet/status/2085769216515293639",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
       "official": false
     },
     {
@@ -316,28 +338,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085749476275450219",
-      "text": "Useful tip for the ChatGPT mobile app: long press the send button to adjust the effort",
-      "author": "simonw",
-      "created_at": "2026-08-07T15:26:41.000Z",
-      "url": "https://x.com/simonw/status/2085749476275450219",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085746263396585871",
-      "text": "@simonw i personally leave it on instant all the time and go up to high sometimes when i need something more comprehensive. pro tip: if you long press the send button on mobile you can change the slider for just this prompt. i call it the slingshot!",
-      "author": "michpokrass",
-      "created_at": "2026-08-07T15:13:55.000Z",
-      "url": "https://x.com/simonw/status/2085746263396585871",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085745490566562276",
       "text": "So, given the past couple days of news, what is the plan to deal with the cybersecurity threats that will happen in the coming months when we have open weights Mythos/Astra level models?",
       "author": "emollick",
@@ -379,17 +379,6 @@
       "source_name": "The Rundown AI",
       "source_handle": "TheRundownAI",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085690446618022042",
-      "text": "We are as @sebkrier points out, in a Vingean soft take-off scenario at a minimum. Even the most AI skeptical observers expect AGI/ASI to be achieved &amp; diffused in less than a century at this point￼ https://t.co/AjD9gLqwph",
-      "author": "emollick",
-      "created_at": "2026-08-07T11:32:07.000Z",
-      "url": "https://x.com/emollick/status/2085690446618022042",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
       "official": false
     },
     {
@@ -489,17 +478,6 @@
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085471158887923728",
-      "text": "The Keras community meeting will take place this Friday at 10am PT -- the team will present the latest developments in the Keras ecosystem, in particular the new vLLM integration.\n\nAnyone can join the call. Please use this link https://t.co/zy5oJ5KRiW to join when the meeting https://t.co/UrmPnpYJ7W",
-      "author": "fchollet",
-      "created_at": "2026-08-06T21:00:45.000Z",
-      "url": "https://x.com/fchollet/status/2085471158887923728",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
-      "source_tier": "research",
       "official": false
     },
     {
@@ -2208,11 +2186,11 @@
       "official": true
     },
     {
-      "tweet_id": "1870194696477388836",
-      "text": "The limitations of specific techniques are predictable and correspondingly lead to plateaus for those techniques. But there is always the next technique, building on top of the pile that's already available.\n\nThere is enough research investment that there will be no wall.",
+      "tweet_id": "1870707755012755609",
+      "text": "The most reliably predictable trend of the next 100 years: every year, humanity will use significantly more computing power than the previous year.\n\nSomeone should start an ETF based on that thesis (it's not just $NVDA and $AMD, it's cloud services, the data center industry,",
       "author": "fchollet",
-      "created_at": "2024-12-20T19:48:56.000Z",
-      "url": "https://x.com/fchollet/status/1870194696477388836",
+      "created_at": "2024-12-22T05:47:39.000Z",
+      "url": "https://x.com/fchollet/status/1870707755012755609",
       "source_name": "Francois Chollet",
       "source_handle": "fchollet",
       "source_tier": "research",
