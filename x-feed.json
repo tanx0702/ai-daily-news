@@ -1,12 +1,23 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-08T07:11:38.344164Z",
+  "generated_at": "2026-08-08T10:47:20.607070Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 218,
+  "tweet_count": 219,
   "tweets": [
+    {
+      "tweet_id": "2085995879966921177",
+      "text": "$10,000 kill my saas in a weekend competition is live!\n\nTECH STACK:\nany coding agent\nany model\nup to $500 in token spend incl subscriptions\n\nsee luma for description. join waitlist if late to this - finish line extended to Wednesday.\n\nthe brief is live and people are prompting https://t.co/jMJ6pPYYFr",
+      "author": "swyx",
+      "created_at": "2026-08-08T07:45:48.000Z",
+      "url": "https://x.com/swyx/status/2085995879966921177",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2085956565157253272",
       "text": "You may have been told to watch this video about the OpenAI AI hack. You really should, even if you don't usually care about tech stuff.\n\nIf nothing else, click this link to the 18 minutes in &amp; see how the agents spoke with each other. Its eye opening.  https://t.co/G12N4FKfHG",
