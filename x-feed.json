@@ -1,12 +1,34 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-09T18:59:12.700882Z",
+  "generated_at": "2026-08-09T22:45:56.494720Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 215,
   "tweets": [
+    {
+      "tweet_id": "2086579898009739510",
+      "text": "I feel like the debate over AI in academic journals is way too focused on where the capabilities of AI are today (or even where they were a couple years ago) and not nearly focused on where they will almost certainly be in the coming years…\n\n… and publication takes many years.",
+      "author": "emollick",
+      "created_at": "2026-08-09T22:26:29.000Z",
+      "url": "https://x.com/emollick/status/2086579898009739510",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2086574892560884135",
+      "text": "Huge congratulations Shreyas @shrez_royal09 - youngest ever British chess champion at just 17! Happy to have played a small part in supporting your journey to the top. Congratulations to the amazing Bodhana too!",
+      "author": "demishassabis",
+      "created_at": "2026-08-09T22:06:35.000Z",
+      "url": "https://x.com/demishassabis/status/2086574892560884135",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2086511535015268647",
       "text": "I agree, even if Fableish is most efficient for Fable, it is a failure in applying theory-of-mind to the user(s).\n\nIt should know that I don't want to hear its dense neolanguage, and it should know that Fableish should not leak into the completed product for a different audience.",
@@ -27,6 +49,17 @@
       "source_name": "swyx",
       "source_handle": "swyx",
       "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086501136278630618",
+      "text": "🏆 The 2026 British Chess Championships are complete!\n♔ British Champion: Shreyas Royal\n♕ British Women's Champion: Bodhana Sivanandan, who claimed the title after a dramatic rapid play-off against Trisha Kanyamarala.\nCongratulations to all of this year's champions ! ❤️♟️ https://t.co/LVVb7NT2jG",
+      "author": "ecfchess",
+      "created_at": "2026-08-09T17:13:30.000Z",
+      "url": "https://x.com/demishassabis/status/2086501136278630618",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
       "official": false
     },
     {
@@ -104,17 +137,6 @@
       "source_name": "swyx",
       "source_handle": "swyx",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2086338988520927368",
-      "text": "Telling Sol in Codex that I want to speak to the manager: \"I want you, not your agents, to go through everything. Stop delegating this task to the reports of dumber agent and elaborate test harnesses, they are missing things you would have caught by glancing at it.\"",
-      "author": "emollick",
-      "created_at": "2026-08-09T06:29:11.000Z",
-      "url": "https://x.com/emollick/status/2086338988520927368",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
       "official": false
     },
     {
@@ -1610,28 +1632,6 @@
       "url": "https://x.com/AndrewYNg/status/2080333504446108104",
       "source_name": "Andrew Ng",
       "source_handle": "AndrewYNg",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2080332282028507234",
-      "text": "Congratulations @KanishkaNarayan on your new role as UK's AI Minister in the Cabinet, great news for the UK AI ecosystem!",
-      "author": "demishassabis",
-      "created_at": "2026-07-23T16:40:41.000Z",
-      "url": "https://x.com/demishassabis/status/2080332282028507234",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2080066326718976268",
-      "text": "48 hours since @10DowningStreet appointed me AI Minister, and feeling relentlessly focused on shaping AI with British leadership:\n\n**We reindustrialise with AI manufacturing** 🏭\n-- First call with @demishassabis on turning British advantage into British jobs\n-- Spoke to",
-      "author": "KanishkaNarayan",
-      "created_at": "2026-07-22T23:03:52.000Z",
-      "url": "https://x.com/demishassabis/status/2080066326718976268",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
       "source_tier": "research",
       "official": false
     },
