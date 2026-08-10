@@ -1,6 +1,6 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-10T08:02:50.772786Z",
+  "generated_at": "2026-08-10T11:21:15.556827Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
@@ -8,11 +8,33 @@
   "tweet_count": 215,
   "tweets": [
     {
-      "tweet_id": "2086718280199467207",
-      "text": "A few of the biggest takeaways from our H3 conversation on ThursdAI 🎥\n\n🔓 Open video is reaching the frontier.\n\nThe discussion didn’t frame H3 as simply “good for an open model.” It was compared directly alongside Seedance, FLUX and WAN, with @altryne calling H3 the “leading https://t.co/WLMlGqm2t5",
+      "tweet_id": "2086762055105736768",
+      "text": "Top stories in AI today:\n\n- OpenAI puts the safety brakes on Astra\n- The Rundown Roundtable: Our AI use cases\n- Cut onboarding time in half with Loom and ChatGPT\n- China’s Kimi K3 joins the jailbreak party in testing https://t.co/tOu9bqUZLy",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-10T10:30:18.000Z",
+      "url": "https://x.com/TheRundownAI/status/2086762055105736768",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086757844544811485",
+      "text": "Introducing Muse Glimmer, an open-weight 30B-parameter model optimized for local, always-on agent workflows.\n\nMuse Glimmer delivers strong performance on key agentic use cases and benchmarks compared with leading models in its size category, and is designed to run entirely on https://t.co/mI4z91GPnE",
+      "author": "AIatMeta",
+      "created_at": "2026-08-10T10:13:34.000Z",
+      "url": "https://x.com/AIatMeta/status/2086757844544811485",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2086724681219068006",
+      "text": "A few of the biggest takeaways from our H3 conversation on ThursdAI 🎥\n\nAlso, huge thank you to @altryne for having us and for bringing together such a great discussion.\n\n🔓 Open video is reaching the frontier.\n\nThe discussion didn’t frame H3 as simply “good for an open model.” https://t.co/m1LI3L9gqj",
       "author": "MiniMax_AI",
-      "created_at": "2026-08-10T07:36:22.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2086718280199467207",
+      "created_at": "2026-08-10T08:01:48.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2086724681219068006",
       "source_name": "MiniMax",
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
@@ -695,17 +717,6 @@
       "author": "TheRundownAI",
       "created_at": "2026-08-06T14:33:08.000Z",
       "url": "https://x.com/TheRundownAI/status/2085373613478146520",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085312524509937711",
-      "text": "Top stories in AI today:\n\n- Google reshuffles AI leadership as rivals pull ahead\n- Nate's Notebook: Voice mode = real context\n- Build a website hands-free with Claude Voice\n- Meta joins coding-agent race with Muse Code https://t.co/o30Is9zMeD",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-06T10:30:23.000Z",
-      "url": "https://x.com/TheRundownAI/status/2085312524509937711",
       "source_name": "The Rundown AI",
       "source_handle": "TheRundownAI",
       "source_tier": "media",
@@ -1755,17 +1766,6 @@
       "source_handle": "drfeifei",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2077138553210028042",
-      "text": "To demonstrate Meta AI's advanced reasoning and multimodal capabilities, we submitted a model to participate in the Asian Physics Olympiad’s theoretical exam. We’re happy to share that our model achieved a perfect score of 30/30, tying with the top 3 student contestants.\n\nWe https://t.co/ZnlUlfLFQW",
-      "author": "AIatMeta",
-      "created_at": "2026-07-14T21:09:57.000Z",
-      "url": "https://x.com/AIatMeta/status/2077138553210028042",
-      "source_name": "Meta AI",
-      "source_handle": "AIatMeta",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2075574336656994736",
