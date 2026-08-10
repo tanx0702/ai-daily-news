@@ -1,12 +1,56 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-10T04:10:02.682203Z",
+  "generated_at": "2026-08-10T08:02:50.772786Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 214,
+  "tweet_count": 215,
   "tweets": [
+    {
+      "tweet_id": "2086718280199467207",
+      "text": "A few of the biggest takeaways from our H3 conversation on ThursdAI 🎥\n\n🔓 Open video is reaching the frontier.\n\nThe discussion didn’t frame H3 as simply “good for an open model.” It was compared directly alongside Seedance, FLUX and WAN, with @altryne calling H3 the “leading https://t.co/WLMlGqm2t5",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-10T07:36:22.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2086718280199467207",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2086700857358450853",
+      "text": "comments like this on the aie channel miss the point.\n\n- we are building a community and an industry that is bigger than any one person can hold in their head. your slop is someone's aha moment and vice versa.\n- speakers spend quality time coming and presenting their strongest https://t.co/YkS7QpkN8B",
+      "author": "swyx",
+      "created_at": "2026-08-10T06:27:08.000Z",
+      "url": "https://x.com/swyx/status/2086700857358450853",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086685565722984842",
+      "text": "Huge thanks to @ComfyUI for an incredible livestream! \n\nFrom reference-to-video and native audio, to multi-shot commercial creation, MiniMax H3 showcased the expanding possibilities of open-weight video models. The stream also took a deep dive into quantization, offloading, https://t.co/qKk5bBkITy",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-10T05:26:22.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2086685565722984842",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2086678799329136969",
+      "text": "The MiniMax H3 open-source community is 🔥🔥🔥! \n\nLooking forward to the MiniMax H3 benchmark, the MiniMax H3 robotics dataset, and seeing so many H3s around the world.",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-10T04:59:29.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2086678799329136969",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2086664887560970531",
       "text": "👀 Seeing is just the beginning.\n\nWith Qwen-MM-Plugins, turn your favorite agent harness multimodal-native — read images, videos &amp; documents, edit videos, work with 3D/CAD, and more.\n\nFrom multimodal models → multimodal agents. 🚀\n\nWatch it in action:\nhttps://t.co/C2jQObXryM https://t.co/X6xQ3Hl4ln",
@@ -15,6 +59,17 @@
       "url": "https://x.com/Alibaba_Qwen/status/2086664887560970531",
       "source_name": "Qwen",
       "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2086649161622102423",
+      "text": "I generated 1K MiniMax H3 videos covering a wide scope of topics and styles to test the model's capabilities.. You can watch the entire 1.5 hour saga here https://t.co/MJhoyqEMJc or grad the whole thing as a dataset here https://t.co/tW78xP9Jyx https://t.co/VOqOXahJxT",
+      "author": "ostrisai",
+      "created_at": "2026-08-10T03:01:42.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2086649161622102423",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -182,17 +237,6 @@
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2086157587205296255",
-      "text": "reading thru applications. over 600 people applied, 100 admitted last night.\n\nwe are going to kill\nSO\nMUCH\nSAAS https://t.co/nrZO3rXkkU",
-      "author": "swyx",
-      "created_at": "2026-08-08T18:28:22.000Z",
-      "url": "https://x.com/swyx/status/2086157587205296255",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2086128512625254770",
@@ -404,17 +448,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085781012978843972",
-      "text": "OMG bioluminescent creatures invading!! 🫨\n\nMight be the most fun thing to make with H3 yet. Come try! ✨🪼",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-07T17:32:00.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085781012978843972",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2085774161138635016",
       "text": "We have updated the Artificial Analysis Text to Image Arena to expand the range of use cases and capabilities we test for, from UI/UX Design to Live-Action Film, and from Physics to Text Rendering. Our updated evaluation measures not just which model is best overall, but which https://t.co/2xpdLdnDHp",
       "author": "ArtificialAnlys",
@@ -514,22 +547,11 @@
       "official": true
     },
     {
-      "tweet_id": "2085618024137330887",
-      "text": "This is an invitation to hang out with the core team behind H3 on r/StableDiffusion AMA!🩵",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-07T06:44:20.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085618024137330887",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2085614043512127542",
-      "text": "Four days after we opened the weights, the community built what's usually a lab deliverable: a distillation LoRA that cuts sampling from 20 steps to 4–8.\n\nThis is why we open-sourced. 🫡",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-07T06:28:31.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085614043512127542",
+      "tweet_id": "2085555365891187027",
+      "text": "Livestream Update: @MiniMax_AI  H3: A New Open-Weight Video Model, Live in ComfyUI\n\nMiniMax H3 is an open-weight, general-purpose multimodal video generation model that works across text, images, video, and audio.  \n\nIn ComfyUI, you can use H3 for text-to-video, image-to-video, https://t.co/ziMNdGmodP",
+      "author": "ComfyUI",
+      "created_at": "2026-08-07T02:35:21.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085555365891187027",
       "source_name": "MiniMax",
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
@@ -602,6 +624,17 @@
       "official": true
     },
     {
+      "tweet_id": "2085414349548782018",
+      "text": "The week open video caught the frontier. @blizaine is on ThursdAI right NOW breaking down all three, with a surprise: MiniMax's own @VictorSuOrtiz on stage for the H3 story.\n\nMiniMax H3: open weights, #1 open video model on LMArena\nFLUX 3 Video: BFL's first video model, native",
+      "author": "altryne",
+      "created_at": "2026-08-06T17:15:00.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2085414349548782018",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2085413361207144738",
       "text": "📢 Official AMA Announcement \n\nThe complete MiniMax‑H3 development team will hold an Ask‑Me‑Anything session inside r/StableDiffusion.  \n\nThe main researcher team will be here!\n- dacongya (Head of H3 Researcher)\n- Luigi (H3 Researcher)\n- Nero (H3 Researcher)\n- Kiro (H3 https://t.co/X2YoLBqekR",
       "author": "RyanLeeMiniMax",
@@ -668,17 +701,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085365410875269616",
-      "text": "A convenience store. One continuous phone shot. Something moving inside the glass.\n\nCreated with MiniMax_AI H3 on PixVerse — raw handheld realism, consistent spatial motion, reflective surfaces, and rough hand-drawn animation in a single 15-second sequence.\n @Hailuo_AI https://t.co/vEzwLmn7QG",
-      "author": "PixVerse_",
-      "created_at": "2026-08-06T14:00:32.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085365410875269616",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2085312524509937711",
       "text": "Top stories in AI today:\n\n- Google reshuffles AI leadership as rivals pull ahead\n- Nate's Notebook: Voice mode = real context\n- Build a website hands-free with Claude Voice\n- Meta joins coding-agent race with Muse Code https://t.co/o30Is9zMeD",
       "author": "TheRundownAI",
@@ -708,17 +730,6 @@
       "url": "https://x.com/TencentHunyuan/status/2085268749851255280",
       "source_name": "Tencent Hunyuan",
       "source_handle": "TencentHunyuan",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2085246344990760991",
-      "text": "It's finally here! \n\nMinimax H3 Turbo lora makes generations 5x faster. Use only 4 steps instead of 20.\n\nhttps://t.co/fUbVjZbpwg\n\nAlso see: https://t.co/OmqHO5vBED https://t.co/T5CBs9QSL9",
-      "author": "aisearchio",
-      "created_at": "2026-08-06T06:07:25.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2085246344990760991",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
