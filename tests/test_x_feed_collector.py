@@ -80,6 +80,8 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             "topic_key": "",
             "source_tier": "primary",
             "x_official": True,
+            "x_handle": "OpenAI",
+            "x_official_source": "config/x_sources.json",
         }
     ]
 
@@ -95,6 +97,135 @@ def test_x_feed_collector_rejects_stale_snapshot(monkeypatch):
     items = XFeedCollector(feed_url="https://example.com/x-feed.json", now=now).fetch()
 
     assert items == []
+
+
+def test_x_feed_collector_accepts_snapshot_at_exact_six_hour_boundary(monkeypatch):
+    now = datetime(2026, 8, 4, 7, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(_feed(now - timedelta(hours=6))),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        max_age_hours=6,
+        now=now,
+    ).fetch()
+
+    assert len(items) == 1
+
+
+def test_x_feed_collector_rejects_snapshot_over_six_hours(monkeypatch):
+    now = datetime(2026, 8, 4, 7, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(
+            _feed(now - timedelta(hours=6, microseconds=1))
+        ),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        max_age_hours=6,
+        now=now,
+    ).fetch()
+
+    assert items == []
+
+
+def test_x_feed_collector_rejects_snapshot_too_far_in_future(monkeypatch):
+    now = datetime(2026, 8, 4, 7, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(
+            _feed(now + timedelta(minutes=5, microseconds=1))
+        ),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        max_age_hours=6,
+        now=now,
+    ).fetch()
+
+    assert items == []
+
+
+def test_x_feed_collector_rejects_invalid_schema(monkeypatch):
+    now = datetime(2026, 8, 4, 7, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["schema_version"] = "unexpected"
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    assert XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        now=now,
+    ).fetch() == []
+
+
+def test_x_feed_collector_ignores_uncontrolled_official_claim(monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["tweets"][0].update(
+        {
+            "source_name": "Unknown AI",
+            "source_handle": "unknown_ai",
+            "author": "Unknown AI",
+            "url": "https://x.com/unknown_ai/status/42",
+            "official": True,
+        }
+    )
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        now=now,
+    ).fetch()
+
+    assert len(items) == 1
+    assert items[0]["x_official"] is False
+    assert items[0]["x_official_source"] == ""
+
+
+def test_x_feed_collector_rejects_handle_that_does_not_match_status_url(monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["tweets"][0]["url"] = "https://x.com/not_openai/status/42"
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        now=now,
+    ).fetch()
+
+    assert items == []
+
+
+def test_x_feed_collector_honors_explicit_empty_controlled_registry(monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(_feed(now)),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        now=now,
+        source_registry={},
+    ).fetch()
+
+    assert len(items) == 1
+    assert items[0]["x_official"] is False
+    assert items[0]["x_official_source"] == ""
 
 
 def test_source_balance_limits_x_candidates_to_configured_daily_cap(monkeypatch):
@@ -130,7 +261,7 @@ def test_source_balance_limits_x_candidates_to_configured_daily_cap(monkeypatch)
 
 
 def test_collect_news_merges_x_feed_candidates_with_existing_pipeline(monkeypatch):
-    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
     x_candidate = {
         "id": "x-42",
         "title": "OpenAI releases an AI model",

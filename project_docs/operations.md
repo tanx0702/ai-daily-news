@@ -2,16 +2,16 @@
 
 ## 本地开发
 
-Python 3.12+ 环境中：
+Python 3.12+ 环境中，默认使用安全干跑命令：
 
 ```bash
 pip install -r requirements.txt
 python -m pytest -q
-python -m src.main
+SKIP_WECHAT_DRAFT=1 python -m src.main
 python app.py
 ```
 
-只生成日报产物、不调用公众号草稿 API：
+`SKIP_WECHAT_DRAFT=1` 是唯一安全的干跑边界：只生成日报产物和 schema v2 的 `latest.json`，绝不调用公众号草稿 API。被 block 或草稿执行失败的运行仍返回非零：
 
 ```bash
 SKIP_WECHAT_DRAFT=1 python -m src.main
@@ -24,7 +24,7 @@ $env:SKIP_WECHAT_DRAFT='1'
 python -m src.main
 ```
 
-`python -m src.main` 负责采编和产物；`python app.py` 只启动 Flask，不会自动采集新闻。
+`python -m src.main` 负责采编和产物；在生产定时任务中且 `DraftDecision=create` 时才会创建草稿。`python app.py` 只启动 Flask，不会自动采集新闻。
 
 ## Docker Compose
 
@@ -85,21 +85,21 @@ X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/w
 | `docs/archive/*.html` | 日期归档 | 公开页面 |
 | `docs/wechat.html` | 微信正文预览 | 本地检查排版 |
 | `docs/cover.jpg` | 当前封面 | 日报/草稿共用 |
-| `docs/latest.json` | 新闻、质量、来源健康和 publication | Flask 主要输入 |
-| `docs/debug/` | 选择、质量、媒体和 shadow 诊断 | nginx 不公开，不提交 |
+| `docs/latest.json` | schema v2 的 `brief_items`、`draft_decision`、`draft_execution` 和诊断 | Flask 主要输入；v1 仅冷启动只读兼容 |
+| `docs/debug/` | 聚类、核验、媒体和 shadow 诊断 | nginx 不公开，不提交；不改变简报或决策 |
 | `docs/media/` | 原文媒体缓存 | 运行时缓存，不提交 |
 | `logs/` | 应用和 cron 日志 | 不提交，检查时脱敏 |
 
-HTML/JSON/诊断通常会在草稿被阻止时继续生成。草稿阻止原因查看 `latest.json.publication`、`quality_gate` 和日志，不要手动绕过门槛。
+HTML/JSON/诊断通常会在草稿被阻止时继续生成。查看 `latest.json.draft_decision`、`latest.json.draft_execution` 和 `diagnostics`，不得手动绕过决策。旧 publication、质量状态、来源占比阻断、9 分目标和人工复核不是生产控制。
 
 ## 排查顺序
 
 1. `git status --short`，确认没有 `.env`、日志或产物准备提交。
 2. `docker compose ps` 和 `docker compose logs web --tail=200`。
-3. 访问 `/health`，确认 Flask、微信回调配置和 publication 状态。
-4. 检查 `docs/latest.json` 的 `quality_gate`、`publication`、`diagnostics.source_health`。
+3. 访问 `/health`，确认 Flask、微信回调配置和已保存的草稿决策/执行结果。
+4. 检查 `docs/latest.json` 的 `brief_items`、`draft_decision`、`draft_execution`、`diagnostics.source_health`。
 5. 查看 `docs/debug/shadow` 中的候选快照和编辑复核结果。
-6. 单独运行 `docker compose exec -T web python -m src.main`；排查草稿时设置 `SKIP_WECHAT_DRAFT=1` 干跑。
+6. 单独运行 `docker compose exec -e SKIP_WECHAT_DRAFT=1 -T web python -m src.main`；不要把真实微信草稿 API 调用当作测试步骤。
 
 ## 部署边界
 

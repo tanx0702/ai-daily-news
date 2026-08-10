@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from src.editorial_quality import annotate_editorial_candidates, assess_daily_edition
+from src.editorial_quality import annotate_editorial_candidates
 from src.editorial_selection import select_editorial_candidates
 
 
@@ -133,83 +133,3 @@ def test_selection_keeps_one_story_for_one_company_conference_event():
     assert {item["title"] for item in selected} == {cloud["title"], independent["title"]}
     assert reserves == [glasses]
     assert report["event_counts"] == {"event:tencent:waic": 1, independent["_editorial"]["event_key"]: 1}
-
-
-def test_daily_edition_reaches_nine_with_diverse_authoritative_evidence():
-    items = []
-    for index in range(6):
-        tier = "primary" if index < 3 else "research"
-        item = _item(
-            f"Independent AI event {index}",
-            f"The original source documents a concrete AI event {index} with relevant details.",
-            source=f"Source {index}",
-            tier=tier,
-            topic_key=f"event-{index}",
-        )
-        items.append(item)
-    annotate_editorial_candidates(items, now=NOW)
-
-    report = assess_daily_edition(
-        items,
-        {"pass": True, "risk_level": "low", "llm_review_status": "passed", "issues": []},
-    )
-
-    assert report["score"] >= 9
-    assert report["meets_target"] is True
-    assert report["reasons"] == []
-
-
-def test_daily_edition_recognizes_diverse_evidence_backed_media_reporting():
-    items = []
-    for index in range(6):
-        item = _item(
-            f"Independent media AI event {index}",
-            f"The source documents a concrete AI event {index} with evidence and context.",
-            source=f"Independent Media {index % 3}",
-            tier="media",
-            topic_key=f"media-event-{index}",
-        )
-        items.append(item)
-    annotate_editorial_candidates(items, now=NOW)
-
-    report = assess_daily_edition(
-        items,
-        {"pass": True, "risk_level": "low", "llm_review_status": "passed", "issues": []},
-    )
-
-    assert report["score"] >= 9
-    assert report["meets_target"] is True
-
-
-def test_daily_edition_explains_why_activity_and_evidence_gaps_miss_nine():
-    activity = _item(
-        "acme/agent: A useful coding agent",
-        "GitHub recent activity project with 500 stars.",
-        source="GitHub",
-        source_type="github",
-        tier="community",
-        metrics={"github_activity_type": "recent_push", "github_stars": 500},
-    )
-    weak = _item(
-        "Undated AI claim",
-        "",
-        source="Example",
-        source_url="",
-        published_at=None,
-    )
-    annotate_editorial_candidates([activity, weak], now=NOW)
-
-    report = assess_daily_edition(
-        [activity, weak],
-        {
-            "pass": True,
-            "risk_level": "medium",
-            "llm_review_status": "passed",
-            "issues": [{"severity": "medium"}],
-        },
-    )
-
-    assert report["score"] < 9
-    assert "github_activity_not_release" in report["reasons"]
-    assert "incomplete_source_evidence" in report["reasons"]
-    assert "quality_gate_issues" in report["reasons"]

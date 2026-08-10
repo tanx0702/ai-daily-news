@@ -19,12 +19,15 @@ import logging
 import os
 import re
 import time
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 
+from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.models import BriefItem
 from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
@@ -34,6 +37,14 @@ TOKEN_CACHE = "/tmp/.wx_token_cache"
 TOKEN_CACHE_TS = "/tmp/.wx_token_ts"
 DEFAULT_DRAFT_AUTHOR = "要闻编辑室"
 DEFAULT_DRAFT_TITLE_PREFIX = "今日要闻"
+
+
+def _display_news(items: Sequence[BriefItem | Mapping[str, Any]]) -> list[dict]:
+    """Copy immutable briefing items before WeChat image URL enrichment."""
+    return [
+        brief_item_to_display_dict(item) if isinstance(item, BriefItem) else dict(item)
+        for item in items
+    ]
 
 
 def _draft_author() -> str:
@@ -380,7 +391,7 @@ def _upload_normalized_image(access_token: str, image_path: str) -> Optional[str
 
 def _enrich_news_with_images(
     access_token: str,
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     max_workers: int = 5,
 ) -> list[dict]:
     """
@@ -391,6 +402,8 @@ def _enrich_news_with_images(
     2. 上传成功：替换 article_image_url 为微信素材 URL
     3. 上传失败或不存在标准化文件：降级为 text_only
     """
+    enriched_news = _display_news(news_list)
+
     def _process_one(item: dict) -> None:
         title_short = (item.get("chinese_title") or item.get("title", ""))[:40]
 
@@ -414,7 +427,7 @@ def _enrich_news_with_images(
             item["image_reason"] = "normalized_upload_failed"
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_process_one, item): item for item in news_list}
+        futures = {executor.submit(_process_one, item): item for item in enriched_news}
         for future in as_completed(futures):
             try:
                 future.result()
@@ -423,15 +436,15 @@ def _enrich_news_with_images(
 
     # 最终状态计数：只统计 image_type=="original" 且确实有微信 URL 的
     img_count = sum(
-        1 for item in news_list
+        1 for item in enriched_news
         if item.get("image_type") == "original" and item.get("article_image_url")
     )
     text_only_count = sum(
-        1 for item in news_list
+        1 for item in enriched_news
         if item.get("image_type") == "text_only" or not item.get("article_image_url")
     )
     # 记录每条最终状态
-    for item in news_list:
+    for item in enriched_news:
         status = item.get("image_upload_status", "unknown")
         img_type = item.get("image_type", "?")
         img_url = item.get("article_image_url", "")
@@ -443,17 +456,18 @@ def _enrich_news_with_images(
 
     logger.info(
         "Image enrichment done: %d with WeChat images, %d text-only (total %d)",
-        img_count, text_only_count, len(news_list),
+        img_count, text_only_count, len(enriched_news),
     )
-    return news_list
+    return enriched_news
 
 
 def publish_daily_article(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     date_str: str,
     pages_url: str,
     cover_path: str = "",
     retry: int = 2,
+    rendered_content: str | None = None,
 ) -> dict:
     """
     发布每日 AI 新闻推文。
@@ -468,6 +482,7 @@ def publish_daily_article(
     Returns:
         发布结果字典
     """
+    news_list = _display_news(news_list)
     app_id = os.environ.get("WECHAT_APP_ID", "")
     app_secret = os.environ.get("WECHAT_APP_SECRET", "")
 
@@ -494,16 +509,10 @@ def publish_daily_article(
     # 3. 为每条新闻抓取原文配图（og:image → 下载 → 上传微信，并发+降级）
     news_list = _enrich_news_with_images(access_token, news_list)
 
-    # 4. 生成微信推文 HTML（默认确定性模板，WECHAT_USE_AI_TEMPLATE=1 启用 AI 模板）
-    from src.generator import render_wechat_article, render_wechat_article_ai
+    # 4. 生成微信推文 HTML。
+    from src.generator import render_wechat_article
 
-    if os.environ.get("WECHAT_USE_AI_TEMPLATE", "0") == "1":
-        content = render_wechat_article_ai(news_list, date_str, pages_url, cover_url)
-        if not content:
-            logger.info("AI HTML generation failed, falling back to deterministic template")
-            content = render_wechat_article(news_list, date_str, pages_url, cover_url)
-    else:
-        content = render_wechat_article(news_list, date_str, pages_url, cover_url)
+    content = rendered_content or render_wechat_article(news_list, date_str, pages_url, cover_url)
 
     # 5. 构建标题和摘要：去掉机器人/英文模板感，保留栏目式信息密度。
     title = _build_draft_title(date_str)

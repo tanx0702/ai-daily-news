@@ -2,7 +2,7 @@
 
 ## 来源总览
 
-采集统一由 `src.collector.collect_news()` 编排。RSS 来源由 `config/rss_sources.json` 定义；非 RSS 来源由 `src/collectors/` 下的适配器负责。所有来源最终转换为带 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary`、`metrics` 和 `scores` 的候选结构，再统一合并、去重、过滤和排序。
+采集统一由 `src.collector.collect_news()` 编排。RSS 来源由 `config/rss_sources.json` 定义；非 RSS 来源由 `src/collectors/` 下的适配器负责。所有来源最终转换为带 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary`、`metrics` 和 `scores` 的候选结构，再统一合并、过滤、事件聚类和排序。展示前必须将每个显示声明绑定到其规范来源证据。
 
 | 来源 | 代码入口 | 配置/开关 | 主要信号和限制 |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@
 | GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | stars/push 等项目活跃度；只能作为社区/活跃度信号，不等同正式发布 |
 | Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads 和模型卡证据；低信号条目降权 |
 | arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；仍需经过时效和编辑筛选 |
-| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_MAX_ITEMS` | GitHub Runner 生成的公开 JSON 快照；受账号白名单、schema、时效和 status URL 校验 |
+| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_MAX_ITEMS` | GitHub Runner 每四小时生成的公开 JSON 快照；最多六小时有效，最终最多五条可将 X 用作规范来源 |
 
 ## RSS 配置
 
@@ -54,7 +54,7 @@ X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，�
 - URL 是 `https://x.com/<handle>/status/<tweet_id>` 或 `www.x.com` 的对应 status URL。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
 
-快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过统一去重、事件归并、证据质量和发布门禁；官方 X 账号可帮助确认品牌声明，但不能绕过质量门禁。
+快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
 
 ## 新增或修改来源的检查清单
 

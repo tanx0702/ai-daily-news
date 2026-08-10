@@ -2,15 +2,15 @@
 
 ## 适用范围
 
-本项目的“后端”包括日报批处理、采集器、LLM/图片/微信外部 API 适配以及 Flask 服务。约束目标是保持候选证据、质量状态、发布状态和运行时产物的边界清晰，而不是套用传统 Web 三层或 Monorepo 结构。
+本项目的“后端”包括日报批处理、采集器、LLM/图片/微信外部 API 适配以及 Flask 服务。约束目标是保持候选证据、事实简报、草稿决策和运行时产物的边界清晰，而不是套用传统 Web 三层或 Monorepo 结构。
 
 ## 分层职责
 
 ```text
 Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 采集器适配       单一来源请求、响应解析、候选标准化、来源级失败隔离
-领域/服务         候选、证据、质量状态、编辑报告、反馈和可序列化契约
-编排入口         阶段顺序、候选回填、降级、运行锁、产物保存和退出码
+领域/服务         候选、规范来源证据、事实简报、诊断、反馈和可序列化契约
+编排入口         阶段顺序、聚类/隔离、确定性降级、运行锁、产物保存和退出码
 发布适配         封面上传、正文构建、微信公众号草稿 API
 ```
 
@@ -25,21 +25,21 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 ## 外部请求与失败处理
 
 - 网络超时、HTTP 错误、JSON/XML 解析错误和供应商返回异常必须记录上下文日志，并返回空候选、原文降级、跳过该媒体或阻止草稿等明确结果。
-- 单个来源失败不能阻断其它来源；单条新闻 high risk 可以移除并由备用候选回填；封面、原文图和 AI 摘要失败不能删除已经可生成的日报 HTML。
+- 单个来源失败不能阻断其它来源；封面、原文图和 AI 摘要失败不能删除已经可生成的日报 HTML。歧义重复候选必须隔离，不能作为回填来源。
 - 任何重试都必须有上限和超时；不能通过无限重试掩盖供应商故障或拖垮每日任务。
-- 外部响应不得未经验证直接改变 `quality_state`、`publication` 或发布 readiness；质量状态必须经过质量门禁/发布判定。
+- 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；质量 LLM 不可用或响应无效时必须使用确定性的 `rules_only`，不得请求人工复核或 LLM 修正。
 
 ## Flask 路由边界
 
 - `/wechat` 只负责微信签名验证、XML 解析、消息路由和 XML 回复；生产环境必须配置 `WECHAT_TOKEN`。
-- `/health` 只返回服务可用性和已保存的 publication 状态，不主动触发采集或发布。
+- `/health` 只返回服务可用性和已保存的草稿决策/执行结果，不主动触发采集或发布。
 - `/api/news` 只读取 `NEWS_DATA_FILE` 指向的 `latest.json`，异常时返回可诊断的错误，不泄露路径以外的敏感配置。
 - `/editorial-review` 和 `/editorial-review/feedback` 只有在同时配置用户名和密码时才暴露，并使用 Basic Auth；不得使用 URL token 暴露 shadow 数据。
 - 路由中禁止直接调用 LLM、图片模型、RSS、X、GitHub、微信草稿 API、文件渲染或 shell 命令。
 
 ## 数据、时间和日志
 
-- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary`、`quality_state` 和证据字段；新增字段必须说明生产和诊断消费者。
+- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary` 和证据字段；最终 `BriefItem` 还必须保留事件键、规范来源证据和每个显示声明的证据绑定。
 - 写入 JSON 的对象必须可序列化；日期由 `src.pipeline_artifacts.json_serial` 统一转换，不把 Python 对象直接写入产物。
 - 网络时间和持久化时间使用带时区的 `datetime`；日报日期由 `src.time_utils` 按 `APP_TIMEZONE`（生产默认 `Asia/Shanghai`）计算。
 - 所有模块使用 `logging`；日志可以包含来源名、候选数、阶段状态和错误类别，但不得包含 `LLM_API_KEY`、`IMAGE_API_KEY`、微信 secret/token、密码、Authorization 头或完整供应商响应。
@@ -49,9 +49,10 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 
 - 原文 HTML、RSS 摘要、X 文本和用户微信消息必须经过现有清理/转义流程，不能直接拼接进 HTML、XML 或公众号正文。
 - GitHub push、点赞、下载量等只能作为活跃度或社区信号，不能独立证明官方发布事实。
-- `publication.ready`、质量复核状态、条目 ready 状态和来源集中度是微信草稿创建的前置条件；禁止通过环境变量或模板绕过业务门槛。
+- `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
+- `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。
-- v2/editorial、shadow 反馈和 Tencent SCF 不得反向成为生产 v1 的必需依赖；辅助流程异常时必须回退或跳过。
+- v2/shadow/editorial review 和 Tencent SCF 不得成为生产简报的必需依赖；辅助流程只能记录受保护诊断，不能改变已接受的条目或决策。
 
 ## 测试要求
 

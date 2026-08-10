@@ -2,7 +2,7 @@
 
 ## 生产入口
 
-生产定时任务执行 `python -m src.main`，实际编排位于 `src.main._run_pipeline()`。入口先通过 `src.run_guard.single_run_lock` 防止重复运行，再按报告日期和环境变量读取配置。单条来源或外部 API 异常应记录日志并继续；只有没有候选、没有可选条目或运行锁冲突等无法生成结果的情况才会直接失败。
+生产定时任务执行 `python -m src.main`，实际编排位于 `src.main._run_pipeline()`。入口先通过 `src.run_guard.single_run_lock` 防止重复运行，再按报告日期和环境变量读取 `BriefingConfig`。单条来源或外部 API 异常应记录日志并继续；配置无效、没有候选、无法形成至少 5 条事实简报或运行锁冲突等情况会形成明确的阻止/失败结果。
 
 ## 阶段顺序
 
@@ -14,34 +14,30 @@
    -> RSS + HN + GitHub + Hugging Face + arXiv + X 快照
    -> 日期窗口、AI 相关性、来源级规则、URL/标题去重、热度和新鲜度评分
 
-1.25 证据与编辑质量标注
-   -> preserve_source_evidence()
-   -> 来源证据、发布时间、事件键、来源等级和可解释编辑分
+1.25 规范来源证据与事件聚类
+   -> 保留规范来源 URL、原始证据文本和带时区发布时间
+   -> 默认 45 条候选先按事件聚类；歧义重复项进入 quarantine，永不回填
 
-1.5 初选与备用候选
-   -> 来源、主题、独立事件配额
-   -> selected_candidates + reserve_candidates
+1.5 事实简报候选
+   -> 从唯一事件生成最多 15 条简报，按排序偏好选择候选
+   -> 每个显示声明必须绑定到显示的规范来源证据
 
-1.x 可选 production editorial
-   -> DAILY_EDITORIAL_MODE=v2_assist 时运行 v2 Collector/Analyst/Editorial
-   -> ready/write 候选不足或异常时完整回退 v1
+1.x v2/shadow/editorial 诊断
+   -> 仅记录受保护的诊断与反馈
+   -> 不得改变已接受的简报或草稿决策
 
-2. LLM 摘要
-   -> 候选池批量翻译标题和中文摘要（默认批量 5）
-   -> 数量/索引异常或批量失败时逐条降级；失败项保留原始标题、来源和链接
-
-2.5 质量门禁与跨候选复核
-   -> quality_gate.review_daily() 按原始证据标记风险
-   -> high risk 单条移除并从备用候选回填
-   -> editorial_review 归并同一事件并重排，不新增新闻事实
+2. 生成与核验事实简报
+   -> LLM 只翻译/摘要规范来源证据，不增加新闻事实
+   -> 确定性规则核验每个声明、来源 URL、证据引文和唯一事件
+   -> 质量 LLM 是可选增强；缺失、超时或无效响应严格使用 rules_only，不请求人工复核或 LLM 修正
 
 2.55 媒体解析
    -> 解析 og:image、twitter:image、JSON-LD 和正文候选图
    -> 可信原文图标记 original/trusted；失败则使用 text_only 卡片
 
-2.6 整期质量与封面主题
-   -> assess_daily_edition() 生成 0-10 编辑质量诊断
-   -> 生成重点摘要/封面标题（有文本 LLM 时）
+2.6 决策与确定性封面输入
+   -> DraftDecision 是唯一 create|block 决策：5-15 条唯一有效简报、无遗留重复，且 X 规范来源最多 5 条
+   -> 封面文字只使用已验证的最终标题或固定“今日AI要闻”；最终核验后不再调用 LLM 生成正文或重点
 
 3. 日报页面
    -> docs/index.html、docs/archive/<date>.html、docs/wechat.html
@@ -52,33 +48,27 @@
 
 5. 数据和诊断
    -> docs/latest.json
-   -> source health、selection、quality、media、publication 和 shadow 诊断
+   -> schema v2：brief_items、draft_decision、draft_execution 和 diagnostics
 
 6. 微信草稿
-   -> publication.ready 时上传封面并创建公众号草稿
-   -> SKIP_WECHAT_DRAFT=1 时只完成日报产物并标记 dry_run
-   -> readiness 不满足时不创建草稿，任务返回非零
+   -> DraftDecision=create 时才上传封面并创建公众号草稿
+   -> SKIP_WECHAT_DRAFT=1 是唯一安全干跑边界：生成产物并记录 dry_run，不调用草稿 API
+   -> block 或草稿执行 failed 时不创建草稿，任务返回非零
 ```
 
 ## 候选与证据边界
 
-- `src.collector.collect_news()` 返回的是候选池，不代表已经可以发布。
-- 每条候选保留原始 URL、来源、发布时间和摘要证据；LLM 只能重写标题/摘要表达，不能补造原文没有的事实。
-- 选题阶段同时保留正式条目和备用条目，备用池用于质量门禁移除后的回填，不用于降低发布标准。
-- 同一事件可能来自多个来源；统一合并后记录 `cross_source_count` 和来源列表，最终编辑去重仍需保留独立事件。
-- `src.domain` 的 `NewsCandidate`、`SourceEvidence` 等模型是 v2 辅助视图，不替换生产 v1 字典字段。
+- `src.collector.collect_news()` 返回的是候选池，不代表已经可以创建草稿。
+- 每条候选保留规范来源 URL、来源、发布时间和原始证据；LLM 只能翻译/摘要这些证据，不能补造事实。
+- 同一事件聚类后只生成一个最终事实简报；无法可靠判定的重复项隔离，不能回填到不足条目的日报。
+- 每个显示声明都以规范来源中的显示证据文本和 URL 绑定；任何不完整绑定都不能进入 `brief_items`。
+- `src.domain`、`src.agents` 和 `src.workflows` 的 v2/shadow/editorial 模型只支持诊断和反馈，不替换生产事实简报契约。
 
-## 质量与发布门槛
+## 决策与执行契约
 
-质量门禁的目标是按原始证据隔离高风险条目，同时尽量让日报文件和诊断继续生成。发布 readiness 由 `src.publication.evaluate_publish_readiness()` 统一判定：
+`DraftDecision` 是唯一生产决策，动作只能是 `create` 或 `block`。它依据 5-15 条唯一、已核验的事实简报，要求每个声明拥有规范来源证据，并限制最终把 X 用作规范来源的条目不超过 5 条。少于 5 条时 block；5-14 条是正常短版。
 
-- 最终可发布条目至少 6 条。
-- 所有条目的 `quality_state` 必须为 `ready`。
-- 单一来源不得超过最终条目的 50%。
-- LLM 质量复核必须为 `passed` 或 `partial`；`failed` 或未通过状态不能创建草稿。
-- 整期风险不能为 `high`。
-
-`QUALITY_GATE_STRICT` 是旧配置兼容标记，不再单独决定整天任务是否阻断。单条 high risk 会被移除并尝试备用回填；没有足够合格备用候选时保留较少条目并阻止草稿，而不是伪造可发布状态。
+`DraftExecution` 不改变决策，只记录 `draft_created`、`dry_run`、`blocked` 或 `failed`。`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界。旧 `src/publication.py`、`src/quality_gate.py`、`publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核均不是生产控制。
 
 ## 失败与降级
 
@@ -89,8 +79,9 @@
 | LLM 批量摘要失败 | 是 | 逐条重试；失败项保留原始信息 |
 | 原文媒体下载失败 | 是 | 生成 text-only 新闻卡片 |
 | AI 封面失败 | 是 | 使用本地确定性封面/旧链路降级 |
-| 单条 high risk | 是 | 移除并从 reserve 回填 |
-| 不满足 publication readiness | 是 | 保存 HTML、JSON、诊断，但不创建微信草稿并返回非零 |
+| 质量 LLM 不可用/无效 | 是 | 严格使用 `rules_only`，不进行人工复核或 LLM 修正 |
+| 少于 5 条有效唯一简报或发现遗留重复 | 是 | 保存 HTML、schema v2 JSON、诊断，记录 `block`，返回非零 |
+| 微信草稿执行失败 | 是 | 保存 HTML、schema v2 JSON、诊断，记录 `failed`，返回非零 |
 | 无任何候选/无法建立运行结果 | 否 | 记录错误并终止本次任务 |
 
 ## 主要产物
@@ -101,8 +92,8 @@
 | `docs/archive/<date>.html` | nginx/读者 | 按日期归档 |
 | `docs/wechat.html` | 微信正文预览/调试 | 草稿正文的本地预览 |
 | `docs/cover.jpg` | 日报和微信 | 当前封面 |
-| `docs/latest.json` | Flask/审阅工具 | 新闻、质量、媒体、选择和发布状态 |
-| `docs/debug/` | 维护者 | 来源健康、质量和 shadow 诊断 |
+| `docs/latest.json` | Flask/审阅工具 | schema v2 的 `brief_items`、决策、执行结果和诊断；v1 仅冷启动只读兼容 |
+| `docs/debug/` | 维护者 | 来源健康、聚类、核验和 shadow 诊断 |
 | `docs/media/` | 渲染/微信 | 原文媒体缓存 |
 
 这些文件是运行时生成物，不应作为源代码提交。

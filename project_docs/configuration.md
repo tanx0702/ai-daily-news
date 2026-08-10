@@ -38,11 +38,9 @@ docker compose up -d --force-recreate
 
 | 变量 | 默认/继承 | 说明 |
 | --- | --- | --- |
-| `QUALITY_LLM_API_KEY` / `QUALITY_LLM_MODEL` / `QUALITY_LLM_API_BASE` | 未设置时继承 `LLM_*` | 质量门禁、证据检查和跨候选复核模型 |
+| `QUALITY_LLM_API_KEY` / `QUALITY_LLM_MODEL` / `QUALITY_LLM_API_BASE` | 未设置时继承 `LLM_*` | 可选的事实简报证据核验增强；不可用或无效响应时严格使用 `rules_only` |
 | `DAILY_LLM_TIMEOUT` | `15` | 文本摘要单次超时 |
 | `QUALITY_GATE_TIMEOUT` | `45` 或显式值 | 质量模型超时 |
-| `QUALITY_GATE_MAX_TOKENS` | `1000` | 质量响应上限 |
-| `EDITORIAL_REVIEW_MAX_TOKENS` | `5000` | 编辑复核响应上限 |
 | `ENABLE_AI_COVER_GENERATION` | `1` | 无可信原文图时是否调用图片模型 |
 | `COVER_RENDER_MODE` | `legacy` | `legacy` 为原文图/AI/本地链；`editorial` 为本地确定性模板 |
 | `FORCE_LOCAL_COVER_ON_BAD_IMAGE` | `1` | AI 图质量可疑时改用本地封面 |
@@ -52,12 +50,12 @@ docker compose up -d --force-recreate
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `DAILY_EDITORIAL_MODE` | `v1` | `v2_assist` 只辅助 v1，异常时回退 |
-| `DAILY_TOP_N` | `10` | 目标日报条数 |
-| `DAILY_CANDIDATE_POOL_N` | `30` | 初选候选池，需不小于目标条数 |
-| `DAILY_MAX_ITEMS_PER_SOURCE` | `2` | 单一来源优先上限 |
-| `DAILY_MAX_ITEMS_PER_TOPIC` | `2` | 同主题/事件优先上限 |
-| `DAILY_MIN_PRIMARY_OR_RESEARCH` | `2` | 官方/研究来源最低优先条数 |
+| `DAILY_TOP_N` | `15` | 事实简报上限；仅允许 5-15，5-14 为正常短版 |
+| `DAILY_MIN_ITEMS` | `5` | 创建草稿所需的最少唯一事实简报；少于此值 block |
+| `DAILY_CANDIDATE_POOL_N` | `45` | 聚类前候选池，必须不小于 `DAILY_TOP_N`；歧义重复项隔离且不可回填 |
+| `DAILY_MAX_ITEMS_PER_SOURCE` | `2` | 候选排序偏好，不是最终来源占比阻断 |
+| `DAILY_MAX_ITEMS_PER_TOPIC` | `2` | 候选排序偏好；最终重复由事件聚类处理 |
+| `DAILY_MIN_PRIMARY_OR_RESEARCH` | `2` | 候选排序偏好，不替代规范来源证据绑定 |
 | `DAILY_NEWS_HOURS` | `36` | 新闻时间窗口 |
 | `DAILY_ALLOW_UNDATED` | `0` | 是否接受无发布时间候选 |
 | `DAILY_RSS_TIMEOUT` | `30` | 单个采集请求超时 |
@@ -66,21 +64,27 @@ docker compose up -d --force-recreate
 | `ENABLE_X_COLLECTOR` | `1`（代码默认） | X 快照采集开关；省略时按代码默认开启 |
 | `X_FEED_URL` | 仓库 `x-feed/x-feed.json` | X 快照 HTTPS 地址 |
 | `X_FEED_MAX_AGE_HOURS` | `6` | X 快照最大年龄 |
-| `DAILY_X_MAX_ITEMS` | `5` | 每期 X 候选上限 |
+| `DAILY_X_MAX_ITEMS` | `5` | 最终最多五条可将 X 用作规范来源 |
 | `GITHUB_TOKEN` / `HF_TOKEN` | 空 | 可选限流凭证，不写日志 |
 
-### 质量与发布
+生产任务在采集、LLM 和微信等任何外部调用前校验以下硬约束：
+
+```text
+5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 15
+DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
+0 <= DAILY_X_MAX_ITEMS <= 5
+0 < X_FEED_MAX_AGE_HOURS <= 6
+```
+
+任一约束不满足时，本次运行不会静默修正配置，也不会开始外部调用；`draft_decision` 为 `null`，`DraftExecution` 记录 `failed/invalid_configuration`，进程返回非零。
+
+### 事实核验与草稿
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `ENABLE_LLM_QUALITY_GATE` | `1` | 发布前质量复核 |
-| `QUALITY_GATE_STRICT` | `0` | 旧兼容标记，不单独决定阻断 |
-| `ENABLE_PUBLISH_SAFETY_FILTER` | `1` | high risk 移除和 reserve 回填 |
-| `DAILY_SAFETY_RESERVE_N` | `6` | 安全回填候选数 |
-| `SKIP_WECHAT_DRAFT` | `0` | `1` 只生成产物，不调用微信草稿 API |
+| `SKIP_WECHAT_DRAFT` | `0` | 唯一安全干跑边界；`1` 只生成产物并记录 `dry_run`，绝不调用微信草稿 API |
 | `WECHAT_DRAFT_TITLE_PREFIX` | `今日要闻` | 草稿标题前缀 |
 | `WECHAT_DRAFT_AUTHOR` | `要闻编辑室` | 草稿作者 |
-| `WECHAT_USE_AI_TEMPLATE` | `0` | 是否让 LLM 改写微信模板，生产建议关闭 |
 
 ### 媒体与服务
 
@@ -103,5 +107,6 @@ docker compose up -d --force-recreate
 - `.env.example` 是模板，不是实际密钥；高级模板只复制需要的覆盖项。
 - 修改容器环境后执行 `docker compose up -d --force-recreate`。
 - API key、AppSecret、微信 Token、Basic Auth 密码和 GitHub/HF token 不得进入 Git、日志或诊断 JSON。
-- 图片配置缺失时允许本地封面降级；质量模型缺失时继承文本模型；微信凭证缺失时不能创建草稿或通过生产回调验证。
+- 图片配置缺失时允许本地封面降级；质量模型缺失、超时或响应无效时严格使用 `rules_only`；微信凭证缺失时不能创建草稿或通过生产回调验证。
+- `DraftDecision` 是唯一 `create|block` 决策，`DraftExecution` 另行记录执行结果。旧质量门禁开关、来源占比阻断、9 分目标和人工复核不是生产配置或控制。
 - 新增环境变量必须同步 `.env.advanced.example`、本文件和必要的运维/测试文档。

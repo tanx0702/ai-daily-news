@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Mapping
 from urllib.parse import urlparse
@@ -27,11 +29,15 @@ class XFeedCollector(BaseCollector):
         timeout: int = 30,
         max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
         now: datetime | None = None,
+        source_registry: Mapping[str, Mapping[str, object]] | None = None,
     ) -> None:
         super().__init__(timeout)
         self.feed_url = feed_url.strip()
         self.max_age_hours = max(int(max_age_hours), 1)
         self.now = now
+        self.source_registry = dict(
+            _load_source_registry() if source_registry is None else source_registry
+        )
 
     def fetch(self) -> list[dict]:
         """获取新鲜快照；网络或契约异常不影响其他采集器。"""
@@ -65,7 +71,7 @@ class XFeedCollector(BaseCollector):
         candidates: list[dict] = []
         seen_ids: set[str] = set()
         for tweet in tweets:
-            candidate = _tweet_to_candidate(tweet)
+            candidate = _tweet_to_candidate(tweet, self.source_registry)
             if candidate is None or candidate["id"] in seen_ids:
                 continue
             seen_ids.add(candidate["id"])
@@ -78,7 +84,30 @@ class XFeedCollector(BaseCollector):
         return (self.now or datetime.now(timezone.utc)).astimezone(timezone.utc)
 
 
-def _tweet_to_candidate(tweet: object) -> dict | None:
+def _load_source_registry() -> dict[str, Mapping[str, object]]:
+    path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "config", "x_sources.json")
+    )
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except (OSError, ValueError) as exc:
+        LOGGER.warning("X source registry is unavailable: %s", exc)
+        return {}
+    sources = payload.get("sources") if isinstance(payload, Mapping) else None
+    if not isinstance(sources, list):
+        return {}
+    return {
+        str(source.get("handle") or "").strip().lower(): source
+        for source in sources
+        if isinstance(source, Mapping) and str(source.get("handle") or "").strip()
+    }
+
+
+def _tweet_to_candidate(
+    tweet: object,
+    source_registry: Mapping[str, Mapping[str, object]],
+) -> dict | None:
     """转换单条已脱敏公开推文，并拒绝不完整或非 X 链接记录。"""
     if not isinstance(tweet, Mapping):
         return None
@@ -86,6 +115,7 @@ def _tweet_to_candidate(tweet: object) -> dict | None:
     text = clean_display_text(str(tweet.get("text") or ""), collapse_whitespace=False)
     url = str(tweet.get("url") or "").strip()
     source_name = clean_display_text(str(tweet.get("source_name") or ""))
+    source_handle = clean_display_text(str(tweet.get("source_handle") or "")).lstrip("@")
     author = clean_display_text(str(tweet.get("author") or ""))
     source_tier = str(tweet.get("source_tier") or "").strip()
     published_at = _parse_timestamp(tweet.get("created_at"))
@@ -93,12 +123,23 @@ def _tweet_to_candidate(tweet: object) -> dict | None:
         not tweet_id.isdigit()
         or not text
         or not source_name
+        or not source_handle
         or not author
         or source_tier not in {"primary", "research", "media"}
         or published_at is None
-        or not _is_x_status_url(url, tweet_id)
+        or not _is_x_status_url(url, tweet_id, source_handle)
     ):
         return None
+
+    registry_source = source_registry.get(source_handle.lower())
+    if registry_source:
+        source_name = clean_display_text(str(registry_source.get("name") or source_name))
+        source_tier = str(registry_source.get("tier") or source_tier).strip()
+        official = bool(registry_source.get("official", False))
+        official_source = "config/x_sources.json"
+    else:
+        official = False
+        official_source = ""
 
     title_text = " ".join(text.split())
     candidate = BaseCollector.make_candidate(
@@ -111,10 +152,12 @@ def _tweet_to_candidate(tweet: object) -> dict | None:
         published_source="x_feed",
         summary=text[:900],
         author=author,
-        tags=["x", "official"] if bool(tweet.get("official", False)) else ["x"],
+        tags=["x", "official"] if official else ["x"],
     )
     candidate["source_tier"] = source_tier
-    candidate["x_official"] = bool(tweet.get("official", False))
+    candidate["x_official"] = official
+    candidate["x_handle"] = source_handle
+    candidate["x_official_source"] = official_source
     return candidate
 
 
@@ -145,9 +188,12 @@ def _is_https_url(value: str) -> bool:
     return parsed.scheme == "https" and bool(parsed.netloc)
 
 
-def _is_x_status_url(value: str, tweet_id: str) -> bool:
+def _is_x_status_url(value: str, tweet_id: str, source_handle: str = "") -> bool:
     """只接收与快照 ID 一致的公开 X 推文链接。"""
     parsed = urlparse(value)
     if parsed.scheme != "https" or parsed.hostname not in {"x.com", "www.x.com"}:
         return False
-    return parsed.path.endswith(f"/status/{tweet_id}")
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if len(path_parts) < 3 or path_parts[-2:] != ["status", tweet_id]:
+        return False
+    return not source_handle or path_parts[0].lower() == source_handle.lower().lstrip("@")

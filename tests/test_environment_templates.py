@@ -21,13 +21,32 @@ ADVANCED_ENV_NAMES = {
     "QUALITY_LLM_API_KEY",
     "QUALITY_LLM_MODEL",
     "QUALITY_LLM_API_BASE",
+    "DAILY_TOP_N",
+    "DAILY_MIN_ITEMS",
     "DAILY_CANDIDATE_POOL_N",
-    "ENABLE_PUBLISH_SAFETY_FILTER",
+    "DAILY_X_MAX_ITEMS",
+    "X_FEED_MAX_AGE_HOURS",
     "ENABLE_AI_COVER_GENERATION",
     "COVER_RENDER_MODE",
     "SKIP_WECHAT_DRAFT",
     "EDITORIAL_REVIEW_USERNAME",
     "EDITORIAL_REVIEW_PASSWORD",
+}
+
+EXPECTED_BRIEFING_DEFAULTS = {
+    "DAILY_TOP_N": "15",
+    "DAILY_MIN_ITEMS": "5",
+    "DAILY_CANDIDATE_POOL_N": "45",
+    "DAILY_X_MAX_ITEMS": "5",
+    "X_FEED_MAX_AGE_HOURS": "6",
+}
+
+RETIRED_PRODUCTION_NAMES = {
+    "ENABLE_LLM_QUALITY_GATE",
+    "QUALITY_GATE_STRICT",
+    "ENABLE_PUBLISH_SAFETY_FILTER",
+    "DAILY_SAFETY_RESERVE_N",
+    "WECHAT_USE_AI_TEMPLATE",
 }
 
 
@@ -65,7 +84,10 @@ class EnvironmentTemplateTests(unittest.TestCase):
         )
 
         advanced_text = self.advanced_template.read_text(encoding="utf-8")
-        self.assertRegex(advanced_text, r"(?m)^# DAILY_X_MAX_ITEMS=5$")
+        for name, value in EXPECTED_BRIEFING_DEFAULTS.items():
+            self.assertRegex(advanced_text, rf"(?m)^# {name}={value}$")
+        for name in RETIRED_PRODUCTION_NAMES:
+            self.assertNotRegex(advanced_text, rf"(?m)^#\s*{name}=")
         self.assertNotRegex(advanced_text, r"(?m)^#\s*(?:AGNES|OPENAI)_[A-Z0-9_]*=")
 
     def test_deployment_docs_point_to_the_advanced_template(self):

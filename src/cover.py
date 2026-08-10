@@ -8,17 +8,28 @@ import io
 import logging
 import os
 import re
-from typing import Optional
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
+from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.models import BriefItem
 from src.editorial_cover import render_editorial_cover
 from src.llm_config import DEFAULT_IMAGE_MODEL, resolve_image_llm_config
 from src.text_utils import clean_display_text
 
 logger = logging.getLogger(__name__)
+
+
+def _display_news(items: Sequence[BriefItem | Mapping[str, Any]]) -> list[dict]:
+    """Copy display data before cover selection enriches its subject metadata."""
+    return [
+        brief_item_to_display_dict(item) if isinstance(item, BriefItem) else dict(item)
+        for item in items
+    ]
 
 def _env_enabled_cover(name: str, default: bool = True) -> bool:
     """解析布尔型环境变量。"""
@@ -439,7 +450,7 @@ def _generate_minimal_background_cover(
 
 
 def generate_cover_from_news(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     date_str: str,
     output_path: str = None,
     api_key: Optional[str] = None,
@@ -469,6 +480,12 @@ def generate_cover_from_news(
     Returns:
         封面图路径，失败返回 None
     """
+    news_list = _display_news(news_list)
+    if cover_subject is not None and isinstance(cover_subject.get("item"), BriefItem):
+        cover_subject = {
+            **cover_subject,
+            "item": brief_item_to_display_dict(cover_subject["item"]),
+        }
     cover_title = clean_display_text(cover_title or "今日AI要闻")
 
     # 0. 封面主题选择（如果未外部传入）
@@ -977,7 +994,7 @@ def _has_visual_value(item: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
-def select_cover_subject(news_list: list[dict]) -> dict:
+def select_cover_subject(news_list: Sequence[BriefItem | Mapping[str, Any]]) -> dict:
     """
     从正文 Top 1-3 中选择封面主题。
 
@@ -999,6 +1016,7 @@ def select_cover_subject(news_list: list[dict]) -> dict:
             "excluded": list,
         }
     """
+    news_list = _display_news(news_list)
     if not news_list:
         return {
             "mode": "generic",
