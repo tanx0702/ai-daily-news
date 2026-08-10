@@ -1,12 +1,67 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-10T11:21:15.556827Z",
+  "generated_at": "2026-08-10T15:13:08.066515Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 215,
+  "tweet_count": 217,
   "tweets": [
+    {
+      "tweet_id": "2086822459261534480",
+      "text": "Top stories in robotics today:\n\n- Uber’s $10B push for 120K robotaxis \n- Startups haul robot parts from China in luggage\n- Robot makers are betting big on laundry\n- Wonder rebuilds restaurants around robots, drones\n- Quick hits on other robotics news https://t.co/KN0ZauFMQQ",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-10T14:30:20.000Z",
+      "url": "https://x.com/TheRundownAI/status/2086822459261534480",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086811799480086773",
+      "text": "Muse Glimmer, the new 30B model, is available on Hugging Face right now - here's the GGUF version: https://t.co/z4y28kbjlu",
+      "author": "simonw",
+      "created_at": "2026-08-10T13:47:58.000Z",
+      "url": "https://x.com/simonw/status/2086811799480086773",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086807146143076783",
+      "text": "Great to see @AIatMeta back publishing open models 🙌\n\nMuse Glimmer is a 30B open-weight dense model with a 120K+ context window, built for long-running agents, delivering up to 20K tokens/sec on a single GPU.\n\nIt’s optimized to run locally across NVIDIA edge, desktop, and",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-10T13:29:29.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2086807146143076783",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2086801016817697025",
+      "text": "Seedance 2.5 with the same prompt. Lovely and very much reminds me of the (overly) optimistic future of space books that used to be popular; predicting space tourism coming soon.\n\n(Also the reflections these models can pull off are impressive) https://t.co/reBQJpcEtl",
+      "author": "emollick",
+      "created_at": "2026-08-10T13:05:07.000Z",
+      "url": "https://x.com/emollick/status/2086801016817697025",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2086793377308156217",
+      "text": "Spark is the big news and is a good model. Not quite at the frontier of open models from China, and still well behind the closed frontier, but the best non-Chinese open weights model released in a year.\n\nOf course, a lot depends on continuing to release new open models to keep up",
+      "author": "emollick",
+      "created_at": "2026-08-10T12:34:46.000Z",
+      "url": "https://x.com/emollick/status/2086793377308156217",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2086762055105736768",
       "text": "Top stories in AI today:\n\n- OpenAI puts the safety brakes on Astra\n- The Rundown Roundtable: Our AI use cases\n- Cut onboarding time in half with Loom and ChatGPT\n- China’s Kimi K3 joins the jailbreak party in testing https://t.co/tOu9bqUZLy",
@@ -23,11 +78,33 @@
       "text": "Introducing Muse Glimmer, an open-weight 30B-parameter model optimized for local, always-on agent workflows.\n\nMuse Glimmer delivers strong performance on key agentic use cases and benchmarks compared with leading models in its size category, and is designed to run entirely on https://t.co/mI4z91GPnE",
       "author": "AIatMeta",
       "created_at": "2026-08-10T10:13:34.000Z",
-      "url": "https://x.com/AIatMeta/status/2086757844544811485",
-      "source_name": "Meta AI",
-      "source_handle": "AIatMeta",
+      "url": "https://x.com/NVIDIAAI/status/2086757844544811485",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2086756152034066792",
+      "text": "1/ big announcement today: we will be releasing an open weight version of muse spark 1.2 soon.\n\nwe also are releasing muse glimmer, a 30B agentic model with open weights under apache 2.0. muse glimmer can run on 24GB of VRAM without losing agentic reliability. 🧵",
+      "author": "alexandr_wang",
+      "created_at": "2026-08-10T10:06:51.000Z",
+      "url": "https://x.com/simonw/status/2086756152034066792",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2086755195535413696",
+      "text": "Today we're also opening the weights for Muse Glimmer, a great 30B parameter dense model that can run locally. Soon we'll also release the weights for Muse Spark 1.2, our latest foundation model. Meta is a strong supporter of open source and I'm proud of these releases. Congrats",
+      "author": "finkd",
+      "created_at": "2026-08-10T10:03:03.000Z",
+      "url": "https://x.com/emollick/status/2086755195535413696",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2086724681219068006",
@@ -140,17 +217,6 @@
       "official": false
     },
     {
-      "tweet_id": "2086511535015268647",
-      "text": "I agree, even if Fableish is most efficient for Fable, it is a failure in applying theory-of-mind to the user(s).\n\nIt should know that I don't want to hear its dense neolanguage, and it should know that Fableish should not leak into the completed product for a different audience.",
-      "author": "emollick",
-      "created_at": "2026-08-09T17:54:50.000Z",
-      "url": "https://x.com/emollick/status/2086511535015268647",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2086505938144616810",
       "text": "occasional reminder to DELETE your skills.\n\nhttps://t.co/qzJ1ohCpLJ\n\nwhen you are bombarded constantly by \"this skill changed my life!! you have to try!!\" on the timeline, you will pile up stuff that at best just eats context, and at worst interacts with other skills nastily in",
       "author": "swyx",
@@ -169,28 +235,6 @@
       "url": "https://x.com/demishassabis/status/2086501136278630618",
       "source_name": "Demis Hassabis",
       "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086500208444080380",
-      "text": "Considered one of the best text adventure games (it is more interactive story, with few puzzles), 1985's A Mind Forever Voyaging is still worth a try.\n\nSince it is now open source, I had Codex whip up an interface to play the original or in an easy GUI: https://t.co/qVfqs0aFq5 https://t.co/w4rk8WpsFf",
-      "author": "emollick",
-      "created_at": "2026-08-09T17:09:49.000Z",
-      "url": "https://x.com/emollick/status/2086500208444080380",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086486480466382862",
-      "text": "Some people think the heavy jargon-dense style of Fable or Sol are evidence of our inferior intelligence. But I don't agree. I think a hallmark of intelligence is theory of mind, and the ability to communicate your thoughts clearly to your audience. They write like notes to self",
-      "author": "deepfates",
-      "created_at": "2026-08-09T16:15:16.000Z",
-      "url": "https://x.com/emollick/status/2086486480466382862",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
       "source_tier": "research",
       "official": false
     },
@@ -259,6 +303,17 @@
       "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2086185808541733305",
+      "text": "Imagining a space cruise with Flux 3:\n\n&gt; amateur handheld pov footage of a tourist in their plush and comfortable room of a space cruise, carpeted floor and comfy bed, large window shows a view of Saturn, you can see their reflection in the window, they turn off the light half https://t.co/cPSdlGFgdP",
+      "author": "fofrAI",
+      "created_at": "2026-08-08T20:20:30.000Z",
+      "url": "https://x.com/emollick/status/2086185808541733305",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
     },
     {
       "tweet_id": "2086128512625254770",
@@ -446,17 +501,6 @@
       "source_handle": "xAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2085808307865014295",
-      "text": "I had Codex Desktop and GPT-5.6 Sol Ultra take a go at building my Raccoon Heist game and it did an even better job than Claude Fable 5 did! Here's \"Moonlight &amp; Mayhem\", now with a team of raccoons raiding a museum for the Golden Sardine https://t.co/Wzl3w1kK3U",
-      "author": "simonw",
-      "created_at": "2026-08-07T19:20:27.000Z",
-      "url": "https://x.com/simonw/status/2085808307865014295",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2085801349866729975",
@@ -712,17 +756,6 @@
       "official": true
     },
     {
-      "tweet_id": "2085373613478146520",
-      "text": "Top stories in robotics today:\n\n- SpaceX promises robot factories on the Moon\n- DoorDash hires gig workers to load delivery bots\n- Startup bids to replace banned Chinese humanoids\n- Xiaomi open-sources its robot brain \n- Quick hits on other robotics news https://t.co/pp0a1Gos4a",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-06T14:33:08.000Z",
-      "url": "https://x.com/TheRundownAI/status/2085373613478146520",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085299356190802058",
       "text": "A quick snapshot of where Qwen3.8-Max stands today:\n\nQwen3.8-Max now ranks #5 on the Artificial Analysis Intelligence Index, and #1 on the Agentic Index!🥇 \n\nWe'll keep pushing forward. 🚀 https://t.co/1bt811Rbvx",
       "author": "Alibaba_Qwen",
@@ -928,17 +961,6 @@
       "url": "https://x.com/MistralAI/status/2084684735725379637",
       "source_name": "Mistral AI",
       "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084670730734838003",
-      "text": "Build NemoClaw Agents on Jetson | NVIDIA Jetson AI Lab https://t.co/JUSahmfEG4",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-04T16:00:08.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084670730734838003",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
     },
