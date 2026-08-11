@@ -108,6 +108,7 @@ DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
+| `COMPOSE_PROFILES` | 空 | 服务器设为 `egress-proxy`，确保常规 `docker compose up` 也启动 sidecar |
 | `AI_NEWS_HTTP_PROXY` / `AI_NEWS_HTTPS_PROXY` | 空 | 同时设为 `http://proxy:7890` 后，`web` 的外部 HTTP(S) 请求经 sidecar 转发 |
 | `AI_NEWS_NO_PROXY` | `localhost,127.0.0.1,web,nginx,proxy` | 不能经由 sidecar 的容器内地址 |
 | `AI_NEWS_PROXY_BINARY_PATH` | 本地不可执行占位文件 | 宿主机私有 sing-box Linux 二进制路径；生产必须使用 root 可读的真实二进制 |

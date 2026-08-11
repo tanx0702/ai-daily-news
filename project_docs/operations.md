@@ -75,6 +75,7 @@ docker compose --profile egress-proxy up -d --force-recreate
 在 `.env` 中仅填写无凭据的路径和内部代理地址：
 
 ```dotenv
+COMPOSE_PROFILES=egress-proxy
 AI_NEWS_HTTP_PROXY=http://proxy:7890
 AI_NEWS_HTTPS_PROXY=http://proxy:7890
 AI_NEWS_NO_PROXY=localhost,127.0.0.1,web,nginx,proxy
