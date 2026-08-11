@@ -1,12 +1,100 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-11T15:12:49.178805Z",
+  "generated_at": "2026-08-11T19:19:49.746385Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 216,
+  "tweet_count": 217,
   "tweets": [
+    {
+      "tweet_id": "2087255967549243425",
+      "text": "1B for the @GeminiApp ! Our fastest growing product ever 🚀\n\nIncredible milestone - huge congratulations to @JoshWoodward and the amazing team! Could not be prouder of all of our hard work together. \n\nAnd thank you to all our wonderful users, we can't wait to see what you'll do",
+      "author": "demishassabis",
+      "created_at": "2026-08-11T19:12:56.000Z",
+      "url": "https://x.com/demishassabis/status/2087255967549243425",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087237881903616194",
+      "text": "Run Open Models Locally: Nemotron 3 Ultra on DGX Station | Nemotron Labs https://t.co/fOHrFGpOCl",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-11T18:01:04.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087237881903616194",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087234442263658568",
+      "text": "NEW:  SpaceXAI released Grok Bot in beta, AI teammates that get their own cloud computer, can sign into apps, and work 24/7.\n\nBots are able to coordinate between each other independently or in group chats, and learn from workflows and improve over time.\n\nhttps://t.co/pnFq4Stfnd",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-11T17:47:24.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087234442263658568",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087231350134980830",
+      "text": "Now in preview: The ChatGPT desktop app for Linux.\n\nUse ChatGPT, ChatGPT Work, and Codex where you already work and build, with your projects and browser workflows on supported Linux systems. https://t.co/OtsPt5N5QC",
+      "author": "OpenAI",
+      "created_at": "2026-08-11T17:35:07.000Z",
+      "url": "https://x.com/OpenAI/status/2087231350134980830",
+      "source_name": "OpenAI",
+      "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087229045029404835",
+      "text": "If LLMs did nothing else for science than what they have been doing in math - combining ideas across subfields in novel ways - it would be revolutionary. Before LLMs, science was stalling under the burden of knowledge, there is too much to absorb &amp; work was ossifying as a result",
+      "author": "emollick",
+      "created_at": "2026-08-11T17:25:57.000Z",
+      "url": "https://x.com/emollick/status/2087229045029404835",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087223385772204112",
+      "text": "DEPARTING: OpenAI COO Brad Lightcap is leaving the company after eight years to \"start something new\".\n\nLightcap said he'll \"have more to share soon,\" and that there is \"a few important new things the world will need to get right\" as AI enters its next period. https://t.co/8KnlqrKx1c",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-11T17:03:28.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087223385772204112",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087222656819241292",
+      "text": "1B+ people are now using @Geminiapp every month to spark new ideas and get things done. It’s our fastest growing product ever, and our 14th to hit the 1B-user mark.\n\nKudos to @JoshWoodward &amp; the entire Gemini team, and thank you to everyone who has been on this journey with us - https://t.co/sSWrULX4Qn",
+      "author": "sundarpichai",
+      "created_at": "2026-08-11T17:00:34.000Z",
+      "url": "https://x.com/demishassabis/status/2087222656819241292",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087207501485969680",
+      "text": "Learn Robot Manipulation with LeRobot and ROS 2 | NVIDIA Jetson AI Lab https://t.co/RiaYWP39eg",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-11T16:00:21.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087207501485969680",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2087185061523161454",
       "text": "Top stories in tech today:\n\n- Apple’s glass iPhone isn’t dead after all\n- YouTube makes it harder to earn money\n- The fight over a giant orbital mirror has begun\n- Myspace plans its comeback\n- Quick hits on other tech news https://t.co/edIOaZSiZu",
@@ -228,17 +316,6 @@
       "official": true
     },
     {
-      "tweet_id": "2086887976835940724",
-      "text": "Chinese billionaire Zhang Lei thinks the AI industry is powering its data centers the wrong way.\n\nHis company, Envision, just built what it calls the world’s first AI data center running entirely on off-grid wind and solar, tucked into China’s Inner Mongolia region as part of a https://t.co/m1yCu8cLwZ",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-10T18:50:40.000Z",
-      "url": "https://x.com/TheRundownAI/status/2086887976835940724",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2086884225643647400",
       "text": "set up loops that make loops https://t.co/qmOq2di0nL",
       "author": "swyx",
@@ -349,17 +426,6 @@
       "official": true
     },
     {
-      "tweet_id": "2086859674192585068",
-      "text": "LAUNCHED: Spotify is opening Xirp to the public in beta, an internal tool its engineers built to run Claude Code, Gemini CLI, and OpenAI Codex agents side-by-side. \n\nXirp has already handled 36,000+ coding-agent sessions inside Spotify.\n https://t.co/ZL7FRQ67wK",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-10T16:58:12.000Z",
-      "url": "https://x.com/TheRundownAI/status/2086859674192585068",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2086847887322096106",
       "text": "We're building a range of new AI benchmarking products at Artificial Analysis to help developers evaluate AI models. We’re looking for a small group of users to test them and share feedback before launch. Let us know if you would like early access!\n\nApply for early access here:",
       "author": "ArtificialAnlys",
@@ -435,17 +501,6 @@
       "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2086801016817697025",
-      "text": "Seedance 2.5 with the same prompt. Lovely and very much reminds me of the (overly) optimistic future of space books that used to be popular; predicting space tourism coming soon.\n\n(Also the reflections these models can pull off are impressive) https://t.co/reBQJpcEtl",
-      "author": "emollick",
-      "created_at": "2026-08-10T13:05:07.000Z",
-      "url": "https://x.com/emollick/status/2086801016817697025",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2086764219433660463",
@@ -587,17 +642,6 @@
       "url": "https://x.com/sama/status/2086468661670461671",
       "source_name": "Sam Altman",
       "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086185808541733305",
-      "text": "Imagining a space cruise with Flux 3:\n\n&gt; amateur handheld pov footage of a tourist in their plush and comfortable room of a space cruise, carpeted floor and comfy bed, large window shows a view of Saturn, you can see their reflection in the window, they turn off the light half https://t.co/cPSdlGFgdP",
-      "author": "fofrAI",
-      "created_at": "2026-08-08T20:20:30.000Z",
-      "url": "https://x.com/emollick/status/2086185808541733305",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
       "source_tier": "research",
       "official": false
     },
@@ -943,17 +987,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085034354376646892",
-      "text": "Dassault Systèmes Accelerates Simulation with NVIDIA AI &amp; GPUs https://t.co/2uRhCslgJ5",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-05T16:05:02.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2085034354376646892",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2085034334914769203",
       "text": "I’ve been working towards AGI my whole life, and as we enter this pivotal moment, I’m stepping into a new role as Chair of Google DeepMind &amp; Chief Scientist of Alphabet. This will allow me to focus on long-term strategy, and accelerating scientific breakthroughs, including",
       "author": "demishassabis",
@@ -1031,17 +1064,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084700936623272123",
-      "text": "How a Chess Grandmaster Built an Autonomous Business | Nemotron Labs https://t.co/vdzoTvY54e",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-04T18:00:09.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084700936623272123",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084684735725379637",
       "text": "🛡️Introducing Shieldstral, Mistral’s 3B open-weights model for content safety that can be deployed on-device 🧵 https://t.co/SXBTWIJO9p https://t.co/Hhjw8o0gft",
       "author": "MistralAI",
@@ -1082,17 +1104,6 @@
       "url": "https://x.com/Alibaba_Qwen/status/2084389471026323658",
       "source_name": "Qwen",
       "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084378415818579975",
-      "text": "GPT-Live can listen while it speaks.\n\nTo make that feel natural at ChatGPT scale, we rebuilt the voice stack from client to model.\n\nThis new architecture keeps audio flowing continuously, so deeper reasoning and tool use don't interrupt the conversation. https://t.co/53VTTsqXg0",
-      "author": "OpenAI",
-      "created_at": "2026-08-03T20:38:34.000Z",
-      "url": "https://x.com/OpenAI/status/2084378415818579975",
-      "source_name": "OpenAI",
-      "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
     },
@@ -1610,17 +1621,6 @@
       "url": "https://x.com/AndrewYNg/status/2081698060330250294",
       "source_name": "Andrew Ng",
       "source_handle": "AndrewYNg",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2081039623422177765",
-      "text": "A strong and secure open ecosystem is important for the world to benefit from AI. We’ve always supported and contributed heavily to open source and science from Jax to Transformers to AlphaFold to Gemma open models which have now been downloaded 300M+ times. And the standards",
-      "author": "demishassabis",
-      "created_at": "2026-07-25T15:31:24.000Z",
-      "url": "https://x.com/demishassabis/status/2081039623422177765",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
       "source_tier": "research",
       "official": false
     },
@@ -2370,6 +2370,17 @@
       "source_name": "The AI Breakdown",
       "source_handle": "TheAIBreakdown",
       "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "1445921758687731716",
+      "text": "The paradox of our Golden Age of science: more research is being published by more scientists than ever, but the result is actually slowing progress! With too much to read &amp; absorb, papers in more crowded fields are citing new work less, and canonizing highly-cited articles more. https://t.co/uHZVYLKJ23",
+      "author": "emollick",
+      "created_at": "2021-10-07T01:19:45.000Z",
+      "url": "https://x.com/emollick/status/1445921758687731716",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
       "official": false
     },
     {
