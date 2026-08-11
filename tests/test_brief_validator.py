@@ -658,6 +658,16 @@ def test_valid_quality_review_marks_rules_and_llm_without_changing_content():
     assert result.validated_item.brief == original.brief
 
 
+def test_quality_review_request_explicitly_mentions_json_for_json_object_mode():
+    instance, client = quality_validator({"items": [review_item()]})
+
+    result = instance.validate(event(), draft(), generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert client.calls[0]["response_format"] == {"type": "json_object"}
+    assert "json" in client.calls[0]["messages"][0]["content"].lower()
+
+
 def test_quality_issue_rebuilds_once_then_rejects():
     response = {"items": [review_item("rebuild", ["unsupported_claim"])]}
     first_validator, _ = quality_validator(response)

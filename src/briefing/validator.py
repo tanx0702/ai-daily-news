@@ -488,7 +488,7 @@ class BriefValidator:
                     "role": "system",
                     "content": (
                         "只复核给定中文标题、事实摘要和 canonical evidence 的一致性。"
-                        "不得返回或修改正文。严格返回 {\"items\":[{\"index\":1,"
+                        "不得返回或修改正文。严格返回 json 对象 {\"items\":[{\"index\":1,"
                         "\"event_key\":\"...\",\"action\":\"accept|rebuild|reject\","
                         "\"reason_codes\":[]}]}。"
                     ),
