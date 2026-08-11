@@ -108,6 +108,19 @@ def test_builder_splits_requests_into_batches_of_at_most_five():
     assert request_sizes == [5, 1]
 
 
+def test_builder_requests_5000_output_tokens():
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    results = builder.build_batch([item], attempts={})
+
+    assert results[0].draft is not None
+    assert client.chat.completions.calls[0]["max_tokens"] == 5000
+
+
 def test_builder_accepts_valid_indexed_schema_and_preserves_event_mapping():
     events = [event(1), event(2)]
     payload = {

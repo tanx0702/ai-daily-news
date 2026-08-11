@@ -252,7 +252,7 @@ class BriefBuilder:
                     },
                 ],
                 temperature=0.1,
-                max_tokens=3000,
+                max_tokens=5000,
                 response_format={"type": "json_object"},
             )
             decoded = json.loads(_response_content(response))
