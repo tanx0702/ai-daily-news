@@ -1,12 +1,56 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-11T11:03:34.570309Z",
+  "generated_at": "2026-08-11T15:12:49.178805Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 215,
+  "tweet_count": 216,
   "tweets": [
+    {
+      "tweet_id": "2087185061523161454",
+      "text": "Top stories in tech today:\n\n- Apple’s glass iPhone isn’t dead after all\n- YouTube makes it harder to earn money\n- The fight over a giant orbital mirror has begun\n- Myspace plans its comeback\n- Quick hits on other tech news https://t.co/edIOaZSiZu",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-11T14:31:11.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087185061523161454",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087180773497421926",
+      "text": "Whoa, Meta released a new open-weight LLM yesterday, something that hasn't happened since the good old Llama days.\n\nTheir Meta Muse Glimmer model is a 30B multimodal reasoning model with a Gemma-like architecture design. (“Glimmer” is probably a wordplay on “Spark,” the more https://t.co/HcV1eHAeXb",
+      "author": "rasbt",
+      "created_at": "2026-08-11T14:14:09.000Z",
+      "url": "https://x.com/rasbt/status/2087180773497421926",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087163514037408085",
+      "text": "NVIDIA has just released the first Nemotron 3.5 model: Nemotron 3.5 Lightning, a highly efficient small open weights model with performance similar to gpt-oss-120b at around a quarter of the total parameters\n\nNemotron 3.5 Lightning is the successor to @nvidia  Nemotron 3 Nano 30B https://t.co/tZh4O55EfC",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-11T13:05:34.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087163514037408085",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087162151995629926",
+      "text": "Introducing NVIDIA Nemotron 3.5 Lightning⚡\n\nAn open 30B MoE model with 3B active parameters, built for always-on agents to complete high-volume, specialized tasks faster.\n\nIt delivers up to 4x the output speed of similar-sized models. https://t.co/ENWrZe76pU",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-11T13:00:09.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087162151995629926",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2087124467952525369",
       "text": "Top stories in AI today:\n\n- Meta returns to open-source roots with Glimmer\n- OpenAI expands ‘Daybreak’ for stronger cyber use\n- Go from idea to website with ChatGPT Work + Codex\n- AI agent hacks a gym to jump the waitlist https://t.co/YXJXlbZMP2",
@@ -360,17 +404,6 @@
       "official": false
     },
     {
-      "tweet_id": "2086835340161999144",
-      "text": "NEW: Meta will open the weights for Muse Spark 1.2 \"soon\", which would immediately be the strongest current U.S. open-weight rival to China.\n\nMeta also open-sourced Muse Glimmer, a 30B-parameter model built for running AI agents locally with benchmarks that smash similar-sized https://t.co/wrXUcgQfvt",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-10T15:21:31.000Z",
-      "url": "https://x.com/TheRundownAI/status/2086835340161999144",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2086814834213925013",
       "text": "The new Huberman Lab episode is out: Using AI to Increase Your Intelligence &amp; Enrich Humanity | Dr. Fei-Fei Li (@drfeifei)\n\n0:00 Fei-Fei Li\n3:46 Vision &amp; Intelligence; Human Vision &amp; Contribution to AI\n12:11 Computer Vision &amp; the AI Revolution\n18:34 Sponsors: Lingo &amp; Wealthfront https://t.co/szvZYjZK1H",
       "author": "hubermanlab",
@@ -621,17 +654,6 @@
       "source_name": "Demis Hassabis",
       "source_handle": "demishassabis",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085878147782939064",
-      "text": "Ant Group has just released Ling 3.0 Flash, a 124B open weights model that scores 38 on the Artificial Analysis Intelligence Index. Ling 3.0 demonstrates a marked improvement over the previous generation and sits on the Pareto frontier for Intelligence versus Total Parameters https://t.co/gOEOE5o8Rv",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-07T23:57:58.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2085878147782939064",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -1020,17 +1042,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084695242880729311",
-      "text": "120+ members and counting!\n\nHere’s what they’re saying 🧵",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-04T17:37:32.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2084695242880729311",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084684735725379637",
       "text": "🛡️Introducing Shieldstral, Mistral’s 3B open-weights model for content safety that can be deployed on-device 🧵 https://t.co/SXBTWIJO9p https://t.co/Hhjw8o0gft",
       "author": "MistralAI",
@@ -1115,17 +1126,6 @@
       "url": "https://x.com/Alibaba_Qwen/status/2084188390019502360",
       "source_name": "Qwen",
       "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084106804032872591",
-      "text": "MiniMax-H3 Is Now Publicly Available\nhttps://t.co/x24nyGoKt8 https://t.co/oJXDeOTQvZ",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-03T02:39:17.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084106804032872591",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -1240,6 +1240,17 @@
       "official": false
     },
     {
+      "tweet_id": "2083006198828417501",
+      "text": "MiniMax H3: Omni-Reference, Commercial-Grade Generation, Unbeatable Cost Efficiency, Open Weights\n\nYour creative destiny, on your terms.\n\nNow Live at https://t.co/3eD0u2z14S &amp; MiniMax API.",
+      "author": "MiniMax_AI",
+      "created_at": "2026-07-31T01:45:52.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2083006198828417501",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2082965101083320543",
       "text": "In a review of our cybersecurity evaluations, we found three incidents in which a Claude model reached the internet from within or while interacting with a third-party evaluation environment, and then gained unauthorized access to the real systems of three different",
       "author": "AnthropicAI",
@@ -1324,6 +1335,17 @@
       "url": "https://x.com/GoogleDeepMind/status/2082844162928381956",
       "source_name": "Google DeepMind",
       "source_handle": "GoogleDeepMind",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2082779062653845803",
+      "text": "It's coming. @Hailuo_AI  \n\n#MiniMaxH3 https://t.co/v96yd3OpcN",
+      "author": "MiniMax_AI",
+      "created_at": "2026-07-30T10:43:19.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2082779062653845803",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -1509,17 +1531,6 @@
       "author": "rasbt",
       "created_at": "2026-07-28T13:49:54.000Z",
       "url": "https://x.com/rasbt/status/2082101241908249014",
-      "source_name": "Sebastian Raschka",
-      "source_handle": "rasbt",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2082098201247600765",
-      "text": "The Kimi K3 architecture figure for yesterday's big open-weight model release, along with some observations and thoughts.\n\n1. Yes, it looks relatively complicated, but it's essentially a scaled-up production version of their Kimi Linear model they released last year (scaled up https://t.co/oEG8cJKUUT",
-      "author": "rasbt",
-      "created_at": "2026-07-28T13:37:49.000Z",
-      "url": "https://x.com/rasbt/status/2082098201247600765",
       "source_name": "Sebastian Raschka",
       "source_handle": "rasbt",
       "source_tier": "research",
