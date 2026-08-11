@@ -29,6 +29,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - `src/agents`、`src/domain`、`src/services`、`src/workflows` 支持 v2/shadow/editorial 诊断和反馈闭环；它们不能改变已经接受的事实简报或 `DraftDecision`。
 - `src/tencent_scf/` 是历史兼容代码，当前 Docker 主流程不依赖它。
 - `docs/` 是 nginx 公开/运行时产物目录，不是维护文档目录；长期说明放在 `project_docs/`。
+- `egress-proxy` 是可选的 Docker 内部 sing-box sidecar；仅在 `egress-proxy` profile 启用，不能发布宿主机端口，且只通过 `AI_NEWS_*_PROXY` 让 `web` 使用。
 
 ## 必须遵守
 
@@ -48,6 +49,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_MAX_ITEMS=5`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效，最终最多五条可将 X 用作规范来源。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。
 - 不提交 `.env`、API key、微信密钥/token、Basic Auth 密码、日志、媒体缓存、`docs/` 生成物或完整外部 API 响应。
+- 不提交订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置或服务器私有二进制；它们只可保存在 `/root/ai-news-proxy/` 等 root 受限目录。
 - `COVER_RENDER_MODE` 默认 `legacy`；`editorial` 是本地确定性封面模式。图片/质量配置缺失时允许按文档描述降级。
 - 生产环境必须配置 `WECHAT_TOKEN` 并进行签名验证；`ALLOW_INSECURE_WECHAT_TOKEN=1` 只允许本地排查。
 - `SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界；被 block 或草稿执行失败必须返回非零，不能以测试为名调用真实微信草稿 API。
