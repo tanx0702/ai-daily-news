@@ -131,6 +131,23 @@ def _chinese_bigrams(value: str) -> set[str]:
     return {chars[index:index + 2] for index in range(max(len(chars) - 1, 0))}
 
 
+def _cross_language_action_matches(claim: str, quote: str) -> bool:
+    claim_lower = claim.lower()
+    quote_lower = quote.lower()
+    for markers in _ACTION_GROUPS.values():
+        if any(marker in claim_lower for marker in markers):
+            return any(marker in quote_lower for marker in markers)
+    return True
+
+
+def _requires_cross_language_semantic_review(draft: BuiltBrief) -> bool:
+    return any(
+        _contains_chinese(binding.claim)
+        and not _contains_chinese(binding.source_quote)
+        for binding in draft.evidence_bindings
+    )
+
+
 def _claim_related_to_quote(claim: str, quote: str) -> bool:
     claim_cmp = _comparison_text(claim)
     quote_cmp = _comparison_text(quote)
@@ -148,6 +165,8 @@ def _claim_related_to_quote(claim: str, quote: str) -> bool:
         if protected and not protected <= quote_tokens:
             return False
         return True
+    if _contains_chinese(claim) and not _contains_chinese(quote):
+        return _cross_language_action_matches(claim, quote)
     claim_bigrams = _chinese_bigrams(claim)
     quote_bigrams = _chinese_bigrams(quote)
     return bool(claim_bigrams and len(claim_bigrams & quote_bigrams) >= 2)
@@ -251,7 +270,13 @@ class BriefValidator:
                 validation_mode="rules_only",
             )
 
+        requires_semantic_review = _requires_cross_language_semantic_review(draft)
         if not self.quality_llm_config or not self.quality_llm_config.api_key:
+            if requires_semantic_review:
+                return self._cross_language_review_required_result(
+                    event.event_key,
+                    generation_attempt,
+                )
             return self._accept(
                 event,
                 draft,
@@ -259,6 +284,11 @@ class BriefValidator:
                 ("quality_llm_unavailable", "rules_only_used"),
             )
         if self._quality_circuit_open:
+            if requires_semantic_review:
+                return self._cross_language_review_required_result(
+                    event.event_key,
+                    generation_attempt,
+                )
             return self._accept(
                 event,
                 draft,
@@ -271,6 +301,11 @@ class BriefValidator:
         except Exception as exc:
             logger.warning("Quality LLM unavailable; using deterministic rules: %s", exc)
             self._quality_circuit_open = True
+            if requires_semantic_review:
+                return self._cross_language_review_required_result(
+                    event.event_key,
+                    generation_attempt,
+                )
             return self._accept(
                 event,
                 draft,
@@ -279,6 +314,11 @@ class BriefValidator:
             )
 
         if review is None:
+            if requires_semantic_review:
+                return self._cross_language_review_required_result(
+                    event.event_key,
+                    generation_attempt,
+                )
             return self._accept(
                 event,
                 draft,
@@ -398,6 +438,18 @@ class BriefValidator:
                 rebuild_request=RebuildRequest(event_key, reasons, 2),
             )
         return ValidationResult("reject", reasons, validation_mode)
+
+    def _cross_language_review_required_result(
+        self,
+        event_key: str,
+        generation_attempt: int,
+    ) -> ValidationResult:
+        return self._issue_result(
+            event_key,
+            ("unsupported_claim",),
+            generation_attempt,
+            validation_mode="rules_only",
+        )
 
     def _accept(
         self,

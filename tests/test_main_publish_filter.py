@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src import main as daily_main
+from src.briefing.builder import BriefBuilder as RealBriefBuilder
 
 
 NOW = datetime(2026, 8, 7, 12, tzinfo=timezone.utc)
@@ -99,6 +100,23 @@ def test_five_valid_items_create_a_dry_run_and_write_schema_v2(tmp_path):
     assert len(payload["brief_items"]) == 5
     assert "publication" not in payload
     assert "quality_gate" not in payload
+
+
+def test_pipeline_passes_90_second_default_timeout_to_brief_builder(tmp_path):
+    env = _env()
+    with (
+        patch.dict("os.environ", env, clear=True),
+        patch(
+            "src.collector.collect_candidates",
+            return_value=[_candidate(index) for index in range(1, 6)],
+        ),
+        patch("src.cover.generate_cover_from_news", return_value=str(tmp_path / "cover.jpg")),
+        patch("src.services.production_snapshot.save_production_snapshot"),
+        patch("src.briefing.builder.BriefBuilder", wraps=RealBriefBuilder) as builder,
+    ):
+        daily_main._run_pipeline(docs_dir=str(tmp_path), now=NOW)
+
+    assert builder.call_args.kwargs["timeout"] == 90
 
 
 def test_four_valid_items_block_but_still_write_local_artifacts(tmp_path):

@@ -154,7 +154,7 @@ def _run_pipeline(
     builder = BriefBuilder(
         config,
         resolve_text_llm_config(),
-        timeout=int(os.environ.get("DAILY_LLM_TIMEOUT", "15")),
+        timeout=int(os.environ.get("DAILY_LLM_TIMEOUT", "90")),
     )
     validator = BriefValidator(
         config,

@@ -116,6 +116,220 @@ def test_validator_rejects_unrelated_quote_even_when_quote_is_real():
     assert "unsupported_claim" in result.reason_codes
 
 
+def test_validator_accepts_chinese_claim_bound_to_english_quote_with_matching_action():
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026.",
+    )
+    translated = draft(
+        item,
+        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        evidence_bindings=(
+            EvidenceBinding(
+                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+                "Company launches a model",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    instance, client = quality_validator({"items": [review_item()]})
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validation_mode == "rules_and_llm"
+    assert len(client.calls) == 1
+
+
+def test_validator_rejects_cross_language_binding_with_unmatched_action_quote():
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026. The weather is sunny.",
+    )
+    unrelated = draft(
+        item,
+        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        evidence_bindings=(
+            EvidenceBinding(
+                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+                "The weather is sunny.",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, unrelated, generation_attempt=2, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("unsupported_claim",)
+
+
+def test_validator_rebuilds_cross_language_claim_when_quality_review_is_unavailable():
+    item = event(
+        source_title="Platform launches a hiking service",
+        evidence_text="Platform launches a hiking service in 2026.",
+    )
+    unsupported = draft(
+        item,
+        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        evidence_bindings=(
+            EvidenceBinding(
+                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+                "Platform launches a hiking service",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Platform launches a hiking service in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, unsupported, generation_attempt=1, now=NOW)
+
+    assert result.action == "rebuild"
+    assert result.reason_codes == ("unsupported_claim",)
+
+
+def test_validator_rebuilds_cross_language_claim_when_quality_review_times_out():
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026.",
+    )
+    translated = draft(
+        item,
+        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        evidence_bindings=(
+            EvidenceBinding(
+                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+                "Company launches a model",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "rebuild"
+    assert result.reason_codes == ("unsupported_claim",)
+
+
+def test_validator_rejects_cross_language_claim_after_rebuild_when_quality_review_is_unavailable():
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026.",
+    )
+    translated = draft(
+        item,
+        chinese_title="公司发布模型",
+        brief="该模型于 2026 年发布。",
+        evidence_bindings=(
+            EvidenceBinding(
+                "公司发布模型",
+                "Company launches a model",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "该模型于 2026 年发布",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, translated, generation_attempt=2, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("unsupported_claim",)
+
+
+def test_validator_rejects_cross_language_claim_when_quality_circuit_is_open():
+    instance, client = quality_validator(TimeoutError("quality timeout"))
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026.",
+    )
+    translated = draft(
+        item,
+        chinese_title="公司发布模型",
+        brief="该模型于 2026 年发布。",
+        evidence_bindings=(
+            EvidenceBinding(
+                "公司发布模型",
+                "Company launches a model",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "该模型于 2026 年发布",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    instance.validate(event(), draft(), generation_attempt=1, now=NOW)
+    result = instance.validate(item, translated, generation_attempt=2, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("unsupported_claim",)
+    assert len(client.calls) == 1
+
+
+def test_validator_rebuilds_then_rejects_cross_language_claim_when_quality_response_is_invalid():
+    item = event(
+        source_title="Company launches a model",
+        evidence_text="Company launches a model in 2026.",
+    )
+    translated = draft(
+        item,
+        chinese_title="公司发布模型",
+        brief="该模型于 2026 年发布。",
+        evidence_bindings=(
+            EvidenceBinding(
+                "公司发布模型",
+                "Company launches a model",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "该模型于 2026 年发布",
+                "Company launches a model in 2026.",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    first_validator, _ = quality_validator({"items": []})
+    second_validator, _ = quality_validator({"items": []})
+
+    first = first_validator.validate(item, translated, generation_attempt=1, now=NOW)
+    second = second_validator.validate(item, translated, generation_attempt=2, now=NOW)
+
+    assert first.action == "rebuild"
+    assert second.action == "reject"
+    assert first.reason_codes == second.reason_codes == ("unsupported_claim",)
+
+
 def test_validator_rejects_a_substring_binding_that_hides_an_added_clause():
     item = event()
     expanded = draft(
