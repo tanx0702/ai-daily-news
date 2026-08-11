@@ -65,3 +65,7 @@ git status --short
 报告必须列出实际运行的命令和结果；基线已有失败时，必须单独说明失败测试及其与本次变更的关系，不得声称未通过的检查为通过。
 
 提交前检查 `git diff --staged`。普通提交使用中文 Conventional Commit；合并提交统一使用英文 `Merge` 标识，例如 `Merge: 合并 X 来源采集`，通过 GitHub Pull Request 合并时保留 GitHub 默认的 `Merge pull request #...` 格式。不要使用 `git commit --no-verify` 绕过检查。
+
+## 事实简报审计
+
+- 每个事实简报候选必须在 `docs/debug/<date>-briefing.json` 留下结构化原始证据、构建/验证轨迹和最终原因码；该审计不进入公开产物、微信草稿或 Git。

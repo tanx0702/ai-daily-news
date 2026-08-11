@@ -8,7 +8,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from dotenv import load_dotenv
 
@@ -202,6 +202,14 @@ def _run_pipeline(
         )
         diagnostics["content_fingerprint"] = _content_fingerprint(items)
         _persist_latest(items, decision, execution, diagnostics, output_dir)
+        _save_debug_report(
+            date_str=date_str,
+            docs_dir=output_dir,
+            diagnostics=diagnostics,
+            decision=decision.to_dict(),
+            execution=execution.to_dict(),
+            candidate_audit=briefing.audit_entries,
+        )
         return _result(items, decision, execution)
 
     diagnostics["content_fingerprint"] = _content_fingerprint(display_items)
@@ -266,6 +274,7 @@ def _run_pipeline(
         diagnostics=diagnostics,
         decision=decision.to_dict(),
         execution=execution.to_dict(),
+        candidate_audit=briefing.audit_entries,
     )
     logger.info(
         "Fact brief finished: action=%s status=%s selected=%d",
@@ -440,6 +449,7 @@ def _save_debug_report(
     diagnostics: Mapping[str, Any],
     decision: Mapping[str, Any],
     execution: Mapping[str, Any],
+    candidate_audit: Sequence[Mapping[str, object]],
 ) -> None:
     from src.file_utils import atomic_write_text
 
@@ -448,6 +458,7 @@ def _save_debug_report(
         "diagnostics": diagnostics,
         "draft_decision": decision,
         "draft_execution": execution,
+        "candidate_audit": list(candidate_audit),
     }
     path = Path(docs_dir) / "debug" / f"{date_str}-briefing.json"
     try:

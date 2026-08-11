@@ -100,6 +100,12 @@ def test_five_valid_items_create_a_dry_run_and_write_schema_v2(tmp_path):
     assert len(payload["brief_items"]) == 5
     assert "publication" not in payload
     assert "quality_gate" not in payload
+    assert "candidate_audit" not in payload
+    debug_payload = json.loads(
+        (tmp_path / "debug" / "2026-08-07-briefing.json").read_text(encoding="utf-8")
+    )
+    assert len(debug_payload["candidate_audit"]) == 5
+    assert debug_payload["candidate_audit"][0]["event"]["canonical_evidence"]["evidence_text"]
 
 
 def test_pipeline_passes_90_second_default_timeout_to_brief_builder(tmp_path):
@@ -201,6 +207,10 @@ def test_critical_artifact_failure_prevents_wechat_call(tmp_path):
     assert result["draft_decision"]["action"] == "create"
     assert result["draft_execution"]["reason"] == "artifact_write_failed"
     publish.assert_not_called()
+    debug_payload = json.loads(
+        (tmp_path / "debug" / "2026-08-07-briefing.json").read_text(encoding="utf-8")
+    )
+    assert len(debug_payload["candidate_audit"]) == 5
 
 
 def test_initial_latest_write_failure_prevents_wechat_call(tmp_path):

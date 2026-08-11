@@ -97,3 +97,5 @@
 | `docs/media/` | 渲染/微信 | 原文媒体缓存 |
 
 这些文件是运行时生成物，不应作为源代码提交。
+
+`docs/debug/<date>-briefing.json` 的 `candidate_audit` 仅供维护者逐条追溯：它保留事件的结构化原始证据、每次构建稿、证据绑定、验证或重建结果，以及最终状态和原因码。审计不写入 `docs/latest.json`、公开 HTML 或微信草稿，也不得包含密钥或完整第三方 API 原始响应。

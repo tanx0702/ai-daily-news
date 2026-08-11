@@ -129,6 +129,290 @@ def test_pipeline_rejects_backfills_and_rebuilds_before_the_single_decision():
     assert result.diagnostics["rules_only_count"] == 5
 
 
+def test_pipeline_keeps_per_event_audit_for_rebuilt_and_rejected_candidates():
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 7)],
+        (),
+        config(),
+        Builder(),
+        Validator(),
+    )
+
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+
+    rejected = audit["event-1"]
+    rebuilt = audit["event-2"]
+    assert rejected["event"]["canonical_evidence"]["evidence_text"] == "Source 1 update."
+    assert rejected["final_state"] == "rejected"
+    assert rejected["final_reason_codes"] == ["unsupported_claim"]
+    assert rejected["attempts"][0]["build"]["draft"]["chinese_title"] == "快讯 event-1"
+    assert rejected["attempts"][0]["validation"]["action"] == "reject"
+    assert [attempt["validation"]["action"] for attempt in rebuilt["attempts"]] == [
+        "rebuild",
+        "accept",
+    ]
+    assert rebuilt["final_state"] == "accepted"
+
+
+def test_pipeline_audits_invalid_builder_responses_before_rejecting():
+    class EmptyBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return ()
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        EmptyBuilder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["final_state"] == "rejected"
+    assert audit["final_reason_codes"] == ["invalid_builder_response"]
+    assert [entry["generation_attempt"] for entry in audit["attempts"]] == [1, 2]
+    assert all(entry["validation"] is None for entry in audit["attempts"])
+
+
+def test_pipeline_keeps_all_drafts_from_ambiguous_builder_response():
+    class DuplicateBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            value = events[0]
+            generation_attempt = attempts.get(value.event_key, 0) + 1
+            return (
+                BuildResult(value.event_key, generation_attempt, draft(value), None),
+                BuildResult(value.event_key, generation_attempt, draft(value), None),
+            )
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        DuplicateBuilder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["final_state"] == "rejected"
+    assert len(audit["attempts"][0]["build"]["responses"]) == 2
+    assert all(
+        response["draft"]["event_key"] == "event-1"
+        for response in audit["attempts"][0]["build"]["responses"]
+    )
+
+
+def test_pipeline_audits_builder_response_with_invalid_attempt_number():
+    class InvalidAttemptBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            value = events[0]
+            return (BuildResult(value.event_key, 3, draft(value), None),)
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        InvalidAttemptBuilder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["final_state"] == "rejected"
+    assert audit["final_reason_codes"] == ["invalid_builder_response"]
+    assert audit["attempts"][0]["build"]["draft"]["event_key"] == "event-1"
+    assert audit["attempts"][0]["validation"] is None
+
+
+def test_pipeline_audits_empty_drafts_before_rejecting():
+    class EmptyDraftBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return tuple(
+                BuildResult(
+                    value.event_key,
+                    attempts.get(value.event_key, 0) + 1,
+                    None,
+                    "generation_failed",
+                )
+                for value in events
+            )
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        EmptyDraftBuilder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["final_state"] == "rejected"
+    assert audit["final_reason_codes"] == ["generation_failed"]
+    assert [entry["build"]["draft"] for entry in audit["attempts"]] == [None, None]
+    assert all(entry["validation"] is None for entry in audit["attempts"])
+
+
+def test_pipeline_audits_x_limit_before_generation():
+    class UnexpectedBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            raise AssertionError("X-limited event must not be built")
+
+    result = run_brief_pipeline(
+        (event(1, channel="x"),),
+        (),
+        config(max_x_items=0),
+        UnexpectedBuilder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["attempts"] == []
+    assert audit["final_state"] == "rejected"
+    assert audit["final_reason_codes"] == ["x_limit"]
+
+
+def test_pipeline_audits_x_limit_reached_during_selection():
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        (event(1, channel="x"), event(2, channel="x")),
+        (),
+        config(max_x_items=1, builder_batch_size=1),
+        Builder(),
+        AcceptingValidator(),
+    )
+
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-2"]["attempts"] == []
+    assert audit["event-2"]["final_state"] == "rejected"
+    assert audit["event-2"]["final_reason_codes"] == ["x_limit"]
+
+
+def test_pipeline_audits_quarantined_event():
+    quarantined = QuarantinedEvent(
+        evidence=event(1).canonical_evidence,
+        duplicate_of="event-duplicate",
+        reason_code="ambiguous_duplicate",
+    )
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (quarantined,),
+        config(),
+        Builder(),
+        Validator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["attempts"] == []
+    assert audit["final_state"] == "quarantined"
+    assert audit["final_reason_codes"] == ["ambiguous_duplicate"]
+
+
+def test_pipeline_keeps_standalone_quarantined_candidate_audit():
+    quarantined = QuarantinedEvent(
+        evidence=event(2).canonical_evidence,
+        duplicate_of="event-duplicate",
+        reason_code="ambiguous_duplicate",
+    )
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (quarantined,),
+        config(),
+        Builder(),
+        Validator(),
+    )
+
+    audit = next(
+        entry
+        for entry in result.audit_entries
+        if entry["candidate_type"] == "quarantined_event"
+    )
+    assert audit["quarantined_event"]["evidence"]["evidence_text"] == "Source 2 update."
+    assert audit["final_state"] == "quarantined"
+    assert audit["final_reason_codes"] == ["ambiguous_duplicate"]
+
+
+def test_pipeline_audits_candidates_skipped_after_target_is_reached():
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        tuple(event(index) for index in range(1, 7)),
+        (),
+        config(),
+        Builder(),
+        AcceptingValidator(),
+    )
+
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-6"]["attempts"] == []
+    assert audit["event-6"]["final_state"] == "not_selected"
+    assert audit["event-6"]["final_reason_codes"] == ["target_reached"]
+
+
+def test_pipeline_keeps_unmatched_builder_response_in_audit():
+    class ExtraResponseBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            value = events[0]
+            generation_attempt = attempts.get(value.event_key, 0) + 1
+            return (
+                BuildResult(value.event_key, generation_attempt, draft(value), None),
+                BuildResult("unknown-event", generation_attempt, draft(value), None),
+            )
+
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        ExtraResponseBuilder(),
+        AcceptingValidator(),
+    )
+
+    audit = next(
+        entry
+        for entry in result.audit_entries
+        if entry["candidate_type"] == "unmatched_builder_response"
+    )
+    assert audit["builder_response"]["event_key"] == "unknown-event"
+    assert audit["builder_response"]["draft"]["event_key"] == "event-1"
+    assert audit["final_state"] == "rejected"
+    assert audit["final_reason_codes"] == ["unmatched_builder_response"]
+
+
+def test_pipeline_keeps_distinct_audits_for_duplicate_event_keys():
+    first = event(1)
+    duplicate = MergedEvent(
+        first.event_key,
+        event(2).canonical_evidence,
+        editorial_score=first.editorial_score - 1,
+    )
+
+    result = run_brief_pipeline(
+        (first, duplicate),
+        (),
+        config(),
+        Builder(),
+        Validator(),
+    )
+
+    audit = [
+        entry
+        for entry in result.audit_entries
+        if entry["candidate_type"] == "merged_event"
+    ]
+    assert len(audit) == 2
+    assert audit[1]["event"]["canonical_evidence"]["evidence_text"] == "Source 2 update."
+    assert audit[1]["final_state"] == "rejected"
+    assert audit[1]["final_reason_codes"] == ["duplicate_event"]
+
+
 def test_pipeline_keeps_rules_only_items_and_enforces_x_limit_after_acceptance():
     class RulesOnlyValidator:
         def validate(self, value, built, *, generation_attempt):
