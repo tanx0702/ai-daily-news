@@ -29,7 +29,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - `src/agents`、`src/domain`、`src/services`、`src/workflows` 支持 v2/shadow/editorial 诊断和反馈闭环；它们不能改变已经接受的事实简报或 `DraftDecision`。
 - `src/tencent_scf/` 是历史兼容代码，当前 Docker 主流程不依赖它。
 - `docs/` 是 nginx 公开/运行时产物目录，不是维护文档目录；长期说明放在 `project_docs/`。
-- `egress-proxy` 是可选的 Docker 内部 sing-box sidecar；仅在 `egress-proxy` profile 启用，不能发布宿主机端口，且只通过 `AI_NEWS_*_PROXY` 让 `web` 使用。
+- `egress-proxy` 是可选的 Docker 内部 sing-box sidecar；仅在 `egress-proxy` profile 启用，不能发布宿主机端口，且只通过 `AI_NEWS_*_PROXY` 让 `web` 使用。私有节点仅支持 VLESS WebSocket + TLS 或 TCP + Reality。
 
 ## 必须遵守
 

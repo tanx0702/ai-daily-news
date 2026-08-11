@@ -113,7 +113,7 @@ DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 | `AI_NEWS_PROXY_BINARY_PATH` | 本地不可执行占位文件 | 宿主机私有 sing-box Linux 二进制路径；生产必须使用 root 可读的真实二进制 |
 | `AI_NEWS_PROXY_CONFIG_PATH` | 仓库中的阻断样例 | 宿主机私有 sing-box JSON 配置；必须由受限节点链接生成，不得作为 `.env` 值保存 |
 
-生成器 `python -m scripts.generate_sing_box_config` 仅接受单个 `VLESS WebSocket + TLS` 节点，拒绝 Reality、TCP、跳过 TLS 证书验证、非 `none` 加密、无效端口和未支持的 TLS fingerprint。它只可在服务器写入 `/root/ai-news-proxy/config.json`；订阅 URL、节点 URL、生成配置和二进制均不是仓库资产。漏配私有配置时，仓库内阻断样例会使代理拒绝出网，不会静默直连。
+生成器 `python -m scripts.generate_sing_box_config` 仅接受单个 `VLESS WebSocket + TLS` 或 `VLESS TCP + Reality` 节点。Reality 节点必须提供 `sni`、`pbk` 和 `sid`，并使用 `headerType=none`。它拒绝跳过 TLS 证书验证、非 `none` 加密、无效端口和未支持的 TLS fingerprint。它只可在服务器写入 `/root/ai-news-proxy/config.json`；订阅 URL、节点 URL、生成配置和二进制均不是仓库资产。漏配私有配置时，仓库内阻断样例会使代理拒绝出网，不会静默直连。
 
 ## 安全规则
 

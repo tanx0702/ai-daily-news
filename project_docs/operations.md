@@ -56,7 +56,7 @@ docker compose up -d --force-recreate
 
 当服务器无法直接访问 RSS、模型或镜像仓库，但已有可用的 VLESS 节点时，使用单节点静态配置启动 sidecar。订阅 URL 不能用于首次启动，因为 sidecar 尚未运行时无法下载订阅。
 
-仅接受 `WebSocket + TLS` 节点，并在服务器保留以下私有文件：
+仅接受 `WebSocket + TLS` 或 `TCP + Reality` 节点；后者必须包含 `sni`、`pbk`、`sid` 且使用 `headerType=none`。服务器保留以下私有文件：
 
 ```text
 /root/ai-news-proxy/vless-node.txt       单个 vless:// 链接，权限 600

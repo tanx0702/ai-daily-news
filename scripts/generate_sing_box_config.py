@@ -1,4 +1,4 @@
-"""Generate a private sing-box configuration from one VLESS WebSocket + TLS URI."""
+"""Generate a private sing-box configuration from one supported VLESS URI."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def _query_value(query: dict[str, list[str]], name: str, default: str = "") -> s
 
 
 def build_proxy_config(node_uri: str) -> dict[str, Any]:
-    """Return a sing-box config for exactly one VLESS WebSocket + TLS node."""
+    """Return a sing-box config for one VLESS WebSocket + TLS or TCP + Reality node."""
     parsed = urlsplit(node_uri.strip())
     if parsed.scheme.lower() != "vless" or not parsed.hostname or not parsed.username:
         raise ProxyConfigError("节点必须是包含主机和 UUID 的 vless:// 链接")
@@ -51,12 +51,16 @@ def build_proxy_config(node_uri: str) -> dict[str, Any]:
     security = _query_value(query, "security", "none").lower()
     encryption = _query_value(query, "encryption", "none").lower()
     allow_insecure = _query_value(query, "allowInsecure", "0").lower()
-    if transport_type != "ws" or security != "tls":
-        raise ProxyConfigError("当前仅支持 VLESS WebSocket + TLS 节点")
+    websocket_tls = transport_type == "ws" and security == "tls"
+    tcp_reality = transport_type == "tcp" and security == "reality"
+    if not websocket_tls and not tcp_reality:
+        raise ProxyConfigError("当前仅支持 VLESS WebSocket + TLS 或 TCP + Reality 节点")
     if encryption not in ("", "none"):
         raise ProxyConfigError("VLESS 节点 encryption 必须为 none")
     if allow_insecure in {"1", "true", "yes"}:
         raise ProxyConfigError("不允许跳过 TLS 证书验证")
+    if tcp_reality and _query_value(query, "headerType", "none").lower() not in ("", "none"):
+        raise ProxyConfigError("TCP + Reality 节点 headerType 必须为 none")
 
     server_name = _query_value(query, "sni") or parsed.hostname
     host_header = _query_value(query, "host") or server_name
@@ -81,6 +85,36 @@ def build_proxy_config(node_uri: str) -> dict[str, Any]:
     if alpn:
         tls["alpn"] = alpn
 
+    if tcp_reality:
+        public_key = _query_value(query, "pbk")
+        short_id = _query_value(query, "sid")
+        if not public_key or not short_id:
+            raise ProxyConfigError("TCP + Reality 节点必须包含 pbk 和 sid")
+        tls["reality"] = {
+            "enabled": True,
+            "public_key": public_key,
+            "short_id": short_id,
+        }
+
+    outbound: dict[str, Any] = {
+        "type": "vless",
+        "tag": "proxy",
+        "server": parsed.hostname,
+        "server_port": server_port,
+        "uuid": node_uuid,
+        "tls": tls,
+    }
+    if websocket_tls:
+        outbound["transport"] = {
+            "type": "ws",
+            "path": path,
+            "headers": {"Host": host_header},
+        }
+    else:
+        flow = _query_value(query, "flow")
+        if flow:
+            outbound["flow"] = flow
+
     return {
         "log": {"level": "warn", "timestamp": True},
         "inbounds": [
@@ -91,21 +125,7 @@ def build_proxy_config(node_uri: str) -> dict[str, Any]:
                 "listen_port": 7890,
             }
         ],
-        "outbounds": [
-            {
-                "type": "vless",
-                "tag": "proxy",
-                "server": parsed.hostname,
-                "server_port": server_port,
-                "uuid": node_uuid,
-                "tls": tls,
-                "transport": {
-                    "type": "ws",
-                    "path": path,
-                    "headers": {"Host": host_header},
-                },
-            }
-        ],
+        "outbounds": [outbound],
         "route": {"final": "proxy"},
     }
 
@@ -139,7 +159,9 @@ def write_proxy_config(node_file: Path, output_file: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate a sing-box config from one VLESS WebSocket + TLS node")
+    parser = argparse.ArgumentParser(
+        description="Generate a sing-box config from one VLESS WebSocket + TLS or TCP + Reality node"
+    )
     parser.add_argument("node_file", type=Path, help="private file containing one vless:// URI")
     parser.add_argument("output_file", type=Path, help="private sing-box JSON output path")
     arguments = parser.parse_args()
