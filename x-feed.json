@@ -1,12 +1,45 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-11T19:19:49.746385Z",
+  "generated_at": "2026-08-11T22:59:01.591982Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 217,
+  "tweet_count": 216,
   "tweets": [
+    {
+      "tweet_id": "2087305196841922782",
+      "text": "☁️Mistral is bringing together the inference infrastructure, open models, and long-term commitments Europe needs to control its AI future, and setting a roadmap for the world. 🧵: https://t.co/LeP53uBUES https://t.co/JjluVwJecj",
+      "author": "MistralAI",
+      "created_at": "2026-08-11T22:28:33.000Z",
+      "url": "https://x.com/MistralAI/status/2087305196841922782",
+      "source_name": "Mistral AI",
+      "source_handle": "MistralAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087303970725499361",
+      "text": "Announcing AA-AnalystAgent, our new agentic benchmark for quantitative analysis on real-world spreadsheets &amp; documents. Claude Opus 5 leads at 54%, followed by GPT-5.5 at 50% and Claude Fable 5 at 49%\n\nIn real analyst roles, professional judgment and expertise are as important https://t.co/O1BULCPnYx",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-11T22:23:41.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087303970725499361",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087279317172777169",
+      "text": "Tomorrow is the total solar eclipse 🌑☀️ Whether you’re in the path of totality across Greenland, Iceland, and Spain, or watching the partial phases online, we’ve got you covered.\n\nThe interactive 3D visualizer built in @GoogleAIStudio lets you follow the Moon's shadow across the https://t.co/Ttu58vJYR8",
+      "author": "GoogleAI",
+      "created_at": "2026-08-11T20:45:43.000Z",
+      "url": "https://x.com/GoogleAI/status/2087279317172777169",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2087255967549243425",
       "text": "1B for the @GeminiApp ! Our fastest growing product ever 🚀\n\nIncredible milestone - huge congratulations to @JoshWoodward and the amazing team! Could not be prouder of all of our hard work together. \n\nAnd thank you to all our wonderful users, we can't wait to see what you'll do",
@@ -424,17 +457,6 @@
       "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2086847887322096106",
-      "text": "We're building a range of new AI benchmarking products at Artificial Analysis to help developers evaluate AI models. We’re looking for a small group of users to test them and share feedback before launch. Let us know if you would like early access!\n\nApply for early access here:",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-10T16:11:22.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2086847887322096106",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2086845515665166398",
@@ -1680,17 +1702,6 @@
       "official": false
     },
     {
-      "tweet_id": "2079617029473182132",
-      "text": "As AI models are now finding vulnerabilities faster than we can fix them, our approach to securing software must be built on highly efficient and capable models.\n\nWhich brings us to our third (!) model launch of the day: Gemini 3.5 Flash Cyber ⚡🛡️\n\nBuilt on top of 3.5 Flash, in https://t.co/8N63Ws6laR",
-      "author": "GoogleAI",
-      "created_at": "2026-07-21T17:18:31.000Z",
-      "url": "https://x.com/GoogleAI/status/2079617029473182132",
-      "source_name": "Google AI",
-      "source_handle": "GoogleAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2079614176725442912",
       "text": "To accelerate scientific discovery and support @ENERGY’s Genesis Mission, the @BerkeleyLab-led SYNAPS-I project is using SAM 3 and DINOv3 to automate image segmentation.\n\nBy pairing DINOv3’s global semantic context and fine-grained spatial localization with SAM 3’s pixel-level https://t.co/e2tBha3Lu1",
       "author": "AIatMeta",
@@ -1876,28 +1887,6 @@
       "source_handle": "ylecun",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2073163455910330528",
-      "text": "Customers are not an abstraction for us: we exist to help enterprises, public institutions, and industries build their own intelligence, so the value created from their data, workflows, feedback, and models accrues to them rather than to model providers.",
-      "author": "MistralAI",
-      "created_at": "2026-07-03T21:54:20.000Z",
-      "url": "https://x.com/MistralAI/status/2073163455910330528",
-      "source_name": "Mistral AI",
-      "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2073157738276749354",
-      "text": "Your AI, your growth\n\nOf course you need to use open-source models if you’re an enterprise leader. Close model providers, that are now forcing data retention, are gaining immense leverage on your business if you don’t. As",
-      "author": "arthurmensch",
-      "created_at": "2026-07-03T21:31:36.000Z",
-      "url": "https://x.com/MistralAI/status/2073157738276749354",
-      "source_name": "Mistral AI",
-      "source_handle": "MistralAI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2071987125088600107",
