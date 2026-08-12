@@ -128,6 +128,8 @@ def run_brief_pipeline(
         reserve_fill_count=0,
         source_fallback_count=0,
         rules_only_count=0,
+        rules_and_llm_count=0,
+        build_attempt_count=0,
     )
 
     while queue and len(selector.accepted_items) < config.max_items:
@@ -145,6 +147,7 @@ def run_brief_pipeline(
         if not batch:
             continue
 
+        diagnostics["build_attempt_count"] += len(batch)
         result_buckets: dict[str, list[BuildResult]] = {}
         batch_by_key = {event.event_key: event for event in batch}
         for result in builder.build_batch(batch, attempts, rebuild_reasons):
@@ -299,6 +302,8 @@ def run_brief_pipeline(
                 diagnostics["source_fallback_count"] += 1
             if accepted.validation_mode == "rules_only":
                 diagnostics["rules_only_count"] += 1
+            else:
+                diagnostics["rules_and_llm_count"] += 1
             for reason in validation.reason_codes:
                 if reason in _DEGRADATION_REASONS:
                     diagnostics[f"{reason}_count"] += 1
@@ -316,6 +321,12 @@ def run_brief_pipeline(
         quarantined_keys=quarantined_keys,
         excluded_counts=exclusions,
     )
+    for component in (builder, validator):
+        component_diagnostics = getattr(component, "diagnostics", {})
+        if isinstance(component_diagnostics, Mapping):
+            for name, count in component_diagnostics.items():
+                if isinstance(count, int) and not isinstance(count, bool):
+                    diagnostics[str(name)] = count
     return BriefPipelineResult(
         accepted_items=selector.accepted_items,
         decision=decision,

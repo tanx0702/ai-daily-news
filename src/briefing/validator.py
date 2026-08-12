@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from html import unescape
 import json
@@ -11,6 +12,7 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from src.briefing.config import BriefingConfig
+from src.briefing.display_targets import display_targets, summary_sentences
 from src.briefing.models import (
     BriefItem,
     BuiltBrief,
@@ -23,19 +25,13 @@ from src.llm_config import LLMConfig
 
 logger = logging.getLogger(__name__)
 
-_COMMENTARY_MARKERS = (
-    "值得关注",
-    "趋势",
-    "前景",
-    "领先",
-    "重磅",
-    "革命性",
-    "影响深远",
-    "标志着",
-    "将改变",
-    "必将",
-    "建议",
-    "推荐",
+_COMMENTARY_PATTERNS = (
+    "值得关注的是",
+    "这意味着",
+    "这标志着",
+    "将产生深远影响",
+    "建议读者",
+    "我们建议",
 )
 _ATTRIBUTION_MARKERS = (
     "称",
@@ -50,11 +46,41 @@ _ATTRIBUTION_MARKERS = (
     "媒体",
 )
 _ACTION_GROUPS = {
-    "release": ("发布", "推出", "上线", "release", "launch", "roll out"),
+    "release": (
+        "发布", "推出", "上线", "release", "launch", "roll out",
+        "introduce", "introducing",
+    ),
     "acquisition": ("收购", "合并", "acquire", "acquisition", "merge"),
     "funding": ("融资", "投资", "估值", "funding", "raise", "valuation"),
     "open_source": ("开源", "open source", "open-source"),
 }
+_CROSS_LANGUAGE_ANCHOR_STOPWORDS = {
+    "acquire", "acquisition", "agentic", "and", "company", "for", "from",
+    "funding", "in", "initiative", "introduce", "introducing", "lab", "launch",
+    "merge", "model", "models", "new", "of", "on", "open", "out", "platform",
+    "product", "products", "raise", "release", "roll", "service", "services",
+    "source", "system", "systems", "technology", "the", "to", "tool", "tools",
+    "valuation", "vendor", "with", "work", "workflow", "workflows",
+}
+_CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
+    sorted(
+        {
+            *(
+                marker
+                for markers in _ACTION_GROUPS.values()
+                for marker in markers
+                if any("\u4e00" <= char <= "\u9fff" for char in marker)
+            ),
+            *_ATTRIBUTION_MARKERS,
+            "公司", "厂商", "平台", "实验室", "团队", "机构", "模型", "产品",
+            "工具", "系统", "服务", "项目", "版本", "该", "其", "一个", "一款",
+            "于", "年", "并", "与", "和", "的", "了", "已", "已经", "将", "在",
+            "为", "向", "由", "新", "正式",
+        },
+        key=len,
+        reverse=True,
+    )
+)
 _ALLOWED_QUALITY_REASONS = {
     "missing_evidence",
     "missing_source_url",
@@ -64,6 +90,15 @@ _ALLOWED_QUALITY_REASONS = {
     "github_activity_only",
     "invalid_builder_response",
     "translation_failed",
+    "semantic_review_rejected",
+    "unsupported_commentary",
+    "missing_target_binding",
+    "unexpected_target_binding",
+    "quote_not_found",
+    "source_url_mismatch",
+    "protected_token_missing",
+    "action_not_supported",
+    "claim_quote_mismatch",
 }
 
 
@@ -85,11 +120,7 @@ def _comparison_text(value: object) -> str:
 
 
 def _sentences(value: str) -> list[str]:
-    return [
-        part.strip()
-        for part in re.split(r"(?<=[。！？!?])\s*", value.strip())
-        if part.strip()
-    ]
+    return list(summary_sentences(value))
 
 
 def _contains_chinese(value: str) -> bool:
@@ -97,17 +128,7 @@ def _contains_chinese(value: str) -> bool:
 
 
 def _display_claims(draft: BuiltBrief) -> list[str]:
-    display_units = [draft.chinese_title.strip()]
-    display_units.extend(
-        sentence.rstrip("。！？!? ") for sentence in _sentences(draft.brief)
-    )
-    claims = [
-        claim.strip()
-        for unit in display_units
-        for claim in re.split(r"[，,；;]", unit)
-        if claim.strip()
-    ]
-    return [claim for claim in claims if claim]
+    return list(display_targets(draft.chinese_title, draft.brief).values())
 
 
 def _binding_covers(display_claim: str, binding_claim: str) -> bool:
@@ -140,12 +161,23 @@ def _cross_language_action_matches(claim: str, quote: str) -> bool:
     return True
 
 
-def _requires_cross_language_semantic_review(draft: BuiltBrief) -> bool:
-    return any(
-        _contains_chinese(binding.claim)
-        and not _contains_chinese(binding.source_quote)
-        for binding in draft.evidence_bindings
-    )
+def _cross_language_anchors(value: str) -> set[str]:
+    token_pattern = r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+-]*"
+    return {
+        token.lower()
+        for token in re.findall(token_pattern, value)
+        if token.lower() not in _CROSS_LANGUAGE_ANCHOR_STOPWORDS
+    }
+
+
+def _cross_language_rule_only_verifiable(claim: str, quote: str) -> bool:
+    claim_anchors = _cross_language_anchors(claim)
+    if not claim_anchors or not claim_anchors <= _cross_language_anchors(quote):
+        return False
+    residual = "".join(re.findall(r"[\u4e00-\u9fff]", claim))
+    for marker in _CROSS_LANGUAGE_RULE_ONLY_MARKERS:
+        residual = residual.replace(marker, "")
+    return not residual
 
 
 def _claim_related_to_quote(claim: str, quote: str) -> bool:
@@ -244,6 +276,13 @@ class BriefValidator:
         self.timeout = timeout
         self._client: object | None = None
         self._quality_circuit_open = False
+        self.diagnostics: Counter[str] = Counter(
+            quality_llm_success_count=0,
+            quality_llm_timeout_count=0,
+            quality_llm_invalid_response_count=0,
+            quality_llm_unavailable_count=0,
+            quality_llm_circuit_open_count=0,
+        )
 
     def validate(
         self,
@@ -270,29 +309,20 @@ class BriefValidator:
                 validation_mode="rules_only",
             )
 
-        requires_semantic_review = _requires_cross_language_semantic_review(draft)
         if not self.quality_llm_config or not self.quality_llm_config.api_key:
-            if requires_semantic_review:
-                return self._cross_language_review_required_result(
-                    event.event_key,
-                    generation_attempt,
-                )
-            return self._accept(
+            self.diagnostics["quality_llm_unavailable_count"] += 1
+            return self._rules_only_result(
                 event,
                 draft,
-                "rules_only",
+                generation_attempt,
                 ("quality_llm_unavailable", "rules_only_used"),
             )
         if self._quality_circuit_open:
-            if requires_semantic_review:
-                return self._cross_language_review_required_result(
-                    event.event_key,
-                    generation_attempt,
-                )
-            return self._accept(
+            self.diagnostics["quality_llm_circuit_open_count"] += 1
+            return self._rules_only_result(
                 event,
                 draft,
-                "rules_only",
+                generation_attempt,
                 ("quality_llm_unavailable", "rules_only_used"),
             )
 
@@ -301,36 +331,32 @@ class BriefValidator:
         except Exception as exc:
             logger.warning("Quality LLM unavailable; using deterministic rules: %s", exc)
             self._quality_circuit_open = True
-            if requires_semantic_review:
-                return self._cross_language_review_required_result(
-                    event.event_key,
-                    generation_attempt,
-                )
-            return self._accept(
+            if isinstance(exc, TimeoutError) or "timeout" in str(exc).lower():
+                self.diagnostics["quality_llm_timeout_count"] += 1
+            else:
+                self.diagnostics["quality_llm_unavailable_count"] += 1
+            return self._rules_only_result(
                 event,
                 draft,
-                "rules_only",
+                generation_attempt,
                 ("quality_llm_unavailable", "rules_only_used"),
             )
 
         if review is None:
-            if requires_semantic_review:
-                return self._cross_language_review_required_result(
-                    event.event_key,
-                    generation_attempt,
-                )
-            return self._accept(
+            self.diagnostics["quality_llm_invalid_response_count"] += 1
+            return self._rules_only_result(
                 event,
                 draft,
-                "rules_only",
+                generation_attempt,
                 ("quality_llm_invalid_response", "rules_only_used"),
             )
         action, reasons = review
+        self.diagnostics["quality_llm_success_count"] += 1
         if action == "accept":
             return self._accept(event, draft, "rules_and_llm", ())
         return self._issue_result(
             event.event_key,
-            reasons,
+            ("semantic_review_rejected",),
             generation_attempt,
             validation_mode="rules_and_llm",
         )
@@ -374,8 +400,8 @@ class BriefValidator:
             or not draft.evidence_bindings
         ):
             return ("invalid_builder_response",)
-        if any(marker in display for marker in _COMMENTARY_MARKERS):
-            return ("unsupported_claim",)
+        if any(pattern in display for pattern in _COMMENTARY_PATTERNS):
+            return ("unsupported_commentary",)
         if source.channel == "github":
             evidence_lower = source.evidence_text.lower()
             activity_markers = ("star", "commit", "recent push", "近期活跃")
@@ -399,25 +425,108 @@ class BriefValidator:
         evidence_normalized = _normalized_text(source.evidence_text)
         evidence_quote_text = _quote_match_text(source.evidence_text)
         display_claims = _display_claims(draft)
+        bindings_by_claim: dict[str, list[object]] = {}
         for display_claim in display_claims:
-            if not any(
-                _binding_covers(display_claim, binding.claim)
+            matching = [
+                binding
                 for binding in draft.evidence_bindings
-            ):
-                return ("unsupported_claim",)
+                if _binding_covers(display_claim, binding.claim)
+            ]
+            if not matching:
+                return ("missing_target_binding",)
+            bindings_by_claim.setdefault(display_claim, []).extend(matching)
+        if any(
+            not any(
+                _binding_covers(display_claim, binding.claim)
+                for display_claim in display_claims
+            )
+            for binding in draft.evidence_bindings
+        ):
+            return ("unexpected_target_binding",)
         for binding in draft.evidence_bindings:
             if binding.source_url != source.url:
-                return ("unsupported_claim",)
+                return ("source_url_mismatch",)
             quote = _quote_match_text(binding.source_quote)
             if not quote or quote not in evidence_quote_text:
-                return ("unsupported_claim",)
-            if not _claim_related_to_quote(binding.claim, quote):
-                return ("unsupported_claim",)
+                return ("quote_not_found",)
         if _unsupported_protected_tokens(display, evidence_normalized):
-            return ("unsupported_claim",)
+            return ("protected_token_missing",)
         if _unsupported_action(display, evidence_normalized):
-            return ("unsupported_claim",)
+            return ("action_not_supported",)
+        for display_claim, bindings in bindings_by_claim.items():
+            combined_quotes = " ".join(
+                _quote_match_text(binding.source_quote) for binding in bindings
+            )
+            if _unsupported_action(display_claim, combined_quotes):
+                return ("action_not_supported",)
+            cross_language = (
+                _contains_chinese(display_claim)
+                and not _contains_chinese(combined_quotes)
+            )
+            related = _claim_related_to_quote(display_claim, combined_quotes)
+            if cross_language:
+                claim_anchors = _cross_language_anchors(display_claim)
+                quote_anchors = _cross_language_anchors(combined_quotes)
+                if claim_anchors and not claim_anchors <= quote_anchors:
+                    return ("claim_quote_mismatch",)
+                quote_tokens = _meaningful_tokens(combined_quotes)
+                numeric_overlap = set(
+                    re.findall(r"\d+(?:[.,]\d+)?", display_claim)
+                ) & set(re.findall(r"\d+(?:[.,]\d+)?", combined_quotes))
+                latin_overlap = {
+                    token.lower()
+                    for token in re.findall(r"[A-Za-z][A-Za-z0-9.+-]*", display_claim)
+                } & quote_tokens
+                action_overlap = _cross_language_action_matches(
+                    display_claim,
+                    combined_quotes,
+                ) and any(
+                    marker in display_claim.lower()
+                    for markers in _ACTION_GROUPS.values()
+                    for marker in markers
+                )
+                related = bool(numeric_overlap or latin_overlap or action_overlap)
+            if not related:
+                return ("claim_quote_mismatch",)
         return ()
+
+    def _rules_only_relationship_reasons(
+        self,
+        draft: BuiltBrief,
+    ) -> tuple[str, ...]:
+        for display_claim in _display_claims(draft):
+            combined_quotes = " ".join(
+                _quote_match_text(binding.source_quote)
+                for binding in draft.evidence_bindings
+                if _binding_covers(display_claim, binding.claim)
+            )
+            if (
+                _contains_chinese(display_claim)
+                and not _contains_chinese(combined_quotes)
+                and not _cross_language_rule_only_verifiable(
+                    display_claim,
+                    combined_quotes,
+                )
+            ):
+                return ("claim_quote_mismatch",)
+        return ()
+
+    def _rules_only_result(
+        self,
+        event: MergedEvent,
+        draft: BuiltBrief,
+        generation_attempt: int,
+        degradation_reasons: tuple[str, ...],
+    ) -> ValidationResult:
+        relationship_reasons = self._rules_only_relationship_reasons(draft)
+        if relationship_reasons:
+            return self._issue_result(
+                event.event_key,
+                relationship_reasons,
+                generation_attempt,
+                validation_mode="rules_only",
+            )
+        return self._accept(event, draft, "rules_only", degradation_reasons)
 
     def _issue_result(
         self,
@@ -438,18 +547,6 @@ class BriefValidator:
                 rebuild_request=RebuildRequest(event_key, reasons, 2),
             )
         return ValidationResult("reject", reasons, validation_mode)
-
-    def _cross_language_review_required_result(
-        self,
-        event_key: str,
-        generation_attempt: int,
-    ) -> ValidationResult:
-        return self._issue_result(
-            event_key,
-            ("unsupported_claim",),
-            generation_attempt,
-            validation_mode="rules_only",
-        )
 
     def _accept(
         self,

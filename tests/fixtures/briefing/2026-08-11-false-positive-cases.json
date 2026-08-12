@@ -1,0 +1,54 @@
+[
+  {
+    "name": "official security model announcement",
+    "source": {
+      "source_title": "Vendor expands Daybreak and introduces Model-Cyber",
+      "evidence_text": "We are expanding our cybersecurity initiative Daybreak and introducing Model-Cyber, a new model for advanced, authorized cybersecurity work.",
+      "url": "https://x.example/vendor/status/1",
+      "published_at": "2026-08-11T08:00:00+00:00",
+      "channel": "x"
+    },
+    "chinese_title": "厂商扩大 Daybreak 并推出 Model-Cyber",
+    "brief": "厂商表示，Model-Cyber 用于高级、获授权的网络安全工作。",
+    "evidence_bindings": [
+      {
+        "claim": "厂商扩大 Daybreak 并推出 Model-Cyber",
+        "source_quote": "expanding our cybersecurity initiative Daybreak"
+      },
+      {
+        "claim": "厂商扩大 Daybreak 并推出 Model-Cyber",
+        "source_quote": "introducing Model-Cyber"
+      },
+      {
+        "claim": "厂商表示，Model-Cyber 用于高级、获授权的网络安全工作",
+        "source_quote": "introducing Model-Cyber, a new model for advanced, authorized cybersecurity work"
+      }
+    ]
+  },
+  {
+    "name": "official 3d world workflow announcement",
+    "source": {
+      "source_title": "Lab introduces WorldFlow",
+      "evidence_text": "Introducing WorldFlow, an agentic workflow that generates large scale 3D open worlds from text prompts. Every scene is freely explorable and built entirely from editable, game-ready 3D assets.",
+      "url": "https://x.example/lab/status/2",
+      "published_at": "2026-08-11T07:00:00+00:00",
+      "channel": "x"
+    },
+    "chinese_title": "实验室介绍 WorldFlow",
+    "brief": "WorldFlow 是根据文本提示生成大型 3D 开放世界的智能体工作流，并使用可编辑、可用于游戏的 3D 资产构建场景。",
+    "evidence_bindings": [
+      {
+        "claim": "实验室介绍 WorldFlow",
+        "source_quote": "Introducing WorldFlow"
+      },
+      {
+        "claim": "WorldFlow 是根据文本提示生成大型 3D 开放世界的智能体工作流，并使用可编辑、可用于游戏的 3D 资产构建场景",
+        "source_quote": "Introducing WorldFlow, an agentic workflow that generates large scale 3D open worlds from text prompts"
+      },
+      {
+        "claim": "WorldFlow 是根据文本提示生成大型 3D 开放世界的智能体工作流，并使用可编辑、可用于游戏的 3D 资产构建场景",
+        "source_quote": "built entirely from editable, game-ready 3D assets"
+      }
+    ]
+  }
+]

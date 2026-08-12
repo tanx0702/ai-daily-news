@@ -23,7 +23,13 @@ def config(**values) -> BriefingConfig:
     return BriefingConfig(**defaults)
 
 
-def item(index: int, *, channel: str = "rss", event_key: str | None = None) -> BriefItem:
+def item(
+    index: int,
+    *,
+    channel: str = "rss",
+    event_key: str | None = None,
+    validation_mode: str = "rules_only",
+) -> BriefItem:
     source = SourceEvidence(
         publisher_id=f"publisher-{index}",
         publisher_name=f"Publisher {index}",
@@ -45,7 +51,7 @@ def item(index: int, *, channel: str = "rss", event_key: str | None = None) -> B
         published_at=source.published_at,
         evidence_bindings=(EvidenceBinding(f"快讯 {index}", source.evidence_text, source.url),),
         content_origin="source",
-        validation_mode="rules_only",
+        validation_mode=validation_mode,
     )
 
 
@@ -56,6 +62,18 @@ def test_exactly_five_valid_items_create_without_source_concentration_blocker():
 
     assert decision.action == "create"
     assert decision.selected_count == 5
+    assert decision.reasons == ()
+
+
+def test_rules_only_quality_degradation_does_not_block_five_valid_items():
+    items = [
+        item(index, validation_mode="rules_only" if index < 4 else "rules_and_llm")
+        for index in range(1, 6)
+    ]
+
+    decision = decide_draft(items, config())
+
+    assert decision.action == "create"
     assert decision.reasons == ()
 
 

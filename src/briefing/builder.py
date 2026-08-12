@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 import json
 import logging
@@ -9,6 +10,7 @@ import re
 from typing import Callable, Mapping, Sequence
 
 from src.briefing.config import BriefingConfig
+from src.briefing.display_targets import display_targets, summary_sentences
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent
 from src.llm_config import LLMConfig
 
@@ -76,20 +78,18 @@ def _source_fallback(event: MergedEvent, input_index: int) -> BuiltBrief | None:
     if title and title in remainder:
         remainder = remainder.replace(title, "", 1).strip(" \n。；;：:")
     sentences = [
-        part.strip()
-        for part in re.split(r"(?<=[。！？!?])\s*|\n+", remainder)
-        if part.strip() and _contains_chinese(part)
+        part
+        for part in summary_sentences(remainder)
+        if part and _contains_chinese(part)
     ][:2]
     if not sentences:
         sentences = [title]
-    brief = "".join(sentences)
-    claims = [title]
-    claims.extend(
-        claim.strip().rstrip("。！？!? ")
-        for sentence in sentences
-        for claim in re.split(r"[，,；;]", sentence)
-        if claim.strip().rstrip("。！？!? ")
+    brief = (
+        "。".join(sentences) + "。"
+        if sentences != [title]
+        else title
     )
+    claims = [title, *summary_sentences(brief)]
     bindings = [
         EvidenceBinding(claim=claim, source_quote=claim, source_url=evidence.url)
         for claim in dict.fromkeys(claims)
@@ -117,7 +117,7 @@ def _strict_item(
         "event_key",
         "chinese_title",
         "brief",
-        "evidence_bindings",
+        "evidence_targets",
     }
     if set(raw) != required:
         return None
@@ -129,30 +129,38 @@ def _strict_item(
         return None
     if not isinstance(raw["brief"], str) or not raw["brief"].strip():
         return None
-    raw_bindings = raw["evidence_bindings"]
+    target_claims = display_targets(raw["chinese_title"], raw["brief"])
+    if not 1 <= len(target_claims) - 1 <= 2:
+        return None
+    raw_bindings = raw["evidence_targets"]
     if not isinstance(raw_bindings, list) or not raw_bindings:
         return None
 
     bindings: list[EvidenceBinding] = []
     for binding in raw_bindings:
         if not isinstance(binding, dict) or set(binding) != {
-            "claim",
+            "target",
             "source_quote",
             "source_url",
         }:
             return None
         if not all(
             isinstance(binding[field], str) and binding[field].strip()
-            for field in ("claim", "source_quote", "source_url")
+            for field in ("target", "source_quote", "source_url")
         ):
+            return None
+        target = binding["target"].strip()
+        if target not in target_claims:
             return None
         bindings.append(
             EvidenceBinding(
-                claim=binding["claim"].strip(),
+                claim=target_claims[target],
                 source_quote=binding["source_quote"].strip(),
                 source_url=binding["source_url"].strip(),
             )
         )
+    if {binding["target"].strip() for binding in raw_bindings} != set(target_claims):
+        return None
 
     return BuiltBrief(
         event_key=event.event_key,
@@ -181,6 +189,13 @@ class BriefBuilder:
         self.timeout = timeout
         self._client: object | None = None
         self._circuit_open = False
+        self.diagnostics: Counter[str] = Counter(
+            content_llm_success_count=0,
+            content_llm_timeout_count=0,
+            content_llm_invalid_response_count=0,
+            content_llm_unavailable_count=0,
+            content_llm_circuit_open_count=0,
+        )
 
     def build_batch(
         self,
@@ -209,8 +224,15 @@ class BriefBuilder:
             for event in events
         }
 
-        if not self.llm_config.api_key or self._circuit_open:
+        if not self.llm_config.api_key:
             self._circuit_open = True
+            self.diagnostics["content_llm_unavailable_count"] += 1
+            return [
+                self._fallback_result(event, index, current_attempts[event.event_key])
+                for index, event in enumerate(events, 1)
+            ]
+        if self._circuit_open:
+            self.diagnostics["content_llm_circuit_open_count"] += 1
             return [
                 self._fallback_result(event, index, current_attempts[event.event_key])
                 for index, event in enumerate(events, 1)
@@ -241,9 +263,11 @@ class BriefBuilder:
                         "content": (
                             "你是 AI 圈事实快讯编辑。只根据每条 canonical source 证据生成中文标题和"
                             "一至两句事实摘要，不写评论、趋势、影响分析或输入外事实。为标题和摘要中的"
-                            "每个原子事实返回 claim/source_quote/source_url；quote 必须逐字来自 evidence_text，"
+                            "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
+                            "brief_1 或 brief_2，同一 target 可有多条引用；quote 必须逐字来自 evidence_text，"
+                            "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
-                            "包含且只包含 index、event_key、chinese_title、brief、evidence_bindings。"
+                            "包含且只包含 index、event_key、chinese_title、brief、evidence_targets。"
                         ),
                     },
                     {
@@ -258,15 +282,25 @@ class BriefBuilder:
             decoded = json.loads(_response_content(response))
             raw_items = decoded.get("items") if isinstance(decoded, dict) else None
             if not isinstance(raw_items, list):
+                self.diagnostics["content_llm_invalid_response_count"] += 1
                 raw_items = []
+            else:
+                self.diagnostics["content_llm_success_count"] += 1
         except Exception as exc:
             if _is_nonrecoverable(exc):
                 logger.error("Content LLM circuit opened: %s", exc)
                 self._circuit_open = True
+                self.diagnostics["content_llm_unavailable_count"] += 1
                 return [
                     self._fallback_result(event, index, current_attempts[event.event_key])
                     for index, event in enumerate(events, 1)
                 ]
+            if isinstance(exc, TimeoutError) or "timeout" in str(exc).lower():
+                self.diagnostics["content_llm_timeout_count"] += 1
+            elif isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
+                self.diagnostics["content_llm_invalid_response_count"] += 1
+            else:
+                self.diagnostics["content_llm_unavailable_count"] += 1
             logger.warning("Brief builder request failed: %s", exc)
             raw_items = []
 

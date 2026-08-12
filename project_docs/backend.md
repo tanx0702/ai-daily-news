@@ -27,7 +27,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - 网络超时、HTTP 错误、JSON/XML 解析错误和供应商返回异常必须记录上下文日志，并返回空候选、原文降级、跳过该媒体或阻止草稿等明确结果。
 - 单个来源失败不能阻断其它来源；封面、原文图和 AI 摘要失败不能删除已经可生成的日报 HTML。歧义重复候选必须隔离，不能作为回填来源。
 - 任何重试都必须有上限和超时；不能通过无限重试掩盖供应商故障或拖垮每日任务。
-- 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；质量 LLM 不可用或响应无效时必须使用确定性的 `rules_only`，不得请求人工复核或 LLM 修正。
+- 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；内容 LLM 必须返回 `title`、`brief_1`、`brief_2` 展示目标，Python 生成完整 `EvidenceBinding.claim`。质量 LLM 不可用或响应无效时，确定性事实规则通过的条目必须使用 `rules_only` 自动入选；跨语言自动降级还必须有逐字实体锚点，且不能包含规则无法核验的用途等翻译语义。不得请求人工复核或 LLM 修正事实。
 
 ## Flask 路由边界
 
@@ -51,6 +51,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - GitHub push、点赞、下载量等只能作为活跃度或社区信号，不能独立证明官方发布事实。
 - `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
 - `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
+- 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。
 - v2/shadow/editorial review 和 Tencent SCF 不得成为生产简报的必需依赖；辅助流程只能记录受保护诊断，不能改变已接受的条目或决策。
 

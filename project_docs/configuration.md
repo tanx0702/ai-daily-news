@@ -38,7 +38,7 @@ docker compose up -d --force-recreate
 
 | 变量 | 默认/继承 | 说明 |
 | --- | --- | --- |
-| `QUALITY_LLM_API_KEY` / `QUALITY_LLM_MODEL` / `QUALITY_LLM_API_BASE` | 未设置时继承 `LLM_*` | 可选的事实简报证据核验增强；不可用或无效响应时，同语言条目使用 `rules_only`；中文 claim 绑定非中文 quote 时重建一次后排除 |
+| `QUALITY_LLM_API_KEY` / `QUALITY_LLM_MODEL` / `QUALITY_LLM_API_BASE` | 未设置时继承 `LLM_*` | 可选的事实简报语义核验增强；不可用或无效响应时，确定性规则通过的条目使用 `rules_only`；跨语言自动降级要求逐字实体锚点且只含可机械核验语义，不转人工复核 |
 | `DAILY_LLM_TIMEOUT` | `90` | 文本摘要单次超时 |
 | `QUALITY_GATE_TIMEOUT` | `45` 或显式值 | 质量模型超时 |
 | `ENABLE_AI_COVER_GENERATION` | `1` | 无可信原文图时是否调用图片模型 |
@@ -122,6 +122,6 @@ DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 - 修改容器环境后执行 `docker compose up -d --force-recreate`。
 - API key、AppSecret、微信 Token、Basic Auth 密码和 GitHub/HF token 不得进入 Git、日志或诊断 JSON。
 - 订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置和服务器下载的二进制也不得进入 Git、`.env`、日志、诊断 JSON 或 `docs/`。
-- 图片配置缺失时允许本地封面降级；质量模型缺失、超时或响应无效时，同语言证据条目严格使用 `rules_only`，中文 claim 绑定非中文 quote 时重建一次后排除；微信凭证缺失时不能创建草稿或通过生产回调验证。
+- 图片配置缺失时允许本地封面降级；质量模型缺失、超时或响应无效时，确定性事实规则通过的条目统一使用 `rules_only`，质量模型明确语义否决时才重建一次后排除；微信凭证缺失时不能创建草稿或通过生产回调验证。
 - `DraftDecision` 是唯一 `create|block` 决策，`DraftExecution` 另行记录执行结果。旧质量门禁开关、来源占比阻断、9 分目标和人工复核不是生产配置或控制。
 - 新增环境变量必须同步 `.env.advanced.example`、本文件和必要的运维/测试文档。

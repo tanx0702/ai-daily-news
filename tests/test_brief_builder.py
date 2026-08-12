@@ -38,12 +38,17 @@ def generated_item(index: int, event_key: str, source_url: str) -> dict:
         "event_key": event_key,
         "chinese_title": f"示例公司发布模型 {index}",
         "brief": f"示例公司发布模型 {index}。",
-        "evidence_bindings": [
+        "evidence_targets": [
             {
-                "claim": f"示例公司发布模型 {index}",
+                "target": "title",
                 "source_quote": f"Example releases Model {index}",
                 "source_url": source_url,
-            }
+            },
+            {
+                "target": "brief_1",
+                "source_quote": f"Example releases Model {index}",
+                "source_url": source_url,
+            },
         ],
     }
 
@@ -119,6 +124,41 @@ def test_builder_requests_5000_output_tokens():
 
     assert results[0].draft is not None
     assert client.chat.completions.calls[0]["max_tokens"] == 5000
+    assert builder.diagnostics["content_llm_success_count"] == 1
+
+
+def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    builder.build_batch([item], attempts={})
+
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    assert "跨语言" in system_prompt
+    assert "产品、模型或机构名称" in system_prompt
+
+
+def test_builder_records_invalid_timeout_unavailable_and_circuit_diagnostics():
+    invalid_builder, _ = builder_with_responses(["not-json"])
+    invalid_builder.build_batch([event(1)], attempts={})
+    assert invalid_builder.diagnostics["content_llm_invalid_response_count"] == 1
+
+    timeout_builder, _ = builder_with_responses([TimeoutError("timeout")])
+    timeout_builder.build_batch([event(1)], attempts={})
+    assert timeout_builder.diagnostics["content_llm_timeout_count"] == 1
+
+    unavailable_builder, _ = builder_with_responses([], api_key="")
+    unavailable_builder.build_batch([event(1, chinese=True)], attempts={})
+    assert unavailable_builder.diagnostics["content_llm_unavailable_count"] == 1
+
+    circuit_builder, _ = builder_with_responses([RuntimeError("401 invalid api key")])
+    circuit_builder.build_batch([event(1, chinese=True)], attempts={})
+    circuit_builder.build_batch([event(2, chinese=True)], attempts={})
+    assert circuit_builder.diagnostics["content_llm_unavailable_count"] == 1
+    assert circuit_builder.diagnostics["content_llm_circuit_open_count"] == 1
 
 
 def test_builder_accepts_valid_indexed_schema_and_preserves_event_mapping():
@@ -136,6 +176,70 @@ def test_builder_accepts_valid_indexed_schema_and_preserves_event_mapping():
     assert [result.event_key for result in results] == ["event-1", "event-2"]
     assert [result.draft.input_index for result in results] == [1, 2]
     assert all(result.generation_attempt == 1 for result in results)
+
+
+def test_builder_maps_targets_to_complete_display_claims_and_keeps_multiple_quotes():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["brief"] = "示例公司推出文本 API，并继续支持本地运行。第二句补充版本信息。"
+    payload["evidence_targets"] = [
+        {
+            "target": "title",
+            "source_quote": "Example releases Model 1",
+            "source_url": item.canonical_evidence.url,
+        },
+        {
+            "target": "title",
+            "source_quote": "Model 1",
+            "source_url": item.canonical_evidence.url,
+        },
+        {
+            "target": "brief_1",
+            "source_quote": "The model adds a text API.",
+            "source_url": item.canonical_evidence.url,
+        },
+        {
+            "target": "brief_2",
+            "source_quote": "Model 1",
+            "source_url": item.canonical_evidence.url,
+        },
+    ]
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert [binding.claim for binding in result.draft.evidence_bindings] == [
+        "示例公司发布模型 1",
+        "示例公司发布模型 1",
+        "示例公司推出文本 API，并继续支持本地运行",
+        "第二句补充版本信息",
+    ]
+
+
+def test_builder_rejects_unknown_missing_and_unexpected_targets():
+    items = [event(index) for index in range(1, 4)]
+    unknown = generated_item(1, items[0].event_key, items[0].canonical_evidence.url)
+    unknown["evidence_targets"][0]["target"] = "summary"
+    missing = generated_item(2, items[1].event_key, items[1].canonical_evidence.url)
+    missing["brief"] = "第一句。第二句。"
+    unexpected = generated_item(3, items[2].event_key, items[2].canonical_evidence.url)
+    unexpected["evidence_targets"].append(
+        {
+            "target": "brief_2",
+            "source_quote": "Model 3",
+            "source_url": items[2].canonical_evidence.url,
+        }
+    )
+    builder, _ = builder_with_responses([{"items": [unknown, missing, unexpected]}])
+
+    results = builder.build_batch(items, attempts={})
+
+    assert [result.reason_code for result in results] == [
+        "invalid_builder_response",
+        "invalid_builder_response",
+        "invalid_builder_response",
+    ]
 
 
 def test_missing_duplicate_and_unindexed_results_fail_only_affected_items():
@@ -222,7 +326,31 @@ def test_source_fallback_keeps_each_summary_sentence_in_chinese():
     )
 
 
-def test_source_fallback_binds_each_comma_separated_display_claim():
+def test_source_fallback_preserves_sentence_boundaries_for_two_summary_sentences():
+    item = event(1, chinese=True)
+    source = item.canonical_evidence
+    item = MergedEvent(
+        event_key=item.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id=source.publisher_id,
+            publisher_name=source.publisher_name,
+            channel=source.channel,
+            authority=source.authority,
+            is_official=source.is_official,
+            official_identity_source=source.official_identity_source,
+            source_title=source.source_title,
+            evidence_text=f"{source.source_title}。第一句事实。第二句事实。",
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+
+    result = builder_with_responses([], api_key="")[0].build_batch([item], attempts={})[0]
+
+    assert result.draft.brief == "第一句事实。第二句事实。"
+
+
+def test_source_fallback_binds_complete_display_sentences_without_comma_splitting():
     item = event(1, chinese=True)
     source = item.canonical_evidence
     item = MergedEvent(
@@ -247,8 +375,9 @@ def test_source_fallback_binds_each_comma_separated_display_claim():
     result = builder.build_batch([item], attempts={})[0]
     bound_claims = {binding.claim for binding in result.draft.evidence_bindings}
 
-    assert "该模型提供新的文本能力" in bound_claims
-    assert "并公开 API 说明" in bound_claims
+    assert "该模型提供新的文本能力，并公开 API 说明" in bound_claims
+    assert "该模型提供新的文本能力" not in bound_claims
+    assert "并公开 API 说明" not in bound_claims
 
 
 def test_builder_returns_attempt_one_to_the_caller_before_attempt_two_fallback():

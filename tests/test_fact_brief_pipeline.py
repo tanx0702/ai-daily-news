@@ -555,3 +555,108 @@ def test_pipeline_records_quarantine_and_quality_degradation_diagnostics():
     assert result.exclusions["ambiguous_duplicate"] == 1
     assert result.diagnostics["quality_llm_unavailable_count"] == 5
     assert result.diagnostics["rules_only_used_count"] == 5
+    assert result.diagnostics["rules_only_count"] == 5
+    assert result.diagnostics["rules_and_llm_count"] == 0
+    assert result.diagnostics["build_attempt_count"] == 5
+    accepted_audit = [
+        entry for entry in result.audit_entries if entry["final_state"] == "accepted"
+    ]
+    assert all(
+        entry["attempts"][-1]["validation"]["validation_mode"] == "rules_only"
+        for entry in accepted_audit
+    )
+
+
+def test_pipeline_does_not_double_count_quality_service_diagnostics():
+    class DiagnosticDegradedValidator:
+        diagnostics = {
+            "quality_llm_unavailable_count": 1,
+            "quality_llm_circuit_open_count": 4,
+        }
+
+        def validate(self, value, built, *, generation_attempt):
+            result = accepted(value)
+            return ValidationResult(
+                "accept",
+                ("quality_llm_unavailable", "rules_only_used"),
+                "rules_only",
+                validated_item=result.validated_item,
+            )
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        Builder(),
+        DiagnosticDegradedValidator(),
+    )
+
+    assert result.diagnostics["quality_llm_unavailable_count"] == 1
+    assert result.diagnostics["quality_llm_circuit_open_count"] == 4
+    assert result.diagnostics["rules_only_used_count"] == 5
+
+
+def test_pipeline_counts_build_attempts_without_valid_drafts():
+    class MissingBuilder:
+        diagnostics = {}
+
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return ()
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        MissingBuilder(),
+        Validator(),
+    )
+
+    assert result.diagnostics["build_attempt_count"] == 10
+
+
+def test_pipeline_counts_rules_and_llm_items_separately():
+    class ReviewedValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value, validation_mode="rules_and_llm")
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        Builder(),
+        ReviewedValidator(),
+    )
+
+    assert result.decision.action == "create"
+    assert result.diagnostics["rules_only_count"] == 0
+    assert result.diagnostics["rules_and_llm_count"] == 5
+
+
+def test_pipeline_merges_builder_and_validator_service_diagnostics():
+    builder = Builder()
+    builder.diagnostics = {
+        "content_llm_success_count": 1,
+        "content_llm_timeout_count": 1,
+    }
+
+    class DiagnosticValidator:
+        diagnostics = {
+            "quality_llm_success_count": 3,
+            "quality_llm_circuit_open_count": 2,
+        }
+
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        builder,
+        DiagnosticValidator(),
+    )
+
+    assert result.diagnostics["content_llm_success_count"] == 1
+    assert result.diagnostics["content_llm_timeout_count"] == 1
+    assert result.diagnostics["quality_llm_success_count"] == 3
+    assert result.diagnostics["quality_llm_circuit_open_count"] == 2
