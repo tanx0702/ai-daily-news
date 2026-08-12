@@ -1,12 +1,78 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-12T11:11:34.127172Z",
+  "generated_at": "2026-08-12T15:11:50.648272Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 218,
+  "tweet_count": 220,
   "tweets": [
+    {
+      "tweet_id": "2087556358757609854",
+      "text": "I like that all AI commentators now need to pretend they have always had a careful nuanced grasp of the difference between a bunch of unsolved mathematical problems that only specialized experts had heard of: “The Gromlach Conjecture is false for r-dimensional matrices, wow, that",
+      "author": "emollick",
+      "created_at": "2026-08-12T15:06:35.000Z",
+      "url": "https://x.com/emollick/status/2087556358757609854",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087554073553764629",
+      "text": "LAUNCHED: Paul Conyngham, who used ChatGPT + AlphaFold to design an mRNA cancer vaccine for his rescue dog Rosie, founded Gamgee (YC S26) to build personalized vaccines for other dogs.\n\nTrials are live in Australia, and Gamgee is taking cases worldwide.",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-12T14:57:30.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087554073553764629",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087541213284946191",
+      "text": "SL2T is our breakthrough sign language-to-text model powering new features for Deaf and hard of hearing users on @Android.\n\nStarting with American Sign Language-to-English on Pixel 11, people can sign directly into Gboard and Live Transcribe instead of typing. https://t.co/p9Vx7tJtLT",
+      "author": "GoogleDeepMind",
+      "created_at": "2026-08-12T14:06:24.000Z",
+      "url": "https://x.com/GoogleDeepMind/status/2087541213284946191",
+      "source_name": "Google DeepMind",
+      "source_handle": "GoogleDeepMind",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087529309812490687",
+      "text": "Build a Reasoning Model (From Scratch) is now finally also available on Amazon! Thanks so much to everyone who preordered!\n\nOne important note for readers in India: please avoid ordering through @amazon India (@amazonIN) for now since they are selling counterfeit black-and-white https://t.co/i2Sok52M6r",
+      "author": "rasbt",
+      "created_at": "2026-08-12T13:19:06.000Z",
+      "url": "https://x.com/rasbt/status/2087529309812490687",
+      "source_name": "Sebastian Raschka",
+      "source_handle": "rasbt",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087521619459850348",
+      "text": "would be even more popular than @UseCorgi cafe",
+      "author": "huggingface",
+      "created_at": "2026-08-12T12:48:33.000Z",
+      "url": "https://x.com/huggingface/status/2087521619459850348",
+      "source_name": "Hugging Face",
+      "source_handle": "huggingface",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087519531547701335",
+      "text": "Expedia recently moved its ranking models to a state-of-the-art Keras 3 setup. Results: 30% faster training, and inference latency decreased by 70%. \n\nRead their writeup about the upgrade:\nhttps://t.co/ReBzub7bk7",
+      "author": "fchollet",
+      "created_at": "2026-08-12T12:40:15.000Z",
+      "url": "https://x.com/fchollet/status/2087519531547701335",
+      "source_name": "Francois Chollet",
+      "source_handle": "fchollet",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2087486869080547784",
       "text": "Top stories in AI today:\n\n- Anthropic adds AI watermarks to Claude outputs\n- Grok Bot is the latest AI agent teammate build\n- Use ChatGPT to build a custom Mac shortcut system\n- xAI co-founder’s River banks $1.1B for personal AI https://t.co/dAtfeM7W3g",
@@ -39,6 +105,17 @@
       "source_handle": "swyx",
       "source_tier": "media",
       "official": false
+    },
+    {
+      "tweet_id": "2087413988451574199",
+      "text": "Qwen 3.8 27b is being released at 11:00AM EST on Wednesday\n\nFolks are lined up for miles to see what this fancy new model is capable of https://t.co/UJSzbIwKhp",
+      "author": "jessalanfields",
+      "created_at": "2026-08-12T05:40:51.000Z",
+      "url": "https://x.com/huggingface/status/2087413988451574199",
+      "source_name": "Hugging Face",
+      "source_handle": "huggingface",
+      "source_tier": "primary",
+      "official": true
     },
     {
       "tweet_id": "2087382849972547730",
@@ -195,6 +272,17 @@
       "official": false
     },
     {
+      "tweet_id": "2087223666778272070",
+      "text": "My dog Rosie was given months to live. Chemo and immunotherapy failed\n\nI used chatgpt + computational genomics to design a personalised mRNA cancer vaccine for her tumour. Several of her tumours shrank\n\nToday we launch Gamgee (YC S26): personalised mRNA cancer vaccines for dogs https://t.co/wMAmNXXgQd",
+      "author": "paul_conyngham",
+      "created_at": "2026-08-11T17:04:35.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087223666778272070",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
       "tweet_id": "2087223385772204112",
       "text": "DEPARTING: OpenAI COO Brad Lightcap is leaving the company after eight years to \"start something new\".\n\nLightcap said he'll \"have more to share soon,\" and that there is \"a few important new things the world will need to get right\" as AI enters its next period. https://t.co/8KnlqrKx1c",
       "author": "TheRundownAI",
@@ -237,17 +325,6 @@
       "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2087185061523161454",
-      "text": "Top stories in tech today:\n\n- Apple’s glass iPhone isn’t dead after all\n- YouTube makes it harder to earn money\n- The fight over a giant orbital mirror has begun\n- Myspace plans its comeback\n- Quick hits on other tech news https://t.co/edIOaZSiZu",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-11T14:31:11.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087185061523161454",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2087180773497421926",
@@ -503,17 +580,6 @@
       "official": false
     },
     {
-      "tweet_id": "2086874631437230225",
-      "text": "A true issue with data centers compared with the light industries of previous Industrial Revolutions is they don’t require many people to run (though building them takes more). It breaks the industry trade-offs between palpable local negative externalities &amp; palpable local gains.",
-      "author": "emollick",
-      "created_at": "2026-08-10T17:57:39.000Z",
-      "url": "https://x.com/emollick/status/2086874631437230225",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2086867246073401655",
       "text": "We asked an unreleased research version of Claude to take a stab at the Riemann hypothesis.\n\nIt didn’t solve it, but it did make strides on a related problem: it increased the lower bound for the fraction of zeros of the Riemann zeta function that satisfy the hypothesis from",
       "author": "AnthropicAI",
@@ -730,17 +796,6 @@
       "url": "https://x.com/sama/status/2086468661670461671",
       "source_name": "Sam Altman",
       "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086128512625254770",
-      "text": "I'm at 1/2, I have some of the worst …",
-      "author": "fchollet",
-      "created_at": "2026-08-08T16:32:50.000Z",
-      "url": "https://x.com/fchollet/status/2086128512625254770",
-      "source_name": "Francois Chollet",
-      "source_handle": "fchollet",
       "source_tier": "research",
       "official": false
     },
@@ -1405,17 +1460,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082541871612449180",
-      "text": "https://t.co/51C2lyfTCM",
-      "author": "GoogleDeepMind",
-      "created_at": "2026-07-29T19:00:48.000Z",
-      "url": "https://x.com/GoogleDeepMind/status/2082541871612449180",
-      "source_name": "Google DeepMind",
-      "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2082529280341553209",
       "text": "Announcing Grok Voice Think Fast 2.0, our next-generation voice model with improved intelligence, transcription accuracy, and conversational capabilities.\n\nhttps://t.co/XUiX1CouKz https://t.co/Nel3zwzkwY",
       "author": "SpaceXAI",
@@ -1581,17 +1625,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082101241908249014",
-      "text": "Yes, LLM architectures are getting a little more complicated https://t.co/jII112pJbO",
-      "author": "rasbt",
-      "created_at": "2026-07-28T13:49:54.000Z",
-      "url": "https://x.com/rasbt/status/2082101241908249014",
-      "source_name": "Sebastian Raschka",
-      "source_handle": "rasbt",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2081813202514681878",
       "text": "We are releasing PerceptionBench, a benchmark that isolates visual perception and evaluates it as a set of atomic capabilities - discovered from how today's models fail, rather than defined in advance. \n\nFrom frontier-model failures across 42 benchmarks, we derive 10 atomic https://t.co/p9uZ0t5yHy",
       "author": "Kimi_Moonshot",
@@ -1643,17 +1676,6 @@
       "url": "https://x.com/cohere/status/2081756537249202319",
       "source_name": "Cohere",
       "source_handle": "cohere",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2081718698608402818",
-      "text": "AI security improves when organizations share research, tools and real-world experience.\n\nWe’re joining industry leaders, including @NVIDIA, in the Open Secure AI Alliance to help organizations identify and address software vulnerabilities and strengthen critical systems.\n\nLearn https://t.co/6pAbUTjJuc",
-      "author": "huggingface",
-      "created_at": "2026-07-27T12:29:48.000Z",
-      "url": "https://x.com/huggingface/status/2081718698608402818",
-      "source_name": "Hugging Face",
-      "source_handle": "huggingface",
       "source_tier": "primary",
       "official": true
     },
