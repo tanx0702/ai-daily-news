@@ -1,12 +1,89 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-12T15:11:50.648272Z",
+  "generated_at": "2026-08-12T19:18:57.820535Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 220,
+  "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2087607572711010709",
+      "text": "MiniMax H3 × @fal 🎙️\n\nTomorrow., join @OdinLovis, Creative Engineer at fal, Ethan Wei, AI Solutions Architect at MiniMax, and @VictorSuOrtiz, GTM Engineer at MiniMax for a live breakdown of how creators and developers are building with H3 on Fal\n\nWe’ll cover multimodal https://t.co/rh7cXZzuMf",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-12T18:30:05.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087607572711010709",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087598780086632522",
+      "text": "Grok 4.6 made large gains on AA-Briefcase, our agentic knowledge work benchmark and cost substantially less than other leading models\n\nAA-Briefcase tests models on long-horizon agentic knowledge work tasks. The test set is private to prevent contamination. \n\nGrok 4.6 is neck and https://t.co/YAE1TSURVe",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-12T17:55:09.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087598780086632522",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087590023742775472",
+      "text": "Korean AI lab Upstage has released Solar Pro 4, scoring 42 on the Artificial Analysis Intelligence Index, a significant increase from Solar Pro 3’s 14\n\nSolar Pro 4 is @upstageai's new proprietary flagship reasoning model, replacing Solar Pro 3 from April 2026. At 42 on the https://t.co/cKwS1CJKHz",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-12T17:20:21.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087590023742775472",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087571573947392419",
+      "text": "Today, we’re adding another member to our model family. Meet North Micro Vision.\n\nOur smallest vision-language model yet, ideal for sophisticated document understanding. Available open-source under an Apache 2.0 license. Get the weights on @huggingface. https://t.co/dc7jz8UpUo",
+      "author": "cohere",
+      "created_at": "2026-08-12T16:07:03.000Z",
+      "url": "https://x.com/cohere/status/2087571573947392419",
+      "source_name": "Cohere",
+      "source_handle": "cohere",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087570457394401653",
+      "text": "NEW: SpaceXAI released Grok 4.6, with some impressive jumps across benchmarks. \n\nMatching or nearing Fable and 5.6-Sol on areas like intelligence, coding, and agentic tasks, with pricing that significantly undercuts the frontier. \n\nElon + Cursor are cooking https://t.co/lRzKbjWO4v",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-12T16:02:36.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087570457394401653",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087564648325530099",
+      "text": "SpaceXAI's Grok 4.6 scores 61 on the Artificial Analysis Intelligence Index, joining the frontier in line with GPT-5.6 Sol, with standout agentic performance at lower cost\n\nGrok 4.6 gains 5 points over Grok 4.5 on the Intelligence Index just over one month after its release, or https://t.co/QeqrKpVUjk",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-12T15:39:31.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087564648325530099",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087562800982077492",
+      "text": "Introducing Grok 4.6.\n\nIt delivers frontier intelligence and is a significant improvement over Grok 4.5 at the same price. https://t.co/RtTbpXcb3a",
+      "author": "SpaceXAI",
+      "created_at": "2026-08-12T15:32:11.000Z",
+      "url": "https://x.com/xAI/status/2087562800982077492",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2087556358757609854",
       "text": "I like that all AI commentators now need to pretend they have always had a careful nuanced grasp of the difference between a bunch of unsolved mathematical problems that only specialized experts had heard of: “The Gromlach Conjecture is false for r-dimensional matrices, wow, that",
@@ -195,17 +272,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087303970725499361",
-      "text": "Announcing AA-AnalystAgent, our new agentic benchmark for quantitative analysis on real-world spreadsheets &amp; documents. Claude Opus 5 leads at 54%, followed by GPT-5.5 at 50% and Claude Fable 5 at 49%\n\nIn real analyst roles, professional judgment and expertise are as important https://t.co/O1BULCPnYx",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-11T22:23:41.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2087303970725499361",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087279317172777169",
       "text": "Tomorrow is the total solar eclipse 🌑☀️ Whether you’re in the path of totality across Greenland, Iceland, and Spain, or watching the partial phases online, we’ve got you covered.\n\nThe interactive 3D visualizer built in @GoogleAIStudio lets you follow the Moon's shadow across the https://t.co/Ttu58vJYR8",
       "author": "GoogleAI",
@@ -283,17 +349,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087223385772204112",
-      "text": "DEPARTING: OpenAI COO Brad Lightcap is leaving the company after eight years to \"start something new\".\n\nLightcap said he'll \"have more to share soon,\" and that there is \"a few important new things the world will need to get right\" as AI enters its next period. https://t.co/8KnlqrKx1c",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-11T17:03:28.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087223385772204112",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087222961594081526",
       "text": "Qwen Image 3.0 is now on OpenArt ✨\n\nThe most Real Qwen image model yet. Native text across 12 languages, precise 10px type, and full interfaces like web pages, games, and livestreams rendered with real world knowledge.\n\nAvailable now on OpenArt: \nhttps://t.co/HNyKpiz77O https://t.co/yoeZfphXLI",
       "author": "openart_ai",
@@ -335,17 +390,6 @@
       "source_name": "Sebastian Raschka",
       "source_handle": "rasbt",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2087163514037408085",
-      "text": "NVIDIA has just released the first Nemotron 3.5 model: Nemotron 3.5 Lightning, a highly efficient small open weights model with performance similar to gpt-oss-120b at around a quarter of the total parameters\n\nNemotron 3.5 Lightning is the successor to @nvidia  Nemotron 3 Nano 30B https://t.co/tZh4O55EfC",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-11T13:05:34.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2087163514037408085",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -426,28 +470,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087006703120478257",
-      "text": "No-prize guessing game: who’s in the video/pic👀",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-11T02:42:27.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087006703120478257",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2086990319141486711",
-      "text": "As one of the few who’s constantly traveling back and forth between SF and China (Shanghai, HK, Shenzhen, Beijing), I’ve been seeing a fast-growing trend since last year that more and more of the leading forces in the industry are coming to China- and discovered tons of https://t.co/1HutTSYolj",
-      "author": "RenLeanna",
-      "created_at": "2026-08-11T01:37:21.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2086990319141486711",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2086976751335551335",
       "text": "you don't need Seedance 2.5, here's cheaper and more efficient workflow\n\nwe made this entire game shooting scene in one shot for $1.97 with DeepSeek V4 Flash 0731 + MiniMax H3\n\nwe use DeepSeek to code the raw Three.js scene first: exact camera movement, character motion, timing, https://t.co/O0jMYa3MC3",
       "author": "gmi_cloud",
@@ -477,17 +499,6 @@
       "url": "https://x.com/swyx/status/2086962980235939920",
       "source_name": "swyx",
       "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2086958697444696113",
-      "text": "For the same model, output speed can vary by over 15x depending on the inference provider. We're unpacking why those differences exist and what they mean in practice on Wednesday, August 12 in San Francisco\n\nHear directly from Artificial Analysis and leading inference providers",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-10T23:31:41.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2086958697444696113",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
       "source_tier": "media",
       "official": false
     },
@@ -1471,28 +1482,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082517754712842386",
-      "text": "Use the TinyFish plugin in Grok Build to give your agent powerful search and retrieval capabilities on the web",
-      "author": "SpaceXAI",
-      "created_at": "2026-07-29T17:24:58.000Z",
-      "url": "https://x.com/xAI/status/2082517754712842386",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082512237122793478",
-      "text": "You can now use TinyFish in Grok Build.\n\nSearch, Fetch, Agent, and Browser all under one plugin inside @SpaceXAI's coding agent.\n\nGive Grok Build a real connection to the live web and let it work across any site from your terminal. https://t.co/4j8I0RvFyP",
-      "author": "Tiny_Fish",
-      "created_at": "2026-07-29T17:03:03.000Z",
-      "url": "https://x.com/xAI/status/2082512237122793478",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2082511900580196596",
       "text": "Today we’re open-sourcing Numbat, an agent-detection and response layer that is designed to work across agent harnesses.\n\nNumbat gives security teams visibility into agent activity, with controls to block selected actions before execution.\n\nRead more: https://t.co/LVhkCJ2sMt",
       "author": "perplexity_ai",
@@ -1665,17 +1654,6 @@
       "url": "https://x.com/Kimi_Moonshot/status/2081760186235289764",
       "source_name": "Kimi",
       "source_handle": "Kimi_Moonshot",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2081756537249202319",
-      "text": "Introducing North Automations\n\nUse plain language to design automated workflows with accurate results. Regardless of technical ability, Cohere enables all employees to harness the power of AI. https://t.co/599Bhfu9wg",
-      "author": "cohere",
-      "created_at": "2026-07-27T15:00:10.000Z",
-      "url": "https://x.com/cohere/status/2081756537249202319",
-      "source_name": "Cohere",
-      "source_handle": "cohere",
       "source_tier": "primary",
       "official": true
     },
