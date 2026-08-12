@@ -1,12 +1,34 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-12T04:20:40.192196Z",
+  "generated_at": "2026-08-12T07:49:38.977801Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 217,
+  "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2087444616832594022",
+      "text": "📄New Research on Self-Evolving Agents:\nWhen AI agents modify themselves, how do we know they actually got better?\n\nWe present Diving into Reliable Self-Evolving Agents: A Survey—a systematic map of how agents self-evolve and what evidence is needed to trust each update.\nThe https://t.co/eIinsfhebv",
+      "author": "TencentHunyuan",
+      "created_at": "2026-08-12T07:42:34.000Z",
+      "url": "https://x.com/TencentHunyuan/status/2087444616832594022",
+      "source_name": "Tencent Hunyuan",
+      "source_handle": "TencentHunyuan",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087437017840046156",
+      "text": "this is already one of the most important papers of this year.\n\nhttps://t.co/0f3ma9POEG\n\nthe methodology doesnt seem clearly explained so here are some notes with a further distillation",
+      "author": "swyx",
+      "created_at": "2026-08-12T07:12:22.000Z",
+      "url": "https://x.com/swyx/status/2087437017840046156",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2087382849972547730",
       "text": "Try Qwen-Image-3.0 on @openart_ai! 🎨👀",
@@ -248,6 +270,17 @@
       "source_handle": "NVIDIAAI",
       "source_tier": "primary",
       "official": true
+    },
+    {
+      "tweet_id": "2087147042888114428",
+      "text": "We can finally talk about it:\n\nWe found a way to extract hidden reasoning of frontier models using a vulnerability in the APIs of every frontier AI company.\n\nWe verified that our reasoning token count matches billed API thinking tokens 1:1 for most of the prompts we queried. https://t.co/S7wN8aP3X7",
+      "author": "kotekjedi_ml",
+      "created_at": "2026-08-11T12:00:06.000Z",
+      "url": "https://x.com/swyx/status/2087147042888114428",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
     },
     {
       "tweet_id": "2087124467952525369",
@@ -610,17 +643,6 @@
       "source_name": "Andrew Ng",
       "source_handle": "AndrewYNg",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086700857358450853",
-      "text": "comments like this on the aie channel miss the point.\n\n- we are building a community and an industry that is bigger than any one person can hold in their head. your slop is someone's aha moment and vice versa.\n- speakers spend quality time coming and presenting their strongest https://t.co/YkS7QpkN8B",
-      "author": "swyx",
-      "created_at": "2026-08-10T06:27:08.000Z",
-      "url": "https://x.com/swyx/status/2086700857358450853",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -1247,17 +1269,6 @@
       "url": "https://x.com/GoogleAI/status/2083221445375668654",
       "source_name": "Google AI",
       "source_handle": "GoogleAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2083108527854252112",
-      "text": "Hy-MT2 keeps gaining momentum.\n\nSince its open-source release in May:\n→ 700K+ downloads 🌟\n→ Hy-MT2-1.8B reached #1 on the Hugging Face trending, with 30B-A3B reaching #4 🥇\n→ 70+ verified product and project integrations 💻\n→ Broader Hy-MT ecosystem support across Apple https://t.co/zfcVSJA6Rj",
-      "author": "TencentHunyuan",
-      "created_at": "2026-07-31T08:32:29.000Z",
-      "url": "https://x.com/TencentHunyuan/status/2083108527854252112",
-      "source_name": "Tencent Hunyuan",
-      "source_handle": "TencentHunyuan",
       "source_tier": "primary",
       "official": true
     },
