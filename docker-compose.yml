@@ -1,4 +1,20 @@
 services:
+  proxy:
+    image: ai-news-web:latest
+    pull_policy: never
+    container_name: ai-news-proxy
+    restart: always
+    profiles: ["egress-proxy"]
+    entrypoint: ["/proxy-bin/sing-box"]
+    command: ["run", "-c", "/etc/sing-box/config.json"]
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ${AI_NEWS_PROXY_BINARY_PATH:-./config/sing-box-unavailable}:/proxy-bin/sing-box:ro
+      - ${AI_NEWS_PROXY_CONFIG_PATH:-./config/sing-box-blocked.json}:/etc/sing-box/config.json:ro
+    networks:
+      - egress
+
   web:
     build: .
     container_name: ai-news-web
@@ -10,11 +26,20 @@ services:
       - ./app.py:/app/app.py
       - ./templates:/app/templates:ro
       - ./config:/app/config
+    networks:
+      - app
+      - egress
     env_file:
       - .env
     environment:
-      - TZ=Asia/Shanghai
-      - ENV=production
+      TZ: Asia/Shanghai
+      ENV: production
+      HTTP_PROXY: ${AI_NEWS_HTTP_PROXY:-}
+      HTTPS_PROXY: ${AI_NEWS_HTTPS_PROXY:-}
+      NO_PROXY: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy}
+      http_proxy: ${AI_NEWS_HTTP_PROXY:-}
+      https_proxy: ${AI_NEWS_HTTPS_PROXY:-}
+      no_proxy: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
       interval: 30s
@@ -38,3 +63,10 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    networks:
+      - app
+
+networks:
+  app:
+    internal: true
+  egress:

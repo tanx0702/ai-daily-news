@@ -31,11 +31,13 @@ python app.py
 日报产物会写入 `docs/index.html`、`docs/latest.json`、
 `docs/wechat.html` 与 `docs/archive/<date>.html`。
 
-## 编辑质量
+## 事实简报与决策
 
-候选会先检查来源证据、时效和事件键，再按来源、主题与独立事件选择。摘要完成后，质检模型会跨候选归并同一事件并重新排序；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
+生产日报展示 5-15 条唯一 AI 事实简报；5-14 条是正常短版，少于 5 条时阻止创建草稿。候选池默认 45 条，先按事件聚类，再生成简报；歧义重复项进入隔离区，不能参与回填。每个展示声明都绑定到展示的规范来源证据；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
 
-最终 `latest.json` 的 `quality_gate.editorial_quality` 会记录整期 0-10 编辑分及扣分原因。9 分代表建议人工发布的目标；该诊断用于提升草稿质量，不替代公众号后台的人工审核。
+质量 LLM 只是可选增强。模型缺失、超时或响应无效时，流水线使用严格确定性的 `rules_only` 核验，不要求人工复核，也不接受 LLM 修正事实。`DraftDecision` 是唯一的 `create|block` 决策；`DraftExecution` 单独记录 `draft_created|dry_run|blocked|failed` 执行结果。
+
+`latest.json` 始终写入 schema v2，包括 `brief_items`、`draft_decision`、`draft_execution` 和诊断；schema v1 仅在冷启动读取历史文件时兼容。
 
 ## Docker 部署
 
@@ -50,17 +52,17 @@ cp .env.example .env
 docker compose up -d
 ```
 
-每日定时任务示例（草稿创建失败或日报未达到发布门槛会返回非零状态）：
+每日定时任务示例（被 block 或草稿创建失败会返回非零状态）：
 
 ```bash
 echo '0 8 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-daily.lock docker compose exec -T web python -m src.main >> /opt/ai-news/logs/cron.log 2>&1' | crontab -
 ```
 
-手动运行并直接查看日志：
+本地或 CI 只生成产物的安全干跑：
 
 ```bash
 cd /opt/ai-news
-docker compose exec -T web python -m src.main
+docker compose exec -e SKIP_WECHAT_DRAFT=1 -T web python -m src.main
 ```
 
 ## 核心环境变量
@@ -92,12 +94,12 @@ docker compose up -d --force-recreate
 
 高级变量按以下用途分组：
 
-- `QUALITY_LLM_*`：独立质检模型。未设置时会继承对应的 `LLM_*`，同时用于证据质检和跨候选编辑复核，大多数部署不需要填写。
-- 日报选择：候选池、来源和主题配额、新闻时效窗口、超时与任务锁。
+- `QUALITY_LLM_*`：独立质量核验模型。未设置时会继承对应的 `LLM_*`；不可用或无效时严格退回 `rules_only`，大多数部署不需要填写。
+- 日报选择：5-15 条事实简报、默认 45 条候选池、事件聚类、排序偏好、新闻时效窗口、超时与任务锁。
 - 采集源：Hacker News、GitHub、Hugging Face、arXiv 开关，以及可选的 `GITHUB_TOKEN` 和 `HF_TOKEN`。
-- 证据质检：发布安全回填、质检超时和 Token 上限。`QUALITY_GATE_STRICT` 仅为兼容旧配置保留，不会阻止当天草稿创建。
+- 事实核验：质量模型超时和确定性 `rules_only` 降级。
 - 图片与封面：原文图抓取、AI 封面、安全封面、重试和超时。
-- 本地调试：跳过公众号草稿、日志目录、Flask 回调端口和公众号标题展示。
+- 本地调试：`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，以及日志目录、Flask 回调端口和公众号标题展示。
 
 代码仍兼容旧的 `AGNES_*` 与 `OPENAI_*` 变量，供已有部署继续运行；新部署请只使用 `LLM_*`、`IMAGE_*` 与可选的 `QUALITY_LLM_*`，不要混用别名。
 
@@ -118,4 +120,4 @@ python -m pytest -q
 
 ## 兼容与安全
 
-单条新闻的 high risk 质检结果不会停止整天任务：系统会从备用候选回填，或将证据稀疏的条目降级为原标题、来源和原文链接。不要提交真实 `.env`、API Key、公众号密钥或生成的 `docs/` 产物。
+已移除的旧质量门禁、来源占比阻断、9 分目标和人工复核不是生产控制。受保护的 v2/shadow/editorial review 只提供诊断，不能改变已接受的简报或 `DraftDecision`。不要提交真实 `.env`、API Key、公众号密钥或生成的 `docs/` 产物。

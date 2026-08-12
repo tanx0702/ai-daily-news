@@ -7,15 +7,31 @@ HTML 日报生成器
 
 import logging
 import os
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from jinja2 import BaseLoader, Environment
+from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.models import BriefItem
 from src.llm_config import resolve_text_llm_config
 from src.text_utils import clean_display_text, safe_http_url
 from src.time_utils import report_date_str
 
 logger = logging.getLogger(__name__)
+
+
+def _display_news(items: Sequence[BriefItem | Mapping[str, Any]]) -> list[dict]:
+    """Return renderer-owned display dictionaries without mutating briefing data."""
+    display_items: list[dict] = []
+    for item in items:
+        if isinstance(item, BriefItem):
+            display_items.append(brief_item_to_display_dict(item))
+        elif isinstance(item, Mapping):
+            display_items.append(dict(item))
+        else:
+            raise TypeError("news items must be BriefItem instances or mappings")
+    return display_items
 
 # ==================== 内嵌 HTML 模板 ====================
 
@@ -339,7 +355,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
 
 def render_daily_html(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     date_str: Optional[str] = None,
     archive_links: Optional[list[str]] = None,
     github_repo: Optional[str] = None,
@@ -365,8 +381,8 @@ def render_daily_html(
 
     # 格式化新闻时间
     formatted_news = []
-    for item in news_list:
-        news_item = dict(item)
+    for item in _display_news(news_list):
+        news_item = item
         news_item["title"] = clean_display_text(news_item.get("title", ""))
         news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
         news_item["summary"] = clean_display_text(news_item.get("summary", ""))
@@ -398,7 +414,7 @@ def render_daily_html(
 
 
 def render_wechat_article(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     date_str: Optional[str] = None,
     pages_url: Optional[str] = None,
     cover_image_url: str = "",
@@ -414,6 +430,7 @@ def render_wechat_article(
     """
     import html as _html
 
+    news_list = _display_news(news_list)
     if date_str is None:
         date_str = report_date_str()
     if pages_url is None:
@@ -679,13 +696,14 @@ def render_wechat_article(
 
 
 def _news_to_markdown(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     date_str: str,
     pages_url: str,
 ) -> str:
     """将新闻列表转换为 Markdown，供 md2wechat AI prompt 使用。"""
+    display_items = _display_news(news_list)
     grouped: dict[str, list[dict]] = {}
-    for item in news_list:
+    for item in display_items:
         source = item.get("source", "Unknown")
         region = _guess_region(source)
         grouped.setdefault(region, []).append(item)
@@ -693,7 +711,7 @@ def _news_to_markdown(
     lines: list[str] = []
     lines.append("# 今日AI要闻")
     lines.append("")
-    lines.append(f"{date_str} · {len(news_list)} 条精选")
+    lines.append(f"{date_str} · {len(display_items)} 条精选")
     lines.append("")
 
     region_order = [r for r in ["overseas", "china"] if r in grouped]

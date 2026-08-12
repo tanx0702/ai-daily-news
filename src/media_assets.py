@@ -16,15 +16,27 @@ import json
 import logging
 import os
 import re
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from PIL import Image, ImageOps
 from urllib.parse import urljoin
 
+from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.models import BriefItem
+
 logger = logging.getLogger(__name__)
+
+
+def _display_news(items: Sequence[BriefItem | Mapping[str, Any]]) -> list[dict]:
+    """Copy display data before adding transient media fields."""
+    return [
+        brief_item_to_display_dict(item) if isinstance(item, BriefItem) else dict(item)
+        for item in items
+    ]
 
 # 图片抓取超时秒数
 DEFAULT_IMAGE_TIMEOUT = 8
@@ -333,7 +345,7 @@ def _is_text_only_source(source: str, source_type: str = "") -> bool:
 
 
 def resolve_article_media(
-    news_list: list[dict],
+    news_list: Sequence[BriefItem | Mapping[str, Any]],
     *,
     docs_dir: str = "",
     pages_url: str = "",
@@ -358,8 +370,9 @@ def resolve_article_media(
     Returns:
         (news_list, media_report)
     """
-    if not news_list:
-        return news_list, {
+    display_news = _display_news(news_list)
+    if not display_news:
+        return display_news, {
             "date": date_str,
             "total": 0,
             "with_original_image": 0,
@@ -406,7 +419,7 @@ def resolve_article_media(
             failures.append(validation.get("reason", "validation_failed"))
         return None, ";".join(failures[:3]) or "no_valid_image_candidate"
 
-    for index, item in enumerate(news_list):
+    for index, item in enumerate(display_news):
         title = (item.get("chinese_title") or item.get("title", ""))[:60]
         source = item.get("source", "")
         source_type = item.get("source_type", "")
@@ -462,7 +475,7 @@ def resolve_article_media(
 
     used_hashes: set[str] = set()
     used_perceptual_hashes: list[str] = []
-    for item, report in zip(news_list, items_report):
+    for item, report in zip(display_news, items_report):
         if item.get("media_state") != "trusted":
             continue
         duplicate = (
@@ -482,7 +495,7 @@ def resolve_article_media(
 
     media_report = {
         "date": date_str,
-        "total": len(news_list),
+        "total": len(display_news),
         "with_original_image": with_original,
         "text_only": text_only,
         "items": items_report,
@@ -497,7 +510,7 @@ def resolve_article_media(
     if docs_dir:
         _save_visual_report(media_report, date_str, docs_dir)
 
-    return news_list, media_report
+    return display_news, media_report
 
 
 def _save_visual_report(report: dict, date_str: str, docs_dir: str) -> None:

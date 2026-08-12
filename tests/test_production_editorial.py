@@ -118,7 +118,7 @@ class ProductionEditorialTests(unittest.TestCase):
         self.assertIs(result.reserves[0], reserve)
         self.assertEqual(result.report["status"], "v1")
 
-    def test_v2_uses_ready_write_candidates_in_editorial_rank_order(self):
+    def test_v2_records_recommendations_without_reordering_production_lists(self):
         from src.workflows.production_editorial import run_production_editorial
 
         first, second, metadata = _item("first"), _item("second"), _item("metadata", content_quality="metadata_only")
@@ -134,10 +134,11 @@ class ProductionEditorialTests(unittest.TestCase):
             editorial=_Editorial((_decision("second", "write", 1), _decision("metadata", "write", 2), _decision("first", "write", 3))),
         )
 
-        self.assertEqual([item["id"] for item in result.selected], ["second", "first"])
-        self.assertEqual(result.reserves, [])
-        self.assertIs(adapter.seen[0], first)
-        self.assertEqual(result.report["status"], "applied")
+        self.assertEqual(result.selected, [first, metadata])
+        self.assertEqual(result.reserves, [second])
+        self.assertIsNot(adapter.seen[0], first)
+        self.assertEqual(result.report["status"], "diagnostic_only")
+        self.assertEqual(result.report["recommended_selected_ids"], ["second", "first"])
         self.assertEqual(result.report["added_v2_selected_ids"], ["second"])
         self.assertEqual(result.report["dropped_v1_selected_ids"], ["metadata"])
         self.assertEqual(result.report["analysis"]["risk_level_distribution"], {"high": 1, "low": 2})

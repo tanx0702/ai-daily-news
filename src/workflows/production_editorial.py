@@ -1,13 +1,14 @@
-"""Safely apply existing v2 editorial decisions to one v1 production run.
+"""Run the legacy v2 editorial analysis as diagnostics only.
 
-This adapter deliberately has no collection, summarization, rendering, storage,
-or publishing side effects.  It only reorders candidates that the current v1
-pipeline has already collected and annotated.
+This adapter has no collection, summarization, rendering, storage, publishing,
+or production-selection effects. It analyzes copies and always returns the
+original selected and reserve lists unchanged.
 """
 
 from __future__ import annotations
 
 from collections import Counter
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -19,7 +20,7 @@ from src.domain.models import EditorialAction, NewsAnalysis, NewsCandidate
 
 @dataclass(frozen=True, slots=True)
 class ProductionEditorialResult:
-    """The final production lists plus a private diagnostic record."""
+    """Unchanged production lists plus a private diagnostic record."""
 
     selected: list[dict]
     reserves: list[dict]
@@ -40,7 +41,7 @@ def run_production_editorial(
     analyst: Any | None = None,
     editorial: Any | None = None,
 ) -> ProductionEditorialResult:
-    """Return a v2-assisted selection or the original v1 lists on any risk."""
+    """Return unchanged v1 lists and optional v2 diagnostic recommendations."""
     report = _base_report(mode, v1_selected, v1_reserves)
     if mode != "v2_assist":
         report["mode"] = "v1"
@@ -51,7 +52,7 @@ def run_production_editorial(
 
     try:
         adapter = collector or CollectorAgent()
-        typed_candidates = adapter.adapt_existing(all_candidates)
+        typed_candidates = adapter.adapt_existing(deepcopy(all_candidates))
         analysis_agent = analyst or NewsAnalystAgent()
         analyses = analysis_agent.analyze(typed_candidates)
         report["analysis"] = _analysis_diagnostics(typed_candidates, analyses)
@@ -85,23 +86,24 @@ def run_production_editorial(
                 "insufficient_ready_write_candidates",
             )
 
-        selected = [candidate_by_id[candidate_id]["item"] for candidate_id in selected_ids]
-        reserves = [
-            candidate_by_id[candidate_id]["item"]
+        recommended_reserve_ids = [
+            candidate_id
             for candidate_id in reserve_ids
             if candidate_id not in selected_ids
         ]
         report.update(
             {
-                "status": "applied",
-                "selected_ids": selected_ids,
-                "reserve_ids": _item_ids(reserves),
+                "status": "diagnostic_only",
+                "selected_ids": _item_ids(v1_selected),
+                "reserve_ids": _item_ids(v1_reserves),
+                "recommended_selected_ids": selected_ids,
+                "recommended_reserve_ids": recommended_reserve_ids,
                 "dropped_v1_selected_ids": _ordered_difference(_item_ids(v1_selected), selected_ids),
                 "added_v2_selected_ids": _ordered_difference(selected_ids, _item_ids(v1_selected)),
                 "selection_report": dict(plan.selection_report),
             }
         )
-        return ProductionEditorialResult(selected, reserves, report)
+        return ProductionEditorialResult(v1_selected, v1_reserves, report)
     except Exception as exc:  # Production assist must never block the established v1 edition.
         return _fallback(
             report,
@@ -122,6 +124,8 @@ def _base_report(mode: str, v1_selected: list[dict], v1_reserves: list[dict]) ->
         "v2_reserve_ids": [],
         "selected_ids": [],
         "reserve_ids": [],
+        "recommended_selected_ids": [],
+        "recommended_reserve_ids": [],
         "dropped_v1_selected_ids": [],
         "added_v2_selected_ids": [],
         "analysis": {

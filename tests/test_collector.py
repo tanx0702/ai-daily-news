@@ -1,5 +1,7 @@
+import os
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 from src import collector
 
@@ -224,6 +226,80 @@ class CollectorTests(unittest.TestCase):
             ),
             2,
         )
+
+    def test_collect_candidates_preserves_cross_source_reports_before_clustering(self):
+        now = datetime.now(timezone.utc)
+        rss_item = {
+            "title": "OpenAI releases Model 5",
+            "url": "https://openai.com/news/model-5",
+            "source": "OpenAI Blog",
+            "source_tier": "primary",
+            "published_at": now,
+            "published_source": "published_parsed",
+            "summary": "OpenAI releases Model 5 for developers.",
+        }
+        x_item = {
+            "id": "x-42",
+            "title": "OpenAI releases Model 5",
+            "url": "https://x.com/OpenAI/status/42",
+            "source": "OpenAI (X)",
+            "source_type": "x",
+            "source_tier": "primary",
+            "published_at": now,
+            "published_source": "x_feed",
+            "summary": "OpenAI releases Model 5 for developers.",
+            "metrics": {},
+            "scores": {},
+            "x_handle": "OpenAI",
+            "x_official": True,
+            "x_official_source": "config/x_sources.json",
+        }
+
+        env = {
+            "ENABLE_HN_COLLECTOR": "0",
+            "ENABLE_GITHUB_COLLECTOR": "0",
+            "ENABLE_HF_COLLECTOR": "0",
+            "ENABLE_ARXIV_COLLECTOR": "0",
+            "ENABLE_X_COLLECTOR": "1",
+            "DAILY_X_MAX_ITEMS": "0",
+        }
+        diagnostics = {}
+        with patch.dict(os.environ, env, clear=False), \
+             patch.object(collector, "_load_sources", return_value=[{"name": "OpenAI"}]), \
+             patch.object(collector, "_fetch_source", return_value=[rss_item]), \
+             patch.object(collector, "_fetch_x", return_value=[x_item]):
+            items = collector.collect_candidates(
+                limit=10,
+                hours=36,
+                diagnostics=diagnostics,
+                now=now,
+            )
+
+        self.assertEqual(len(items), 2)
+        self.assertEqual({item["source_type"] for item in items}, {"rss", "x"})
+        self.assertTrue(all(item["source_title"] == "OpenAI releases Model 5" for item in items))
+        self.assertTrue(all(" + " not in item["source"] for item in items))
+        self.assertEqual(diagnostics["returned_candidate_count"], 2)
+
+    def test_collect_candidates_does_not_apply_legacy_publish_risk_penalties(self):
+        now = datetime.now(timezone.utc)
+        candidate = {
+            "title": "OpenAI 融资达到 10 亿美元",
+            "url": "https://example.com/funding",
+            "source": "示例来源",
+            "source_type": "rss",
+            "source_tier": "media",
+            "published_at": now,
+            "summary": "OpenAI 人工智能模型公司融资信息。",
+            "metrics": {"cross_source_count": 0},
+            "scores": {},
+        }
+        with patch.object(collector, "_fetch_raw_candidates", return_value=[candidate]):
+            items = collector.collect_candidates(limit=1, hours=36, now=now)
+
+        self.assertEqual(len(items), 1)
+        self.assertNotIn("_publish_risk", items[0])
+        self.assertNotIn("publish_risk_penalty", items[0]["scores"])
 
 
 if __name__ == "__main__":

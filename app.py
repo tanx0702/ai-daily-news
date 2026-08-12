@@ -24,6 +24,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from flask import Flask, Response, jsonify, render_template, request
+from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.latest import LatestSnapshot, load_latest
 from src.domain.models import FeedbackLabel
 from src.services.editorial_review import list_review_runs, load_review_run
 from src.services.shadow_history import record_feedback
@@ -200,29 +202,52 @@ def _verify_signature(signature: str, timestamp: str, nonce: str) -> bool:
 # ==================== 新闻摘要 ====================
 
 
-def _load_news() -> list[dict]:
-    """从 latest.json 加载最新新闻数据。"""
+def _load_latest_snapshot() -> LatestSnapshot | None:
+    """Read the versioned latest snapshot without deriving a quality decision."""
     try:
-        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("news", [])
-    except FileNotFoundError:
+        return load_latest(NEWS_DATA_FILE)
+    except ValueError as exc:
         logger.warning("News data file not found: %s", NEWS_DATA_FILE)
-        return []
-    except Exception as e:
-        logger.error("Failed to load news data: %s", e)
-        return []
+        logger.debug("Latest snapshot read failure: %s", exc)
+        return None
 
 
-def _load_publication_status() -> dict:
-    """Read the latest pipeline publication result without failing the web service."""
-    try:
-        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        publication = data.get("publication", {})
-        return publication if isinstance(publication, dict) else {}
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
+def _load_news() -> list[dict]:
+    """Project v2 briefs or legacy v1 news for customer-message formatting."""
+    snapshot = _load_latest_snapshot()
+    if snapshot is None:
+        return []
+    if snapshot.schema_version == 2:
+        return [brief_item_to_display_dict(item) for item in snapshot.brief_items]
+    return [_thaw_mapping(item) for item in snapshot.legacy_news]
+
+
+def _thaw_mapping(value):
+    """Convert the immutable latest read model into a Flask JSON value."""
+    if isinstance(value, dict) or hasattr(value, "items"):
+        return {str(key): _thaw_mapping(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_thaw_mapping(item) for item in value]
+    return value
+
+
+def _snapshot_payload(snapshot: LatestSnapshot) -> dict:
+    if snapshot.schema_version == 1:
+        return {
+            "schema_version": 1,
+            "news": [_thaw_mapping(item) for item in snapshot.legacy_news],
+        }
+    return {
+        "schema_version": 2,
+        "brief_items": [item.to_dict() for item in snapshot.brief_items],
+        "draft_decision": (
+            snapshot.draft_decision.to_dict() if snapshot.draft_decision else None
+        ),
+        "draft_execution": (
+            snapshot.draft_execution.to_dict() if snapshot.draft_execution else None
+        ),
+        "diagnostics": _thaw_mapping(snapshot.diagnostics),
+    }
 
 
 def _format_summary(news_list: list[dict], full: bool = False) -> str:
@@ -326,28 +351,30 @@ def wechat_callback():
 @app.route("/health")
 def health():
     """健康检查端点。"""
-    publication = _load_publication_status()
-    publication_status = publication.get("status", "not_run")
+    snapshot = _load_latest_snapshot()
+    decision = snapshot.draft_decision if snapshot else None
+    execution = snapshot.draft_execution if snapshot else None
     callback_configured = bool(WECHAT_TOKEN)
-    degraded = not callback_configured or publication_status in {"blocked", "failed"}
+    degraded = not callback_configured or (
+        execution is not None and execution.status in {"blocked", "failed"}
+    )
     return jsonify({
         "status": "degraded" if degraded else "running",
         "service": "ai-daily-news",
         "time": datetime.now(timezone.utc).isoformat(),
         "wechat_callback": {"configured": callback_configured},
-        "publication": publication or {"status": "not_run"},
+        "draft_decision": decision.to_dict() if decision else None,
+        "draft_execution": execution.to_dict() if execution else None,
     })
 
 
 @app.route("/api/news")
 def api_news():
     """返回最新新闻 JSON（供调试或外部调用）。"""
-    try:
-        with open(NEWS_DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        return jsonify({"error": "no news data yet", "news": []}), 404
-    return jsonify(data)
+    snapshot = _load_latest_snapshot()
+    if snapshot is None:
+        return jsonify({"error": "no news data yet", "brief_items": []}), 404
+    return jsonify(_snapshot_payload(snapshot))
 
 
 @app.route("/editorial-review")

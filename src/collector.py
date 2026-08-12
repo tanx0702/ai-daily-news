@@ -431,7 +431,12 @@ def _detect_publish_risk(item: dict) -> dict:
     return {}
 
 
-def _score_item(item: dict, all_items: list[dict]) -> float:
+def _score_item(
+    item: dict,
+    all_items: list[dict],
+    *,
+    include_publish_risk: bool = True,
+) -> float:
     """
     为新闻条目计算热度/重要性评分。
 
@@ -549,7 +554,7 @@ def _score_item(item: dict, all_items: list[dict]) -> float:
         item.setdefault("scores", {})["brand_penalty"] = round(penalty, 1)
     item["_confidence_level"] = brand_check["confidence"] if brand_check["is_brand_claim"] else "high"
 
-    publish_risk = _detect_publish_risk(item)
+    publish_risk = _detect_publish_risk(item) if include_publish_risk else None
     if publish_risk:
         penalty = min(float(publish_risk.get("penalty", 0.0)), max(score, 0.0))
         score -= penalty
@@ -1430,6 +1435,116 @@ def _fetch_x(timeout: int = 30) -> list[dict]:
         return []
 
 
+def _fetch_raw_candidates(config_path: str | None, rss_timeout: int) -> list[dict]:
+    """Fetch and normalize every enabled source without merging or ranking."""
+    sources = _load_sources(config_path)
+    rss_items: list[dict] = []
+    for source in sources:
+        rss_items.extend(_fetch_source(source, rss_timeout))
+    logger.info("RSS fetched: %d items from %d sources", len(rss_items), len(sources))
+    rss_candidates = [_normalize_rss_item(item) for item in rss_items]
+
+    source_fetches = (
+        ("HN", "ENABLE_HN_COLLECTOR", _fetch_hn),
+        ("GitHub", "ENABLE_GITHUB_COLLECTOR", _fetch_github),
+        ("HF", "ENABLE_HF_COLLECTOR", _fetch_hf),
+        ("arXiv", "ENABLE_ARXIV_COLLECTOR", _fetch_arxiv),
+        ("X feed", "ENABLE_X_COLLECTOR", _fetch_x),
+    )
+    collected: list[dict] = list(rss_candidates)
+    for label, flag, fetcher in source_fetches:
+        if _env_enabled(flag):
+            candidates = fetcher(rss_timeout)
+            collected.extend(candidates)
+            logger.info("%s fetched: %d candidates", label, len(candidates))
+        else:
+            logger.info("%s collector disabled (%s=0)", label, flag)
+    return collected
+
+
+def collect_candidates(
+    config_path: str | None = None,
+    hours: int | None = None,
+    limit: int | None = 45,
+    rss_timeout: int = 30,
+    diagnostics: dict | None = None,
+    now: datetime | None = None,
+) -> list[dict]:
+    """Return a scored candidate pool before event clustering or final quotas."""
+    if hours is None:
+        hours = int(os.environ.get("DAILY_NEWS_HOURS", "36"))
+    current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    cutoff = current_time - timedelta(hours=hours)
+    allow_undated = _env_enabled("DAILY_ALLOW_UNDATED", default=False)
+    all_candidates = _fetch_raw_candidates(config_path, rss_timeout)
+
+    from src.evidence import preserve_source_evidence
+    from src.editorial_selection import assign_source_tier
+
+    stats = {
+        "fetched_total": len(all_candidates),
+        "no_date": 0,
+        "too_old": 0,
+        "not_ai": 0,
+    }
+    filtered: list[dict] = []
+    for item in all_candidates:
+        published_at = item.get("published_at")
+        if published_at is None:
+            if not allow_undated:
+                stats["no_date"] += 1
+                continue
+        elif published_at < cutoff:
+            stats["too_old"] += 1
+            continue
+
+        if item.get("source_type", "rss") == "rss" and not _is_ai_related(
+            item.get("title", ""),
+            item.get("summary", ""),
+        ):
+            stats["not_ai"] += 1
+            continue
+
+        assign_source_tier(item)
+        preserve_source_evidence(item)
+        filtered.append(item)
+
+    for item in filtered:
+        item["_score"] = _score_item(
+            item,
+            filtered,
+            include_publish_risk=False,
+        )
+    filtered.sort(
+        key=lambda item: (
+            item.get("_score", 0),
+            item.get("published_at") or datetime.min.replace(tzinfo=timezone.utc),
+            str(item.get("url") or ""),
+        ),
+        reverse=True,
+    )
+    result = filtered if limit is None else filtered[:max(int(limit), 0)]
+    if diagnostics is not None:
+        diagnostics.update(
+            {
+                **stats,
+                "filtered_total": len(filtered),
+                "returned_candidate_count": len(result),
+                "source_merge_removed": 0,
+                "topic_cluster_removed": 0,
+                "final_editorial_dedup_removed": 0,
+            }
+        )
+    logger.info(
+        "Candidate pool: fetched=%d filtered=%d returned=%d (cutoff=%dh)",
+        len(all_candidates),
+        len(filtered),
+        len(result),
+        hours,
+    )
+    return result
+
+
 def collect_news(
     config_path: str = None,
     hours: int = None,
@@ -1454,62 +1569,10 @@ def collect_news(
         hours = int(os.environ.get("DAILY_NEWS_HOURS", "36"))
     allow_undated = _env_enabled("DAILY_ALLOW_UNDATED", default=False)
 
-    sources = _load_sources(config_path)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    all_candidates = _fetch_raw_candidates(config_path, rss_timeout)
 
-    # ---- 1. RSS 采集 ----
-    rss_items = []
-    for source in sources:
-        items = _fetch_source(source, rss_timeout)
-        rss_items.extend(items)
-    logger.info("RSS fetched: %d items from %d sources", len(rss_items), len(sources))
-
-    # ---- 2. 归一化 RSS → 统一 candidate ----
-    rss_candidates = [_normalize_rss_item(item) for item in rss_items]
-
-    # ---- 3. HN 采集（ENABLE_HN_COLLECTOR=1，默认开启） ----
-    hn_candidates = []
-    if _env_enabled("ENABLE_HN_COLLECTOR"):
-        hn_candidates = _fetch_hn(rss_timeout)
-        logger.info("HN fetched: %d candidates", len(hn_candidates))
-    else:
-        logger.info("HN collector disabled (ENABLE_HN_COLLECTOR=0)")
-
-    # ---- 4. GitHub 采集（ENABLE_GITHUB_COLLECTOR=1，默认开启） ----
-    gh_candidates = []
-    if _env_enabled("ENABLE_GITHUB_COLLECTOR"):
-        gh_candidates = _fetch_github(rss_timeout)
-        logger.info("GitHub fetched: %d candidates", len(gh_candidates))
-    else:
-        logger.info("GitHub collector disabled (ENABLE_GITHUB_COLLECTOR=0)")
-
-    # ---- 5. Hugging Face 采集（ENABLE_HF_COLLECTOR=1，默认开启） ----
-    hf_candidates = []
-    if _env_enabled("ENABLE_HF_COLLECTOR"):
-        hf_candidates = _fetch_hf(rss_timeout)
-        logger.info("HF fetched: %d candidates", len(hf_candidates))
-    else:
-        logger.info("HF collector disabled (ENABLE_HF_COLLECTOR=0)")
-
-    # ---- 6. arXiv 采集（ENABLE_ARXIV_COLLECTOR=1，默认开启） ----
-    arxiv_candidates = []
-    if _env_enabled("ENABLE_ARXIV_COLLECTOR"):
-        arxiv_candidates = _fetch_arxiv(rss_timeout)
-        logger.info("arXiv fetched: %d candidates", len(arxiv_candidates))
-    else:
-        logger.info("arXiv collector disabled (ENABLE_ARXIV_COLLECTOR=0)")
-
-    # ---- 7. X 快照采集（ENABLE_X_COLLECTOR=1，默认开启） ----
-    x_candidates = []
-    if _env_enabled("ENABLE_X_COLLECTOR"):
-        x_candidates = _fetch_x(rss_timeout)
-        logger.info("X feed fetched: %d candidates", len(x_candidates))
-    else:
-        logger.info("X feed collector disabled (ENABLE_X_COLLECTOR=0)")
-
-    # ---- 8. 多源合并（URL dedup + 标题去重 + cross_source 标记） ----
-    all_candidates = (rss_candidates + hn_candidates + gh_candidates +
-                      hf_candidates + arxiv_candidates + x_candidates)
+    # ---- 多源合并（legacy collect_news only） ----
     merged = _merge_candidates(all_candidates)
     from src.evidence import preserve_source_evidence
     from src.editorial_selection import assign_source_tier

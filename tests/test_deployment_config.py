@@ -1,4 +1,5 @@
 import unittest
+import json
 from pathlib import Path
 
 
@@ -24,16 +25,49 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertIn("healthcheck:", compose)
         self.assertIn("condition: service_healthy", compose)
 
+    def test_compose_keeps_the_egress_proxy_internal_and_routes_web_through_it(self):
+        compose = (self.root / "docker-compose.yml").read_text(encoding="utf-8")
+        proxy_start = compose.index("  proxy:\n")
+        proxy_end = compose.index("\n  web:\n", proxy_start)
+        proxy = compose[proxy_start:proxy_end]
+
+        self.assertIn("image: ai-news-web:latest", proxy)
+        self.assertIn("pull_policy: never", proxy)
+        self.assertIn('profiles: ["egress-proxy"]', proxy)
+        self.assertIn(
+            "${AI_NEWS_PROXY_BINARY_PATH:-./config/sing-box-unavailable}:/proxy-bin/sing-box:ro",
+            proxy,
+        )
+        self.assertIn(
+            "${AI_NEWS_PROXY_CONFIG_PATH:-./config/sing-box-blocked.json}:/etc/sing-box/config.json:ro",
+            proxy,
+        )
+        self.assertNotIn("ports:", proxy)
+        self.assertIn("networks:\n      - egress", proxy)
+        self.assertIn("networks:\n      - app\n      - egress", compose)
+        self.assertIn("networks:\n      - app", compose)
+        self.assertIn("  app:\n    internal: true", compose)
+        self.assertIn("HTTP_PROXY: ${AI_NEWS_HTTP_PROXY:-}", compose)
+        self.assertIn("HTTPS_PROXY: ${AI_NEWS_HTTPS_PROXY:-}", compose)
+        self.assertIn("NO_PROXY: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy}", compose)
+
+    def test_default_sing_box_configuration_blocks_egress_until_a_private_config_is_mounted(self):
+        config = json.loads((self.root / "config" / "sing-box-blocked.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(config["inbounds"][0]["type"], "mixed")
+        self.assertEqual(config["inbounds"][0]["listen_port"], 7890)
+        self.assertEqual(config["outbounds"], [{"type": "block", "tag": "blocked"}])
+        self.assertEqual(config["route"]["final"], "blocked")
+
     def test_dockerignore_excludes_environment_backup_files(self):
         patterns = (self.root / ".dockerignore").read_text(encoding="utf-8").splitlines()
 
         self.assertIn(".env.bak*", patterns)
 
-    def test_advanced_environment_template_documents_safe_editorial_assist_mode(self):
+    def test_advanced_environment_template_does_not_expose_obsolete_editorial_mode(self):
         template = (self.root / ".env.advanced.example").read_text(encoding="utf-8")
 
-        self.assertIn("DAILY_EDITORIAL_MODE=v1", template)
-        self.assertIn("v2_assist", template)
+        self.assertNotIn("DAILY_EDITORIAL_MODE", template)
 
 
 if __name__ == "__main__":
