@@ -1,12 +1,23 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-12T07:49:38.977801Z",
+  "generated_at": "2026-08-12T11:11:34.127172Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2087486869080547784",
+      "text": "Top stories in AI today:\n\n- Anthropic adds AI watermarks to Claude outputs\n- Grok Bot is the latest AI agent teammate build\n- Use ChatGPT to build a custom Mac shortcut system\n- xAI co-founder’s River banks $1.1B for personal AI https://t.co/dAtfeM7W3g",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-12T10:30:27.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087486869080547784",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2087444616832594022",
       "text": "📄New Research on Self-Evolving Agents:\nWhen AI agents modify themselves, how do we know they actually got better?\n\nWe present Diving into Reliable Self-Evolving Agents: A Survey—a systematic map of how agents self-evolve and what evidence is needed to trust each update.\nThe https://t.co/eIinsfhebv",
@@ -279,17 +290,6 @@
       "url": "https://x.com/swyx/status/2087147042888114428",
       "source_name": "swyx",
       "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2087124467952525369",
-      "text": "Top stories in AI today:\n\n- Meta returns to open-source roots with Glimmer\n- OpenAI expands ‘Daybreak’ for stronger cyber use\n- Go from idea to website with ChatGPT Work + Codex\n- AI agent hacks a gym to jump the waitlist https://t.co/YXJXlbZMP2",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-11T10:30:24.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087124467952525369",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
       "source_tier": "media",
       "official": false
     },
