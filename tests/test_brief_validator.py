@@ -4,7 +4,7 @@ from pathlib import Path
 
 from src.briefing.config import BriefingConfig
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent, SourceEvidence
-from src.briefing.validator import BriefValidator
+from src.briefing.validator import BriefValidator, _cross_language_anchors
 from src.llm_config import LLMConfig
 
 
@@ -335,6 +335,14 @@ def test_validator_accepts_anchored_cross_language_claim_when_quality_is_unavail
     assert result.action == "accept"
     assert result.validation_mode == "rules_only"
     assert result.reason_codes == ("quality_llm_unavailable", "rules_only_used")
+
+
+def test_cross_language_anchors_ignore_terminal_punctuation():
+    claim = _cross_language_anchors("MiniMax H3 将在 Magnific SF office 举办活动")
+    quote = _cross_language_anchors("MiniMax H3 at the Magnific SF office.")
+
+    assert claim <= quote
+    assert "office." not in quote
 
 
 def test_validator_accepts_cross_language_claim_when_quality_review_times_out():

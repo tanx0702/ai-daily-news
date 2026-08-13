@@ -80,6 +80,16 @@ def _contains_chinese(value: str) -> bool:
     return any("\u4e00" <= char <= "\u9fff" for char in value)
 
 
+def _normalize_brief_value(value: object) -> str | None:
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, list) and 1 <= len(value) <= 2 and all(
+        isinstance(sentence, str) and sentence.strip() for sentence in value
+    ):
+        return "".join(sentence.strip() for sentence in value)
+    return None
+
+
 def _protected_anchors(event: MergedEvent) -> list[str]:
     source = event.canonical_evidence
     title_text = f"{source.publisher_name} {source.source_title}"
@@ -171,9 +181,10 @@ def _strict_item(
         return None
     if not isinstance(raw["chinese_title"], str) or not raw["chinese_title"].strip():
         return None
-    if not isinstance(raw["brief"], str) or not raw["brief"].strip():
+    brief = _normalize_brief_value(raw["brief"])
+    if brief is None:
         return None
-    target_claims = display_targets(raw["chinese_title"], raw["brief"])
+    target_claims = display_targets(raw["chinese_title"], brief)
     if not 1 <= len(target_claims) - 1 <= 2:
         return None
     raw_bindings = raw["evidence_targets"]
@@ -210,7 +221,7 @@ def _strict_item(
         event_key=event.event_key,
         input_index=input_index,
         chinese_title=raw["chinese_title"].strip(),
-        brief=raw["brief"].strip(),
+        brief=brief,
         evidence_bindings=tuple(bindings),
         content_origin="llm",
     )
@@ -325,7 +336,7 @@ class BriefBuilder:
                             "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
                             "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
-                            "包含且只包含 index、event_key、chinese_title、brief、evidence_targets。"
+                            "包含且只包含 index、event_key、chinese_title、brief、evidence_targets；brief 必须是字符串。"
                         ),
                     },
                     {

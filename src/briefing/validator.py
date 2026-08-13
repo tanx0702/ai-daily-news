@@ -144,7 +144,12 @@ def _quote_match_text(value: object) -> str:
 
 def _meaningful_tokens(value: str) -> set[str]:
     tokens = set(re.findall(r"[A-Za-z][A-Za-z0-9.+-]*|\d+(?:[.,]\d+)?", value))
-    return {token.lower() for token in tokens if token.lower() not in {"the", "a", "an"}}
+    return {
+        token.strip(".,;:!?)]}\"'’”").lower()
+        for token in tokens
+        if token.strip(".,;:!?)]}\"'’”").lower()
+        not in {"the", "a", "an"}
+    }
 
 
 def _chinese_bigrams(value: str) -> set[str]:
@@ -164,9 +169,11 @@ def _cross_language_action_matches(claim: str, quote: str) -> bool:
 def _cross_language_anchors(value: str) -> set[str]:
     token_pattern = r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+-]*"
     return {
-        token.lower()
+        token.strip(".,;:!?)]}\"'’”").lower()
         for token in re.findall(token_pattern, value)
-        if token.lower() not in _CROSS_LANGUAGE_ANCHOR_STOPWORDS
+        if token.strip(".,;:!?)]}\"'’”").lower()
+        and token.strip(".,;:!?)]}\"'’”").lower()
+        not in _CROSS_LANGUAGE_ANCHOR_STOPWORDS
     }
 
 

@@ -560,6 +560,38 @@ def test_single_rebuild_item_with_unhashable_event_key_is_malformed():
     assert result.reason_code == "builder_item_malformed"
 
 
+def test_single_rebuild_item_normalizes_two_sentence_brief_list():
+    item = event(1)
+    generated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    generated["brief"] = ["示例公司发布模型 1。", "该模型提供新的文本能力。"]
+    generated["evidence_targets"].append(
+        {
+            "target": "brief_2",
+            "source_quote": "Example releases Model 1",
+            "source_url": item.canonical_evidence.url,
+        }
+    )
+    builder, _ = builder_with_responses([{"items": [generated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.reason_code is None
+    assert result.draft is not None
+    assert result.draft.brief == "示例公司发布模型 1。该模型提供新的文本能力。"
+
+
+def test_single_rebuild_item_does_not_normalize_three_sentence_brief_list():
+    item = event(1)
+    generated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    generated["brief"] = ["第一句。", "第二句。", "第三句。"]
+    builder, _ = builder_with_responses([{"items": [generated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
 def test_sdk_timeout_message_reports_transport_failure():
     class APITimeoutError(Exception):
         pass
