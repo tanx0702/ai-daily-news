@@ -109,6 +109,8 @@ X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/w
 | `/editorial-review/feedback` | nginx -> Flask | 记录人工标签和备注 |
 | `/debug/*` | nginx | 固定返回 404，不公开诊断 |
 
+公众号草稿中的链接只指向每条事实简报的规范原始来源。`PAGES_URL` 仍用于公开日报站点配置，但不会写入微信 `content_source_url`，正文也不展示“查看完整日报”入口。
+
 微信回调必须校验 `WECHAT_TOKEN` 签名；`ALLOW_INSECURE_WECHAT_TOKEN=1` 只能用于本地排查。editorial review 只有用户名和密码同时配置时才启用，不能使用 URL token。
 
 ## 运行时产物

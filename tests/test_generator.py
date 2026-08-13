@@ -4,7 +4,12 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.generator import render_daily_html, render_wechat_article, render_wechat_article_ai
+from src.generator import (
+    _news_to_markdown,
+    render_daily_html,
+    render_wechat_article,
+    render_wechat_article_ai,
+)
 
 
 SAMPLE_NEWS = [
@@ -55,7 +60,7 @@ class GeneratorTests(unittest.TestCase):
         html = render_wechat_article(
             SAMPLE_NEWS,
             date_str="2026-07-11",
-            pages_url="https://tankex.xyz",
+            pages_url="https://daily.example.com",
             cover_image_url="https://tankex.xyz/cover.jpg",
         )
 
@@ -64,6 +69,20 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("OpenAI 发布新模型", html)
         self.assertIn("阅读原文", html)
         self.assertIn("https://example.com/openai", html)
+        self.assertNotIn("https://daily.example.com", html)
+        self.assertNotIn("查看完整日报", html)
+
+    def test_wechat_ai_markdown_keeps_item_sources_without_daily_page_link(self):
+        markdown = _news_to_markdown(
+            SAMPLE_NEWS,
+            date_str="2026-07-11",
+            pages_url="https://daily.example.com",
+        )
+
+        self.assertIn("https://example.com/openai", markdown)
+        self.assertIn("阅读原文", markdown)
+        self.assertNotIn("https://daily.example.com", markdown)
+        self.assertNotIn("查看完整日报", markdown)
 
     def test_render_wechat_article_rejects_unsafe_urls(self):
         html = render_wechat_article(

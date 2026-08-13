@@ -67,6 +67,7 @@
 
 6. 微信草稿
    -> DraftDecision=create 时才上传封面并创建公众号草稿
+   -> 草稿只保留每条事实简报的规范原始来源链接，不设置公众号 `content_source_url`，也不展示站点“查看完整日报”入口
    -> SKIP_WECHAT_DRAFT=1 是唯一安全干跑边界：生成产物并记录 dry_run，不调用草稿 API
    -> block 或草稿执行 failed 时不创建草稿，任务返回非零
 ```

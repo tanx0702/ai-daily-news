@@ -435,7 +435,6 @@ def render_wechat_article(
         date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
-    pages_url = safe_http_url(pages_url) or "https://tankex.xyz"
     cover_image_url = safe_http_url(cover_image_url)
 
     # ── 色板 ──
@@ -681,9 +680,6 @@ def render_wechat_article(
     parts.append(
         f'<section style="margin:8px 16px 24px;padding:20px 0 0;'
         f'text-align:center;border-top:1px solid {DIVIDER};">'
-        f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:14px;line-height:1.6;">'
-        f'<a href="{esc(pages_url, collapse_whitespace=False)}" style="color:{ACCENT};font-weight:600;'
-        f'text-decoration:none;">查看完整日报</a></p>'
         f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
         f'每日AI资讯整理</p>'
         f'</section>'
@@ -751,9 +747,6 @@ def _news_to_markdown(
                 lines.append("")
 
     lines.append("---")
-    lines.append("")
-    lines.append(f"👉 [查看完整日报（精美排版 + 暗色模式）]({pages_url})")
-    lines.append("")
     lines.append("每日AI资讯整理")
 
     return "\n".join(lines)

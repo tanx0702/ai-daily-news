@@ -163,7 +163,6 @@ def _create_draft(
     content: str,
     thumb_media_id: str,
     digest: str = "",
-    source_url: str = "",
 ) -> Optional[str]:
     """
     创建微信草稿。
@@ -181,7 +180,6 @@ def _create_draft(
             "author": _draft_author(),
             "digest": digest or title,
             "content": content,
-            "content_source_url": source_url,
             "thumb_media_id": thumb_media_id,
             "need_open_comment": 0,
             "only_fans_can_comment": 0,
@@ -524,7 +522,6 @@ def publish_daily_article(
             access_token, title, content,
             thumb_media_id=thumb_media_id,
             digest=digest,
-            source_url=pages_url,
         )
         if draft_media_id:
             logger.info("Draft ready! Go to mp.weixin.qq.com → 草稿箱 → 发布")

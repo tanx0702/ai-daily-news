@@ -96,6 +96,7 @@ class WeChatBoundaryTests(unittest.TestCase):
         self.assertEqual(article["author"], "要闻编辑室")
         self.assertNotIn("AI Daily News", article["author"])
         self.assertNotIn(robot_marker, article["title"])
+        self.assertNotIn("content_source_url", article)
 
 
 if __name__ == "__main__":
