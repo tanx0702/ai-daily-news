@@ -1,12 +1,34 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-12T22:58:12.877643Z",
+  "generated_at": "2026-08-13T04:24:59.871507Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 216,
+  "tweet_count": 214,
   "tweets": [
+    {
+      "tweet_id": "2087705681097109703",
+      "text": "Tomorrow at 5:30pm PT: MiniMax H3 × @magnific at the Magnific SF office.\n\nWe’ll be showcasing what people are already making with H3, talking about where AI video is heading, and getting hands-on with H3 inside Magnific.\n\nExpect a live workflow across cinematic generation, native https://t.co/Q6D04d2IeY",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T00:59:56.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087705681097109703",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087691099691475285",
+      "text": "Perplexity offered to buy @googlechrome one year ago today\n\n(this is a scheduled tweet) https://t.co/EdFp28P2qO",
+      "author": "swyx",
+      "created_at": "2026-08-13T00:02:00.000Z",
+      "url": "https://x.com/swyx/status/2087691099691475285",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2087662769512571010",
       "text": "Love seeing our partners post-training Nemotron 3.5 Lightning for their own domains, tools, and workflows, as well as those offering post-training support ⚡\n\nCheck out below to see what they’re building 🧵 https://t.co/hgi7dskM8A",
@@ -481,17 +503,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087012624831860798",
-      "text": "Still can’t believe this is happening",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-11T03:05:59.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087012624831860798",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2086976751335551335",
       "text": "you don't need Seedance 2.5, here's cheaper and more efficient workflow\n\nwe made this entire game shooting scene in one shot for $1.97 with DeepSeek V4 Flash 0731 + MiniMax H3\n\nwe use DeepSeek to code the raw Three.js scene first: exact camera movement, character motion, timing, https://t.co/O0jMYa3MC3",
       "author": "gmi_cloud",
@@ -554,28 +565,6 @@
       "url": "https://x.com/cohere/status/2086911084196192302",
       "source_name": "Cohere",
       "source_handle": "cohere",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2086884225643647400",
-      "text": "set up loops that make loops https://t.co/qmOq2di0nL",
-      "author": "swyx",
-      "created_at": "2026-08-10T18:35:46.000Z",
-      "url": "https://x.com/swyx/status/2086884225643647400",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2086883706891808867",
-      "text": "LoRA trainer for MiniMax H3 is now available on fal.\n\nto show what it can do, we trained Realism People, an open-source LoRA\nthat pushes H3 toward raw, photorealistic humans. skin, eyes, motion.\n\nMore LoRA coming soon ! https://t.co/AwETlpSy6S",
-      "author": "fal",
-      "created_at": "2026-08-10T18:33:42.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2086883706891808867",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -775,17 +764,6 @@
       "source_name": "Demis Hassabis",
       "source_handle": "demishassabis",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086564029766533490",
-      "text": "new post: every company needs a cassandra. \n\nhttps://t.co/tkNmRRbnVP\n\nwherein I propose making a background agent/worker that people otherwise hate working with. https://t.co/KEW8ExlsYR",
-      "author": "threepointone",
-      "created_at": "2026-08-09T21:23:25.000Z",
-      "url": "https://x.com/swyx/status/2086564029766533490",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
       "official": false
     },
     {
