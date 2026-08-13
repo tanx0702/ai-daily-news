@@ -43,6 +43,7 @@ class BriefingConfig:
     max_items: int = 15
     candidate_pool_size: int = 45
     max_x_items: int = 5
+    target_x_items: int = 3
     x_feed_max_age_hours: int = 6
     news_hours: int = 36
     builder_batch_size: int = 5
@@ -57,11 +58,17 @@ class BriefingConfig:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "BriefingConfig":
         values = os.environ if env is None else env
+        max_x_items = _integer(values, "DAILY_X_MAX_ITEMS", 5)
         config = cls(
             min_items=_integer(values, "DAILY_MIN_ITEMS", 5),
             max_items=_integer(values, "DAILY_TOP_N", 15),
             candidate_pool_size=_integer(values, "DAILY_CANDIDATE_POOL_N", 45),
-            max_x_items=_integer(values, "DAILY_X_MAX_ITEMS", 5),
+            max_x_items=max_x_items,
+            target_x_items=_integer(
+                values,
+                "DAILY_X_TARGET_ITEMS",
+                min(3, max_x_items),
+            ),
             x_feed_max_age_hours=_integer(values, "X_FEED_MAX_AGE_HOURS", 6),
             news_hours=_integer(values, "DAILY_NEWS_HOURS", 36),
             builder_batch_size=5,
@@ -104,6 +111,10 @@ class BriefingConfig:
         if not 0 <= self.max_x_items <= 5:
             raise InvalidBriefingConfiguration(
                 "DAILY_X_MAX_ITEMS must be between 0 and 5"
+            )
+        if not 0 <= self.target_x_items <= self.max_x_items:
+            raise InvalidBriefingConfiguration(
+                "DAILY_X_TARGET_ITEMS must be between 0 and DAILY_X_MAX_ITEMS"
             )
         if not 0 < self.x_feed_max_age_hours <= 6:
             raise InvalidBriefingConfiguration(

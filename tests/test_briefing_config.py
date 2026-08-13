@@ -10,6 +10,7 @@ def test_briefing_config_uses_approved_defaults():
     assert config.max_items == 15
     assert config.candidate_pool_size == 45
     assert config.max_x_items == 5
+    assert config.target_x_items == 3
     assert config.x_feed_max_age_hours == 6
     assert config.builder_batch_size == 5
     assert config.news_hours == 36
@@ -42,8 +43,10 @@ def test_briefing_config_accepts_all_hard_boundaries():
     )
 
     assert (lower.min_items, lower.max_items, lower.max_x_items) == (5, 5, 0)
+    assert lower.target_x_items == 0
     assert lower.skip_wechat_draft is True
     assert (upper.min_items, upper.max_items, upper.max_x_items) == (15, 15, 5)
+    assert upper.target_x_items == 3
     assert upper.skip_wechat_draft is False
 
 
@@ -57,6 +60,8 @@ def test_briefing_config_accepts_all_hard_boundaries():
         {"DAILY_CANDIDATE_POOL_N": "14", "DAILY_TOP_N": "15"},
         {"DAILY_X_MAX_ITEMS": "-1"},
         {"DAILY_X_MAX_ITEMS": "6"},
+        {"DAILY_X_TARGET_ITEMS": "-1"},
+        {"DAILY_X_MAX_ITEMS": "2", "DAILY_X_TARGET_ITEMS": "3"},
         {"X_FEED_MAX_AGE_HOURS": "0"},
         {"X_FEED_MAX_AGE_HOURS": "7"},
         {"DAILY_NEWS_HOURS": "0"},

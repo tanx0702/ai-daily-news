@@ -53,7 +53,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - GitHub push、点赞、下载量等只能作为活跃度或社区信号，不能独立证明官方发布事实。
 - `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
 - `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
-- 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。
+- 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。内容生成审计还要区分 `content_llm_timeout`、`content_llm_unavailable`、`invalid_builder_response`、`builder_item_missing`、`builder_item_malformed`、`builder_item_duplicate` 与有效结构下的 `translation_failed`；中文原文回退以独立 `source_fallback_used` 标志记录，保留触发回退的原因码。
 - 语义事件审计应记录 `duplicate_of`、`relationship`、`comparison_mode`、`semantic_duplicate`、`semantic_duplicate_unresolved` 以及 reviewer 的成功、超时、无效、不可用、熔断和预算耗尽计数；聚类时并入 related evidence 的每个来源还要生成独立的 `candidate_type=clustered_duplicate` 记录，不得记录完整模型响应。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。
 - v2/shadow/editorial review 和 Tencent SCF 不得成为生产简报的必需依赖；辅助流程只能记录受保护诊断，不能改变已接受的条目或决策。

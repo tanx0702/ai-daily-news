@@ -67,6 +67,7 @@ docker compose up -d --force-recreate
 | `ENABLE_X_COLLECTOR` | `1`（代码默认） | X 快照采集开关；省略时按代码默认开启 |
 | `X_FEED_URL` | 仓库 `x-feed/x-feed.json` | X 快照 HTTPS 地址 |
 | `X_FEED_MAX_AGE_HOURS` | `6` | X 快照最大年龄 |
+| `DAILY_X_TARGET_ITEMS` | `min(3, DAILY_X_MAX_ITEMS)` | X 规范来源软目标；达到前优先尝试，未通过质检时不硬凑 |
 | `DAILY_X_MAX_ITEMS` | `5` | 最终最多五条可将 X 用作规范来源 |
 | `GITHUB_TOKEN` / `HF_TOKEN` | 空 | 可选限流凭证，不写日志 |
 
@@ -76,6 +77,7 @@ docker compose up -d --force-recreate
 5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 15
 DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 0 <= DAILY_X_MAX_ITEMS <= 5
+0 <= DAILY_X_TARGET_ITEMS <= DAILY_X_MAX_ITEMS
 0 < X_FEED_MAX_AGE_HOURS <= 6
 0 < SEMANTIC_DEDUP_WINDOW_HOURS
 0 <= SEMANTIC_DEDUP_MAX_LLM_CALLS <= 100

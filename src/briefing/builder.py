@@ -8,6 +8,7 @@ import json
 import logging
 import re
 from typing import Callable, Mapping, Sequence
+from urllib.parse import urlparse
 
 from src.briefing.config import BriefingConfig
 from src.briefing.display_targets import display_targets, summary_sentences
@@ -25,6 +26,7 @@ class BuildResult:
     draft: BuiltBrief | None
     reason_code: str | None
     circuit_open: bool = False
+    source_fallback_used: bool = False
 
 
 def _default_client_factory(**kwargs):
@@ -63,8 +65,50 @@ def _is_nonrecoverable(error: Exception) -> bool:
     return any(marker in text for marker in markers)
 
 
+def _is_timeout(error: Exception) -> bool:
+    error_name = type(error).__name__.lower()
+    text = str(error).lower()
+    return (
+        isinstance(error, TimeoutError)
+        or "timeout" in error_name
+        or "timeout" in text
+        or "timed out" in text
+    )
+
+
 def _contains_chinese(value: str) -> bool:
     return any("\u4e00" <= char <= "\u9fff" for char in value)
+
+
+def _protected_anchors(event: MergedEvent) -> list[str]:
+    source = event.canonical_evidence
+    title_text = f"{source.publisher_name} {source.source_title}"
+    evidence_text = source.evidence_text
+    try:
+        parsed_url = urlparse(source.url)
+        path_parts = [part for part in parsed_url.path.split("/") if part]
+        hostname = parsed_url.hostname
+    except ValueError:
+        path_parts = []
+        hostname = None
+    x_handle = (
+        f"@{path_parts[0]}"
+        if hostname in {"x.com", "www.x.com"}
+        and len(path_parts) >= 3
+        and path_parts[1] == "status"
+        else None
+    )
+    anchors = [
+        *([x_handle] if x_handle else []),
+        *re.findall(r"@[A-Za-z0-9_]+", evidence_text),
+        *re.findall(r"\d+(?:\.\d+)*", evidence_text),
+        *(
+            token
+            for token in re.findall(r"[A-Za-z][A-Za-z0-9.+-]*", title_text)
+            if any(char.isupper() or char.isdigit() for char in token)
+        ),
+    ]
+    return list(dict.fromkeys(anchors))
 
 
 def _source_fallback(event: MergedEvent, input_index: int) -> BuiltBrief | None:
@@ -228,13 +272,23 @@ class BriefBuilder:
             self._circuit_open = True
             self.diagnostics["content_llm_unavailable_count"] += 1
             return [
-                self._fallback_result(event, index, current_attempts[event.event_key])
+                self._fallback_result(
+                    event,
+                    index,
+                    current_attempts[event.event_key],
+                    failure_reason="content_llm_unavailable",
+                )
                 for index, event in enumerate(events, 1)
             ]
         if self._circuit_open:
             self.diagnostics["content_llm_circuit_open_count"] += 1
             return [
-                self._fallback_result(event, index, current_attempts[event.event_key])
+                self._fallback_result(
+                    event,
+                    index,
+                    current_attempts[event.event_key],
+                    failure_reason="content_llm_unavailable",
+                )
                 for index, event in enumerate(events, 1)
             ]
 
@@ -250,10 +304,12 @@ class BriefBuilder:
                     "channel": event.canonical_evidence.channel,
                     "is_official": event.canonical_evidence.is_official,
                     "rebuild_reasons": list(rebuild_reasons.get(event.event_key, ())),
+                    "protected_anchors": _protected_anchors(event),
                 }
                 for index, event in enumerate(events, 1)
             ]
         }
+        request_failure_reason: str | None = None
         try:
             response = self._client_instance().chat.completions.create(
                 model=self.llm_config.model,
@@ -266,6 +322,8 @@ class BriefBuilder:
                             "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
                             "brief_1 或 brief_2，同一 target 可有多条引用；quote 必须逐字来自 evidence_text，"
                             "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"
+                            "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
+                            "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
                             "包含且只包含 index、event_key、chinese_title、brief、evidence_targets。"
                         ),
@@ -284,6 +342,7 @@ class BriefBuilder:
             if not isinstance(raw_items, list):
                 self.diagnostics["content_llm_invalid_response_count"] += 1
                 raw_items = []
+                request_failure_reason = "invalid_builder_response"
             else:
                 self.diagnostics["content_llm_success_count"] += 1
         except Exception as exc:
@@ -292,27 +351,53 @@ class BriefBuilder:
                 self._circuit_open = True
                 self.diagnostics["content_llm_unavailable_count"] += 1
                 return [
-                    self._fallback_result(event, index, current_attempts[event.event_key])
+                    self._fallback_result(
+                        event,
+                        index,
+                        current_attempts[event.event_key],
+                        failure_reason="content_llm_unavailable",
+                    )
                     for index, event in enumerate(events, 1)
                 ]
-            if isinstance(exc, TimeoutError) or "timeout" in str(exc).lower():
+            if _is_timeout(exc):
                 self.diagnostics["content_llm_timeout_count"] += 1
+                request_failure_reason = "content_llm_timeout"
             elif isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
                 self.diagnostics["content_llm_invalid_response_count"] += 1
+                request_failure_reason = "invalid_builder_response"
             else:
                 self.diagnostics["content_llm_unavailable_count"] += 1
+                request_failure_reason = "content_llm_unavailable"
             logger.warning("Brief builder request failed: %s", exc)
             raw_items = []
 
         by_index: dict[int, list[dict]] = {}
+        index_by_event_key = {
+            event.event_key: index for index, event in enumerate(events, 1)
+        }
+        unmappable_item_present = False
         for raw in raw_items:
             if not isinstance(raw, dict):
+                unmappable_item_present = True
                 continue
             index = raw.get("index")
-            if isinstance(index, bool) or not isinstance(index, int):
-                continue
-            if 1 <= index <= len(events):
+            if (
+                not isinstance(index, bool)
+                and isinstance(index, int)
+                and 1 <= index <= len(events)
+            ):
                 by_index.setdefault(index, []).append(raw)
+                continue
+            raw_event_key = raw.get("event_key")
+            event_index = (
+                index_by_event_key.get(raw_event_key)
+                if isinstance(raw_event_key, str)
+                else None
+            )
+            if event_index is not None:
+                by_index.setdefault(event_index, []).append(raw)
+            else:
+                unmappable_item_present = True
 
         results: list[BuildResult] = []
         for index, event in enumerate(events, 1):
@@ -323,22 +408,56 @@ class BriefBuilder:
                 if len(candidates) == 1
                 else None
             )
+            untranslated = bool(
+                draft is not None
+                and (
+                    not _contains_chinese(draft.chinese_title)
+                    or not all(
+                        _contains_chinese(sentence)
+                        for sentence in summary_sentences(draft.brief)
+                    )
+                )
+            )
+            if untranslated:
+                draft = None
             if draft is not None:
                 results.append(
                     BuildResult(event.event_key, attempt, draft, None, self._circuit_open)
                 )
-            elif attempt >= 2:
-                results.append(self._fallback_result(event, index, attempt))
             else:
-                results.append(
-                    BuildResult(
-                        event.event_key,
-                        attempt,
-                        None,
-                        "invalid_builder_response",
-                        self._circuit_open,
+                if request_failure_reason is not None:
+                    reason_code = request_failure_reason
+                elif untranslated:
+                    reason_code = "translation_failed"
+                elif not candidates:
+                    reason_code = (
+                        "builder_item_malformed"
+                        if len(events) == 1 and unmappable_item_present
+                        else "builder_item_missing"
                     )
-                )
+                elif len(candidates) > 1:
+                    reason_code = "builder_item_duplicate"
+                else:
+                    reason_code = "builder_item_malformed"
+                if attempt >= 2:
+                    results.append(
+                        self._fallback_result(
+                            event,
+                            index,
+                            attempt,
+                            failure_reason=reason_code,
+                        )
+                    )
+                else:
+                    results.append(
+                        BuildResult(
+                            event.event_key,
+                            attempt,
+                            None,
+                            reason_code,
+                            self._circuit_open,
+                        )
+                    )
         return results
 
     def _client_instance(self):
@@ -355,6 +474,8 @@ class BriefBuilder:
         event: MergedEvent,
         input_index: int,
         attempt: int,
+        *,
+        failure_reason: str = "translation_failed",
     ) -> BuildResult:
         draft = _source_fallback(event, input_index)
         if draft is not None:
@@ -362,13 +483,14 @@ class BriefBuilder:
                 event.event_key,
                 attempt,
                 draft,
-                "source_fallback_used",
+                failure_reason,
                 self._circuit_open,
+                True,
             )
         return BuildResult(
             event.event_key,
             attempt,
             None,
-            "translation_failed",
+            failure_reason,
             self._circuit_open,
         )
