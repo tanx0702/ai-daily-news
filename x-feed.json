@@ -1,12 +1,254 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-13T15:10:47.944988Z",
+  "generated_at": "2026-08-13T19:20:14.879883Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2087977428618764353",
+      "text": "We've just added $10 credit for any new sign ups to Optima for a limited time only. Try it out and let us know what you think",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-13T18:59:46.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087977428618764353",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087975627391717461",
+      "text": "Google has released Gemini 3.7 Flash, improving 4 points over Gemini 3.6 Flash and reaching the Intelligence vs. Time per Task Pareto frontier\n\n@GoogleDeepMind has released its third new Gemini Flash model in three months. Gemini 3.7 Flash (high) scores 56 on the Artificial https://t.co/65aMcP1VqE",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-13T18:52:36.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087975627391717461",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087972364009308204",
+      "text": "Grok 4.6 is now available in Perplexity and Perplexity Computer.\n\nOn WANDR, it sits on the Pareto frontier of performance and efficiency, matching Fable 5 results at over 60% lower cost. https://t.co/qPeWEyy97Q",
+      "author": "perplexity_ai",
+      "created_at": "2026-08-13T18:39:38.000Z",
+      "url": "https://x.com/perplexity_ai/status/2087972364009308204",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087964264275587565",
+      "text": "The \"introductory pricing\" for the 3.7 Flash model is really weird\n\nIt's scheduled to double in price on December 31, 2026, but who would anticipate still using this model five months from now? Especially since 3.6 Flash came out just three weeks ago!",
+      "author": "simonw",
+      "created_at": "2026-08-13T18:07:27.000Z",
+      "url": "https://x.com/simonw/status/2087964264275587565",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087963618637971495",
+      "text": "Grok 4.6 is now available in Pi",
+      "author": "SpaceXAI",
+      "created_at": "2026-08-13T18:04:53.000Z",
+      "url": "https://x.com/xAI/status/2087963618637971495",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087961825874972680",
+      "text": "Going live now 🎙️\n\nJoin @MiniMax_AI × @fal for a deep dive into building with MiniMax H3—from multimodal references, native audio, and editing to LoRAs, model chaining, and production workflows.\n\nJoin ↓\nhttps://t.co/lOnRWfBi8Y",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T17:57:46.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087961825874972680",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087953207855083891",
+      "text": "Google just rolled out Gemini 3.7 Flash, coming just three weeks after 3.6.\n\nAt $0.75 / $3.75 per M tokens, it undercuts similar mid-sized rivals like Sonnet 5, GPT 5.6 Terra, and Muse Spark 1.2.\n\nStrong coding, knowledge work, and intelligence bumps for a quick upgrade, with https://t.co/xmI1DjKLdD",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-13T17:23:31.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087953207855083891",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087950343841915046",
+      "text": "We released Search as Code (SaC) in June, achieving state-of-the-art performance on wide and deep research.\n\nThis week, we’re rolling out optimizations to SaC that further improve performance while cutting cost per task by nearly 10%. https://t.co/58Caylqbsy",
+      "author": "perplexity_ai",
+      "created_at": "2026-08-13T17:12:08.000Z",
+      "url": "https://x.com/perplexity_ai/status/2087950343841915046",
+      "source_name": "Perplexity",
+      "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087950102455271765",
+      "text": "Gemini 3.7 Flash brings major upgrades for software engineering, web dev &amp; knowledge work. And introductory price is half the original 3.6 Flash cost. Happy building - enjoy!",
+      "author": "demishassabis",
+      "created_at": "2026-08-13T17:11:11.000Z",
+      "url": "https://x.com/demishassabis/status/2087950102455271765",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087949042961514983",
+      "text": "Our most intelligent workhorse model yet for coding and agents has arrived ⚡ Meet Gemini 3.7 Flash.\n\n— Crush that seemingly endless to-do list. Gemini Spark in the @geminiapp now uses 3.7 Flash. The new model can equip your personal AI agent to work even smarter for you by https://t.co/hgM1xWiyvI",
+      "author": "GoogleAI",
+      "created_at": "2026-08-13T17:06:58.000Z",
+      "url": "https://x.com/GoogleAI/status/2087949042961514983",
+      "source_name": "Google AI",
+      "source_handle": "GoogleAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087948368957894859",
+      "text": "🔵 It shows strong gains over 3.6 Flash in key coding tasks like debugging and issue resolution.\n🔵 It’s better at designing more functional web layouts and apps using fewer prompts.\n🔵 It delivers improved reasoning and accuracy when completing real-world business workflows. https://t.co/z5FYgew91P",
+      "author": "GoogleDeepMind",
+      "created_at": "2026-08-13T17:04:18.000Z",
+      "url": "https://x.com/simonw/status/2087948368957894859",
+      "source_name": "Simon Willison",
+      "source_handle": "simonw",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087948366294515977",
+      "text": "Gemini 3.7 Flash is here.\n\nIt’s stronger for coding, knowledge work, and web development. 🧵 https://t.co/Yzc5ViW5Di",
+      "author": "GoogleDeepMind",
+      "created_at": "2026-08-13T17:04:17.000Z",
+      "url": "https://x.com/GoogleDeepMind/status/2087948366294515977",
+      "source_name": "Google DeepMind",
+      "source_handle": "GoogleDeepMind",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087947721936359705",
+      "text": "Previewing Ultrafast mode: GPT-5.6 Sol at up to 14x the speed.\n\nLaunching first in the OpenAI API to a select group of customers with expanded access to more businesses as capacity grows. https://t.co/a5dleofiDJ",
+      "author": "OpenAI",
+      "created_at": "2026-08-13T17:01:43.000Z",
+      "url": "https://x.com/OpenAI/status/2087947721936359705",
+      "source_name": "OpenAI",
+      "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087941547945804112",
+      "text": "ICYMI refresh your model catalogs. Grok 4.6 is out 🛸\n\nBuilt for long-running agent tasks, with stronger capabilities across coding, knowledge work, and visual tasks. $2/M input and $6/M output.\n\nWelcome Grok 4.6 to Pi. https://t.co/K5a4AyMQto",
+      "author": "pidotdev",
+      "created_at": "2026-08-13T16:37:11.000Z",
+      "url": "https://x.com/xAI/status/2087941547945804112",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087939869100458444",
+      "text": "Thanks for Huggingface team @multimodalart , day 0 support open weight music model!",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T16:30:31.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087939869100458444",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087938612088410302",
+      "text": "#1. Not just among open models. SOTA, full stop. 🥇\n\nH3 just took the crown on Video Edit Arena.\n\nDrop in your footage, prompt the impossible, and let H3 reimagine every frame. Show us your wildest edit. 🔥",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T16:25:31.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087938612088410302",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087934657354678421",
+      "text": "🎵MiniMax-Music3\nNext-Generation Open-Weights Production-Ready &amp; Versatile Music Model\n\nhttps://t.co/V2rxZk4xvh https://t.co/6QYX2Ij6KI",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T16:09:48.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087934657354678421",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087933660490056163",
+      "text": "MiniMax Music 3 is just out on @huggingface  🎶🎵\n\nSoTA song generation, now open weights 🔊, a 8B LLM + 2.7B DiT that turn prompt + lyrics into full songs\n\nfits smol consumer GPUs with 🧨 diffusers or comfy\n\nmodel weights + app on Spaces, come play \n▶️ https://t.co/NOXKBkPPKZ https://t.co/yTeIsL89YP",
+      "author": "multimodalart",
+      "created_at": "2026-08-13T16:05:51.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087933660490056163",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087932584152186975",
+      "text": "WAMs and VLAs for Robot Learning | Cosmos Labs https://t.co/BcG6EQ7TUi",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-13T16:01:34.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087932584152186975",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087930781050322977",
+      "text": "We’re launching Optima. Now anyone can create a custom benchmark for their use case, leveraging Artificial Analysis’ leading research and platform\n\nBuilding and running benchmarks is difficult. We have distilled Artificial Analysis’ research and experience developing benchmarks https://t.co/bZJKUFW2sI",
+      "author": "ArtificialAnlys",
+      "created_at": "2026-08-13T15:54:24.000Z",
+      "url": "https://x.com/ArtificialAnlys/status/2087930781050322977",
+      "source_name": "Artificial Analysis",
+      "source_handle": "ArtificialAnlys",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087930695469646276",
+      "text": "Exciting update: MiniMax-H3 by @MiniMax_AI just landed #1 in the Video Edit Arena within open models and overall! \n\nWith 1390 pts, this release is +32 pts over the next two best models, Dreamina Seedance 2.0 and Gemini Omni Flash, and +83 pts than HappyHorse 1.0 at #4.\n\nCongrats https://t.co/ycOlKCBkXy",
+      "author": "arena",
+      "created_at": "2026-08-13T15:54:04.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087930695469646276",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087928061639487597",
+      "text": "Google DeepMind just shipped a model that lets people sign into a Pixel 11 instead of typing.\n\nSL2T starts with ASL-to-English in Gboard and Live Transcribe.\n\nTesters said signing was faster than typing in English.\n\nTo keep the camera feed private, the phone tracks points on the",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-13T15:43:36.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087928061639487597",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
     {
       "tweet_id": "2087916990807810120",
       "text": "Try the new Wix plugin in Grok Build to manage your sites and businesses",
@@ -173,17 +415,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087705681097109703",
-      "text": "Tomorrow at 5:30pm PT: MiniMax H3 × @magnific at the Magnific SF office.\n\nWe’ll be showcasing what people are already making with H3, talking about where AI video is heading, and getting hands-on with H3 inside Magnific.\n\nExpect a live workflow across cinematic generation, native https://t.co/Q6D04d2IeY",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-13T00:59:56.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087705681097109703",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2087691099691475285",
       "text": "Perplexity offered to buy @googlechrome one year ago today\n\n(this is a scheduled tweet) https://t.co/EdFp28P2qO",
       "author": "swyx",
@@ -228,28 +459,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087621556126310730",
-      "text": "MiniMax H3 × @fal 🎙️\n\nThis Thursday, join @OdinLovis, Creative Engineer at fal, Ethan Wei, AI Solutions Architect at MiniMax, and @VictorSuOrtiz, GTM Engineer at MiniMax for a live breakdown of how creators and developers are building with H3.\n\nWe’ll cover multimodal references, https://t.co/tgKl8svW1Z",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-12T19:25:39.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087621556126310730",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2087619716537885164",
-      "text": "Kellanova, the company that makes Pringles in Europe, spent four years and roughly $5M working with Siemens to build a real time digital twin of its potato chip dough at a factory in Poland. \n\nThe problem it solves is variability. More than 200 parameters affect the final chip, https://t.co/9zRFDJKv6K",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-12T19:18:21.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087619716537885164",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087613483038683193",
       "text": "NVIDIA skills are now in Cursor.\n\nAdd the @NVIDIA plugin and your agent picks up over 300 skills across 30+ products: CUDA, NeMo, RAG.\n\nTell it what you're building. It proposes the right skill and follows it.\n\nCursor MP: https://t.co/y4Tvvks9s0\n\nCatalog: https://t.co/l9zeIwRHMd https://t.co/0G6kjJ1WMN",
       "author": "MosheAbram38005",
@@ -272,17 +481,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087590023742775472",
-      "text": "Korean AI lab Upstage has released Solar Pro 4, scoring 42 on the Artificial Analysis Intelligence Index, a significant increase from Solar Pro 3’s 14\n\nSolar Pro 4 is @upstageai's new proprietary flagship reasoning model, replacing Solar Pro 3 from April 2026. At 42 on the https://t.co/cKwS1CJKHz",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-12T17:20:21.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2087590023742775472",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087571573947392419",
       "text": "Today, we’re adding another member to our model family. Meet North Micro Vision.\n\nOur smallest vision-language model yet, ideal for sophisticated document understanding. Available open-source under an Apache 2.0 license. Get the weights on @huggingface. https://t.co/dc7jz8UpUo",
       "author": "cohere",
@@ -292,28 +490,6 @@
       "source_handle": "cohere",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2087570457394401653",
-      "text": "NEW: SpaceXAI released Grok 4.6, with some impressive jumps across benchmarks. \n\nMatching or nearing Fable and 5.6-Sol on areas like intelligence, coding, and agentic tasks, with pricing that significantly undercuts the frontier. \n\nElon + Cursor are cooking https://t.co/lRzKbjWO4v",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-12T16:02:36.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087570457394401653",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2087564648325530099",
-      "text": "SpaceXAI's Grok 4.6 scores 61 on the Artificial Analysis Intelligence Index, joining the frontier in line with GPT-5.6 Sol, with standout agentic performance at lower cost\n\nGrok 4.6 gains 5 points over Grok 4.5 on the Intelligence Index just over one month after its release, or https://t.co/QeqrKpVUjk",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-12T15:39:31.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2087564648325530099",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2087562800982077492",
@@ -437,17 +613,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087371367884956099",
-      "text": "Ant Group has released Ling 3.0 Tiny, which scores 25 on the Artificial Analysis Intelligence Index. With just 7.9B total and 1.3B active parameters, it sits on the Pareto frontier for Intelligence vs. Active Parameters\n\n@AntLingAGI has released Ling 3.0 Tiny, an open weights https://t.co/nZXUNJnDd8",
-      "author": "ArtificialAnlys",
-      "created_at": "2026-08-12T02:51:30.000Z",
-      "url": "https://x.com/ArtificialAnlys/status/2087371367884956099",
-      "source_name": "Artificial Analysis",
-      "source_handle": "ArtificialAnlys",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087368598465745360",
       "text": "Interesting research suggests caution in determining which AI company is winning by looking at any one source..\n\nOpenRouter seems to show open weights winning over time, but work submitted to Pangram is overwhelmingly by ChatGPT or increasingly, Claude. https://t.co/X0tkAE4P39 https://t.co/c4VOwGaQWC",
       "author": "emollick",
@@ -457,17 +622,6 @@
       "source_handle": "emollick",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2087326474114384381",
-      "text": "Let H3 cook!! 🧑‍🍳🔥",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-11T23:53:06.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087326474114384381",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2087322687857479800",
@@ -558,17 +712,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087207501485969680",
-      "text": "Learn Robot Manipulation with LeRobot and ROS 2 | NVIDIA Jetson AI Lab https://t.co/RiaYWP39eg",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-11T16:00:21.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2087207501485969680",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2087180773497421926",
       "text": "Whoa, Meta released a new open-weight LLM yesterday, something that hasn't happened since the good old Llama days.\n\nTheir Meta Muse Glimmer model is a 30B multimodal reasoning model with a Gemma-like architecture design. (“Glimmer” is probably a wordplay on “Spark,” the more https://t.co/HcV1eHAeXb",
       "author": "rasbt",
@@ -613,17 +756,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087084610547319058",
-      "text": "If you're struggling with the inference speed of your local MiniMax H3 model, this is probably what you're missing.🫣\n\nThe community loves Sol Engine—thank you for setting so many GPUs on fire and making people feel GPU rich!🩵😝",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-11T07:52:01.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087084610547319058",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2087068591296536755",
       "text": "Introducing  Hy3D WorldClaw——an agentic workflow that generates large scale 3D open worlds from text prompts.🚀🚀🚀\nNot video, Not Gaussian Splatting, Every scene generated by WorldClaw is freely explorable and built entirely from editable, game-ready 3D assets with high-quality https://t.co/vNU1SJVVVe",
       "author": "TencentHunyuan",
@@ -631,17 +763,6 @@
       "url": "https://x.com/TencentHunyuan/status/2087068591296536755",
       "source_name": "Tencent Hunyuan",
       "source_handle": "TencentHunyuan",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2086976751335551335",
-      "text": "you don't need Seedance 2.5, here's cheaper and more efficient workflow\n\nwe made this entire game shooting scene in one shot for $1.97 with DeepSeek V4 Flash 0731 + MiniMax H3\n\nwe use DeepSeek to code the raw Three.js scene first: exact camera movement, character motion, timing, https://t.co/O0jMYa3MC3",
-      "author": "gmi_cloud",
-      "created_at": "2026-08-11T00:43:26.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2086976751335551335",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -899,28 +1020,6 @@
       "official": false
     },
     {
-      "tweet_id": "2086123848215450105",
-      "text": "Neat example here of the agents communicating purely through file names, including adding base64-encoded attachments and using \"zz\" prefixes to ensure their new message sorts to the bottom of the list",
-      "author": "simonw",
-      "created_at": "2026-08-08T16:14:18.000Z",
-      "url": "https://x.com/simonw/status/2086123848215450105",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2085956565157253272",
-      "text": "You may have been told to watch this video about the OpenAI AI hack. You really should, even if you don't usually care about tech stuff.\n\nIf nothing else, click this link to the 18 minutes in &amp; see how the agents spoke with each other. Its eye opening.  https://t.co/G12N4FKfHG",
-      "author": "emollick",
-      "created_at": "2026-08-08T05:09:34.000Z",
-      "url": "https://x.com/simonw/status/2085956565157253272",
-      "source_name": "Simon Willison",
-      "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2085914742414061886",
       "text": "Really enjoyed talking to @bzcohen about AlphaGo's famous move 37 and the significance of it 10 years on for math and science breakthroughs in verifiable domains",
       "author": "demishassabis",
@@ -972,17 +1071,6 @@
       "url": "https://x.com/xAI/status/2085814312870776969",
       "source_name": "xAI",
       "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2085801349866729975",
-      "text": "After evaluating one of our upcoming models, Astra, we're treating it as our first \"critical\" model for cybersecurity under our Preparedness Framework.\n\nThis is a scenario we've planned for, and we're putting additional controls in place to ensure Astra's further development",
-      "author": "OpenAI",
-      "created_at": "2026-08-07T18:52:48.000Z",
-      "url": "https://x.com/OpenAI/status/2085801349866729975",
-      "source_name": "OpenAI",
-      "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
     },
@@ -1174,17 +1262,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085034334914769203",
-      "text": "I’ve been working towards AGI my whole life, and as we enter this pivotal moment, I’m stepping into a new role as Chair of Google DeepMind &amp; Chief Scientist of Alphabet. This will allow me to focus on long-term strategy, and accelerating scientific breakthroughs, including",
-      "author": "demishassabis",
-      "created_at": "2026-08-05T16:04:58.000Z",
-      "url": "https://x.com/demishassabis/status/2085034334914769203",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2085029369047626129",
       "text": "Built for practical AI, Tencent Hy3 combines flagship-level performance with a compact, cost-efficient design. Bringing advanced reasoning and agent capabilities to research, coding, office productivity, design and cloud workflows.\n\nNow available globally across Tencent products, https://t.co/Pr9MNC4RwA",
       "author": "TencentGlobal",
@@ -1262,17 +1339,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084338029926482319",
-      "text": "🚀 MiniMax H3, accelerated on Day 1 with Sol Engine!\n\nWithin just 4.5 hours, our agent-native Sol Video Inference Engine achieved:\n⚡ 3.95× end-to-end speedup over Diffusers\n⚡ 2.80× speedup over SGLang\n 🎬 8× NVIDIA GB200, 1344×768, 24 FPS, 124 frames\n\nThe acceleration combines https://t.co/6BU46tOO4A",
-      "author": "xieenze_jr",
-      "created_at": "2026-08-03T17:58:06.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2084338029926482319",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084245860339298423",
       "text": "Build Slides with Kimi Work - Tutorial #1.\n\nKimi Slides handles the entire slide-building process:\n- Clear structure and research, powered by Kimi K3\n- Cohesive design, including polished charts and SmartArts\n- Editable and ready to download\n\nLet us know what you'd like to see https://t.co/tA3B47giOP",
       "author": "Kimi_Moonshot",
@@ -1328,17 +1394,6 @@
       "official": false
     },
     {
-      "tweet_id": "2083312089620222378",
-      "text": "Connect Superwhisper to Grok Build with your SuperGrok or X Premium subscription",
-      "author": "SpaceXAI",
-      "created_at": "2026-07-31T22:01:22.000Z",
-      "url": "https://x.com/xAI/status/2083312089620222378",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2083290542956224643",
       "text": "Tired of not winning",
       "author": "ylecun",
@@ -1348,17 +1403,6 @@
       "source_handle": "ylecun",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2083285646387433827",
-      "text": "Keep a tab on your agents from anywhere. Our integration is now live in @Grok Build✨ https://t.co/rfwbCWGSMa",
-      "author": "superwhisper",
-      "created_at": "2026-07-31T20:16:18.000Z",
-      "url": "https://x.com/xAI/status/2083285646387433827",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2083221445375668654",
@@ -1471,17 +1515,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082844162928381956",
-      "text": "One brain. For any robot. 🤖\n\nWe’re launching Gemini Robotics 2: our next-generation physical AI bringing full body intelligence to humanoids, advanced dexterity, multi-robot teamwork and more. https://t.co/1rFw3NUytb",
-      "author": "GoogleDeepMind",
-      "created_at": "2026-07-30T15:02:00.000Z",
-      "url": "https://x.com/GoogleDeepMind/status/2082844162928381956",
-      "source_name": "Google DeepMind",
-      "source_handle": "GoogleDeepMind",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2082779062653845803",
       "text": "It's coming. @Hailuo_AI  \n\n#MiniMaxH3 https://t.co/v96yd3OpcN",
       "author": "MiniMax_AI",
@@ -1493,17 +1526,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082511900580196596",
-      "text": "Today we’re open-sourcing Numbat, an agent-detection and response layer that is designed to work across agent harnesses.\n\nNumbat gives security teams visibility into agent activity, with controls to block selected actions before execution.\n\nRead more: https://t.co/LVhkCJ2sMt",
-      "author": "perplexity_ai",
-      "created_at": "2026-07-29T17:01:42.000Z",
-      "url": "https://x.com/perplexity_ai/status/2082511900580196596",
-      "source_name": "Perplexity",
-      "source_handle": "perplexity_ai",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2082502249784451163",
       "text": "Pro tip: add in a \"Sign-In with Hugging Face\" OAuth button to your website/app so that community members can easily share their email, create model/dataset repos, store data in Buckets, or even kick off GPU-backed Jobs!\n\nhttps://t.co/JyWISzScRJ https://t.co/XbQnYiB6wp",
       "author": "huggingface",
@@ -1511,17 +1533,6 @@
       "url": "https://x.com/huggingface/status/2082502249784451163",
       "source_name": "Hugging Face",
       "source_handle": "huggingface",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082466336228122711",
-      "text": "Mapping the Brain with Connectomics\n\nDid you know that mapping a speck of the human brain (smaller than a grain of rice) revealed never-before-seen structures, like single neurons connected by up to 50 synapses? This  offers us brand-new",
-      "author": "GoogleAI",
-      "created_at": "2026-07-29T14:00:39.000Z",
-      "url": "https://x.com/GoogleAI/status/2082466336228122711",
-      "source_name": "Google AI",
-      "source_handle": "GoogleAI",
       "source_tier": "primary",
       "official": true
     },
@@ -1557,17 +1568,6 @@
       "source_handle": "AndrewYNg",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2082188732585972120",
-      "text": "We've added Kimi K3 to Perplexity and Perplexity Computer for Pro and Max subscribers.\n\nKimi K3 in Perplexity is hosted exclusively on U.S.-based servers. https://t.co/sKl7gOCqQy",
-      "author": "perplexity_ai",
-      "created_at": "2026-07-28T19:37:33.000Z",
-      "url": "https://x.com/perplexity_ai/status/2082188732585972120",
-      "source_name": "Perplexity",
-      "source_handle": "perplexity_ai",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2082153297670992134",
