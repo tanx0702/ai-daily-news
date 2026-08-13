@@ -1,12 +1,100 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-13T19:20:14.879883Z",
+  "generated_at": "2026-08-13T22:59:47.647576Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
   "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2088017546981396990",
+      "text": "Waitlist is open for tonight for our H3 x @magnific showcase but that doesn’t mean you’re out.\n\nRegister now for a chance to get in:\nhttps://t.co/sbOoOOWYjr\n\nAnd if you’re already registered, we’re opening the showcase to you. 🎬\n\nBuilt something with H3 + Magnific? Submit it for https://t.co/QZgsSP22QM",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T21:39:11.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2088017546981396990",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088015995810238827",
+      "text": "Congratulations to the winners of the SpaceXAI Grokathon 2026. Here are the top 3 projects that were built in the 12 hours!",
+      "author": "SpaceXAI",
+      "created_at": "2026-08-13T21:33:01.000Z",
+      "url": "https://x.com/xAI/status/2088015995810238827",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088011156845961447",
+      "text": "Not to brag, but... drop your product shots into H3 on @magnific today and watch them come back campaign-ready. 🪄🧙\n\nOnly until September 1st... Time it wisely.",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T21:13:47.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2088011156845961447",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088007050609741856",
+      "text": "Music 3 is open too!! 🙌 Already live locally on @ComfyUI\n\n\"We will keep open until AGI arrives.\" 💙\n\nCloud coming soon.",
+      "author": "MiniMax_AI",
+      "created_at": "2026-08-13T20:57:28.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2088007050609741856",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088006388429828415",
+      "text": "u guys have no idea how serious elon is about winning coding",
+      "author": "swyx",
+      "created_at": "2026-08-13T20:54:50.000Z",
+      "url": "https://x.com/swyx/status/2088006388429828415",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2088001934301290920",
+      "text": "MiniMax H3 builds commercial video like no other model\n\nNow at 50% OFF in 2K resolution. Half the credits, twice the clarity\n\nOnly until September 1\n\nPowered by @MiniMax_AI. Now on Magnific https://t.co/g4ZZ7YpCDO",
+      "author": "magnific",
+      "created_at": "2026-08-13T20:37:08.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2088001934301290920",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087996496088297746",
+      "text": "ChatGPT can now remember your activity across the apps and websites on your computer.\n\nWith Computer History in the desktop app, future interactions feel more personalized and require less explanation. https://t.co/WHZPxPp31R",
+      "author": "OpenAI",
+      "created_at": "2026-08-13T20:15:32.000Z",
+      "url": "https://x.com/OpenAI/status/2087996496088297746",
+      "source_name": "OpenAI",
+      "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087995995694960670",
+      "text": "Oh yes, and Flash 3.7 is also lightning fast! ⚡️",
+      "author": "demishassabis",
+      "created_at": "2026-08-13T20:13:33.000Z",
+      "url": "https://x.com/demishassabis/status/2087995995694960670",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2087977428618764353",
       "text": "We've just added $10 credit for any new sign ups to Optima for a limited time only. Try it out and let us know what you think",
@@ -16,6 +104,17 @@
       "source_name": "Artificial Analysis",
       "source_handle": "ArtificialAnlys",
       "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087976757731409998",
+      "text": "3.7 Flash : ) https://t.co/BPwdTx5YdO",
+      "author": "OfficialLoganK",
+      "created_at": "2026-08-13T18:57:06.000Z",
+      "url": "https://x.com/demishassabis/status/2087976757731409998",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
       "official": false
     },
     {
@@ -37,6 +136,17 @@
       "url": "https://x.com/perplexity_ai/status/2087972364009308204",
       "source_name": "Perplexity",
       "source_handle": "perplexity_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087970651793674359",
+      "text": "MiniMax Music 3 by @MiniMax_AI  is now on ComfyUI!\n\nAvailable locally in Comfy, Cloud coming soon! https://t.co/E4OfU0Mqht",
+      "author": "ComfyUI",
+      "created_at": "2026-08-13T18:32:50.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087970651793674359",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
       "source_tier": "primary",
       "official": true
     },
@@ -162,50 +272,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087939869100458444",
-      "text": "Thanks for Huggingface team @multimodalart , day 0 support open weight music model!",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-13T16:30:31.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087939869100458444",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2087938612088410302",
-      "text": "#1. Not just among open models. SOTA, full stop. 🥇\n\nH3 just took the crown on Video Edit Arena.\n\nDrop in your footage, prompt the impossible, and let H3 reimagine every frame. Show us your wildest edit. 🔥",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-13T16:25:31.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087938612088410302",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2087934657354678421",
-      "text": "🎵MiniMax-Music3\nNext-Generation Open-Weights Production-Ready &amp; Versatile Music Model\n\nhttps://t.co/V2rxZk4xvh https://t.co/6QYX2Ij6KI",
-      "author": "MiniMax_AI",
-      "created_at": "2026-08-13T16:09:48.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087934657354678421",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2087933660490056163",
-      "text": "MiniMax Music 3 is just out on @huggingface  🎶🎵\n\nSoTA song generation, now open weights 🔊, a 8B LLM + 2.7B DiT that turn prompt + lyrics into full songs\n\nfits smol consumer GPUs with 🧨 diffusers or comfy\n\nmodel weights + app on Spaces, come play \n▶️ https://t.co/NOXKBkPPKZ https://t.co/yTeIsL89YP",
-      "author": "multimodalart",
-      "created_at": "2026-08-13T16:05:51.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087933660490056163",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2087932584152186975",
       "text": "WAMs and VLAs for Robot Learning | Cosmos Labs https://t.co/BcG6EQ7TUi",
       "author": "NVIDIAAI",
@@ -226,17 +292,6 @@
       "source_handle": "ArtificialAnlys",
       "source_tier": "media",
       "official": false
-    },
-    {
-      "tweet_id": "2087930695469646276",
-      "text": "Exciting update: MiniMax-H3 by @MiniMax_AI just landed #1 in the Video Edit Arena within open models and overall! \n\nWith 1390 pts, this release is +32 pts over the next two best models, Dreamina Seedance 2.0 and Gemini Omni Flash, and +83 pts than HappyHorse 1.0 at #4.\n\nCongrats https://t.co/ycOlKCBkXy",
-      "author": "arena",
-      "created_at": "2026-08-13T15:54:04.000Z",
-      "url": "https://x.com/MiniMax_AI/status/2087930695469646276",
-      "source_name": "MiniMax",
-      "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2087928061639487597",
@@ -316,6 +371,17 @@
       "official": true
     },
     {
+      "tweet_id": "2087887425339032021",
+      "text": "🆕 @elonmusk has started following @cognition https://t.co/Cxmuidfi9J",
+      "author": "BigTechAlert",
+      "created_at": "2026-08-13T13:02:07.000Z",
+      "url": "https://x.com/swyx/status/2087887425339032021",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
       "tweet_id": "2087887408440164663",
       "text": "🧩 DeepSeek Harness v0.1 is now available in Developer Preview!\n\n🔹 We’re opening it up to developers building agent harnesses worldwide and open-sourcing the codebase in MIT license.\n🔹 Powered by the Cordis meta-framework, DeepSeek Harness is an agent harness built around one",
       "author": "deepseek_ai",
@@ -369,6 +435,17 @@
       "source_handle": "fchollet",
       "source_tier": "research",
       "official": false
+    },
+    {
+      "tweet_id": "2087811372776112318",
+      "text": "@0x_lun @MiniMax_AI Thursday, thankfully. We wouldn't do that to you on a Monday\n\nH3 running live at our SF office, 5:30pm PT. Then networking and showcases from the community\n\nWe're full, but the waitlist's open https://t.co/FvzhPglo9H",
+      "author": "magnific",
+      "created_at": "2026-08-13T07:59:55.000Z",
+      "url": "https://x.com/MiniMax_AI/status/2087811372776112318",
+      "source_name": "MiniMax",
+      "source_handle": "MiniMax_AI",
+      "source_tier": "primary",
+      "official": true
     },
     {
       "tweet_id": "2087805426750632290",
@@ -569,17 +646,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087437017840046156",
-      "text": "this is already one of the most important papers of this year.\n\nhttps://t.co/0f3ma9POEG\n\nthe methodology doesnt seem clearly explained so here are some notes with a further distillation",
-      "author": "swyx",
-      "created_at": "2026-08-12T07:12:22.000Z",
-      "url": "https://x.com/swyx/status/2087437017840046156",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087413988451574199",
       "text": "Qwen 3.8 27b is being released at 11:00AM EST on Wednesday\n\nFolks are lined up for miles to see what this fancy new model is capable of https://t.co/UJSzbIwKhp",
       "author": "jessalanfields",
@@ -734,17 +800,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087147042888114428",
-      "text": "We can finally talk about it:\n\nWe found a way to extract hidden reasoning of frontier models using a vulnerability in the APIs of every frontier AI company.\n\nWe verified that our reasoning token count matches billed API thinking tokens 1:1 for most of the prompts we queried. https://t.co/S7wN8aP3X7",
-      "author": "kotekjedi_ml",
-      "created_at": "2026-08-11T12:00:06.000Z",
-      "url": "https://x.com/swyx/status/2087147042888114428",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087091895822631178",
       "text": "Kimi K3 is now live on @databricks! https://t.co/wo5FGV8kzz",
       "author": "Kimi_Moonshot",
@@ -853,17 +908,6 @@
       "source_handle": "sama",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2086864365379010729",
-      "text": "We’re expanding our cybersecurity initiative Daybreak and introducing GPT-5.6-Cyber, a new model for advanced, authorized cybersecurity work.\n\nAs the threat landscape evolves, we’re putting frontier intelligence in the hands of trusted defenders before attackers can deploy https://t.co/6o3GtxCxRA",
-      "author": "OpenAI",
-      "created_at": "2026-08-10T17:16:51.000Z",
-      "url": "https://x.com/OpenAI/status/2086864365379010729",
-      "source_name": "OpenAI",
-      "source_handle": "OpenAI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2086845515665166398",
@@ -1020,28 +1064,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085914742414061886",
-      "text": "Really enjoyed talking to @bzcohen about AlphaGo's famous move 37 and the significance of it 10 years on for math and science breakthroughs in verifiable domains",
-      "author": "demishassabis",
-      "created_at": "2026-08-08T02:23:23.000Z",
-      "url": "https://x.com/demishassabis/status/2085914742414061886",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2085894257651392763",
-      "text": "A decade ago, a computer did something that no human would have done. It was considered a breakthrough for AI. Now the world is full of them. https://t.co/lWcMb4tovy",
-      "author": "WSJ",
-      "created_at": "2026-08-08T01:01:59.000Z",
-      "url": "https://x.com/demishassabis/status/2085894257651392763",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2085862292311396515",
       "text": "astra is a powerful model and we are working to make it generally available.\n\nwe do not think it is a good strategy to keep powerful models to a chosen few.\n\ngiven its cyber capabilities, we need a little big longer to do do this safely. but hopefully not too long!",
       "author": "sama",
@@ -1051,28 +1073,6 @@
       "source_handle": "sama",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2085814657223209290",
-      "text": "Use /connect-grok to use an X Premium or SuperGrok subscription with Warp",
-      "author": "SpaceXAI",
-      "created_at": "2026-08-07T19:45:41.000Z",
-      "url": "https://x.com/xAI/status/2085814657223209290",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2085814312870776969",
-      "text": "Run /connect-grok in the Warp Agent CLI to use your X Premium subscription with Warp! https://t.co/16XTL4gkZu",
-      "author": "warpdotdev",
-      "created_at": "2026-08-07T19:44:19.000Z",
-      "url": "https://x.com/xAI/status/2085814312870776969",
-      "source_name": "xAI",
-      "source_handle": "xAI",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2085765236876046500",
