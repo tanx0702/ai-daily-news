@@ -126,3 +126,37 @@ def test_execution_helpers_return_aware_stable_statuses():
     assert dry_run_execution(now=at).status == "dry_run"
     assert draft_created_execution("media-id", now=at).media_id == "media-id"
     assert failed_execution("wechat_draft_failed", now=at).reason == "wechat_draft_failed"
+
+
+def test_incomplete_semantic_dedup_blocks_creation():
+    decision = decide_draft(
+        [item(index) for index in range(1, 6)],
+        config(),
+        semantic_dedup_complete=False,
+    )
+
+    assert decision.action == "block"
+    assert decision.reasons == ("duplicate_event_remaining",)
+
+
+def test_remaining_semantic_conflict_keys_block_creation():
+    decision = decide_draft(
+        [item(index) for index in range(1, 6)],
+        config(),
+        semantic_conflict_keys=("event-2", "event-3"),
+    )
+
+    assert decision.action == "block"
+    assert decision.reasons == ("duplicate_event_remaining",)
+
+
+def test_resolved_uncertain_duplicate_exclusion_does_not_block_clean_items():
+    decision = decide_draft(
+        [item(index) for index in range(1, 6)],
+        config(),
+        excluded_counts={"semantic_duplicate_unresolved": 1},
+        semantic_dedup_complete=True,
+    )
+
+    assert decision.action == "create"
+    assert decision.reasons == ()

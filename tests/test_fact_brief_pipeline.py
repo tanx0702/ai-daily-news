@@ -1,5 +1,7 @@
 from src.briefing.builder import BuildResult
 from src.briefing.config import BriefingConfig
+from src.briefing.clusterer import ClusteredDuplicate
+from src.briefing.deduplicator import AcceptedItemDeduplicator, DeduplicationOutcome
 from src.briefing.models import (
     BriefItem,
     BuiltBrief,
@@ -127,6 +129,308 @@ def test_pipeline_rejects_backfills_and_rebuilds_before_the_single_decision():
     assert result.exclusions["unsupported_claim"] == 1
     assert result.diagnostics["reserve_fill_count"] == 1
     assert result.diagnostics["rules_only_count"] == 5
+
+
+def test_pipeline_removes_semantic_duplicate_and_backfills_to_target():
+    values = [event(index) for index in range(1, 7)]
+    published_at = values[0].canonical_evidence.published_at
+    values[0] = MergedEvent(
+        "event-1",
+        SourceEvidence(
+            publisher_id="theverge-com",
+            publisher_name="The Verge",
+            channel="rss",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title="Another OpenAI executive takes off",
+            evidence_text=(
+                "Brad Lightcap, OpenAI's former COO, announced his departure after eight years."
+            ),
+            url="https://theverge.example/brad-lightcap",
+            published_at=published_at,
+        ),
+        editorial_score=9,
+    )
+    values[1] = MergedEvent(
+        "event-2",
+        SourceEvidence(
+            publisher_id="community-x",
+            publisher_name="Community X",
+            channel="x",
+            authority="community",
+            is_official=False,
+            official_identity_source="",
+            source_title="OpenAI COO Brad Lightcap is leaving the company",
+            evidence_text="OpenAI COO Brad Lightcap is leaving after eight years.",
+            url="https://x.com/community/status/123",
+            published_at=published_at,
+        ),
+        editorial_score=8,
+    )
+
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            result = accepted(value)
+            if value.event_key not in {"event-1", "event-2"}:
+                return result
+            source = value.canonical_evidence
+            title = (
+                "OpenAI 前 COO Brad Lightcap 宣布离职"
+                if value.event_key == "event-1"
+                else "Brad Lightcap 离开 OpenAI"
+            )
+            return ValidationResult(
+                "accept",
+                (),
+                "rules_only",
+                validated_item=BriefItem(
+                    event_key=value.event_key,
+                    chinese_title=title,
+                    brief="Brad Lightcap 在任职八年后宣布离开 OpenAI。",
+                    canonical_source=source,
+                    related_sources=(),
+                    published_at=source.published_at,
+                    evidence_bindings=(
+                        EvidenceBinding(title, source.source_title, source.url),
+                    ),
+                    content_origin="llm",
+                    validation_mode="rules_only",
+                ),
+            )
+
+    result = run_brief_pipeline(
+        values,
+        (),
+        config(),
+        Builder(),
+        AcceptingValidator(),
+        semantic_deduplicator=AcceptedItemDeduplicator(config(), reviewer=None),
+    )
+
+    assert len(result.accepted_items) == 5
+    assert "event-2" not in [item.event_key for item in result.accepted_items]
+    assert "event-6" in [item.event_key for item in result.accepted_items]
+    assert result.exclusions["semantic_duplicate"] == 1
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-2"]["final_reason_codes"] == ["semantic_duplicate"]
+    assert audit["event-2"]["duplicate_of"] == "event-1"
+
+
+def test_pipeline_quality_mode_counts_follow_final_items_after_replacement():
+    values = [event(index) for index in range(1, 7)]
+    published_at = values[0].canonical_evidence.published_at
+    weak_source = SourceEvidence(
+        publisher_id="community-x",
+        publisher_name="Community X",
+        channel="x",
+        authority="community",
+        is_official=False,
+        official_identity_source="",
+        source_title="OpenAI COO Brad Lightcap is leaving the company",
+        evidence_text="OpenAI COO Brad Lightcap is leaving after eight years.",
+        url="https://x.com/community/status/777",
+        published_at=published_at,
+    )
+    strong_source = SourceEvidence(
+        publisher_id="openai",
+        publisher_name="OpenAI",
+        channel="rss",
+        authority="official",
+        is_official=True,
+        official_identity_source="source_config",
+        source_title="Brad Lightcap departs OpenAI",
+        evidence_text="Brad Lightcap announced his departure from OpenAI after eight years.",
+        url="https://openai.example/brad-lightcap",
+        published_at=published_at,
+    )
+    values[0] = MergedEvent("event-1", weak_source, editorial_score=9)
+    values[1] = MergedEvent("event-2", strong_source, editorial_score=8)
+
+    class ReplacementValidator:
+        def validate(self, value, built, *, generation_attempt):
+            if value.event_key not in {"event-1", "event-2"}:
+                return accepted(value, validation_mode="rules_and_llm")
+            source = value.canonical_evidence
+            title = "Brad Lightcap 离开 OpenAI"
+            return ValidationResult(
+                "accept",
+                (),
+                "rules_only" if value.event_key == "event-1" else "rules_and_llm",
+                validated_item=BriefItem(
+                    event_key=value.event_key,
+                    chinese_title=title,
+                    brief="Brad Lightcap 在任职八年后宣布离开 OpenAI。",
+                    canonical_source=source,
+                    related_sources=(),
+                    published_at=source.published_at,
+                    evidence_bindings=(
+                        EvidenceBinding(title, source.source_title, source.url),
+                    ),
+                    content_origin="llm",
+                    validation_mode=(
+                        "rules_only" if value.event_key == "event-1" else "rules_and_llm"
+                    ),
+                ),
+            )
+
+    result = run_brief_pipeline(
+        values,
+        (),
+        config(),
+        Builder(),
+        ReplacementValidator(),
+        semantic_deduplicator=AcceptedItemDeduplicator(config(), reviewer=None),
+    )
+
+    assert "event-1" not in [item.event_key for item in result.accepted_items]
+    assert result.diagnostics["rules_only_count"] == 0
+    assert result.diagnostics["rules_and_llm_count"] == 5
+
+
+def test_pipeline_checks_stronger_candidate_after_target_is_reached():
+    values = [event(index) for index in range(1, 7)]
+    published_at = values[0].canonical_evidence.published_at
+    weak_source = SourceEvidence(
+        publisher_id="community-x",
+        publisher_name="Community X",
+        channel="x",
+        authority="community",
+        is_official=False,
+        official_identity_source="",
+        source_title="OpenAI COO Brad Lightcap is leaving the company",
+        evidence_text="OpenAI COO Brad Lightcap is leaving after eight years.",
+        url="https://x.com/community/status/888",
+        published_at=published_at,
+    )
+    official_source = SourceEvidence(
+        publisher_id="openai",
+        publisher_name="OpenAI",
+        channel="rss",
+        authority="official",
+        is_official=True,
+        official_identity_source="source_config",
+        source_title="Brad Lightcap departs OpenAI",
+        evidence_text="Brad Lightcap announced his departure from OpenAI after eight years.",
+        url="https://openai.example/brad-lightcap-late",
+        published_at=published_at,
+    )
+    values[0] = MergedEvent("event-1", weak_source, editorial_score=100)
+    values[5] = MergedEvent("event-6", official_source, editorial_score=1)
+
+    class ReplacementValidator:
+        def validate(self, value, built, *, generation_attempt):
+            if value.event_key not in {"event-1", "event-6"}:
+                return accepted(value)
+            source = value.canonical_evidence
+            title = "Brad Lightcap 离开 OpenAI"
+            return ValidationResult(
+                "accept",
+                (),
+                "rules_only",
+                validated_item=BriefItem(
+                    event_key=value.event_key,
+                    chinese_title=title,
+                    brief="Brad Lightcap 在任职八年后宣布离开 OpenAI。",
+                    canonical_source=source,
+                    related_sources=(),
+                    published_at=source.published_at,
+                    evidence_bindings=(
+                        EvidenceBinding(title, source.source_title, source.url),
+                    ),
+                    content_origin="llm",
+                    validation_mode="rules_only",
+                ),
+            )
+
+    result = run_brief_pipeline(
+        values,
+        (),
+        config(),
+        Builder(),
+        ReplacementValidator(),
+        semantic_deduplicator=AcceptedItemDeduplicator(config(), reviewer=None),
+    )
+
+    keys = [item.event_key for item in result.accepted_items]
+    assert len(keys) == 5
+    assert "event-1" not in keys
+    assert "event-6" in keys
+
+
+def test_pipeline_does_not_overfill_when_replacement_precheck_finds_no_duplicate():
+    class PrecheckOnlyDeduplicator:
+        diagnostics = {}
+
+        def evaluate(self, candidate, accepted_items):
+            return DeduplicationOutcome(True)
+
+        def can_replace_any(self, candidate, accepted_items):
+            return candidate.event_key == "event-6"
+
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 7)],
+        (),
+        config(),
+        Builder(),
+        AcceptingValidator(),
+        semantic_deduplicator=PrecheckOnlyDeduplicator(),
+    )
+
+    assert [item.event_key for item in result.accepted_items] == [
+        "event-1",
+        "event-2",
+        "event-3",
+        "event-4",
+        "event-5",
+    ]
+    assert result.decision.action == "create"
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert len(audit["event-6"]["attempts"]) == 1
+    assert audit["event-6"]["final_state"] == "not_selected"
+    assert audit["event-6"]["final_reason_codes"] == ["target_reached"]
+
+
+def test_pipeline_applies_partial_removals_when_candidate_is_rejected():
+    class BridgeDeduplicator:
+        diagnostics = {}
+
+        def evaluate(self, candidate, accepted_items):
+            if candidate.event_key == "event-3":
+                return DeduplicationOutcome(
+                    False,
+                    removed_event_keys=("event-1",),
+                    duplicate_of="event-2",
+                    reason_code="semantic_duplicate",
+                )
+            return DeduplicationOutcome(True)
+
+        def can_replace_any(self, candidate, accepted_items):
+            return False
+
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 8)],
+        (),
+        config(candidate_pool_size=7),
+        Builder(),
+        AcceptingValidator(),
+        semantic_deduplicator=BridgeDeduplicator(),
+    )
+
+    keys = [item.event_key for item in result.accepted_items]
+    assert keys == ["event-2", "event-4", "event-5", "event-6", "event-7"]
+    assert result.decision.action == "create"
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-1"]["duplicate_of"] == "event-3"
+    assert audit["event-1"]["final_reason_codes"] == ["semantic_duplicate"]
 
 
 def test_pipeline_keeps_per_event_audit_for_rebuilt_and_rejected_candidates():
@@ -288,11 +592,66 @@ def test_pipeline_audits_x_limit_reached_during_selection():
     assert audit["event-2"]["final_reason_codes"] == ["x_limit"]
 
 
+def test_pipeline_does_not_build_x_candidates_beyond_remaining_quota():
+    class AcceptingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return accepted(value)
+
+    builder = Builder()
+    result = run_brief_pipeline(
+        [event(1, channel="x"), event(2, channel="x")]
+        + [event(index) for index in range(3, 8)],
+        (),
+        config(max_x_items=1),
+        builder,
+        AcceptingValidator(),
+    )
+
+    built_keys = [key for keys, _attempts in builder.calls for key in keys]
+    assert "event-1" in built_keys
+    assert "event-2" not in built_keys
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-2"]["attempts"] == []
+    assert audit["event-2"]["final_reason_codes"] == ["x_limit"]
+
+
+def test_pipeline_rebuild_keeps_x_candidate_ahead_of_deferred_x_items():
+    class RebuildingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            if value.event_key == "event-1" and generation_attempt == 1:
+                return ValidationResult(
+                    "rebuild",
+                    ("unsupported_claim",),
+                    "rules_only",
+                    rebuild_request=RebuildRequest(
+                        value.event_key, ("unsupported_claim",), 2
+                    ),
+                )
+            return accepted(value)
+
+    builder = Builder()
+    result = run_brief_pipeline(
+        [event(1, channel="x"), event(2, channel="x")]
+        + [event(index) for index in range(3, 8)],
+        (),
+        config(max_x_items=1),
+        builder,
+        RebuildingValidator(),
+    )
+
+    built_keys = [key for keys, _attempts in builder.calls for key in keys]
+    assert built_keys.count("event-1") == 2
+    assert "event-2" not in built_keys
+    assert result.accepted_items[0].event_key == "event-1"
+
+
 def test_pipeline_audits_quarantined_event():
     quarantined = QuarantinedEvent(
         evidence=event(1).canonical_evidence,
         duplicate_of="event-duplicate",
         reason_code="ambiguous_duplicate",
+        relationship="uncertain",
+        comparison_mode="rules_and_llm",
     )
 
     result = run_brief_pipeline(
@@ -307,6 +666,52 @@ def test_pipeline_audits_quarantined_event():
     assert audit["attempts"] == []
     assert audit["final_state"] == "quarantined"
     assert audit["final_reason_codes"] == ["ambiguous_duplicate"]
+    assert audit["duplicate_of"] == "event-duplicate"
+    assert audit["relationship"] == "uncertain"
+    assert audit["comparison_mode"] == "rules_and_llm"
+
+
+def test_pipeline_audits_each_source_merged_during_initial_clustering():
+    canonical = event(1)
+    duplicate_source = SourceEvidence(
+        publisher_id="community-x",
+        publisher_name="Community X",
+        channel="x",
+        authority="community",
+        is_official=False,
+        official_identity_source="",
+        source_title="Source 1 duplicate",
+        evidence_text="Source 1 duplicate update.",
+        url="https://x.com/community/status/12345",
+        published_at=canonical.canonical_evidence.published_at,
+    )
+    merged_duplicate = ClusteredDuplicate(
+        evidence=duplicate_source,
+        duplicate_of=canonical.event_key,
+        relationship="same_event",
+        comparison_mode="rules_and_llm",
+        reason_code="semantic_duplicate",
+    )
+
+    result = run_brief_pipeline(
+        (canonical,),
+        (),
+        config(),
+        Builder(),
+        Validator(),
+        clustered_duplicates=(merged_duplicate,),
+    )
+
+    audit = next(
+        entry
+        for entry in result.audit_entries
+        if entry["candidate_type"] == "clustered_duplicate"
+    )
+    assert audit["evidence"]["url"] == duplicate_source.url
+    assert audit["duplicate_of"] == canonical.event_key
+    assert audit["relationship"] == "same_event"
+    assert audit["comparison_mode"] == "rules_and_llm"
+    assert audit["final_reason_codes"] == ["semantic_duplicate"]
 
 
 def test_pipeline_keeps_standalone_quarantined_candidate_audit():

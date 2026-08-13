@@ -28,6 +28,8 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - 单个来源失败不能阻断其它来源；封面、原文图和 AI 摘要失败不能删除已经可生成的日报 HTML。歧义重复候选必须隔离，不能作为回填来源。
 - 任何重试都必须有上限和超时；不能通过无限重试掩盖供应商故障或拖垮每日任务。
 - 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；内容 LLM 必须返回 `title`、`brief_1`、`brief_2` 展示目标，Python 生成完整 `EvidenceBinding.claim`。质量 LLM 不可用或响应无效时，确定性事实规则通过的条目必须使用 `rules_only` 自动入选；跨语言自动降级还必须有逐字实体锚点，且不能包含规则无法核验的用途等翻译语义。不得请求人工复核或 LLM 修正事实。
+- 跨来源语义去重必须先运行冻结原始证据的确定性特征判断，生成的中文标题和摘要不能作为标题完全匹配或实体锚点。只有共享主体和动作但无法确定的少量 pair 才允许调用质量 LLM；`same_event` 必须精确绑定两边规则均抽取到的完整人物或模型实体，宽泛组织、角色词和实体子串不能单独证明同一事件。复核器只能返回严格关系 JSON，不能重写内容；聚类和发布前去重共享有上限的调用预算与熔断状态。
+- 语义复核不可用、超时、响应无效、预算耗尽或返回 `uncertain` 时，不得把降级草稿交给人工复核。系统保守保留来源优先级更高的候选，隔离或移除较弱疑似重复，并继续从剩余候选回填。
 
 ## Flask 路由边界
 
@@ -52,6 +54,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
 - `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
 - 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。
+- 语义事件审计应记录 `duplicate_of`、`relationship`、`comparison_mode`、`semantic_duplicate`、`semantic_duplicate_unresolved` 以及 reviewer 的成功、超时、无效、不可用、熔断和预算耗尽计数；聚类时并入 related evidence 的每个来源还要生成独立的 `candidate_type=clustered_duplicate` 记录，不得记录完整模型响应。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。
 - v2/shadow/editorial review 和 Tencent SCF 不得成为生产简报的必需依赖；辅助流程只能记录受保护诊断，不能改变已接受的条目或决策。
 

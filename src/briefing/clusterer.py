@@ -2,35 +2,24 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
-from difflib import SequenceMatcher
 import hashlib
 import re
 from types import MappingProxyType
-from typing import Mapping, Sequence
+from typing import Mapping, Protocol, Sequence
 from urllib.parse import urlparse, urlunparse
 
+from src.briefing.config import BriefingConfig
 from src.briefing.models import MergedEvent, QuarantinedEvent, SourceEvidence
+from src.briefing.semantic import (
+    EventDocument,
+    deterministic_relationship,
+    evidence_priority,
+)
+from src.briefing.semantic_reviewer import SemanticReview
 
 
-_AUTHORITY_ORDER = {
-    "official": 0,
-    "research": 1,
-    "professional_media": 2,
-    "community": 3,
-}
-_ACTION_GROUPS = {
-    "release": {
-        "release", "releases", "released", "launch", "launches", "launched",
-        "rollout", "rolls", "available", "access", "receiving", "发布", "推出", "上线",
-    },
-    "funding": {"funding", "funded", "raises", "raised", "融资", "投资", "估值"},
-    "acquisition": {"acquire", "acquires", "acquired", "buy", "buys", "收购", "合并"},
-    "open_source": {"open-source", "opensource", "开源"},
-    "office": {"office", "campus", "总部", "办公室"},
-    "research": {"paper", "study", "research", "论文", "研究"},
-}
 _STOP_WORDS = {
     "a", "an", "the", "to", "for", "of", "and", "with", "its", "new",
     "begin", "begins", "makes", "make", "selected",
@@ -38,19 +27,49 @@ _STOP_WORDS = {
 
 
 @dataclass(frozen=True, slots=True)
+class ClusteredDuplicate:
+    evidence: SourceEvidence
+    duplicate_of: str
+    relationship: str
+    comparison_mode: str
+    reason_code: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "evidence": self.evidence.to_dict(),
+            "duplicate_of": self.duplicate_of,
+            "relationship": self.relationship,
+            "comparison_mode": self.comparison_mode,
+            "reason_code": self.reason_code,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ClusterResult:
     events: tuple[MergedEvent, ...]
     quarantined: tuple[QuarantinedEvent, ...]
     diagnostics: Mapping[str, int]
+    merged_duplicates: tuple[ClusteredDuplicate, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "events", tuple(self.events))
         object.__setattr__(self, "quarantined", tuple(self.quarantined))
+        object.__setattr__(self, "merged_duplicates", tuple(self.merged_duplicates))
         object.__setattr__(
             self,
             "diagnostics",
             MappingProxyType({str(key): int(value) for key, value in self.diagnostics.items()}),
         )
+
+
+class SemanticReviewerProtocol(Protocol):
+    diagnostics: Mapping[str, int]
+
+    def review(
+        self,
+        left: EventDocument,
+        right: EventDocument,
+    ) -> SemanticReview: ...
 
 
 def _normalized_url(value: str) -> str:
@@ -65,136 +84,140 @@ def _normalized_url(value: str) -> str:
     return urlunparse((parsed.scheme.lower(), netloc, path, "", "", ""))
 
 
-def _x_status_id(value: str) -> str:
-    parsed = urlparse(value)
-    if (parsed.hostname or "").lower() not in {"x.com", "www.x.com"}:
-        return ""
-    match = re.search(r"/status/(\d+)(?:/|$)", parsed.path)
-    return match.group(1) if match else ""
-
-
-def _tokens(value: str) -> set[str]:
-    words = {
+def _tokens(value: str) -> tuple[str, ...]:
+    words = tuple(
         token
         for token in re.findall(r"[a-z0-9][a-z0-9.+-]*|[\u4e00-\u9fff]{2,}", value.lower())
         if token not in _STOP_WORDS
-    }
+    )
     return words
 
 
-def _title_similarity(a: str, b: str) -> float:
-    a_normal = " ".join(sorted(_tokens(a)))
-    b_normal = " ".join(sorted(_tokens(b)))
-    if not a_normal or not b_normal:
-        return 0.0
-    set_a = set(a_normal.split())
-    set_b = set(b_normal.split())
-    jaccard = len(set_a & set_b) / len(set_a | set_b)
-    sequence = SequenceMatcher(None, a_normal, b_normal).ratio()
-    return max(jaccard, sequence)
-
-
-def _action_groups(value: str) -> set[str]:
-    tokens = _tokens(value)
-    lowered = value.lower()
-    return {
-        group
-        for group, markers in _ACTION_GROUPS.items()
-        if markers & tokens or any(marker in lowered for marker in markers if len(marker) > 1)
-    }
-
-
-def _entities(value: str) -> set[str]:
-    tokens = _tokens(value)
-    return {
-        token
-        for token in tokens
-        if any(char.isdigit() for char in token)
-        or token in {
-            "openai", "anthropic", "claude", "gemini", "google", "deepmind",
-            "meta", "llama", "microsoft", "nvidia", "mistral", "deepseek", "qwen",
-        }
-    }
-
-
-def _published_timestamp(value: str) -> float:
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
-
-
-def _strength(evidence: SourceEvidence) -> tuple[int, int, int, float, str]:
-    return (
-        _AUTHORITY_ORDER.get(evidence.authority, 9),
-        0 if evidence.is_official else 1,
-        -len(evidence.evidence_text),
-        -_published_timestamp(evidence.published_at),
-        evidence.url,
-    )
-
-
 def _event_key(evidence: SourceEvidence) -> str:
-    signature = " ".join(sorted(_tokens(evidence.source_title)))
+    signature = " ".join(_tokens(evidence.source_title))
     if not signature:
         signature = _normalized_url(evidence.url) or evidence.publisher_id
     digest = hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16]
     return f"event-{digest}"
 
 
-def _relationship(a: SourceEvidence, b: SourceEvidence) -> str:
-    url_a = _normalized_url(a.url)
-    url_b = _normalized_url(b.url)
-    status_a = _x_status_id(a.url)
-    status_b = _x_status_id(b.url)
-    if url_a and url_a == url_b:
-        return "confirmed"
-    if status_a and status_a == status_b:
-        return "confirmed"
-
-    similarity = _title_similarity(a.source_title, b.source_title)
-    if similarity >= 0.82:
-        return "confirmed"
-
-    actions_a = _action_groups(a.source_title)
-    actions_b = _action_groups(b.source_title)
-    shared_actions = actions_a & actions_b
-    shared_entities = _entities(a.source_title) & _entities(b.source_title)
-    time_distance = abs(
-        _published_timestamp(a.published_at) - _published_timestamp(b.published_at)
-    )
-    if similarity >= 0.40 and shared_actions and shared_entities and time_distance <= 48 * 3600:
-        return "ambiguous"
-    return "distinct"
-
-
 class EventClusterer:
     """Cluster only confirmed duplicates and quarantine unresolved overlap."""
+
+    def __init__(
+        self,
+        config: BriefingConfig | None = None,
+        *,
+        reviewer: SemanticReviewerProtocol | None = None,
+    ) -> None:
+        self.config = config or BriefingConfig()
+        self.reviewer = reviewer
 
     def cluster(
         self,
         evidence: Sequence[SourceEvidence],
         editorial_scores: Mapping[str, float] | None = None,
     ) -> ClusterResult:
+        reviewer_before = Counter(getattr(self.reviewer, "diagnostics", {}))
         scores = dict(editorial_scores or {})
-        ordered = sorted(evidence, key=_strength)
+        ordered = sorted(
+            evidence,
+            key=lambda value: evidence_priority(
+                value,
+                scores.get(value.url, 0.0),
+            ),
+        )
         event_rows: list[dict[str, object]] = []
         quarantined: list[QuarantinedEvent] = []
+        merged_duplicates: list[ClusteredDuplicate] = []
         merged_count = 0
+        semantic_comparison_count = 0
+        semantic_duplicate_merged_count = 0
+        semantic_duplicate_unresolved_count = 0
 
         for candidate in ordered:
-            matched_row: dict[str, object] | None = None
-            relationship = "distinct"
+            confirmed_matches: list[tuple[dict[str, object], str]] = []
+            uncertain_matches: list[tuple[dict[str, object], str, str]] = []
             for row in event_rows:
                 canonical = row["canonical"]
                 assert isinstance(canonical, SourceEvidence)
-                current = _relationship(candidate, canonical)
-                if current == "confirmed":
-                    matched_row = row
-                    relationship = current
-                    break
-                if current == "ambiguous" and matched_row is None:
-                    matched_row = row
-                    relationship = current
+                related = row["related"]
+                assert isinstance(related, list)
+                confirmed_mode: str | None = None
+                uncertain_match: tuple[str, str] | None = None
+                for existing in (canonical, *related):
+                    semantic_comparison_count += 1
+                    pair_relationship, comparison_mode = self._relationship(
+                        candidate,
+                        existing,
+                    )
+                    if pair_relationship == "confirmed":
+                        confirmed_mode = comparison_mode
+                    elif (
+                        pair_relationship in {"ambiguous", "unresolved"}
+                        and uncertain_match is None
+                    ):
+                        uncertain_match = (pair_relationship, comparison_mode)
+                if confirmed_mode is not None:
+                    confirmed_matches.append((row, confirmed_mode))
+                elif uncertain_match is not None:
+                    uncertain_matches.append((row, *uncertain_match))
 
-            if matched_row is None:
+            if uncertain_matches:
+                matched_rows: list[dict[str, object]] = []
+                for row in event_rows:
+                    if any(value[0] is row for value in (*confirmed_matches, *uncertain_matches)):
+                        matched_rows.append(row)
+                keeper = matched_rows[0]
+                keeper_key = str(keeper["event_key"])
+                unresolved = any(
+                    relationship == "unresolved"
+                    for _row, relationship, _mode in uncertain_matches
+                )
+                reason_code = (
+                    "semantic_duplicate_unresolved"
+                    if unresolved
+                    else "ambiguous_duplicate"
+                )
+                comparison_mode = uncertain_matches[0][2]
+                for row in matched_rows[1:]:
+                    canonical = row["canonical"]
+                    related = row["related"]
+                    assert isinstance(canonical, SourceEvidence)
+                    assert isinstance(related, list)
+                    row_evidence = (canonical, *related)
+                    quarantined.extend(
+                        QuarantinedEvent(
+                            evidence=value,
+                            duplicate_of=keeper_key,
+                            reason_code=reason_code,
+                            relationship="uncertain",
+                            comparison_mode=comparison_mode,
+                        )
+                        for value in row_evidence
+                    )
+                    merged_count -= len(related)
+                    semantic_duplicate_merged_count -= len(related)
+                    merged_duplicates = [
+                        value
+                        for value in merged_duplicates
+                        if value.evidence not in row_evidence
+                    ]
+                    event_rows.remove(row)
+                quarantined.append(
+                    QuarantinedEvent(
+                        evidence=candidate,
+                        duplicate_of=keeper_key,
+                        reason_code=reason_code,
+                        relationship="uncertain",
+                        comparison_mode=comparison_mode,
+                    )
+                )
+                if unresolved:
+                    semantic_duplicate_unresolved_count += 1
+                continue
+
+            if not confirmed_matches:
                 event_rows.append(
                     {
                         "event_key": _event_key(candidate),
@@ -204,20 +227,51 @@ class EventClusterer:
                 )
                 continue
 
+            matched_row, comparison_mode = confirmed_matches[0]
             event_key = str(matched_row["event_key"])
-            if relationship == "confirmed":
-                related = matched_row["related"]
-                assert isinstance(related, list)
-                related.append(candidate)
+            related = matched_row["related"]
+            assert isinstance(related, list)
+            for other_row, other_mode in confirmed_matches[1:]:
+                other_key = str(other_row["event_key"])
+                other_canonical = other_row["canonical"]
+                other_related = other_row["related"]
+                assert isinstance(other_canonical, SourceEvidence)
+                assert isinstance(other_related, list)
+                related.extend((other_canonical, *other_related))
                 merged_count += 1
-            else:
-                quarantined.append(
-                    QuarantinedEvent(
-                        evidence=candidate,
+                semantic_duplicate_merged_count += 1
+                merged_duplicates.append(
+                    ClusteredDuplicate(
+                        evidence=other_canonical,
                         duplicate_of=event_key,
-                        reason_code="ambiguous_duplicate",
+                        relationship="same_event",
+                        comparison_mode=other_mode,
+                        reason_code="semantic_duplicate",
                     )
                 )
+                merged_duplicates = [
+                    ClusteredDuplicate(
+                        evidence=value.evidence,
+                        duplicate_of=event_key if value.duplicate_of == other_key else value.duplicate_of,
+                        relationship=value.relationship,
+                        comparison_mode=value.comparison_mode,
+                        reason_code=value.reason_code,
+                    )
+                    for value in merged_duplicates
+                ]
+                event_rows.remove(other_row)
+            related.append(candidate)
+            merged_count += 1
+            semantic_duplicate_merged_count += 1
+            merged_duplicates.append(
+                ClusteredDuplicate(
+                    evidence=candidate,
+                    duplicate_of=event_key,
+                    relationship="same_event",
+                    comparison_mode=comparison_mode,
+                    reason_code="semantic_duplicate",
+                )
+            )
 
         events = tuple(
             MergedEvent(
@@ -234,13 +288,48 @@ class EventClusterer:
             )
             for row in event_rows
         )
+        diagnostics = {
+            "candidate_count": len(evidence),
+            "event_count": len(events),
+            "merged_count": merged_count,
+            "quarantined_count": len(quarantined),
+            "semantic_comparison_count": semantic_comparison_count,
+            "semantic_duplicate_merged_count": semantic_duplicate_merged_count,
+            "semantic_duplicate_unresolved_count": (
+                semantic_duplicate_unresolved_count
+            ),
+        }
+        for name, count in getattr(self.reviewer, "diagnostics", {}).items():
+            if isinstance(count, int) and not isinstance(count, bool):
+                diagnostics[str(name)] = count - reviewer_before.get(str(name), 0)
         return ClusterResult(
             events=events,
             quarantined=tuple(quarantined),
-            diagnostics={
-                "candidate_count": len(evidence),
-                "event_count": len(events),
-                "merged_count": merged_count,
-                "quarantined_count": len(quarantined),
-            },
+            diagnostics=diagnostics,
+            merged_duplicates=tuple(merged_duplicates),
         )
+
+    def _relationship(
+        self,
+        left: SourceEvidence,
+        right: SourceEvidence,
+    ) -> tuple[str, str]:
+        left_document = EventDocument.from_evidence(left)
+        right_document = EventDocument.from_evidence(right)
+        semantic = deterministic_relationship(
+            left_document,
+            right_document,
+            window_hours=self.config.semantic_dedup_window_hours,
+        )
+        if semantic == "same_event":
+            return "confirmed", "rules"
+        if semantic == "review":
+            if self.reviewer is None:
+                return "unresolved", "rules"
+            review = self.reviewer.review(left_document, right_document)
+            if review.relationship == "same_event":
+                return "confirmed", review.comparison_mode
+            if review.relationship == "uncertain":
+                return "unresolved", review.comparison_mode
+            return "distinct", review.comparison_mode
+        return "distinct", "rules"

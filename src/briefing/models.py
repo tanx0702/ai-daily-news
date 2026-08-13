@@ -129,12 +129,16 @@ class QuarantinedEvent:
     evidence: SourceEvidence
     duplicate_of: str
     reason_code: str
+    relationship: str = "uncertain"
+    comparison_mode: str = "rules"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "evidence": self.evidence.to_dict(),
             "duplicate_of": self.duplicate_of,
             "reason_code": self.reason_code,
+            "relationship": self.relationship,
+            "comparison_mode": self.comparison_mode,
         }
 
 
