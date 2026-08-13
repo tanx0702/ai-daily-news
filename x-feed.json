@@ -1,12 +1,111 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-13T11:10:58.096334Z",
+  "generated_at": "2026-08-13T15:10:47.944988Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 217,
+  "tweet_count": 218,
   "tweets": [
+    {
+      "tweet_id": "2087916990807810120",
+      "text": "Try the new Wix plugin in Grok Build to manage your sites and businesses",
+      "author": "SpaceXAI",
+      "created_at": "2026-08-13T14:59:36.000Z",
+      "url": "https://x.com/xAI/status/2087916990807810120",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087912623883051300",
+      "text": "The top 10% of enterprises use plugins twice as often and skills six times as often as typical firms. \n\nThese frontier firms are not ahead by accident. https://t.co/wbiwGW1rKg",
+      "author": "OpenAI",
+      "created_at": "2026-08-13T14:42:15.000Z",
+      "url": "https://x.com/OpenAI/status/2087912623883051300",
+      "source_name": "OpenAI",
+      "source_handle": "OpenAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087910968458436778",
+      "text": "Could ASI build an AI watermarking tool so good that no ASI could avoid detection?\n\n(The answer is no.) https://t.co/tLzYwTFAIP",
+      "author": "emollick",
+      "created_at": "2026-08-13T14:35:41.000Z",
+      "url": "https://x.com/emollick/status/2087910968458436778",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087909689736466719",
+      "text": "Top stories in robotics today:\n\n- Honor’s much-hyped robot phone arrives\n- Agility uncages Digit for factories\n- Northrop’s robotic mechanic is orbit-bound\n- Mitsubishi retools engine plant for humanoids \n- Quick hits on other robotics news https://t.co/L5nzzqkQse",
+      "author": "TheRundownAI",
+      "created_at": "2026-08-13T14:30:36.000Z",
+      "url": "https://x.com/TheRundownAI/status/2087909689736466719",
+      "source_name": "The Rundown AI",
+      "source_handle": "TheRundownAI",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087889742553604310",
+      "text": "The @Wix plugin for @grok Build is here.\n\nNow builders can create apps and sites, connect any frontend to Wix business services through Wix Headless, manage Wix business solutions, and work with Wix MCP, all from the Grok CLI.\n\nWe are making it easier to build with Wix wherever https://t.co/cXvz8zFnhH",
+      "author": "Avishai_ab",
+      "created_at": "2026-08-13T13:11:20.000Z",
+      "url": "https://x.com/xAI/status/2087889742553604310",
+      "source_name": "xAI",
+      "source_handle": "xAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087887993025843391",
+      "text": "Attn @cursor_ai devs 👀\n\nYour agents can now tap into 300+ NVIDIA skills across 30+ products.",
+      "author": "NVIDIAAI",
+      "created_at": "2026-08-13T13:04:23.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087887993025843391",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087887408440164663",
+      "text": "🧩 DeepSeek Harness v0.1 is now available in Developer Preview!\n\n🔹 We’re opening it up to developers building agent harnesses worldwide and open-sourcing the codebase in MIT license.\n🔹 Powered by the Cordis meta-framework, DeepSeek Harness is an agent harness built around one",
+      "author": "deepseek_ai",
+      "created_at": "2026-08-13T13:02:03.000Z",
+      "url": "https://x.com/deepseek_ai/status/2087887408440164663",
+      "source_name": "DeepSeek",
+      "source_handle": "deepseek_ai",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2087885303855944001",
+      "text": "SL2T is our amazing sign-language-to-text model allows users to sign directly to their phones for the first time. Built in close collaboration with the Deaf community, it’s a great example of the good that can be done with AI. Congrats to the team for the launch!",
+      "author": "demishassabis",
+      "created_at": "2026-08-13T12:53:42.000Z",
+      "url": "https://x.com/demishassabis/status/2087885303855944001",
+      "source_name": "Demis Hassabis",
+      "source_handle": "demishassabis",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2087864585504305397",
+      "text": "We’re launching DeepSeek-V4-Pro today! 🚀\n\n🔷 Major Agent upgrades with strong production gains!\n🔷 Flexible reasoning effort for V4-Pro &amp; V4-Flash: low for simple tasks, high for daily Agent workflows, max for complex tasks.\n🔷 Native OpenAI Responses API support, optimized for https://t.co/ZsGbUpiu1T",
+      "author": "deepseek_ai",
+      "created_at": "2026-08-13T11:31:22.000Z",
+      "url": "https://x.com/deepseek_ai/status/2087864585504305397",
+      "source_name": "DeepSeek",
+      "source_handle": "deepseek_ai",
+      "source_tier": "primary",
+      "official": true
+    },
     {
       "tweet_id": "2087849215842021513",
       "text": "Top stories in AI today:\n\n- SpaceXAI’s Grok 4.6 storms the frontier\n- Nate's Notebook: Why your AI still feels dumb\n- Generate 100 ad hooks from customer feedback\n- Dog that got an AI cancer vaccine now has a company https://t.co/m4wUDatZwH",
@@ -151,6 +250,17 @@
       "official": false
     },
     {
+      "tweet_id": "2087613483038683193",
+      "text": "NVIDIA skills are now in Cursor.\n\nAdd the @NVIDIA plugin and your agent picks up over 300 skills across 30+ products: CUDA, NeMo, RAG.\n\nTell it what you're building. It proposes the right skill and follows it.\n\nCursor MP: https://t.co/y4Tvvks9s0\n\nCatalog: https://t.co/l9zeIwRHMd https://t.co/0G6kjJ1WMN",
+      "author": "MosheAbram38005",
+      "created_at": "2026-08-12T18:53:34.000Z",
+      "url": "https://x.com/NVIDIAAI/status/2087613483038683193",
+      "source_name": "NVIDIA AI",
+      "source_handle": "NVIDIAAI",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
       "tweet_id": "2087598780086632522",
       "text": "Grok 4.6 made large gains on AA-Briefcase, our agentic knowledge work benchmark and cost substantially less than other leading models\n\nAA-Briefcase tests models on long-horizon agentic knowledge work tasks. The test set is private to prevent contamination. \n\nGrok 4.6 is neck and https://t.co/YAE1TSURVe",
       "author": "ArtificialAnlys",
@@ -225,17 +335,6 @@
       "source_name": "Ethan Mollick",
       "source_handle": "emollick",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2087554073553764629",
-      "text": "LAUNCHED: Paul Conyngham, who used ChatGPT + AlphaFold to design an mRNA cancer vaccine for his rescue dog Rosie, founded Gamgee (YC S26) to build personalized vaccines for other dogs.\n\nTrials are live in Australia, and Gamgee is taking cases worldwide.",
-      "author": "TheRundownAI",
-      "created_at": "2026-08-12T14:57:30.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087554073553764629",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -435,28 +534,6 @@
       "source_handle": "OpenAI",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2087229045029404835",
-      "text": "If LLMs did nothing else for science than what they have been doing in math - combining ideas across subfields in novel ways - it would be revolutionary. Before LLMs, science was stalling under the burden of knowledge, there is too much to absorb &amp; work was ossifying as a result",
-      "author": "emollick",
-      "created_at": "2026-08-11T17:25:57.000Z",
-      "url": "https://x.com/emollick/status/2087229045029404835",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2087223666778272070",
-      "text": "My dog Rosie was given months to live. Chemo and immunotherapy failed\n\nI used chatgpt + computational genomics to design a personalised mRNA cancer vaccine for her tumour. Several of her tumours shrank\n\nToday we launch Gamgee (YC S26): personalised mRNA cancer vaccines for dogs https://t.co/wMAmNXXgQd",
-      "author": "paul_conyngham",
-      "created_at": "2026-08-11T17:04:35.000Z",
-      "url": "https://x.com/TheRundownAI/status/2087223666778272070",
-      "source_name": "The Rundown AI",
-      "source_handle": "TheRundownAI",
-      "source_tier": "media",
-      "official": false
     },
     {
       "tweet_id": "2087222961594081526",
@@ -712,24 +789,13 @@
       "official": false
     },
     {
-      "tweet_id": "2086807146143076783",
-      "text": "Great to see @AIatMeta back publishing open models 🙌\n\nMuse Glimmer is a 30B open-weight dense model with a 120K+ context window, built for long-running agents, delivering up to 20K tokens/sec on a single GPU.\n\nIt’s optimized to run locally across NVIDIA edge, desktop, and",
-      "author": "NVIDIAAI",
-      "created_at": "2026-08-10T13:29:29.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2086807146143076783",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2086757844544811485",
       "text": "Introducing Muse Glimmer, an open-weight 30B-parameter model optimized for local, always-on agent workflows.\n\nMuse Glimmer delivers strong performance on key agentic use cases and benchmarks compared with leading models in its size category, and is designed to run entirely on https://t.co/mI4z91GPnE",
       "author": "AIatMeta",
       "created_at": "2026-08-10T10:13:34.000Z",
-      "url": "https://x.com/NVIDIAAI/status/2086757844544811485",
-      "source_name": "NVIDIA AI",
-      "source_handle": "NVIDIAAI",
+      "url": "https://x.com/AIatMeta/status/2086757844544811485",
+      "source_name": "Meta AI",
+      "source_handle": "AIatMeta",
       "source_tier": "primary",
       "official": true
     },
@@ -1163,17 +1229,6 @@
       "official": true
     },
     {
-      "tweet_id": "2084747580693426555",
-      "text": "We're detailing two new incidents that occurred during external cyber evaluations conducted by independent evaluation partners.\n\nWe outline what happened, how the activity was contained, and how we’re working with evaluators to strengthen our approach to third-party testing.",
-      "author": "OpenAI",
-      "created_at": "2026-08-04T21:05:30.000Z",
-      "url": "https://x.com/OpenAI/status/2084747580693426555",
-      "source_name": "OpenAI",
-      "source_handle": "OpenAI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2084684735725379637",
       "text": "🛡️Introducing Shieldstral, Mistral’s 3B open-weights model for content safety that can be deployed on-device 🧵 https://t.co/SXBTWIJO9p https://t.co/Hhjw8o0gft",
       "author": "MistralAI",
@@ -1383,17 +1438,6 @@
       "official": true
     },
     {
-      "tweet_id": "2082883806323728416",
-      "text": "Gemini Robotics 2 is here, with our new suite of models, robots can now reason through every movement to manage tasks that weren’t possible before, like tying delicate knots - and even team up to solve complex workflows. Huge congrats to the robotics team on this great milestone!",
-      "author": "demishassabis",
-      "created_at": "2026-07-30T17:39:32.000Z",
-      "url": "https://x.com/demishassabis/status/2082883806323728416",
-      "source_name": "Demis Hassabis",
-      "source_handle": "demishassabis",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2082866707438415932",
       "text": "Today we're launching Projects, an evolution of Spaces.\n\nProjects are hubs for ongoing work in Computer. A single place to manage, create, and collaborate on tasks with a shared file system and persistent memory. https://t.co/TFKEQ4jeCn",
       "author": "perplexity_ai",
@@ -1445,17 +1489,6 @@
       "url": "https://x.com/MiniMax_AI/status/2082779062653845803",
       "source_name": "MiniMax",
       "source_handle": "MiniMax_AI",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2082529280341553209",
-      "text": "Announcing Grok Voice Think Fast 2.0, our next-generation voice model with improved intelligence, transcription accuracy, and conversational capabilities.\n\nhttps://t.co/XUiX1CouKz https://t.co/Nel3zwzkwY",
-      "author": "SpaceXAI",
-      "created_at": "2026-07-29T18:10:46.000Z",
-      "url": "https://x.com/xAI/status/2082529280341553209",
-      "source_name": "xAI",
-      "source_handle": "xAI",
       "source_tier": "primary",
       "official": true
     },
@@ -2065,17 +2098,6 @@
       "official": true
     },
     {
-      "tweet_id": "2048440764368347611",
-      "text": "🔥DeepSeek Input Cache Price Drop!\n\nEffective immediately, the price for input cache hits across the ENTIRE DeepSeek API series is reduced to just 1/10th of the original price! Build more efficiently for less.\n\n📌Reminder: The DeepSeek-V4-Pro 75% OFF promotion is still active https://t.co/glpUSyzqKy",
-      "author": "deepseek_ai",
-      "created_at": "2026-04-26T16:35:11.000Z",
-      "url": "https://x.com/deepseek_ai/status/2048440764368347611",
-      "source_name": "DeepSeek",
-      "source_handle": "deepseek_ai",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
       "tweet_id": "2048062777357750316",
       "text": "🔥DeepSeek-V4-Pro API is 75% OFF until May 5th, 2026, 15:59 (UTC Time)! Don't miss out on this massive discount.\n\n🛠️Integration Updates:\n🔹Claude Code: Set model to deepseek-v4-pro[1m]  to unlock 1M context!\n🔹OpenCode: Update to v1.14.24+\n🔹OpenClaw: Update to v2026.4.24+\n\nCheck https://t.co/rvf11eSsoJ",
       "author": "deepseek_ai",
@@ -2370,17 +2392,6 @@
       "source_name": "The AI Breakdown",
       "source_handle": "TheAIBreakdown",
       "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "1445921758687731716",
-      "text": "The paradox of our Golden Age of science: more research is being published by more scientists than ever, but the result is actually slowing progress! With too much to read &amp; absorb, papers in more crowded fields are citing new work less, and canonizing highly-cited articles more. https://t.co/uHZVYLKJ23",
-      "author": "emollick",
-      "created_at": "2021-10-07T01:19:45.000Z",
-      "url": "https://x.com/emollick/status/1445921758687731716",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
       "official": false
     },
     {
