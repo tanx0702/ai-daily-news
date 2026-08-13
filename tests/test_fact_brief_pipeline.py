@@ -12,7 +12,7 @@ from src.briefing.models import (
     SourceEvidence,
     ValidationResult,
 )
-from src.briefing.pipeline import run_brief_pipeline
+from src.briefing.pipeline import _brief_audit_fields, run_brief_pipeline
 
 
 def config(**values) -> BriefingConfig:
@@ -460,6 +460,133 @@ def test_pipeline_keeps_per_event_audit_for_rebuilt_and_rejected_candidates():
         "accept",
     ]
     assert rebuilt["final_state"] == "accepted"
+
+
+def test_pipeline_counts_title_only_items_and_audits_removed_summary_sentences():
+    class DistinctDeduplicator:
+        diagnostics = {}
+
+        def can_replace_any(self, candidate, accepted):
+            return False
+
+        def evaluate(self, candidate, accepted):
+            return DeduplicationOutcome(True)
+
+    class TitleOnlyValidator:
+        def validate(self, value, built, *, generation_attempt):
+            source = value.canonical_evidence
+            return ValidationResult(
+                "accept",
+                (),
+                "rules_only",
+                validated_item=BriefItem(
+                    event_key=value.event_key,
+                    chinese_title=built.chinese_title,
+                    brief="",
+                    canonical_source=source,
+                    related_sources=(),
+                    published_at=source.published_at,
+                    evidence_bindings=built.evidence_bindings,
+                    content_origin=built.content_origin,
+                    validation_mode="rules_only",
+                    brief_mode="title_only",
+                    brief_reason="brief_restates_title",
+                ),
+            )
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        Builder(),
+        TitleOnlyValidator(),
+        semantic_deduplicator=DistinctDeduplicator(),
+    )
+
+    assert result.decision.action == "create"
+    assert result.decision.selected_count == 5
+    assert all(item.brief_mode == "title_only" for item in result.accepted_items)
+    attempt = result.audit_entries[0]["attempts"][0]
+    assert attempt["original_brief"] == "快讯 event-1。"
+    assert attempt["removed_brief_sentences"] == ["快讯 event-1"]
+    assert attempt["final_brief"] == ""
+    assert attempt["brief_mode"] == "title_only"
+    assert attempt["brief_reason"] == "brief_restates_title"
+
+
+def test_brief_audit_counts_duplicate_sentences_instead_of_using_set_membership():
+    built = BuiltBrief(
+        event_key="event-1",
+        input_index=1,
+        chinese_title="示例标题",
+        brief="重复事实。重复事实。",
+        evidence_bindings=(
+            EvidenceBinding("示例标题", "Source 1 update.", "https://example.test/1"),
+        ),
+        content_origin="source",
+    )
+    value = event(1)
+    accepted_once = ValidationResult(
+        "accept",
+        (),
+        "rules_only",
+        validated_item=BriefItem(
+            event_key=value.event_key,
+            chinese_title="示例标题",
+            brief="重复事实。",
+            canonical_source=value.canonical_evidence,
+            related_sources=(),
+            published_at=value.canonical_evidence.published_at,
+            evidence_bindings=built.evidence_bindings,
+            content_origin="source",
+            validation_mode="rules_only",
+        ),
+    )
+
+    audit = _brief_audit_fields(built, accepted_once)
+
+    assert audit["removed_brief_sentences"] == ["重复事实"]
+
+
+def test_brief_audit_uses_normalized_draft_when_validation_requests_rebuild():
+    built = BuiltBrief(
+        event_key="event-1",
+        input_index=1,
+        chinese_title="示例标题",
+        brief="示例标题。",
+        evidence_bindings=(
+            EvidenceBinding("示例标题", "Source 1 update.", "https://example.test/1"),
+        ),
+        content_origin="source",
+    )
+    normalized = BuiltBrief(
+        event_key=built.event_key,
+        input_index=built.input_index,
+        chinese_title=built.chinese_title,
+        brief="",
+        evidence_bindings=built.evidence_bindings,
+        content_origin=built.content_origin,
+        brief_mode="title_only",
+        brief_reason="brief_restates_title",
+    )
+    rebuilding = ValidationResult(
+        "rebuild",
+        ("semantic_review_rejected",),
+        "rules_and_llm",
+        rebuild_request=RebuildRequest(
+            built.event_key,
+            ("semantic_review_rejected",),
+            2,
+        ),
+        audited_draft=normalized,
+    )
+
+    audit = _brief_audit_fields(built, rebuilding)
+
+    assert audit["removed_brief_sentences"] == ["示例标题"]
+    assert audit["final_brief"] == ""
+    assert audit["brief_mode"] == "title_only"
+    assert audit["brief_reason"] == "brief_restates_title"
 
 
 def test_pipeline_audits_invalid_builder_responses_before_rejecting():

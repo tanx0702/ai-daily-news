@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 
 from src.briefing.config import BriefingConfig
@@ -75,6 +76,75 @@ def test_rules_only_quality_degradation_does_not_block_five_valid_items():
 
     assert decision.action == "create"
     assert decision.reasons == ()
+
+
+def test_five_title_only_items_create_a_draft():
+    items = []
+    for index in range(1, 6):
+        expanded = item(index)
+        items.append(replace(
+            expanded,
+            brief="",
+            brief_mode="title_only",
+            brief_reason="brief_empty",
+        ))
+
+    decision = decide_draft(items, config())
+
+    assert decision.action == "create"
+    assert decision.selected_count == 5
+    assert decision.reasons == ()
+
+
+def test_title_only_items_require_a_complete_title_binding():
+    values = []
+    for index in range(1, 6):
+        expanded = item(index)
+        values.append(replace(
+            expanded,
+            brief="",
+            brief_mode="title_only",
+            brief_reason="brief_empty",
+            evidence_bindings=(EvidenceBinding(
+                "无关声明",
+                expanded.canonical_source.evidence_text,
+                expanded.canonical_source.url,
+            ),),
+        ))
+
+    decision = decide_draft(values, config())
+
+    assert decision.action == "block"
+    assert "invalid_final_item" in decision.reasons
+
+
+def test_title_only_items_reject_bindings_for_non_displayed_claims():
+    values = []
+    for index in range(1, 6):
+        expanded = item(index)
+        values.append(replace(
+            expanded,
+            brief="",
+            brief_mode="title_only",
+            brief_reason="brief_empty",
+            evidence_bindings=(
+                EvidenceBinding(
+                    expanded.chinese_title,
+                    expanded.canonical_source.evidence_text,
+                    expanded.canonical_source.url,
+                ),
+                EvidenceBinding(
+                    "未展示声明",
+                    expanded.canonical_source.evidence_text,
+                    expanded.canonical_source.url,
+                ),
+            ),
+        ))
+
+    decision = decide_draft(values, config())
+
+    assert decision.action == "block"
+    assert "invalid_final_item" in decision.reasons
 
 
 def test_too_few_items_blocks_only_for_insufficient_items():

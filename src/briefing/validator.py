@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from html import unescape
 import json
@@ -316,6 +317,11 @@ class BriefValidator:
                 validation_mode="rules_only",
             )
 
+        normalized_draft, _removed_sentences = self._normalize_title_restatements(
+            event, draft
+        )
+        draft = normalized_draft
+
         if not self.quality_llm_config or not self.quality_llm_config.api_key:
             self.diagnostics["quality_llm_unavailable_count"] += 1
             return self._rules_only_result(
@@ -366,6 +372,7 @@ class BriefValidator:
             ("semantic_review_rejected",),
             generation_attempt,
             validation_mode="rules_and_llm",
+            audited_draft=draft,
         )
 
     def _source_contract_reason(
@@ -400,9 +407,8 @@ class BriefValidator:
         display = f"{draft.chinese_title}\n{draft.brief}".strip()
         if (
             not draft.chinese_title.strip()
-            or not draft.brief.strip()
             or not _contains_chinese(draft.chinese_title)
-            or not 1 <= len(_sentences(draft.brief)) <= 2
+            or not 0 <= len(_sentences(draft.brief)) <= 2
             or any(not _contains_chinese(sentence) for sentence in _sentences(draft.brief))
             or not draft.evidence_bindings
         ):
@@ -497,6 +503,62 @@ class BriefValidator:
                 return ("claim_quote_mismatch",)
         return ()
 
+    def _normalize_title_restatements(
+        self,
+        event: MergedEvent,
+        draft: BuiltBrief,
+    ) -> tuple[BuiltBrief, tuple[str, ...]]:
+        """Remove only summary sentences whose evidence is entirely in the title."""
+        sentences = list(_sentences(draft.brief))
+        if not sentences:
+            return replace(
+                draft,
+                brief="",
+                brief_mode="title_only",
+                brief_reason=draft.brief_reason or "brief_empty",
+            ), ()
+
+        source_title = _quote_match_text(event.canonical_evidence.source_title)
+        title_claim = draft.chinese_title.strip()
+        title_bindings = [
+            binding
+            for binding in draft.evidence_bindings
+            if _binding_covers(title_claim, binding.claim)
+        ]
+        kept: list[str] = []
+        kept_bindings = list(title_bindings)
+        removed: list[str] = []
+        for sentence in sentences:
+            sentence_bindings = [
+                binding
+                for binding in draft.evidence_bindings
+                if _binding_covers(sentence, binding.claim)
+            ]
+            restates_generated_title = (
+                _comparison_text(sentence) == _comparison_text(title_claim)
+            )
+            supported_only_by_source_title = sentence_bindings and all(
+                _quote_match_text(binding.source_quote) in source_title
+                for binding in sentence_bindings
+            )
+            if restates_generated_title or supported_only_by_source_title:
+                removed.append(sentence)
+                continue
+            kept.append(sentence)
+            kept_bindings.extend(sentence_bindings)
+
+        if not removed:
+            return draft, ()
+        brief = "。".join(kept) + "。" if kept else ""
+        normalized = replace(
+            draft,
+            brief=brief,
+            evidence_bindings=tuple(kept_bindings),
+            brief_mode="expanded" if kept else "title_only",
+            brief_reason="brief_restates_title",
+        )
+        return normalized, tuple(removed)
+
     def _rules_only_relationship_reasons(
         self,
         draft: BuiltBrief,
@@ -532,6 +594,7 @@ class BriefValidator:
                 relationship_reasons,
                 generation_attempt,
                 validation_mode="rules_only",
+                audited_draft=draft,
             )
         return self._accept(event, draft, "rules_only", degradation_reasons)
 
@@ -542,6 +605,7 @@ class BriefValidator:
         generation_attempt: int,
         *,
         validation_mode: str,
+        audited_draft: BuiltBrief | None = None,
     ) -> ValidationResult:
         if generation_attempt == 1 and not any(
             reason in {"github_activity_only", "missing_evidence", "missing_source_url", "stale_item"}
@@ -552,8 +616,14 @@ class BriefValidator:
                 reasons,
                 validation_mode,
                 rebuild_request=RebuildRequest(event_key, reasons, 2),
+                audited_draft=audited_draft,
             )
-        return ValidationResult("reject", reasons, validation_mode)
+        return ValidationResult(
+            "reject",
+            reasons,
+            validation_mode,
+            audited_draft=audited_draft,
+        )
 
     def _accept(
         self,
@@ -572,6 +642,8 @@ class BriefValidator:
             evidence_bindings=draft.evidence_bindings,
             content_origin=draft.content_origin,
             validation_mode=validation_mode,
+            brief_mode=draft.brief_mode,
+            brief_reason=draft.brief_reason,
         )
         return ValidationResult(
             "accept",

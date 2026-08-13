@@ -12,6 +12,7 @@ _CHANNELS = {"rss", "x", "github", "huggingface", "arxiv", "hacker_news"}
 _AUTHORITIES = {"official", "research", "professional_media", "community"}
 _CONTENT_ORIGINS = {"llm", "source"}
 _VALIDATION_MODES = {"rules_and_llm", "rules_only"}
+_BRIEF_MODES = {"title_only", "expanded"}
 _VALIDATION_ACTIONS = {"accept", "rebuild", "reject"}
 _DECISION_ACTIONS = {"create", "block"}
 _EXECUTION_STATUSES = {"draft_created", "dry_run", "blocked", "failed"}
@@ -172,11 +173,23 @@ class BuiltBrief:
     brief: str
     evidence_bindings: tuple[EvidenceBinding, ...]
     content_origin: str
+    brief_mode: str = ""
+    brief_reason: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "evidence_bindings", tuple(self.evidence_bindings))
         if self.content_origin not in _CONTENT_ORIGINS:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
+        mode = self.brief_mode or ("title_only" if not self.brief.strip() else "expanded")
+        if mode not in _BRIEF_MODES:
+            raise ValueError(f"invalid brief_mode: {mode}")
+        if mode == "title_only" and self.brief.strip():
+            raise ValueError("title_only requires an empty brief")
+        if mode == "expanded" and not self.brief.strip():
+            raise ValueError("expanded requires a non-empty brief")
+        object.__setattr__(self, "brief_mode", mode)
+        if not self.brief.strip() and not self.brief_reason:
+            object.__setattr__(self, "brief_reason", "brief_empty")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -186,6 +199,8 @@ class BuiltBrief:
             "brief": self.brief,
             "evidence_bindings": [item.to_dict() for item in self.evidence_bindings],
             "content_origin": self.content_origin,
+            "brief_mode": self.brief_mode,
+            "brief_reason": self.brief_reason,
         }
 
 
@@ -200,6 +215,8 @@ class BriefItem:
     evidence_bindings: tuple[EvidenceBinding, ...]
     content_origin: str
     validation_mode: str
+    brief_mode: str = ""
+    brief_reason: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "related_sources", tuple(self.related_sources))
@@ -209,6 +226,16 @@ class BriefItem:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
         if self.validation_mode not in _VALIDATION_MODES:
             raise ValueError(f"invalid validation_mode: {self.validation_mode}")
+        mode = self.brief_mode or ("title_only" if not self.brief.strip() else "expanded")
+        if mode not in _BRIEF_MODES:
+            raise ValueError(f"invalid brief_mode: {mode}")
+        if mode == "title_only" and self.brief.strip():
+            raise ValueError("title_only requires an empty brief")
+        if mode == "expanded" and not self.brief.strip():
+            raise ValueError("expanded requires a non-empty brief")
+        object.__setattr__(self, "brief_mode", mode)
+        if not self.brief.strip() and not self.brief_reason:
+            object.__setattr__(self, "brief_reason", "brief_empty")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -221,6 +248,8 @@ class BriefItem:
             "evidence_bindings": [item.to_dict() for item in self.evidence_bindings],
             "content_origin": self.content_origin,
             "validation_mode": self.validation_mode,
+            "brief_mode": self.brief_mode,
+            "brief_reason": self.brief_reason,
         }
 
     @classmethod
@@ -241,6 +270,11 @@ class BriefItem:
             ),
             content_origin=str(data["content_origin"]),
             validation_mode=str(data["validation_mode"]),
+            brief_mode=str(
+                data.get("brief_mode")
+                or ("title_only" if not str(data.get("brief", "")).strip() else "expanded")
+            ),
+            brief_reason=str(data.get("brief_reason") or ""),
         )
 
 
@@ -270,6 +304,7 @@ class ValidationResult:
     validation_mode: str
     validated_item: BriefItem | None = None
     rebuild_request: RebuildRequest | None = None
+    audited_draft: BuiltBrief | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "reason_codes", _tuple_of_strings(self.reason_codes))
@@ -297,6 +332,7 @@ class ValidationResult:
             "validation_mode": self.validation_mode,
             "validated_item": self.validated_item.to_dict() if self.validated_item else None,
             "rebuild_request": self.rebuild_request.to_dict() if self.rebuild_request else None,
+            "audited_draft": self.audited_draft.to_dict() if self.audited_draft else None,
         }
 
 

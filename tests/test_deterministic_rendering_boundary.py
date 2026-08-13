@@ -85,32 +85,49 @@ def test_media_and_cover_use_copies_for_brief_item_inputs():
     assert content_fingerprint([item]) == fingerprint
 
 
-def test_wechat_uses_supplied_deterministic_content_when_ai_flag_is_enabled():
+def test_wechat_rerenders_deterministic_content_after_cover_upload():
     captured = {}
 
     def create_draft(_token, _title, content, **_kwargs):
         captured["content"] = content
-        return "draft-id"
+        captured.update(_kwargs)
+        return wechat_draft._DraftCreateResult("created", media_id="draft-id")
 
-    with patch.dict(
-        os.environ,
-        {
-            "WECHAT_APP_ID": "app-id",
-            "WECHAT_APP_SECRET": "secret",
-            "WECHAT_USE_AI_TEMPLATE": "1",
-        },
-        clear=False,
-    ):
-        with patch("src.wechat_draft._get_access_token", return_value="token"):
-            with patch("src.wechat_draft._enrich_news_with_images", side_effect=lambda _token, items: items):
-                with patch("src.wechat_draft._create_draft", side_effect=create_draft):
-                    with patch("src.generator.render_wechat_article_ai", side_effect=AssertionError):
-                        result = wechat_draft.publish_daily_article(
-                            [_brief_item()],
-                            "2026-08-07",
-                            "https://example.com",
-                            rendered_content="<p>deterministic</p>",
-                        )
+    with TemporaryDirectory() as directory:
+        cover_path = os.path.join(directory, "cover.jpg")
+        with open(cover_path, "wb") as cover_file:
+            cover_file.write(b"cover")
+        with patch.dict(
+            os.environ,
+            {
+                "WECHAT_APP_ID": "app-id",
+                "WECHAT_APP_SECRET": "secret",
+                "WECHAT_USE_AI_TEMPLATE": "1",
+            },
+            clear=False,
+        ):
+            with patch("src.wechat_draft._get_access_token", return_value="token"):
+                with patch(
+                    "src.wechat_draft._upload_permanent_image",
+                    return_value={
+                        "media_id": "thumb-id",
+                        "url": "https://mmbiz.qpic.cn/cover.jpg",
+                    },
+                ):
+                    with patch("src.wechat_draft._enrich_news_with_images", side_effect=lambda _token, items: items):
+                        with patch("src.wechat_draft._create_draft", side_effect=create_draft):
+                            with patch("src.generator.render_wechat_article_ai", side_effect=AssertionError):
+                                result = wechat_draft.publish_daily_article(
+                                    [_brief_item()],
+                                    "2026-08-07",
+                                    "https://example.com",
+                                    cover_path=cover_path,
+                                    rendered_content=(
+                                        '<img src="https://tankex.xyz/cover.jpg" />'
+                                    ),
+                                )
 
     assert result == {"status": "draft_created", "media_id": "draft-id"}
-    assert captured["content"] == "<p>deterministic</p>"
+    assert "https://mmbiz.qpic.cn/cover.jpg" in captured["content"]
+    assert "https://tankex.xyz/cover.jpg" not in captured["content"]
+    assert captured["thumb_media_id"] == "thumb-id"

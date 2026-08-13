@@ -106,6 +106,19 @@ def test_load_latest_round_trips_v2_contract(tmp_path):
     assert snapshot.legacy_news == ()
 
 
+def test_load_latest_derives_brief_mode_for_older_v2_payload(tmp_path):
+    payload = build_latest_v2([_brief_item()], _decision(), _execution())
+    payload["brief_items"][0].pop("brief_mode", None)
+    payload["brief_items"][0].pop("brief_reason", None)
+    path = tmp_path / "latest.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    snapshot = load_latest(path)
+
+    assert snapshot.brief_items[0].brief_mode == "expanded"
+    assert snapshot.brief_items[0].brief_reason == ""
+
+
 def test_load_latest_adapts_unversioned_v1_read_only_and_logs_deprecation(
     tmp_path, caplog
 ):

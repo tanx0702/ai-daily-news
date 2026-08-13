@@ -14,6 +14,7 @@ from src.briefing.deduplicator import AcceptedItemDeduplicator, DeduplicationOut
 from src.briefing.decision import decide_draft
 from src.briefing.models import BriefItem, DraftDecision, MergedEvent, QuarantinedEvent
 from src.briefing.selector import BriefSelector
+from src.briefing.display_targets import summary_sentences
 
 
 _DEGRADATION_REASONS = {
@@ -595,8 +596,38 @@ def _record_audit_attempt(
             "generation_attempt": generation_attempt,
             "build": build,
             "validation": validation.to_dict() if validation is not None else None,
+            **_brief_audit_fields(draft, validation),
         }
     )
+
+
+def _brief_audit_fields(draft: object | None, validation: object | None) -> dict[str, object]:
+    original_brief = str(getattr(draft, "brief", "") or "")
+    validated_item = getattr(validation, "validated_item", None)
+    audited_draft = getattr(validation, "audited_draft", None)
+    final_draft = validated_item or audited_draft or draft
+    final_brief = str(
+        getattr(final_draft, "brief", original_brief) or ""
+    )
+    original_sentences = list(summary_sentences(original_brief))
+    remaining_final_sentences = Counter(summary_sentences(final_brief))
+    removed_sentences: list[str] = []
+    for sentence in original_sentences:
+        if remaining_final_sentences[sentence]:
+            remaining_final_sentences[sentence] -= 1
+        else:
+            removed_sentences.append(sentence)
+    return {
+        "original_brief": original_brief,
+        "removed_brief_sentences": removed_sentences,
+        "final_brief": final_brief,
+        "brief_mode": str(
+            getattr(final_draft, "brief_mode", "") or ""
+        ),
+        "brief_reason": str(
+            getattr(final_draft, "brief_reason", "") or ""
+        ),
+    }
 
 
 def _build_response_to_dict(response: BuildResult) -> dict[str, object]:

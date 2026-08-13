@@ -139,6 +139,53 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "跨语言" in system_prompt
     assert "产品、模型或机构名称" in system_prompt
+    assert "允许 brief 为空字符串" in system_prompt
+    assert "标题之外" in system_prompt
+
+
+def test_builder_accepts_title_only_response_without_summary_target():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["brief"] = ""
+    payload["evidence_targets"] = [payload["evidence_targets"][0]]
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert result.draft.brief_reason == "brief_empty"
+
+
+def test_source_fallback_uses_title_only_when_evidence_has_no_extra_fact():
+    item = event(1, chinese=True)
+    source = item.canonical_evidence
+    title_only = MergedEvent(
+        event_key=item.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id=source.publisher_id,
+            publisher_name=source.publisher_name,
+            channel=source.channel,
+            authority=source.authority,
+            is_official=source.is_official,
+            official_identity_source=source.official_identity_source,
+            source_title=source.source_title,
+            evidence_text=source.source_title,
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    builder, _ = builder_with_responses([], api_key="")
+
+    result = builder.build_batch([title_only], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert [binding.claim for binding in result.draft.evidence_bindings] == [
+        source.source_title
+    ]
 
 
 def test_x_rebuild_payload_preserves_failure_reasons_and_protected_anchors():
@@ -365,7 +412,7 @@ def test_second_invalid_attempt_uses_complete_chinese_source_fallback():
     )
 
 
-def test_source_fallback_keeps_each_summary_sentence_in_chinese():
+def test_source_fallback_drops_non_chinese_details_and_keeps_title_only():
     item = event(1, chinese=True)
     source = item.canonical_evidence
     item = MergedEvent(
@@ -387,12 +434,9 @@ def test_source_fallback_keeps_each_summary_sentence_in_chinese():
 
     result = builder.build_batch([item], attempts={item.event_key: 1})[0]
 
-    assert result.draft.brief == item.canonical_evidence.source_title
-    assert all(
-        any("\u4e00" <= character <= "\u9fff" for character in sentence)
-        for sentence in result.draft.brief.split("。")
-        if sentence
-    )
+    assert result.draft.chinese_title == item.canonical_evidence.source_title
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
 
 
 def test_source_fallback_preserves_sentence_boundaries_for_two_summary_sentences():

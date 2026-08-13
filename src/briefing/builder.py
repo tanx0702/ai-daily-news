@@ -82,7 +82,7 @@ def _contains_chinese(value: str) -> bool:
 
 def _normalize_brief_value(value: object) -> str | None:
     if isinstance(value, str):
-        return value.strip() or None
+        return value.strip()
     if isinstance(value, list) and 1 <= len(value) <= 2 and all(
         isinstance(sentence, str) and sentence.strip() for sentence in value
     ):
@@ -136,13 +136,7 @@ def _source_fallback(event: MergedEvent, input_index: int) -> BuiltBrief | None:
         for part in summary_sentences(remainder)
         if part and _contains_chinese(part)
     ][:2]
-    if not sentences:
-        sentences = [title]
-    brief = (
-        "。".join(sentences) + "。"
-        if sentences != [title]
-        else title
-    )
+    brief = "。".join(sentences) + "。" if sentences else ""
     claims = [title, *summary_sentences(brief)]
     bindings = [
         EvidenceBinding(claim=claim, source_quote=claim, source_url=evidence.url)
@@ -155,6 +149,8 @@ def _source_fallback(event: MergedEvent, input_index: int) -> BuiltBrief | None:
         brief=brief,
         evidence_bindings=tuple(bindings),
         content_origin="source",
+        brief_mode="expanded" if brief else "title_only",
+        brief_reason="" if brief else "brief_empty",
     )
 
 
@@ -185,7 +181,7 @@ def _strict_item(
     if brief is None:
         return None
     target_claims = display_targets(raw["chinese_title"], brief)
-    if not 1 <= len(target_claims) - 1 <= 2:
+    if not 0 <= len(target_claims) - 1 <= 2:
         return None
     raw_bindings = raw["evidence_targets"]
     if not isinstance(raw_bindings, list) or not raw_bindings:
@@ -224,6 +220,8 @@ def _strict_item(
         brief=brief,
         evidence_bindings=tuple(bindings),
         content_origin="llm",
+        brief_mode="expanded" if brief else "title_only",
+        brief_reason="" if brief else "brief_empty",
     )
 
 
@@ -329,7 +327,8 @@ class BriefBuilder:
                         "role": "system",
                         "content": (
                             "你是 AI 圈事实快讯编辑。只根据每条 canonical source 证据生成中文标题和"
-                            "一至两句事实摘要，不写评论、趋势、影响分析或输入外事实。为标题和摘要中的"
+                            "零至两句事实摘要，不写评论、趋势、影响分析或输入外事实。摘要必须提取"
+                            "标题之外的原始证据；没有可安全提取的标题外事实时，允许 brief 为空字符串。为标题和摘要中的"
                             "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
                             "brief_1 或 brief_2，同一 target 可有多条引用；quote 必须逐字来自 evidence_text，"
                             "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"

@@ -267,7 +267,7 @@ def _run_pipeline(
             )
         else:
             execution = _create_wechat_draft(
-                items,
+                display_items,
                 date_str=date_str,
                 pages_url=pages_url,
                 docs_dir=output_dir,

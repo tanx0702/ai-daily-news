@@ -109,7 +109,7 @@ X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/w
 | `/editorial-review/feedback` | nginx -> Flask | 记录人工标签和备注 |
 | `/debug/*` | nginx | 固定返回 404，不公开诊断 |
 
-公众号草稿中的链接只指向每条事实简报的规范原始来源。`PAGES_URL` 仍用于公开日报站点配置，但不会写入微信 `content_source_url`，正文也不展示“查看完整日报”入口。
+公众号草稿中的链接只指向每条事实简报的规范原始来源。`PAGES_URL` 仍用于公开日报站点配置，但不会写入微信 `content_source_url`，正文也不展示“查看完整日报”入口。`docs/wechat.html` 是上传前预览；真实草稿会使用媒体解析后的展示项，在封面和新闻配图上传后重新渲染，正文首图必须使用微信返回的 CDN URL。指定的 `docs/cover.jpg` 缺失、上传结果缺少 `media_id`/URL 或正文仍引用公网封面时，本次草稿执行失败且不调用 draft/add。若 draft/add 超时、断连或响应无法确认，执行结果记为 `draft_create_uncertain` 且不自动重试，维护者应先在公众号后台确认是否已生成草稿。
 
 微信回调必须校验 `WECHAT_TOKEN` 签名；`ALLOW_INSECURE_WECHAT_TOKEN=1` 只能用于本地排查。editorial review 只有用户名和密码同时配置时才启用，不能使用 URL token。
 
@@ -134,8 +134,8 @@ HTML/JSON/诊断通常会在草稿被阻止时继续生成。查看 `latest.json
 2. `docker compose ps` 和 `docker compose logs web --tail=200`。
    启用出网代理时，同时检查 `docker compose --profile egress-proxy ps` 和 `docker compose logs proxy --tail=100`。
 3. 访问 `/health`，确认 Flask、微信回调配置和已保存的草稿决策/执行结果。
-4. 检查 `docs/latest.json` 的 `brief_items`、`draft_decision`、`draft_execution`、`diagnostics.source_health`。
-5. 查看 `docs/debug/shadow` 中的候选快照和编辑复核结果。
+4. 检查 `docs/latest.json` 的 `brief_items`、`brief_mode`、`draft_decision`、`draft_execution`、`diagnostics.source_health`。
+5. 查看 `docs/debug/<date>-briefing.json` 的摘要删除轨迹和 `docs/debug/shadow` 中的候选快照。
 6. 单独运行 `docker compose exec -e SKIP_WECHAT_DRAFT=1 -T web python -m src.main`；不要把真实微信草稿 API 调用当作测试步骤。
 
 ## 部署边界

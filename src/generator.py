@@ -385,7 +385,11 @@ def render_daily_html(
         news_item = item
         news_item["title"] = clean_display_text(news_item.get("title", ""))
         news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
-        news_item["summary"] = clean_display_text(news_item.get("summary", ""))
+        news_item["summary"] = (
+            ""
+            if news_item.get("brief_mode") == "title_only"
+            else clean_display_text(news_item.get("summary", ""))
+        )
         news_item["source"] = clean_display_text(news_item.get("source", ""))
         news_item["url"] = safe_http_url(news_item.get("url", ""))
         pub = news_item.get("published_at")
@@ -575,7 +579,11 @@ def render_wechat_article(
     for idx, item in enumerate(news_list):
         title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
         title = _fix_typos(title)
-        summary = clean_display_text(item.get("summary", ""))
+        summary = (
+            ""
+            if item.get("brief_mode") == "title_only"
+            else clean_display_text(item.get("summary", ""))
+        )
         summary = _fix_typos(summary)
         source_name = clean_display_text(item.get("source", ""))
         source_type = item.get("source_type", "")
@@ -727,7 +735,11 @@ def _news_to_markdown(
 
         for item in items:
             title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
-            summary = clean_display_text(item.get("summary", ""))
+            summary = (
+                ""
+                if item.get("brief_mode") == "title_only"
+                else clean_display_text(item.get("summary", ""))
+            )
             source_name = clean_display_text(item.get("source", ""))
             url = safe_http_url(item.get("url", ""))
             img = safe_http_url(item.get("article_image_url", ""))

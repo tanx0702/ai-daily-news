@@ -84,6 +84,30 @@ class GeneratorTests(unittest.TestCase):
         self.assertNotIn("https://daily.example.com", markdown)
         self.assertNotIn("查看完整日报", markdown)
 
+    def test_title_only_mode_omits_summary_but_keeps_title_and_source_link(self):
+        title_only = [{
+            **SAMPLE_NEWS[0],
+            "brief_mode": "title_only",
+            "summary": "这段摘要不应显示",
+        }]
+
+        daily = render_daily_html(title_only, date_str="2026-07-11")
+        wechat = render_wechat_article(
+            title_only,
+            date_str="2026-07-11",
+            pages_url="https://daily.example.com",
+        )
+        markdown = _news_to_markdown(
+            title_only,
+            date_str="2026-07-11",
+            pages_url="https://daily.example.com",
+        )
+
+        for rendered in (daily, wechat, markdown):
+            self.assertIn("OpenAI 发布新模型", rendered)
+            self.assertIn("https://example.com/openai", rendered)
+            self.assertNotIn("这段摘要不应显示", rendered)
+
     def test_render_wechat_article_rejects_unsafe_urls(self):
         html = render_wechat_article(
             [{

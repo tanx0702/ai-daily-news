@@ -42,3 +42,19 @@ def test_display_projection_and_fingerprint_ignore_media_enrichment():
     assert display["brief"] == "Example 发布了一款模型。"
     assert display["source_url"] == "https://example.com/model"
     assert content_fingerprint([display]) == content_fingerprint([enriched])
+
+
+def test_display_projection_exposes_title_only_mode_without_raw_evidence():
+    item = _brief_item()
+    item = BriefItem.from_dict({
+        **item.to_dict(),
+        "brief": "",
+        "brief_mode": "title_only",
+        "brief_reason": "brief_empty",
+    })
+
+    display = brief_item_to_display_dict(item)
+
+    assert display["brief"] == ""
+    assert display["brief_mode"] == "title_only"
+    assert "evidence_text" not in display

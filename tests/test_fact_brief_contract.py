@@ -129,6 +129,33 @@ def test_brief_item_public_projection_excludes_raw_evidence_and_round_trips():
     assert restored.evidence_bindings == original.evidence_bindings
 
 
+def test_empty_brief_is_a_serializable_title_only_item():
+    original = brief_item(
+        brief="",
+        brief_mode="title_only",
+        brief_reason="brief_empty",
+    )
+
+    restored = BriefItem.from_dict(original.to_dict())
+
+    assert restored.brief == ""
+    assert restored.brief_mode == "title_only"
+    assert restored.brief_reason == "brief_empty"
+
+
+def test_brief_item_rejects_invalid_brief_mode():
+    with pytest.raises(ValueError, match="brief_mode"):
+        brief_item(brief_mode="summary")
+
+
+def test_brief_item_requires_mode_to_match_brief_content():
+    with pytest.raises(ValueError, match="title_only"):
+        brief_item(brief_mode="title_only")
+
+    with pytest.raises(ValueError, match="expanded"):
+        brief_item(brief="", brief_mode="expanded")
+
+
 def test_brief_item_rejects_invalid_content_and_validation_modes():
     with pytest.raises(ValueError, match="content_origin"):
         brief_item(content_origin="mixed")

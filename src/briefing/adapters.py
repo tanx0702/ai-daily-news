@@ -24,6 +24,8 @@ def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
         "source": item.canonical_source.publisher_name,
         "source_type": item.canonical_source.channel,
         "published_at": item.published_at,
+        "brief_mode": item.brief_mode,
+        "brief_reason": item.brief_reason,
     }
 
 
