@@ -49,6 +49,9 @@ class BriefingConfig:
     max_items_per_source: int = 2
     max_items_per_topic: int = 2
     min_primary_or_research: int = 2
+    semantic_dedup_window_hours: int = 48
+    semantic_dedup_max_llm_calls: int = 20
+    semantic_dedup_timeout: int = 45
     skip_wechat_draft: bool = False
 
     @classmethod
@@ -68,6 +71,21 @@ class BriefingConfig:
                 values,
                 "DAILY_MIN_PRIMARY_OR_RESEARCH",
                 2,
+            ),
+            semantic_dedup_window_hours=_integer(
+                values,
+                "SEMANTIC_DEDUP_WINDOW_HOURS",
+                48,
+            ),
+            semantic_dedup_max_llm_calls=_integer(
+                values,
+                "SEMANTIC_DEDUP_MAX_LLM_CALLS",
+                20,
+            ),
+            semantic_dedup_timeout=_integer(
+                values,
+                "SEMANTIC_DEDUP_TIMEOUT",
+                _integer(values, "QUALITY_GATE_TIMEOUT", 45),
             ),
             skip_wechat_draft=_boolean(values, "SKIP_WECHAT_DRAFT", False),
         )
@@ -93,6 +111,18 @@ class BriefingConfig:
             )
         if self.news_hours <= 0:
             raise InvalidBriefingConfiguration("DAILY_NEWS_HOURS must be positive")
+        if self.semantic_dedup_window_hours <= 0:
+            raise InvalidBriefingConfiguration(
+                "SEMANTIC_DEDUP_WINDOW_HOURS must be positive"
+            )
+        if not 0 <= self.semantic_dedup_max_llm_calls <= 100:
+            raise InvalidBriefingConfiguration(
+                "SEMANTIC_DEDUP_MAX_LLM_CALLS must be between 0 and 100"
+            )
+        if self.semantic_dedup_timeout <= 0:
+            raise InvalidBriefingConfiguration(
+                "SEMANTIC_DEDUP_TIMEOUT must be positive"
+            )
         preference_values = {
             "DAILY_MAX_ITEMS_PER_SOURCE": self.max_items_per_source,
             "DAILY_MAX_ITEMS_PER_TOPIC": self.max_items_per_topic,

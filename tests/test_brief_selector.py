@@ -128,3 +128,40 @@ def test_duplicate_input_event_keys_are_recorded_instead_of_silently_disappearin
 
     assert len(selector.pending()) == 1
     assert selector.excluded_counts["duplicate_event"] == 1
+
+
+def test_selector_atomically_replaces_an_accepted_item():
+    weak = event("weak", channel="x")
+    strong = event("strong", channel="rss")
+    selector = BriefSelector([weak, strong], config(max_x_items=1))
+    weak_item = item(weak)
+    strong_item = item(strong)
+
+    assert selector.accept(weak_item) is True
+    assert selector.replace_accepted(
+        strong_item,
+        remove_event_keys=(weak.event_key,),
+    ) is True
+
+    assert selector.accepted_items == (strong_item,)
+    assert selector.x_count == 0
+    assert weak.event_key not in [value.event_key for value in selector.pending()]
+
+
+def test_selector_restores_x_limited_candidate_after_replacement_frees_quota():
+    weak = event("weak", channel="x")
+    waiting = event("waiting", channel="x")
+    strong = event("strong", channel="rss")
+    selector = BriefSelector([weak, waiting, strong], config(max_x_items=1))
+
+    assert selector.accept(item(weak)) is True
+    assert selector.accept(item(waiting)) is False
+    assert waiting.event_key not in [value.event_key for value in selector.pending()]
+
+    assert selector.replace_accepted(
+        item(strong),
+        remove_event_keys=(weak.event_key,),
+    ) is True
+
+    assert waiting.event_key in [value.event_key for value in selector.pending()]
+    assert selector.excluded_counts.get("x_limit", 0) == 0

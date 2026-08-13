@@ -1,0 +1,38 @@
+[
+  {
+    "publisher_id": "therundownai",
+    "publisher_name": "The Rundown AI (X)",
+    "channel": "x",
+    "authority": "professional_media",
+    "is_official": false,
+    "official_identity_source": "",
+    "source_title": "The Rundown AI: DEPARTING: OpenAI COO Brad Lightcap is leaving the company after eight years to \"start something new\".",
+    "evidence_text": "The Rundown AI: DEPARTING: OpenAI COO Brad Lightcap is leaving the company after eight years to \"start something new\". Lightcap said he'll have more to share soon.",
+    "url": "https://x.com/TheRundownAI/status/2087223385772204112",
+    "published_at": "2026-08-11T17:03:28+00:00"
+  },
+  {
+    "publisher_id": "techcrunch-com",
+    "publisher_name": "TechCrunch AI",
+    "channel": "rss",
+    "authority": "professional_media",
+    "is_official": false,
+    "official_identity_source": "",
+    "source_title": "Brad Lightcap, OpenAI's longtime COO, is leaving to start something new",
+    "evidence_text": "Brad Lightcap, OpenAI's longtime COO, is leaving to start something new. One of OpenAI's longest-serving executives is headed out the door after an eight-year stint.",
+    "url": "https://techcrunch.com/2026/08/11/brad-lightcap-openais-longtime-coo-is-leaving-to-start-something-new/",
+    "published_at": "2026-08-11T17:41:34+00:00"
+  },
+  {
+    "publisher_id": "theverge-com",
+    "publisher_name": "The Verge AI",
+    "channel": "rss",
+    "authority": "professional_media",
+    "is_official": false,
+    "official_identity_source": "",
+    "source_title": "Another OpenAI executive takes off",
+    "evidence_text": "Another OpenAI executive takes off. Brad Lightcap, OpenAI's special projects lead and the company's former COO, announced his departure after an eight-year stint at the AI lab.",
+    "url": "https://www.theverge.com/ai-artificial-intelligence/978048/brad-lightcap-openai-executive-departure",
+    "published_at": "2026-08-11T17:50:01+00:00"
+  }
+]

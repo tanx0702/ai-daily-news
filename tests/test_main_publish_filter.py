@@ -5,6 +5,13 @@ from unittest.mock import patch
 
 from src import main as daily_main
 from src.briefing.builder import BriefBuilder as RealBriefBuilder
+from src.briefing.clusterer import EventClusterer as RealEventClusterer
+from src.briefing.deduplicator import (
+    AcceptedItemDeduplicator as RealAcceptedItemDeduplicator,
+)
+from src.briefing.semantic_reviewer import (
+    SemanticDuplicateReviewer as RealSemanticDuplicateReviewer,
+)
 
 
 NOW = datetime(2026, 8, 7, 12, tzinfo=timezone.utc)
@@ -123,6 +130,49 @@ def test_pipeline_passes_90_second_default_timeout_to_brief_builder(tmp_path):
         daily_main._run_pipeline(docs_dir=str(tmp_path), now=NOW)
 
     assert builder.call_args.kwargs["timeout"] == 90
+
+
+def test_pipeline_injects_bounded_semantic_reviewer_into_clusterer(tmp_path):
+    env = {
+        **_env(),
+        "QUALITY_GATE_TIMEOUT": "33",
+        "SEMANTIC_DEDUP_TIMEOUT": "17",
+        "SEMANTIC_DEDUP_MAX_LLM_CALLS": "7",
+    }
+    with (
+        patch.dict("os.environ", env, clear=True),
+        patch(
+            "src.collector.collect_candidates",
+            return_value=[_candidate(index) for index in range(1, 6)],
+        ),
+        patch("src.cover.generate_cover_from_news", return_value=str(tmp_path / "cover.jpg")),
+        patch("src.services.production_snapshot.save_production_snapshot"),
+        patch(
+            "src.briefing.semantic_reviewer.SemanticDuplicateReviewer",
+            wraps=RealSemanticDuplicateReviewer,
+        ) as reviewer,
+        patch(
+            "src.briefing.clusterer.EventClusterer",
+            wraps=RealEventClusterer,
+        ) as clusterer,
+        patch(
+            "src.briefing.deduplicator.AcceptedItemDeduplicator",
+            wraps=RealAcceptedItemDeduplicator,
+        ) as deduplicator,
+    ):
+        daily_main._run_pipeline(docs_dir=str(tmp_path), now=NOW)
+
+    assert reviewer.call_args.kwargs["timeout"] == 17
+    assert reviewer.call_args.kwargs["max_calls"] == 7
+    assert clusterer.call_args.args[0].semantic_dedup_window_hours == 48
+    assert isinstance(
+        clusterer.call_args.kwargs["reviewer"],
+        RealSemanticDuplicateReviewer,
+    )
+    assert deduplicator.call_args.args[0].semantic_dedup_window_hours == 48
+    assert deduplicator.call_args.kwargs["reviewer"] is (
+        clusterer.call_args.kwargs["reviewer"]
+    )
 
 
 def test_four_valid_items_block_but_still_write_local_artifacts(tmp_path):

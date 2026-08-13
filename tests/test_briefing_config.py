@@ -13,6 +13,9 @@ def test_briefing_config_uses_approved_defaults():
     assert config.x_feed_max_age_hours == 6
     assert config.builder_batch_size == 5
     assert config.news_hours == 36
+    assert config.semantic_dedup_window_hours == 48
+    assert config.semantic_dedup_max_llm_calls == 20
+    assert config.semantic_dedup_timeout == 45
     assert config.skip_wechat_draft is False
 
 
@@ -79,3 +82,27 @@ def test_invalid_preflight_stops_before_following_work():
         external_call_started = True
 
     assert external_call_started is False
+
+
+def test_semantic_dedup_timeout_inherits_quality_timeout():
+    inherited = BriefingConfig.from_env({"QUALITY_GATE_TIMEOUT": "61"})
+    overridden = BriefingConfig.from_env(
+        {"QUALITY_GATE_TIMEOUT": "61", "SEMANTIC_DEDUP_TIMEOUT": "17"}
+    )
+
+    assert inherited.semantic_dedup_timeout == 61
+    assert overridden.semantic_dedup_timeout == 17
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"SEMANTIC_DEDUP_WINDOW_HOURS": "0"},
+        {"SEMANTIC_DEDUP_MAX_LLM_CALLS": "-1"},
+        {"SEMANTIC_DEDUP_MAX_LLM_CALLS": "101"},
+        {"SEMANTIC_DEDUP_TIMEOUT": "0"},
+    ],
+)
+def test_briefing_config_rejects_invalid_semantic_dedup_values(env):
+    with pytest.raises(InvalidBriefingConfiguration):
+        BriefingConfig.from_env(env)
