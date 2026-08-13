@@ -1,12 +1,56 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-13T04:24:59.871507Z",
+  "generated_at": "2026-08-13T07:51:35.350762Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 214,
+  "tweet_count": 216,
   "tweets": [
+    {
+      "tweet_id": "2087805426750632290",
+      "text": "The @latentspacepod team and I will be speaking at Mongodb's .local buildfest today 10a-4pmish, come by!\n\nhttps://t.co/aLfbjfDeNp \n\nWe'll be covering:\n- tba Agent infra with @BazeleyMikiko!\n- the state of embeddings/reranking with @frankzliu @VoyageAI head of Applied ML\n-",
+      "author": "swyx",
+      "created_at": "2026-08-13T07:36:17.000Z",
+      "url": "https://x.com/swyx/status/2087805426750632290",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087799423774646316",
+      "text": "completely bowled over by the incredible responses to the $10,000 Kill My SaaS hackathon this past weekend. sorry it took so long to get back to some of you, organizing this thing solo on top of my regular meetings and work this week was completely stupid and rushed — but this is https://t.co/4354pIz1qd",
+      "author": "swyx",
+      "created_at": "2026-08-13T07:12:26.000Z",
+      "url": "https://x.com/swyx/status/2087799423774646316",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087774049145626928",
+      "text": "So @swyx announced his “Kill My SaaS in one weekend” contest, where you could win $10K to replace his $40K/year SaaS. On Saturday morning, I learned that it was to replace their conference CFP software. \n\nOMG. I've run about 24 conferences over 12 years, but something I rarely",
+      "author": "RealGeneKim",
+      "created_at": "2026-08-13T05:31:36.000Z",
+      "url": "https://x.com/swyx/status/2087774049145626928",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087757725572939957",
+      "text": "I think this will turn out to be wrong, and not just because I suspect there are greater returns to more intelligent models than people expect\n\nEconomic value comes from agents, not chatbots. And accuracy drives how long a task an agent can do: small gains compound exponentially! https://t.co/9sbWlYGDMr",
+      "author": "emollick",
+      "created_at": "2026-08-13T04:26:45.000Z",
+      "url": "https://x.com/emollick/status/2087757725572939957",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2087705681097109703",
       "text": "Tomorrow at 5:30pm PT: MiniMax H3 × @magnific at the Magnific SF office.\n\nWe’ll be showcasing what people are already making with H3, talking about where AI video is heading, and getting hands-on with H3 inside Magnific.\n\nExpect a live workflow across cinematic generation, native https://t.co/Q6D04d2IeY",
@@ -27,6 +71,17 @@
       "source_name": "swyx",
       "source_handle": "swyx",
       "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2087677945284309122",
+      "text": "To register a little prediction, I think better and better models will be cost-efficient to fewer and fewer customers. Most people use AI to do stuff for which it really is already approaching a kind of “AGI for dummies.”\n\nSo high end models will have to justify their cost by",
+      "author": "DKThomp",
+      "created_at": "2026-08-12T23:09:43.000Z",
+      "url": "https://x.com/emollick/status/2087677945284309122",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
       "official": false
     },
     {
@@ -492,17 +547,6 @@
       "official": true
     },
     {
-      "tweet_id": "2087045848022843451",
-      "text": "gpt luna max vs claude fable ultracode \n\nsent \"pls build a mostly faithful clone of grok imagine with open models via fal\"\n\ni woke up to these two and assumed fable was left and luna was right\n\ni was wrong... it was the other way!!\n\nobjectively, fable did the better visual clone. https://t.co/5Xnljn6lVU",
-      "author": "swyx",
-      "created_at": "2026-08-11T05:18:00.000Z",
-      "url": "https://x.com/swyx/status/2087045848022843451",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2086976751335551335",
       "text": "you don't need Seedance 2.5, here's cheaper and more efficient workflow\n\nwe made this entire game shooting scene in one shot for $1.97 with DeepSeek V4 Flash 0731 + MiniMax H3\n\nwe use DeepSeek to code the raw Three.js scene first: exact camera movement, character motion, timing, https://t.co/O0jMYa3MC3",
       "author": "gmi_cloud",
@@ -521,17 +565,6 @@
       "url": "https://x.com/simonw/status/2086972895256007160",
       "source_name": "Simon Willison",
       "source_handle": "simonw",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2086962980235939920",
-      "text": "worktrees must die\n\nthis is 20GB of repeated node_modules lol https://t.co/tyvbt1WVJm",
-      "author": "swyx",
-      "created_at": "2026-08-10T23:48:43.000Z",
-      "url": "https://x.com/swyx/status/2086962980235939920",
-      "source_name": "swyx",
-      "source_handle": "swyx",
       "source_tier": "media",
       "official": false
     },
@@ -587,17 +620,6 @@
       "url": "https://x.com/fchollet/status/2086876966871781402",
       "source_name": "Francois Chollet",
       "source_handle": "fchollet",
-      "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2086875820279128574",
-      "text": "Oh no, we aren’t going to go back to this sort of prompting again, are we? I would love Anthropic to test if it actually works robustly, because our experiments (with slightly older models) found it did not. https://t.co/ltu885C2y6",
-      "author": "emollick",
-      "created_at": "2026-08-10T18:02:22.000Z",
-      "url": "https://x.com/emollick/status/2086875820279128574",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
       "source_tier": "research",
       "official": false
     },
