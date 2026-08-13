@@ -60,7 +60,7 @@ def test_frozen_candidates_create_a_unique_evidence_bound_dry_run(tmp_path):
     snapshot = load_latest(tmp_path / "latest.json")
     selection = snapshot.diagnostics["selection"]
     assert selection["excluded_counts"]["semantic_duplicate_unresolved"] >= 1
-    assert selection["excluded_counts"]["translation_failed"] >= 1
+    assert selection["excluded_counts"]["content_llm_unavailable"] >= 1
     assert "unsupported_claim" not in selection["excluded_counts"]
     assert selection["excluded_counts"]["x_limit"] >= 1
     assert selection["rules_only_count"] == 15

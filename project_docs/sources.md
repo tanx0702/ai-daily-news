@@ -11,7 +11,7 @@
 | GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | stars/push 等项目活跃度；只能作为社区/活跃度信号，不等同正式发布 |
 | Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads 和模型卡证据；低信号条目降权 |
 | arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；仍需经过时效和编辑筛选 |
-| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_MAX_ITEMS` | GitHub Runner 每四小时生成的公开 JSON 快照；最多六小时有效，最终最多五条可将 X 用作规范来源 |
+| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | GitHub Runner 每四小时生成的公开 JSON 快照；最多六小时有效，默认优先尝试形成三条合格 X 简报，最终最多五条可将 X 用作规范来源 |
 
 ## RSS 配置
 
@@ -54,7 +54,7 @@ X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，�
 - URL 是 `https://x.com/<handle>/status/<tweet_id>` 或 `www.x.com` 的对应 status URL。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
 
-快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
+快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑；失败的 X 重建使用携带失败原因和保护锚点的单条内容 LLM 请求，`@handle` 可从规范 X status URL 机械恢复。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
 
 ## 新增或修改来源的检查清单
 

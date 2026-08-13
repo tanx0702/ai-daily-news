@@ -82,9 +82,13 @@ def accepted(value: MergedEvent, *, validation_mode: str = "rules_only") -> Vali
 class Builder:
     def __init__(self):
         self.calls = []
+        self.reason_calls = []
 
     def build_batch(self, events, attempts, rebuild_reasons=None):
         self.calls.append(([value.event_key for value in events], dict(attempts)))
+        self.reason_calls.append(
+            ([value.event_key for value in events], dict(rebuild_reasons or {}))
+        )
         return tuple(
             BuildResult(value.event_key, attempts.get(value.event_key, 0) + 1, draft(value), None)
             for value in events
@@ -615,6 +619,53 @@ def test_pipeline_does_not_build_x_candidates_beyond_remaining_quota():
     assert audit["event-2"]["final_reason_codes"] == ["x_limit"]
 
 
+def test_pipeline_attempts_lower_ranked_x_candidates_until_soft_target():
+    events = [event(index) for index in range(1, 16)] + [
+        event(index, channel="x") for index in range(16, 19)
+    ]
+    builder = Builder()
+
+    result = run_brief_pipeline(
+        events,
+        (),
+        config(
+            max_items=15,
+            candidate_pool_size=18,
+            max_x_items=5,
+            target_x_items=3,
+        ),
+        builder,
+        Validator(),
+    )
+
+    first_batch_keys = builder.calls[0][0]
+    assert first_batch_keys[:3] == ["event-16", "event-17", "event-18"]
+    assert result.decision.x_count == 3
+    assert len(result.accepted_items) == 15
+
+
+def test_pipeline_does_not_hard_fill_x_soft_target():
+    events = [event(index) for index in range(1, 16)] + [
+        event(index, channel="x") for index in range(16, 18)
+    ]
+
+    result = run_brief_pipeline(
+        events,
+        (),
+        config(
+            max_items=15,
+            candidate_pool_size=17,
+            max_x_items=5,
+            target_x_items=3,
+        ),
+        Builder(),
+        Validator(),
+    )
+
+    assert result.decision.x_count == 2
+    assert len(result.accepted_items) == 15
+
+
 def test_pipeline_rebuild_keeps_x_candidate_ahead_of_deferred_x_items():
     class RebuildingValidator:
         def validate(self, value, built, *, generation_attempt):
@@ -643,6 +694,79 @@ def test_pipeline_rebuild_keeps_x_candidate_ahead_of_deferred_x_items():
     assert built_keys.count("event-1") == 2
     assert "event-2" not in built_keys
     assert result.accepted_items[0].event_key == "event-1"
+
+
+def test_pipeline_rebuilds_failed_x_candidates_one_at_a_time_with_reasons():
+    class RebuildingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            if generation_attempt == 1:
+                return ValidationResult(
+                    "rebuild",
+                    ("protected_token_missing",),
+                    "rules_only",
+                    rebuild_request=RebuildRequest(
+                        value.event_key,
+                        ("protected_token_missing",),
+                        2,
+                    ),
+                )
+            return accepted(value)
+
+    builder = Builder()
+    run_brief_pipeline(
+        [event(1, channel="x"), event(2, channel="x")]
+        + [event(index) for index in range(3, 8)],
+        (),
+        config(max_x_items=2),
+        builder,
+        RebuildingValidator(),
+    )
+
+    rebuild_calls = [
+        (keys, reasons)
+        for keys, reasons in builder.reason_calls
+        if any(key in {"event-1", "event-2"} for key in keys)
+        and reasons
+    ]
+    assert [keys for keys, _reasons in rebuild_calls] == [
+        ["event-1"],
+        ["event-2"],
+    ]
+    assert all(
+        reasons[key] == ("protected_token_missing",)
+        for keys, reasons in rebuild_calls
+        for key in keys
+    )
+
+
+def test_pipeline_audits_source_fallback_without_hiding_builder_failure():
+    class FallbackBuilder:
+        diagnostics = {}
+
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return tuple(
+                BuildResult(
+                    value.event_key,
+                    attempts.get(value.event_key, 0) + 1,
+                    draft(value),
+                    "builder_item_malformed",
+                    source_fallback_used=True,
+                )
+                for value in events
+            )
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        FallbackBuilder(),
+        Validator(),
+    )
+
+    first_attempt = result.audit_entries[0]["attempts"][0]["build"]
+    assert first_attempt["reason_code"] == "builder_item_malformed"
+    assert first_attempt["source_fallback_used"] is True
+    assert result.diagnostics["source_fallback_count"] == 5
 
 
 def test_pipeline_audits_quarantined_event():
