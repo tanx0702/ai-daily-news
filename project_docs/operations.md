@@ -78,12 +78,12 @@ docker compose --profile egress-proxy up -d --force-recreate
 COMPOSE_PROFILES=egress-proxy
 AI_NEWS_HTTP_PROXY=http://proxy:7890
 AI_NEWS_HTTPS_PROXY=http://proxy:7890
-AI_NEWS_NO_PROXY=localhost,127.0.0.1,web,nginx,proxy
+AI_NEWS_NO_PROXY=localhost,127.0.0.1,web,nginx,proxy,api.weixin.qq.com
 AI_NEWS_PROXY_BINARY_PATH=/root/ai-news-proxy/bin/sing-box
 AI_NEWS_PROXY_CONFIG_PATH=/root/ai-news-proxy/config.json
 ```
 
-不发布 `proxy` 端口，不把上述私有文件复制到仓库或 `docs/`。`nginx` 只连接 `app` 网络，`proxy` 只连接 `egress` 网络，只有双接入的 `web` 可访问 `proxy:7890`。漏配私有配置时，仓库内阻断样例会拒绝出网，不会静默直连。cron 仍执行 `docker compose exec -T web ...`；只要 profile 已启动，`web` 在 cron 中继承的代理环境保持有效。
+不发布 `proxy` 端口，不把上述私有文件复制到仓库或 `docs/`。`app` 网络保持 internal；`nginx` 同时连接 internal 的 `app` 和仅用于发布 `80/443` 的 `public` 网络，`web` 仍通过 `app` 访问 Flask。`proxy` 只连接 `egress` 网络，只有双接入的 `web` 可访问 `proxy:7890`。默认 `NO_PROXY` 包含 `api.weixin.qq.com`，让微信草稿 API 走服务器直连并使用公众号 IP 白名单；其它外部请求仍可通过机场代理。漏配私有配置时，仓库内阻断样例会拒绝出网，不会静默直连。cron 仍执行 `docker compose exec -T web ...`；只要 profile 已启动，`web` 在 cron 中继承的代理环境保持有效。
 
 ## 定时任务
 

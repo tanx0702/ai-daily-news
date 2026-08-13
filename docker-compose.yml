@@ -36,10 +36,10 @@ services:
       ENV: production
       HTTP_PROXY: ${AI_NEWS_HTTP_PROXY:-}
       HTTPS_PROXY: ${AI_NEWS_HTTPS_PROXY:-}
-      NO_PROXY: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy}
+      NO_PROXY: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy,api.weixin.qq.com}
       http_proxy: ${AI_NEWS_HTTP_PROXY:-}
       https_proxy: ${AI_NEWS_HTTPS_PROXY:-}
-      no_proxy: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy}
+      no_proxy: ${AI_NEWS_NO_PROXY:-localhost,127.0.0.1,web,nginx,proxy,api.weixin.qq.com}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
       interval: 30s
@@ -65,8 +65,11 @@ services:
         condition: service_healthy
     networks:
       - app
+      - public
 
 networks:
   app:
     internal: true
+  public:
+    driver: bridge
   egress:
