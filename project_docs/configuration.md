@@ -56,6 +56,9 @@ docker compose up -d --force-recreate
 | `DAILY_MAX_ITEMS_PER_SOURCE` | `2` | 候选排序偏好，不是最终来源占比阻断 |
 | `DAILY_MAX_ITEMS_PER_TOPIC` | `2` | 候选排序偏好；最终重复由事件聚类处理 |
 | `DAILY_MIN_PRIMARY_OR_RESEARCH` | `2` | 候选排序偏好，不替代规范来源证据绑定 |
+| `SEMANTIC_DEDUP_WINDOW_HOURS` | `48` | 跨来源语义事件去重的发布时间窗口；必须为正数 |
+| `SEMANTIC_DEDUP_MAX_LLM_CALLS` | `20` | 聚类和发布前去重共享的质量 LLM 调用预算；允许 0-100，0 表示只用规则和保守隔离 |
+| `SEMANTIC_DEDUP_TIMEOUT` | 继承 `QUALITY_GATE_TIMEOUT`，默认 `45` | 单次语义重复复核超时；必须为正数 |
 | `DAILY_NEWS_HOURS` | `36` | 新闻时间窗口 |
 | `DAILY_ALLOW_UNDATED` | `0` | 是否接受无发布时间候选 |
 | `DAILY_RSS_TIMEOUT` | `30` | 单个采集请求超时 |
@@ -74,6 +77,9 @@ docker compose up -d --force-recreate
 DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 0 <= DAILY_X_MAX_ITEMS <= 5
 0 < X_FEED_MAX_AGE_HOURS <= 6
+0 < SEMANTIC_DEDUP_WINDOW_HOURS
+0 <= SEMANTIC_DEDUP_MAX_LLM_CALLS <= 100
+0 < SEMANTIC_DEDUP_TIMEOUT
 ```
 
 任一约束不满足时，本次运行不会静默修正配置，也不会开始外部调用；`draft_decision` 为 `null`，`DraftExecution` 记录 `failed/invalid_configuration`，进程返回非零。

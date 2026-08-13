@@ -19,6 +19,8 @@ def decide_draft(
     *,
     quarantined_keys: Iterable[str] = (),
     excluded_counts: Mapping[str, int] | None = None,
+    semantic_dedup_complete: bool = True,
+    semantic_conflict_keys: Iterable[str] = (),
 ) -> DraftDecision:
     """Return the sole create/block decision from validated immutable items."""
     values = list(items)
@@ -27,6 +29,7 @@ def decide_draft(
     valid_items = [item for item in values if isinstance(item, BriefItem)]
     event_keys = [item.event_key for item in valid_items]
     quarantined = {str(key) for key in quarantined_keys}
+    semantic_conflicts = {str(key) for key in semantic_conflict_keys}
     source_counts = Counter(
         item.canonical_source.publisher_id for item in valid_items
     )
@@ -38,7 +41,7 @@ def decide_draft(
         reasons.append("invalid_final_item")
     if len(event_keys) != len(set(event_keys)) or any(
         key in quarantined for key in event_keys
-    ):
+    ) or not semantic_dedup_complete or semantic_conflicts:
         reasons.append("duplicate_event_remaining")
 
     return DraftDecision(

@@ -124,6 +124,8 @@ def _run_pipeline(
 
     from src.briefing.clusterer import EventClusterer
     from src.briefing.evidence import source_evidence_from_candidate
+    from src.briefing.semantic_reviewer import SemanticDuplicateReviewer
+    from src.llm_config import resolve_quality_llm_config
 
     evidence = []
     scores_by_url: dict[str, float] = {}
@@ -144,12 +146,22 @@ def _run_pipeline(
             _candidate_score(candidate),
         )
 
-    clustered = EventClusterer().cluster(evidence, editorial_scores=scores_by_url)
+    quality_llm_config = resolve_quality_llm_config()
+    semantic_reviewer = SemanticDuplicateReviewer(
+        quality_llm_config,
+        timeout=config.semantic_dedup_timeout,
+        max_calls=config.semantic_dedup_max_llm_calls,
+    )
+    clustered = EventClusterer(
+        config,
+        reviewer=semantic_reviewer,
+    ).cluster(evidence, editorial_scores=scores_by_url)
 
     from src.briefing.builder import BriefBuilder
+    from src.briefing.deduplicator import AcceptedItemDeduplicator
     from src.briefing.pipeline import run_brief_pipeline
     from src.briefing.validator import BriefValidator
-    from src.llm_config import resolve_quality_llm_config, resolve_text_llm_config
+    from src.llm_config import resolve_text_llm_config
 
     builder = BriefBuilder(
         config,
@@ -158,8 +170,12 @@ def _run_pipeline(
     )
     validator = BriefValidator(
         config,
-        resolve_quality_llm_config(),
+        quality_llm_config,
         timeout=int(os.environ.get("QUALITY_GATE_TIMEOUT", "45")),
+    )
+    semantic_deduplicator = AcceptedItemDeduplicator(
+        config,
+        reviewer=semantic_reviewer,
     )
     briefing = run_brief_pipeline(
         clustered.events,
@@ -168,6 +184,8 @@ def _run_pipeline(
         builder,
         validator,
         now=started_at,
+        semantic_deduplicator=semantic_deduplicator,
+        clustered_duplicates=clustered.merged_duplicates,
     )
     items = briefing.accepted_items
     decision = briefing.decision

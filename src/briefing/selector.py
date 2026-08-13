@@ -103,8 +103,6 @@ class BriefSelector:
         if event is None or item.event_key in self._processed:
             return False
         if event.canonical_evidence.channel == "x" and self.x_count >= self.config.max_x_items:
-            self._excluded["x_limit"] += 1
-            self._processed.add(item.event_key)
             return False
         self._accepted.append(item)
         self._processed.add(item.event_key)
@@ -114,6 +112,54 @@ class BriefSelector:
         if event_key in self._events_by_key:
             self._processed.add(event_key)
         self._excluded[str(reason_code)] += 1
+
+    def replace_accepted(
+        self,
+        item: BriefItem,
+        *,
+        remove_event_keys: Iterable[str],
+        reason_code: str = "semantic_duplicate",
+    ) -> bool:
+        """Replace accepted duplicates atomically, preserving quotas and processed keys."""
+        event = self._events_by_key.get(item.event_key)
+        if event is None or item.event_key in self._processed:
+            return False
+        removed_keys = tuple(dict.fromkeys(str(key) for key in remove_event_keys))
+        accepted_by_key = {value.event_key: value for value in self._accepted}
+        if any(key not in accepted_by_key for key in removed_keys):
+            return False
+        projected = [
+            value for value in self._accepted if value.event_key not in removed_keys
+        ]
+        if event.canonical_evidence.channel == "x" and sum(
+            value.canonical_source.channel == "x" for value in projected
+        ) >= self.config.max_x_items:
+            self._excluded["x_limit"] += 1
+            self._processed.add(item.event_key)
+            return False
+        self._accepted = projected + [item]
+        self._processed.update(removed_keys)
+        self._processed.add(item.event_key)
+        self._excluded[str(reason_code)] += len(removed_keys)
+        return True
+
+    def remove_accepted(
+        self,
+        *,
+        remove_event_keys: Iterable[str],
+        reason_code: str = "semantic_duplicate",
+    ) -> bool:
+        """Remove accepted duplicates atomically without accepting a replacement."""
+        removed_keys = tuple(dict.fromkeys(str(key) for key in remove_event_keys))
+        accepted_by_key = {value.event_key: value for value in self._accepted}
+        if not removed_keys or any(key not in accepted_by_key for key in removed_keys):
+            return False
+        self._accepted = [
+            value for value in self._accepted if value.event_key not in removed_keys
+        ]
+        self._processed.update(removed_keys)
+        self._excluded[str(reason_code)] += len(removed_keys)
+        return True
 
     def _order(self, events: Iterable[MergedEvent]) -> list[MergedEvent]:
         ranked = sorted(
