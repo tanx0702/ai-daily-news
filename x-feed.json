@@ -1,12 +1,89 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-13T22:59:47.647576Z",
+  "generated_at": "2026-08-14T04:21:26.693551Z",
   "source_count": 35,
   "successful_source_count": 35,
   "failed_source_count": 0,
   "failures": [],
-  "tweet_count": 218,
+  "tweet_count": 219,
   "tweets": [
+    {
+      "tweet_id": "2088101491802243121",
+      "text": "/ultrafast",
+      "author": "sama",
+      "created_at": "2026-08-14T03:12:45.000Z",
+      "url": "https://x.com/sama/status/2088101491802243121",
+      "source_name": "Sam Altman",
+      "source_handle": "sama",
+      "source_tier": "research",
+      "official": false
+    },
+    {
+      "tweet_id": "2088087673307361291",
+      "text": "Qwen Live now, an appetizer 👀",
+      "author": "Alibaba_Qwen",
+      "created_at": "2026-08-14T02:17:50.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2088087673307361291",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088081106629497294",
+      "text": "Ready for Qwen Live EP2？We will start at 10:00AM！ UTC+8\nhttps://t.co/rkurovnC1k\n\nQwen Cloud：https://t.co/W3R97V3atY\n\n#QwenCloud",
+      "author": "qwen_cloud",
+      "created_at": "2026-08-14T01:51:45.000Z",
+      "url": "https://x.com/Alibaba_Qwen/status/2088081106629497294",
+      "source_name": "Qwen",
+      "source_handle": "Alibaba_Qwen",
+      "source_tier": "primary",
+      "official": true
+    },
+    {
+      "tweet_id": "2088073777779515615",
+      "text": "human i/o is costly, so after listening to @mattpocockuk and @trq212 i made an /align-me modification which allows for batches of questions instead of round-by-round. same intuition as spec decoding, you speed up by looking ahead 2-10 steps\n\nworks INCREDIBLY for design https://t.co/N9CxUAW57u",
+      "author": "swyx",
+      "created_at": "2026-08-14T01:22:37.000Z",
+      "url": "https://x.com/swyx/status/2088073777779515615",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2088057260807532867",
+      "text": "Gotta say that Matt's \"grill-me\" skill is exceptional and helps a ton with getting agents aligned with my brain",
+      "author": "theo",
+      "created_at": "2026-08-14T00:16:59.000Z",
+      "url": "https://x.com/swyx/status/2088057260807532867",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2088049159509344265",
+      "text": "!!!!!\n\nit's been a huge huge pleasure to serve @arizeai these past years with AIE, and this could not happen to better people. Dynarize is now a globally trusted $14B observability powerhouse that just got one of the best AI-native US teams in this business. \n\nif you're",
+      "author": "swyx",
+      "created_at": "2026-08-13T23:44:48.000Z",
+      "url": "https://x.com/swyx/status/2088049159509344265",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
+      "tweet_id": "2088042334902755683",
+      "text": "To the extent that AI use boosts firm performance, some early signs here that early AI adopting firms that were already doing well may start to outpace others.\n\nData from OpenAI shows some firms are using AI much more, and they tend to be firms with the most productive employees. https://t.co/LRyyjDW5BU",
+      "author": "emollick",
+      "created_at": "2026-08-13T23:17:41.000Z",
+      "url": "https://x.com/emollick/status/2088042334902755683",
+      "source_name": "Ethan Mollick",
+      "source_handle": "emollick",
+      "source_tier": "research",
+      "official": false
+    },
     {
       "tweet_id": "2088017546981396990",
       "text": "Waitlist is open for tonight for our H3 x @magnific showcase but that doesn’t mean you’re out.\n\nRegister now for a chance to get in:\nhttps://t.co/sbOoOOWYjr\n\nAnd if you’re already registered, we’re opening the showcase to you. 🎬\n\nBuilt something with H3 + Magnific? Submit it for https://t.co/QZgsSP22QM",
@@ -426,6 +503,17 @@
       "official": false
     },
     {
+      "tweet_id": "2087844420922364148",
+      "text": "Jason and I started Arize 6+ years ago with a simple proposition that headlined our seed deck:\n\n“We Make the World's AI Work”\n\nToday we are announcing we’ve entered into a definitive agreement to be acquired by Dynatrace to accelerate that vision.\n\nWe made a bet years ago that https://t.co/c9f8gFy2HW",
+      "author": "aparnadhinak",
+      "created_at": "2026-08-13T10:11:14.000Z",
+      "url": "https://x.com/swyx/status/2087844420922364148",
+      "source_name": "swyx",
+      "source_handle": "swyx",
+      "source_tier": "media",
+      "official": false
+    },
+    {
       "tweet_id": "2087821894581973426",
       "text": "Test-time training was popularized during the ARC Prize 2024 competition, after being explored in particular by @MindsAI_Jack and team. To date, I believe ARC 1-2 are the only datasets where TTT strongly outperforms. It would be interesting if TTT started becoming more",
       "author": "fchollet",
@@ -459,28 +547,6 @@
       "official": false
     },
     {
-      "tweet_id": "2087799423774646316",
-      "text": "completely bowled over by the incredible responses to the $10,000 Kill My SaaS hackathon this past weekend. sorry it took so long to get back to some of you, organizing this thing solo on top of my regular meetings and work this week was completely stupid and rushed — but this is https://t.co/4354pIz1qd",
-      "author": "swyx",
-      "created_at": "2026-08-13T07:12:26.000Z",
-      "url": "https://x.com/swyx/status/2087799423774646316",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
-      "tweet_id": "2087774049145626928",
-      "text": "So @swyx announced his “Kill My SaaS in one weekend” contest, where you could win $10K to replace his $40K/year SaaS. On Saturday morning, I learned that it was to replace their conference CFP software. \n\nOMG. I've run about 24 conferences over 12 years, but something I rarely",
-      "author": "RealGeneKim",
-      "created_at": "2026-08-13T05:31:36.000Z",
-      "url": "https://x.com/swyx/status/2087774049145626928",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
-      "official": false
-    },
-    {
       "tweet_id": "2087757725572939957",
       "text": "I think this will turn out to be wrong, and not just because I suspect there are greater returns to more intelligent models than people expect\n\nEconomic value comes from agents, not chatbots. And accuracy drives how long a task an agent can do: small gains compound exponentially! https://t.co/9sbWlYGDMr",
       "author": "emollick",
@@ -489,17 +555,6 @@
       "source_name": "Ethan Mollick",
       "source_handle": "emollick",
       "source_tier": "research",
-      "official": false
-    },
-    {
-      "tweet_id": "2087691099691475285",
-      "text": "Perplexity offered to buy @googlechrome one year ago today\n\n(this is a scheduled tweet) https://t.co/EdFp28P2qO",
-      "author": "swyx",
-      "created_at": "2026-08-13T00:02:00.000Z",
-      "url": "https://x.com/swyx/status/2087691099691475285",
-      "source_name": "swyx",
-      "source_handle": "swyx",
-      "source_tier": "media",
       "official": false
     },
     {
@@ -677,17 +732,6 @@
       "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
-    },
-    {
-      "tweet_id": "2087368598465745360",
-      "text": "Interesting research suggests caution in determining which AI company is winning by looking at any one source..\n\nOpenRouter seems to show open weights winning over time, but work submitted to Pangram is overwhelmingly by ChatGPT or increasingly, Claude. https://t.co/X0tkAE4P39 https://t.co/c4VOwGaQWC",
-      "author": "emollick",
-      "created_at": "2026-08-12T02:40:29.000Z",
-      "url": "https://x.com/emollick/status/2087368598465745360",
-      "source_name": "Ethan Mollick",
-      "source_handle": "emollick",
-      "source_tier": "research",
-      "official": false
     },
     {
       "tweet_id": "2087322687857479800",
@@ -1075,17 +1119,6 @@
       "official": false
     },
     {
-      "tweet_id": "2085765236876046500",
-      "text": "congrats to oklo for achieving criticality!\n\n(less than a year after groundbreaking)\n\nhttps://t.co/tdbU6UfOAb",
-      "author": "sama",
-      "created_at": "2026-08-07T16:29:18.000Z",
-      "url": "https://x.com/sama/status/2085765236876046500",
-      "source_name": "Sam Altman",
-      "source_handle": "sama",
-      "source_tier": "research",
-      "official": false
-    },
-    {
       "tweet_id": "2085758063471120848",
       "text": "How AI agents reproduced ICML 2026  papers https://t.co/gReZNlWh7m",
       "author": "huggingface",
@@ -1117,17 +1150,6 @@
       "source_handle": "rasbt",
       "source_tier": "research",
       "official": false
-    },
-    {
-      "tweet_id": "2085661188843794548",
-      "text": "The cloud was always a cat. Qwen3.8-Max just saw it first. 😼☁️ Try it yourself!",
-      "author": "Alibaba_Qwen",
-      "created_at": "2026-08-07T09:35:51.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2085661188843794548",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
-      "source_tier": "primary",
-      "official": true
     },
     {
       "tweet_id": "2085470446854574440",
@@ -1346,17 +1368,6 @@
       "url": "https://x.com/Kimi_Moonshot/status/2084245860339298423",
       "source_name": "Kimi",
       "source_handle": "Kimi_Moonshot",
-      "source_tier": "primary",
-      "official": true
-    },
-    {
-      "tweet_id": "2084188390019502360",
-      "text": "Qwen 3.8 Max is actually impressive\n\nSent a sky pic to it along with Claude Opus 5, Kimi K3, and GPT 5.6 Sol, and asked them to draw an animal silhouette based on the cloud shape\n\nQwen 3.8 Max is honestly on par with all the other models https://t.co/wjGjxXzJ8i",
-      "author": "ann_nnng",
-      "created_at": "2026-08-03T08:03:29.000Z",
-      "url": "https://x.com/Alibaba_Qwen/status/2084188390019502360",
-      "source_name": "Qwen",
-      "source_handle": "Alibaba_Qwen",
       "source_tier": "primary",
       "official": true
     },
