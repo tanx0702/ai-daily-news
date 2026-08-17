@@ -14,6 +14,7 @@ from src.briefing.deduplicator import AcceptedItemDeduplicator, DeduplicationOut
 from src.briefing.decision import decide_draft
 from src.briefing.models import BriefItem, DraftDecision, MergedEvent, QuarantinedEvent
 from src.briefing.selector import BriefSelector
+from src.briefing.display_targets import summary_sentences
 
 
 _DEGRADATION_REASONS = {
@@ -57,6 +58,19 @@ class BriefDeduplicatorProtocol(Protocol):
         candidate: MergedEvent,
         accepted: Sequence[BriefItem],
     ) -> bool: ...
+
+
+def _pop_next_event(
+    queue: deque[MergedEvent],
+    *,
+    prefer_x: bool,
+) -> MergedEvent:
+    if prefer_x:
+        for event in queue:
+            if event.canonical_evidence.channel == "x":
+                queue.remove(event)
+                return event
+    return queue.popleft()
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,15 +197,33 @@ def run_brief_pipeline(
 
     semantic_dedup_complete = True
     semantic_conflict_keys: set[str] = set()
+    source_fallback_event_keys: set[str] = set()
     while retry_queue or queue:
         batch: list[MergedEvent] = []
         remaining_slots = max(config.max_items - len(selector.accepted_items), 0)
         remaining_x_slots = max(config.max_x_items - selector.x_count, 0)
         batched_x_count = 0
-        batch_limit = config.builder_batch_size if remaining_slots else 1
+        single_x_retry = bool(
+            retry_queue
+            and retry_queue[0].canonical_evidence.channel == "x"
+        )
+        batch_limit = 1 if single_x_retry else (
+            config.builder_batch_size if remaining_slots else 1
+        )
         batch_limit = min(batch_limit, max(remaining_slots, 1))
         while (retry_queue or queue) and len(batch) < batch_limit:
-            event = retry_queue.popleft() if retry_queue else queue.popleft()
+            if (
+                batch
+                and retry_queue
+                and retry_queue[0].canonical_evidence.channel == "x"
+            ):
+                break
+            event = retry_queue.popleft() if retry_queue else _pop_next_event(
+                queue,
+                prefer_x=(
+                    selector.x_count + batched_x_count < config.target_x_items
+                ),
+            )
             audit_entry = audit_by_event_identity[id(event)]
             if not selector.can_attempt(event):
                 if event.canonical_evidence.channel == "x":
@@ -250,6 +282,8 @@ def run_brief_pipeline(
                     validation=None,
                     build_responses=candidates,
                 )
+                if consumed_attempt < 2:
+                    rebuild_reasons[event.event_key] = ("invalid_builder_response",)
                 _retry_or_exclude(
                     event,
                     "invalid_builder_response",
@@ -276,6 +310,7 @@ def run_brief_pipeline(
                     reason_code=result.reason_code or "invalid_builder_response",
                     draft=result.draft,
                     validation=None,
+                    source_fallback_used=result.source_fallback_used,
                 )
                 selector.reject(event.event_key, "invalid_builder_response")
                 _finalize_audit(
@@ -285,6 +320,8 @@ def run_brief_pipeline(
                 )
                 continue
             attempts[event.event_key] = result.generation_attempt
+            if result.source_fallback_used:
+                source_fallback_event_keys.add(event.event_key)
             if result.draft is None:
                 reason_code = result.reason_code or "invalid_builder_response"
                 _record_audit_attempt(
@@ -293,7 +330,10 @@ def run_brief_pipeline(
                     reason_code=reason_code,
                     draft=None,
                     validation=None,
+                    source_fallback_used=result.source_fallback_used,
                 )
+                if result.generation_attempt < 2:
+                    rebuild_reasons[event.event_key] = (reason_code,)
                 _retry_or_exclude(
                     event,
                     reason_code,
@@ -319,6 +359,7 @@ def run_brief_pipeline(
                 reason_code=result.reason_code,
                 draft=result.draft,
                 validation=validation,
+                source_fallback_used=result.source_fallback_used,
             )
             if validation.action == "rebuild":
                 if (
@@ -429,8 +470,6 @@ def run_brief_pipeline(
 
             _finalize_audit(audit_entry, "accepted", validation.reason_codes)
 
-            if result.reason_code == "source_fallback_used":
-                diagnostics["source_fallback_count"] += 1
             if accepted.validation_mode == "rules_only":
                 diagnostics["rules_only_count"] += 1
             else:
@@ -463,6 +502,7 @@ def run_brief_pipeline(
     diagnostics["rules_only_count"] = sum(
         item.validation_mode == "rules_only" for item in selector.accepted_items
     )
+    diagnostics["source_fallback_count"] = len(source_fallback_event_keys)
     diagnostics["rules_and_llm_count"] = sum(
         item.validation_mode == "rules_and_llm" for item in selector.accepted_items
     )
@@ -537,11 +577,13 @@ def _record_audit_attempt(
     draft: object | None,
     validation: object | None,
     build_responses: Sequence[BuildResult] = (),
+    source_fallback_used: bool = False,
 ) -> None:
     attempts = entry["attempts"]
     assert isinstance(attempts, list)
     build: dict[str, object] = {
         "reason_code": reason_code,
+        "source_fallback_used": source_fallback_used,
         "draft": draft.to_dict() if draft is not None else None,
     }
     if build_responses:
@@ -554,8 +596,38 @@ def _record_audit_attempt(
             "generation_attempt": generation_attempt,
             "build": build,
             "validation": validation.to_dict() if validation is not None else None,
+            **_brief_audit_fields(draft, validation),
         }
     )
+
+
+def _brief_audit_fields(draft: object | None, validation: object | None) -> dict[str, object]:
+    original_brief = str(getattr(draft, "brief", "") or "")
+    validated_item = getattr(validation, "validated_item", None)
+    audited_draft = getattr(validation, "audited_draft", None)
+    final_draft = validated_item or audited_draft or draft
+    final_brief = str(
+        getattr(final_draft, "brief", original_brief) or ""
+    )
+    original_sentences = list(summary_sentences(original_brief))
+    remaining_final_sentences = Counter(summary_sentences(final_brief))
+    removed_sentences: list[str] = []
+    for sentence in original_sentences:
+        if remaining_final_sentences[sentence]:
+            remaining_final_sentences[sentence] -= 1
+        else:
+            removed_sentences.append(sentence)
+    return {
+        "original_brief": original_brief,
+        "removed_brief_sentences": removed_sentences,
+        "final_brief": final_brief,
+        "brief_mode": str(
+            getattr(final_draft, "brief_mode", "") or ""
+        ),
+        "brief_reason": str(
+            getattr(final_draft, "brief_reason", "") or ""
+        ),
+    }
 
 
 def _build_response_to_dict(response: BuildResult) -> dict[str, object]:
@@ -563,6 +635,7 @@ def _build_response_to_dict(response: BuildResult) -> dict[str, object]:
         "event_key": response.event_key,
         "generation_attempt": response.generation_attempt,
         "reason_code": response.reason_code,
+        "source_fallback_used": response.source_fallback_used,
         "draft": response.draft.to_dict() if response.draft is not None else None,
     }
 

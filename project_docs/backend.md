@@ -27,7 +27,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - 网络超时、HTTP 错误、JSON/XML 解析错误和供应商返回异常必须记录上下文日志，并返回空候选、原文降级、跳过该媒体或阻止草稿等明确结果。
 - 单个来源失败不能阻断其它来源；封面、原文图和 AI 摘要失败不能删除已经可生成的日报 HTML。歧义重复候选必须隔离，不能作为回填来源。
 - 任何重试都必须有上限和超时；不能通过无限重试掩盖供应商故障或拖垮每日任务。
-- 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；内容 LLM 必须返回 `title`、`brief_1`、`brief_2` 展示目标，Python 生成完整 `EvidenceBinding.claim`。质量 LLM 不可用或响应无效时，确定性事实规则通过的条目必须使用 `rules_only` 自动入选；跨语言自动降级还必须有逐字实体锚点，且不能包含规则无法核验的用途等翻译语义。不得请求人工复核或 LLM 修正事实。
+- 外部响应不得未经验证直接改变已接受的 `BriefItem`、`DraftDecision` 或 `DraftExecution`；内容 LLM 必须返回 `title` 和零至两个摘要展示目标，Python 生成完整 `EvidenceBinding.claim`。`BriefItem.brief_mode=title_only` 要求空 brief，`expanded` 要求一至两句非空 brief；摘要引用只在原始标题范围内时逐句删除。质量 LLM 不可用或响应无效时，确定性事实规则通过的条目必须使用 `rules_only` 自动入选；跨语言自动降级还必须有逐字实体锚点，且不能包含规则无法核验的用途等翻译语义。不得请求人工复核或 LLM 修正事实。
 - 跨来源语义去重必须先运行冻结原始证据的确定性特征判断，生成的中文标题和摘要不能作为标题完全匹配或实体锚点。只有共享主体和动作但无法确定的少量 pair 才允许调用质量 LLM；`same_event` 必须精确绑定两边规则均抽取到的完整人物或模型实体，宽泛组织、角色词和实体子串不能单独证明同一事件。复核器只能返回严格关系 JSON，不能重写内容；聚类和发布前去重共享有上限的调用预算与熔断状态。
 - 语义复核不可用、超时、响应无效、预算耗尽或返回 `uncertain` 时，不得把降级草稿交给人工复核。系统保守保留来源优先级更高的候选，隔离或移除较弱疑似重复，并继续从剩余候选回填。
 
@@ -41,7 +41,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 
 ## 数据、时间和日志
 
-- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary` 和证据字段；最终 `BriefItem` 还必须保留事件键、规范来源证据和每个显示声明的证据绑定。
+- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary` 和证据字段；最终 `BriefItem` 还必须保留事件键、规范来源证据、每个显示声明的证据绑定、`brief_mode` 和 `brief_reason`。
 - 写入 JSON 的对象必须可序列化；日期由 `src.pipeline_artifacts.json_serial` 统一转换，不把 Python 对象直接写入产物。
 - 网络时间和持久化时间使用带时区的 `datetime`；日报日期由 `src.time_utils` 按 `APP_TIMEZONE`（生产默认 `Asia/Shanghai`）计算。
 - 所有模块使用 `logging`；日志可以包含来源名、候选数、阶段状态和错误类别，但不得包含 `LLM_API_KEY`、`IMAGE_API_KEY`、微信 secret/token、密码、Authorization 头或完整供应商响应。
@@ -53,7 +53,8 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - GitHub push、点赞、下载量等只能作为活跃度或社区信号，不能独立证明官方发布事实。
 - `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
 - `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
-- 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。
+- 微信发布适配必须接收媒体解析后的展示项，先上传封面和可信新闻配图，再使用返回的微信 URL 调用确定性渲染器生成最终正文；封面文件缺失、上传结果缺少 `media_id`/CDN URL，或最终正文首图不是该 URL 时，不得调用 draft/add。`draft/add` 超时、断连、无效响应等模糊结果统一记为 `draft_create_uncertain` 并停止，不能盲目重试；只有明确拒绝才允许有界重试。
+- 质量审计应区分 `missing_target_binding`、`quote_not_found`、`source_url_mismatch`、`protected_token_missing`、`action_not_supported`、`semantic_review_rejected`、`quality_llm_unavailable` 和 `quality_llm_invalid_response`，不能把所有失败压缩为笼统的 `unsupported_claim`。内容生成审计还要区分 `content_llm_timeout`、`content_llm_unavailable`、`invalid_builder_response`、`builder_item_missing`、`builder_item_malformed`、`builder_item_duplicate` 与有效结构下的 `translation_failed`；中文原文回退以独立 `source_fallback_used` 标志记录，保留触发回退的原因码。摘要轨迹记录输入、删除句、最终 brief、模式和原因。供应商可返回空字符串 brief，或一至两项非空字符串列表并由适配层机械拼接；三项以上或其它对象结构仍记为 `builder_item_malformed`。
 - 语义事件审计应记录 `duplicate_of`、`relationship`、`comparison_mode`、`semantic_duplicate`、`semantic_duplicate_unresolved` 以及 reviewer 的成功、超时、无效、不可用、熔断和预算耗尽计数；聚类时并入 related evidence 的每个来源还要生成独立的 `candidate_type=clustered_duplicate` 记录，不得记录完整模型响应。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。
 - v2/shadow/editorial review 和 Tencent SCF 不得成为生产简报的必需依赖；辅助流程只能记录受保护诊断，不能改变已接受的条目或决策。

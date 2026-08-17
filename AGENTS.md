@@ -37,8 +37,10 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - LLM 只能翻译和摘要原始证据，不能新增事实；GitHub 活跃度不能写成正式发布证据。
 - 生产日报只能展示 5-15 条唯一事实简报；跨语言、跨来源的同一事件只能占一个名额。候选先做确定性聚类，对少量疑似重复使用有预算的只读质量 LLM 复核，歧义重复和跨事件桥接冲突按来源强度隔离弱项且不得回填，每个显示声明都必须绑定显示的规范来源证据。
 - 语义去重失败、超时、无效、熔断、预算耗尽或返回 `uncertain` 时，保守保留官方/研究/专业媒体/非 X 等更强来源，移除或隔离较弱疑似重复，不得转人工复核；强人物锚点只接受逐行提取的已确认完整姓名，未登记但带人物语境的名称只触发复核且不得由 LLM 升级为强主体，未知 Title Case 短语和单句职位/代词语境不得升级为强人物；发布前去重后继续消费候选回填，最终不足 5 条仍然 `block`。
-- 质量 LLM 是可选增强，缺失、超时或无效响应时，确定性事实规则通过的条目统一退回 `rules_only` 自动入选，不得转为人工复核或要求 LLM 修正事实；跨语言自动降级必须有逐字实体锚点，且只包含可机械核验的数字、动作和语法词，无法核验的翻译语义重建一次后移除。
+- 事实简报分为 `brief_mode=title_only|expanded`：标题型快讯允许 `brief=""` 并正常计入 5-15 条；扩展型快讯只保留一至两句由原始标题之外证据支持的摘要。摘要句全部引用只落在规范来源原始标题范围内时删除并记录 `brief_restates_title`；无证据或新增事实仍重建一次后移除，不能靠清空摘要绕过门禁。
+- 质量 LLM 是可选增强，缺失、超时或无效响应时，确定性事实规则通过的条目统一退回 `rules_only` 自动入选，不得转为人工复核或要求 LLM 修正事实；跨语言自动降级必须有逐字实体锚点，且只包含可机械核验的数字、动作和语法词，无法核验的翻译语义重建一次后移除。失败的 X 重建必须单条调用内容 LLM 并携带失败原因和保护锚点；内容 LLM 超时、不可用、无效响应、条目缺失/畸形/重复与真实未翻译输出必须使用不同审计原因，中文原文回退另记 `source_fallback_used` 且不得覆盖原始失败原因。builder 允许空字符串 brief，或将一至两项非空字符串 brief 列表机械拼接后继续走完整校验，其它结构仍按畸形响应拒绝。
 - `DraftDecision` 是唯一 `create|block` 决策，`DraftExecution` 只记录执行结果；旧发布模块、旧质量状态、来源占比阻断、9 分目标和人工复核均不是生产控制。
+- 微信草稿只保留每条事实简报的规范原始来源链接，不设置 `content_source_url`，也不展示指向 `PAGES_URL` 的“查看完整日报”入口。真实草稿必须在封面和新闻配图上传微信后重新调用确定性渲染器；正文首图使用上传返回的微信 CDN URL，不能复用上传前含公网封面的 HTML。`draft/add` 超时、断连或响应无法确认时不得自动重试，避免重复创建草稿；只有明确 API 拒绝才允许有界重试。
 - Flask 路由只做协议转换、签名/认证、读取产物和调用服务；禁止在路由中直接采集、调用 LLM、渲染或创建草稿。
 - 新采集器、配置、质量门禁、发布出口、Docker/nginx/cron 或 Flask 边界变更，必须同步对应 `project_docs/`，并更新本文件的导航/约束（见 `project_docs/workflow.md`）。
 - Python 3.12+，模块使用 `logging`；时间使用带时区值和项目统一日期工具；跨模块数据必须可序列化。
@@ -47,7 +49,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 
 - 首次部署只复制 `.env.example`；高级覆盖从 `.env.advanced.example` 逐项复制。
 - `QUALITY_LLM_*` 未设置时继承 `LLM_*`，用于可选的事实核验和语义去重增强；语义去重默认 48 小时窗口、单期共享最多 20 次 LLM 调用，新增配置仍以 `.env.advanced.example` 为参考。
-- 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_MAX_ITEMS=5`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效，最终最多五条可将 X 用作规范来源。
+- 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_TARGET_ITEMS=3`、`DAILY_X_MAX_ITEMS=5`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只在达到三条前优先尝试 X，不能绕过质检或硬凑，最终最多五条可将 X 用作规范来源。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。
 - 不提交 `.env`、API key、微信密钥/token、Basic Auth 密码、日志、媒体缓存、`docs/` 生成物或完整外部 API 响应。
 - 不提交订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置或服务器私有二进制；它们只可保存在 `/root/ai-news-proxy/` 等 root 受限目录。
@@ -71,4 +73,4 @@ git status --short
 
 ## 事实简报审计
 
-- 每个事实简报候选必须在 `docs/debug/<date>-briefing.json` 留下结构化原始证据、构建/验证轨迹和最终原因码；聚类阶段被合并的每个来源也必须留下独立的 `clustered_duplicate` 记录。该审计不进入公开产物、微信草稿或 Git。
+- 每个事实简报候选必须在 `docs/debug/<date>-briefing.json` 留下结构化原始证据、构建/验证轨迹和最终原因码；摘要轨迹还记录 `original_brief`、`removed_brief_sentences`、`final_brief`、`brief_mode` 和 `brief_reason`。聚类阶段被合并的每个来源也必须留下独立的 `clustered_duplicate` 记录。该审计不进入公开产物、微信草稿或 Git。

@@ -73,12 +73,18 @@ def _valid_final_item(value: object) -> bool:
         for part in re.split(r"(?<=[。！？!?])\s*", value.brief.strip())
         if part.strip()
     ]
+    valid_brief_shape = (
+        value.brief_mode == "title_only" and not sentences
+    ) or (
+        value.brief_mode == "expanded"
+        and 1 <= len(sentences) <= 2
+        and all(_contains_chinese(sentence) for sentence in sentences)
+    )
     if (
         not value.event_key.strip()
         or not value.chinese_title.strip()
         or not _contains_chinese(value.chinese_title)
-        or not 1 <= len(sentences) <= 2
-        or any(not _contains_chinese(sentence) for sentence in sentences)
+        or not valid_brief_shape
         or not source.source_title.strip()
         or not source.evidence_text.strip()
         or parsed_url.scheme.lower() not in {"http", "https"}
@@ -88,7 +94,20 @@ def _valid_final_item(value: object) -> bool:
     ):
         return False
     evidence = _quote_text(source.evidence_text)
-    return all(
+    display_claims = [value.chinese_title, *sentences]
+    display_claim_keys = {_claim_text(display_claim) for display_claim in display_claims}
+    bindings_cover_display = all(
+        any(
+            _claim_text(binding.claim) == _claim_text(display_claim)
+            for binding in value.evidence_bindings
+        )
+        for display_claim in display_claims
+    )
+    bindings_only_cover_display = all(
+        _claim_text(binding.claim) in display_claim_keys
+        for binding in value.evidence_bindings
+    )
+    return bindings_cover_display and bindings_only_cover_display and all(
         binding.claim.strip()
         and binding.source_quote.strip()
         and binding.source_url == source.url
@@ -103,6 +122,14 @@ def _contains_chinese(value: str) -> bool:
 
 def _quote_text(value: str) -> str:
     return re.sub(r"\s+", " ", unescape(value).replace("\xa0", " ")).strip()
+
+
+def _claim_text(value: str) -> str:
+    return re.sub(
+        r"[\s，,。.!！?？:：;；、\"'“”‘’（）()【】\[\]]+",
+        "",
+        _quote_text(value).lower(),
+    )
 
 
 def _timestamp(now: datetime | None) -> str:

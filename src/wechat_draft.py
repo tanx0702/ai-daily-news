@@ -21,7 +21,9 @@ import re
 import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from datetime import datetime
+from html.parser import HTMLParser
 from typing import Any, Optional
 
 import requests
@@ -37,6 +39,30 @@ TOKEN_CACHE = "/tmp/.wx_token_cache"
 TOKEN_CACHE_TS = "/tmp/.wx_token_ts"
 DEFAULT_DRAFT_AUTHOR = "要闻编辑室"
 DEFAULT_DRAFT_TITLE_PREFIX = "今日要闻"
+
+
+class _FirstImageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.src = ""
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self.src or tag.lower() != "img":
+            return
+        self.src = dict(attrs).get("src") or ""
+
+
+def _first_image_url(content: str) -> str:
+    parser = _FirstImageParser()
+    parser.feed(content)
+    return parser.src
+
+
+@dataclass(frozen=True, slots=True)
+class _DraftCreateResult:
+    status: str
+    media_id: str = ""
+    reason: str = ""
 
 
 def _display_news(items: Sequence[BriefItem | Mapping[str, Any]]) -> list[dict]:
@@ -163,15 +189,14 @@ def _create_draft(
     content: str,
     thumb_media_id: str,
     digest: str = "",
-    source_url: str = "",
-) -> Optional[str]:
+) -> _DraftCreateResult:
     """
     创建微信草稿。
 
     API: POST /cgi-bin/draft/add
 
     Returns:
-        草稿 media_id，失败返回 None
+        区分已创建、明确拒绝和结果不确定，避免模糊失败后重复创建草稿。
     """
     url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={access_token}"
 
@@ -181,7 +206,6 @@ def _create_draft(
             "author": _draft_author(),
             "digest": digest or title,
             "content": content,
-            "content_source_url": source_url,
             "thumb_media_id": thumb_media_id,
             "need_open_comment": 0,
             "only_fans_can_comment": 0,
@@ -199,12 +223,25 @@ def _create_draft(
         data = resp.json()
         if "media_id" in data:
             logger.info("Draft created, media_id=%s", data["media_id"])
-            return data["media_id"]
+            return _DraftCreateResult("created", media_id=str(data["media_id"]))
         logger.error("Create draft failed: %s", data)
-        return None
+        return _DraftCreateResult("rejected", reason="api_rejected")
+    except (requests.Timeout, requests.ConnectionError) as e:
+        logger.error("Create draft result uncertain: %s", e)
+        return _DraftCreateResult("uncertain", reason="request_interrupted")
+    except requests.HTTPError as e:
+        status_code = e.response.status_code if e.response is not None else 0
+        if 400 <= status_code < 500:
+            logger.error("Create draft HTTP rejection: %s", e)
+            return _DraftCreateResult("rejected", reason="client_http_error")
+        logger.error("Create draft server result uncertain: %s", e)
+        return _DraftCreateResult("uncertain", reason="server_http_error")
+    except (ValueError, json.JSONDecodeError) as e:
+        logger.error("Create draft response could not be confirmed: %s", e)
+        return _DraftCreateResult("uncertain", reason="invalid_response")
     except Exception as e:
         logger.error("Create draft failed: %s", e)
-        return None
+        return _DraftCreateResult("uncertain", reason="unknown_result")
 
 
 def _publish_draft(access_token: str, media_id: str) -> dict:
@@ -498,13 +535,17 @@ def publish_daily_article(
     # 2. 上传封面图，同时拿到 media_id（缩略图）和 url（文章内嵌）
     thumb_media_id = ""
     cover_url = ""
+    if not cover_path or not os.path.isfile(cover_path):
+        logger.error("Cover image file is missing: %s", cover_path)
+        return {"status": "failed", "reason": "cover_file_missing"}
     if cover_path and os.path.isfile(cover_path):
         upload_result = _upload_permanent_image(access_token, cover_path)
         if upload_result:
             thumb_media_id = upload_result.get("media_id", "")
             cover_url = upload_result.get("url", "")
-    if not thumb_media_id:
-        logger.warning("No cover image media_id, article will have no cover")
+        if not thumb_media_id or not cover_url:
+            logger.error("Cover upload did not return both media_id and CDN URL")
+            return {"status": "failed", "reason": "cover_upload_failed"}
 
     # 3. 为每条新闻抓取原文配图（og:image → 下载 → 上传微信，并发+降级）
     news_list = _enrich_news_with_images(access_token, news_list)
@@ -512,7 +553,13 @@ def publish_daily_article(
     # 4. 生成微信推文 HTML。
     from src.generator import render_wechat_article
 
-    content = rendered_content or render_wechat_article(news_list, date_str, pages_url, cover_url)
+    content = render_wechat_article(news_list, date_str, pages_url, cover_url)
+    if cover_url and (
+        _first_image_url(content) != cover_url
+        or "tankex.xyz/cover.jpg" in content
+    ):
+        logger.error("Final WeChat content does not use the uploaded cover URL")
+        return {"status": "failed", "reason": "cover_render_failed"}
 
     # 5. 构建标题和摘要：去掉机器人/英文模板感，保留栏目式信息密度。
     title = _build_draft_title(date_str)
@@ -520,15 +567,19 @@ def publish_daily_article(
 
     # 6. 创建草稿（个人订阅号不支持 API 发布，需手动去后台点发布）
     for attempt in range(retry + 1):
-        draft_media_id = _create_draft(
+        outcome = _create_draft(
             access_token, title, content,
             thumb_media_id=thumb_media_id,
             digest=digest,
-            source_url=pages_url,
         )
-        if draft_media_id:
+        if outcome.status == "created":
             logger.info("Draft ready! Go to mp.weixin.qq.com → 草稿箱 → 发布")
-            return {"status": "draft_created", "media_id": draft_media_id}
+            return {"status": "draft_created", "media_id": outcome.media_id}
+        if outcome.status == "uncertain":
+            logger.error(
+                "Draft creation result is uncertain; refusing to retry to avoid duplicates"
+            )
+            return {"status": "failed", "reason": "draft_create_uncertain"}
 
         logger.warning("Create draft attempt %d/%d failed", attempt + 1, retry + 1)
         if attempt < retry:

@@ -78,12 +78,12 @@ docker compose --profile egress-proxy up -d --force-recreate
 COMPOSE_PROFILES=egress-proxy
 AI_NEWS_HTTP_PROXY=http://proxy:7890
 AI_NEWS_HTTPS_PROXY=http://proxy:7890
-AI_NEWS_NO_PROXY=localhost,127.0.0.1,web,nginx,proxy
+AI_NEWS_NO_PROXY=localhost,127.0.0.1,web,nginx,proxy,api.weixin.qq.com
 AI_NEWS_PROXY_BINARY_PATH=/root/ai-news-proxy/bin/sing-box
 AI_NEWS_PROXY_CONFIG_PATH=/root/ai-news-proxy/config.json
 ```
 
-不发布 `proxy` 端口，不把上述私有文件复制到仓库或 `docs/`。`nginx` 只连接 `app` 网络，`proxy` 只连接 `egress` 网络，只有双接入的 `web` 可访问 `proxy:7890`。漏配私有配置时，仓库内阻断样例会拒绝出网，不会静默直连。cron 仍执行 `docker compose exec -T web ...`；只要 profile 已启动，`web` 在 cron 中继承的代理环境保持有效。
+不发布 `proxy` 端口，不把上述私有文件复制到仓库或 `docs/`。`app` 网络保持 internal；`nginx` 同时连接 internal 的 `app` 和仅用于发布 `80/443` 的 `public` 网络，`web` 仍通过 `app` 访问 Flask。`proxy` 只连接 `egress` 网络，只有双接入的 `web` 可访问 `proxy:7890`。默认 `NO_PROXY` 包含 `api.weixin.qq.com`，让微信草稿 API 走服务器直连并使用公众号 IP 白名单；其它外部请求仍可通过机场代理。漏配私有配置时，仓库内阻断样例会拒绝出网，不会静默直连。cron 仍执行 `docker compose exec -T web ...`；只要 profile 已启动，`web` 在 cron 中继承的代理环境保持有效。
 
 ## 定时任务
 
@@ -109,6 +109,8 @@ X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/w
 | `/editorial-review/feedback` | nginx -> Flask | 记录人工标签和备注 |
 | `/debug/*` | nginx | 固定返回 404，不公开诊断 |
 
+公众号草稿中的链接只指向每条事实简报的规范原始来源。`PAGES_URL` 仍用于公开日报站点配置，但不会写入微信 `content_source_url`，正文也不展示“查看完整日报”入口。`docs/wechat.html` 是上传前预览；真实草稿会使用媒体解析后的展示项，在封面和新闻配图上传后重新渲染，正文首图必须使用微信返回的 CDN URL。指定的 `docs/cover.jpg` 缺失、上传结果缺少 `media_id`/URL 或正文仍引用公网封面时，本次草稿执行失败且不调用 draft/add。若 draft/add 超时、断连或响应无法确认，执行结果记为 `draft_create_uncertain` 且不自动重试，维护者应先在公众号后台确认是否已生成草稿。
+
 微信回调必须校验 `WECHAT_TOKEN` 签名；`ALLOW_INSECURE_WECHAT_TOKEN=1` 只能用于本地排查。editorial review 只有用户名和密码同时配置时才启用，不能使用 URL token。
 
 ## 运行时产物
@@ -132,8 +134,8 @@ HTML/JSON/诊断通常会在草稿被阻止时继续生成。查看 `latest.json
 2. `docker compose ps` 和 `docker compose logs web --tail=200`。
    启用出网代理时，同时检查 `docker compose --profile egress-proxy ps` 和 `docker compose logs proxy --tail=100`。
 3. 访问 `/health`，确认 Flask、微信回调配置和已保存的草稿决策/执行结果。
-4. 检查 `docs/latest.json` 的 `brief_items`、`draft_decision`、`draft_execution`、`diagnostics.source_health`。
-5. 查看 `docs/debug/shadow` 中的候选快照和编辑复核结果。
+4. 检查 `docs/latest.json` 的 `brief_items`、`brief_mode`、`draft_decision`、`draft_execution`、`diagnostics.source_health`。
+5. 查看 `docs/debug/<date>-briefing.json` 的摘要删除轨迹和 `docs/debug/shadow` 中的候选快照。
 6. 单独运行 `docker compose exec -e SKIP_WECHAT_DRAFT=1 -T web python -m src.main`；不要把真实微信草稿 API 调用当作测试步骤。
 
 ## 部署边界

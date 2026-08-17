@@ -385,7 +385,11 @@ def render_daily_html(
         news_item = item
         news_item["title"] = clean_display_text(news_item.get("title", ""))
         news_item["chinese_title"] = clean_display_text(news_item.get("chinese_title", ""))
-        news_item["summary"] = clean_display_text(news_item.get("summary", ""))
+        news_item["summary"] = (
+            ""
+            if news_item.get("brief_mode") == "title_only"
+            else clean_display_text(news_item.get("summary", ""))
+        )
         news_item["source"] = clean_display_text(news_item.get("source", ""))
         news_item["url"] = safe_http_url(news_item.get("url", ""))
         pub = news_item.get("published_at")
@@ -435,7 +439,6 @@ def render_wechat_article(
         date_str = report_date_str()
     if pages_url is None:
         pages_url = os.environ.get("PAGES_URL", "https://tankex.xyz")
-    pages_url = safe_http_url(pages_url) or "https://tankex.xyz"
     cover_image_url = safe_http_url(cover_image_url)
 
     # ── 色板 ──
@@ -576,7 +579,11 @@ def render_wechat_article(
     for idx, item in enumerate(news_list):
         title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
         title = _fix_typos(title)
-        summary = clean_display_text(item.get("summary", ""))
+        summary = (
+            ""
+            if item.get("brief_mode") == "title_only"
+            else clean_display_text(item.get("summary", ""))
+        )
         summary = _fix_typos(summary)
         source_name = clean_display_text(item.get("source", ""))
         source_type = item.get("source_type", "")
@@ -681,9 +688,6 @@ def render_wechat_article(
     parts.append(
         f'<section style="margin:8px 16px 24px;padding:20px 0 0;'
         f'text-align:center;border-top:1px solid {DIVIDER};">'
-        f'<p style="margin:0 0 8px;color:{TEXT_BODY};font-size:14px;line-height:1.6;">'
-        f'<a href="{esc(pages_url, collapse_whitespace=False)}" style="color:{ACCENT};font-weight:600;'
-        f'text-decoration:none;">查看完整日报</a></p>'
         f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
         f'每日AI资讯整理</p>'
         f'</section>'
@@ -731,7 +735,11 @@ def _news_to_markdown(
 
         for item in items:
             title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
-            summary = clean_display_text(item.get("summary", ""))
+            summary = (
+                ""
+                if item.get("brief_mode") == "title_only"
+                else clean_display_text(item.get("summary", ""))
+            )
             source_name = clean_display_text(item.get("source", ""))
             url = safe_http_url(item.get("url", ""))
             img = safe_http_url(item.get("article_image_url", ""))
@@ -751,9 +759,6 @@ def _news_to_markdown(
                 lines.append("")
 
     lines.append("---")
-    lines.append("")
-    lines.append(f"👉 [查看完整日报（精美排版 + 暗色模式）]({pages_url})")
-    lines.append("")
     lines.append("每日AI资讯整理")
 
     return "\n".join(lines)

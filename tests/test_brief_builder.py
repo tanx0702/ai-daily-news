@@ -139,6 +139,121 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "跨语言" in system_prompt
     assert "产品、模型或机构名称" in system_prompt
+    assert "允许 brief 为空字符串" in system_prompt
+    assert "标题之外" in system_prompt
+
+
+def test_builder_accepts_title_only_response_without_summary_target():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["brief"] = ""
+    payload["evidence_targets"] = [payload["evidence_targets"][0]]
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert result.draft.brief_reason == "brief_empty"
+
+
+def test_source_fallback_uses_title_only_when_evidence_has_no_extra_fact():
+    item = event(1, chinese=True)
+    source = item.canonical_evidence
+    title_only = MergedEvent(
+        event_key=item.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id=source.publisher_id,
+            publisher_name=source.publisher_name,
+            channel=source.channel,
+            authority=source.authority,
+            is_official=source.is_official,
+            official_identity_source=source.official_identity_source,
+            source_title=source.source_title,
+            evidence_text=source.source_title,
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    builder, _ = builder_with_responses([], api_key="")
+
+    result = builder.build_batch([title_only], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert [binding.claim for binding in result.draft.evidence_bindings] == [
+        source.source_title
+    ]
+
+
+def test_x_rebuild_payload_preserves_failure_reasons_and_protected_anchors():
+    original = event(1)
+    source = original.canonical_evidence
+    x_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="xai-x",
+            publisher_name="xAI",
+            channel="x",
+            authority="official",
+            is_official=True,
+            official_identity_source="x_source_config",
+            source_title="xAI releases Grok 4.6",
+            evidence_text="xAI releases Grok 4.6 with a new API.",
+            url="https://x.com/xai/status/1",
+            published_at=source.published_at,
+        ),
+    )
+    payload = {
+        "items": [generated_item(1, x_event.event_key, x_event.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    builder.build_batch(
+        [x_event],
+        attempts={x_event.event_key: 1},
+        rebuild_reasons={x_event.event_key: ("protected_token_missing",)},
+    )
+
+    call = client.chat.completions.calls[0]
+    request_event = json.loads(call["messages"][1]["content"])["events"][0]
+    assert request_event["rebuild_reasons"] == ["protected_token_missing"]
+    assert {"@xai", "Grok", "4.6"} <= set(request_event["protected_anchors"])
+    assert "@handle" in call["messages"][0]["content"]
+    assert "数字" in call["messages"][0]["content"]
+
+
+def test_malformed_source_url_does_not_break_anchor_extraction():
+    original = event(1)
+    source = original.canonical_evidence
+    malformed_url_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id=source.publisher_id,
+            publisher_name=source.publisher_name,
+            channel="x",
+            authority=source.authority,
+            is_official=source.is_official,
+            official_identity_source=source.official_identity_source,
+            source_title=source.source_title,
+            evidence_text=source.evidence_text,
+            url="https://[",
+            published_at=source.published_at,
+        ),
+    )
+    payload = {
+        "items": [generated_item(1, malformed_url_event.event_key, "https://[")]
+    }
+    builder, client = builder_with_responses([payload])
+
+    builder.build_batch([malformed_url_event], attempts={})
+
+    request_event = json.loads(
+        client.chat.completions.calls[0]["messages"][1]["content"]
+    )["events"][0]
+    assert not any(anchor.startswith("@") for anchor in request_event["protected_anchors"])
 
 
 def test_builder_records_invalid_timeout_unavailable_and_circuit_diagnostics():
@@ -236,9 +351,9 @@ def test_builder_rejects_unknown_missing_and_unexpected_targets():
     results = builder.build_batch(items, attempts={})
 
     assert [result.reason_code for result in results] == [
-        "invalid_builder_response",
-        "invalid_builder_response",
-        "invalid_builder_response",
+        "builder_item_malformed",
+        "builder_item_malformed",
+        "builder_item_malformed",
     ]
 
 
@@ -257,9 +372,9 @@ def test_missing_duplicate_and_unindexed_results_fail_only_affected_items():
 
     assert results[0].draft is not None
     assert results[1].draft is None
-    assert results[1].reason_code == "invalid_builder_response"
+    assert results[1].reason_code == "builder_item_duplicate"
     assert results[2].draft is None
-    assert results[2].reason_code == "invalid_builder_response"
+    assert results[2].reason_code == "builder_item_malformed"
 
 
 def test_builder_rejects_wrong_types_and_event_key_mismatch():
@@ -272,8 +387,8 @@ def test_builder_rejects_wrong_types_and_event_key_mismatch():
     results = builder.build_batch(events, attempts={})
 
     assert [result.reason_code for result in results] == [
-        "invalid_builder_response",
-        "invalid_builder_response",
+        "builder_item_malformed",
+        "builder_item_malformed",
     ]
 
 
@@ -285,7 +400,8 @@ def test_second_invalid_attempt_uses_complete_chinese_source_fallback():
 
     result = results[0]
     assert result.generation_attempt == 2
-    assert result.reason_code == "source_fallback_used"
+    assert result.reason_code == "invalid_builder_response"
+    assert result.source_fallback_used is True
     assert result.draft.content_origin == "source"
     assert result.draft.chinese_title == item.canonical_evidence.source_title
     assert result.draft.brief
@@ -296,7 +412,7 @@ def test_second_invalid_attempt_uses_complete_chinese_source_fallback():
     )
 
 
-def test_source_fallback_keeps_each_summary_sentence_in_chinese():
+def test_source_fallback_drops_non_chinese_details_and_keeps_title_only():
     item = event(1, chinese=True)
     source = item.canonical_evidence
     item = MergedEvent(
@@ -318,12 +434,9 @@ def test_source_fallback_keeps_each_summary_sentence_in_chinese():
 
     result = builder.build_batch([item], attempts={item.event_key: 1})[0]
 
-    assert result.draft.brief == item.canonical_evidence.source_title
-    assert all(
-        any("\u4e00" <= character <= "\u9fff" for character in sentence)
-        for sentence in result.draft.brief.split("。")
-        if sentence
-    )
+    assert result.draft.chinese_title == item.canonical_evidence.source_title
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
 
 
 def test_source_fallback_preserves_sentence_boundaries_for_two_summary_sentences():
@@ -393,20 +506,148 @@ def test_builder_returns_attempt_one_to_the_caller_before_attempt_two_fallback()
     assert first.draft is None
     assert first.reason_code == "invalid_builder_response"
     assert second.generation_attempt == 2
-    assert second.reason_code == "source_fallback_used"
+    assert second.reason_code == "invalid_builder_response"
+    assert second.source_fallback_used is True
     assert second.draft is not None
     assert len(client.chat.completions.calls) == 2
 
 
-def test_second_invalid_attempt_excludes_english_translation_failure():
+def test_second_invalid_json_attempt_is_not_reported_as_translation_failure():
     item = event(1)
     builder, _ = builder_with_responses(["not-json"])
 
     result = builder.build_batch([item], attempts={item.event_key: 1})[0]
 
     assert result.draft is None
-    assert result.reason_code == "translation_failed"
+    assert result.reason_code == "invalid_builder_response"
     assert result.generation_attempt == 2
+
+
+def test_second_valid_json_attempt_reports_missing_item_precisely():
+    item = event(1)
+    builder, _ = builder_with_responses([{"items": []}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_missing"
+
+
+def test_second_valid_json_attempt_reports_malformed_item_precisely():
+    item = event(1)
+    malformed = generated_item(1, item.event_key, item.canonical_evidence.url)
+    malformed.pop("evidence_targets")
+    builder, _ = builder_with_responses([{"items": [malformed]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
+def test_second_valid_json_attempt_reports_duplicate_item_precisely():
+    item = event(1)
+    generated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    builder, _ = builder_with_responses([{"items": [generated, generated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_duplicate"
+
+
+def test_second_timeout_attempt_reports_transport_failure():
+    item = event(1)
+    builder, _ = builder_with_responses([TimeoutError("timeout")])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "content_llm_timeout"
+
+
+def test_second_structured_english_attempt_reports_translation_failure():
+    item = event(1)
+    untranslated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    untranslated["chinese_title"] = "Example releases Model 1"
+    untranslated["brief"] = "Example releases Model 1."
+    builder, _ = builder_with_responses([{"items": [untranslated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "translation_failed"
+
+
+def test_single_rebuild_item_without_index_is_malformed_not_missing():
+    item = event(1)
+    malformed = generated_item(1, item.event_key, item.canonical_evidence.url)
+    malformed.pop("index")
+    builder, _ = builder_with_responses([{"items": [malformed]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
+def test_single_rebuild_item_with_unhashable_event_key_is_malformed():
+    item = event(1)
+    malformed = generated_item(1, item.event_key, item.canonical_evidence.url)
+    malformed.pop("index")
+    malformed["event_key"] = [item.event_key]
+    builder, _ = builder_with_responses([{"items": [malformed]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
+def test_single_rebuild_item_normalizes_two_sentence_brief_list():
+    item = event(1)
+    generated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    generated["brief"] = ["示例公司发布模型 1。", "该模型提供新的文本能力。"]
+    generated["evidence_targets"].append(
+        {
+            "target": "brief_2",
+            "source_quote": "Example releases Model 1",
+            "source_url": item.canonical_evidence.url,
+        }
+    )
+    builder, _ = builder_with_responses([{"items": [generated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.reason_code is None
+    assert result.draft is not None
+    assert result.draft.brief == "示例公司发布模型 1。该模型提供新的文本能力。"
+
+
+def test_single_rebuild_item_does_not_normalize_three_sentence_brief_list():
+    item = event(1)
+    generated = generated_item(1, item.event_key, item.canonical_evidence.url)
+    generated["brief"] = ["第一句。", "第二句。", "第三句。"]
+    builder, _ = builder_with_responses([{"items": [generated]}])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
+def test_sdk_timeout_message_reports_transport_failure():
+    class APITimeoutError(Exception):
+        pass
+
+    item = event(1)
+    builder, _ = builder_with_responses([APITimeoutError("Request timed out.")])
+
+    result = builder.build_batch([item], attempts={item.event_key: 1})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "content_llm_timeout"
+    assert builder.diagnostics["content_llm_timeout_count"] == 1
 
 
 def test_nonrecoverable_error_opens_circuit_and_avoids_later_calls():
@@ -419,7 +660,9 @@ def test_nonrecoverable_error_opens_circuit_and_avoids_later_calls():
 
     assert first.draft.content_origin == "source"
     assert first.circuit_open is True
-    assert second.reason_code == "translation_failed"
+    assert first.reason_code == "content_llm_unavailable"
+    assert first.source_fallback_used is True
+    assert second.reason_code == "content_llm_unavailable"
     assert second.circuit_open is True
     assert len(client.chat.completions.calls) == 1
 
@@ -433,7 +676,8 @@ def test_missing_llm_configuration_uses_source_or_translation_failure_without_ca
     )
 
     assert chinese.draft.content_origin == "source"
-    assert chinese.reason_code == "source_fallback_used"
+    assert chinese.reason_code == "content_llm_unavailable"
+    assert chinese.source_fallback_used is True
     assert english.draft is None
-    assert english.reason_code == "translation_failed"
+    assert english.reason_code == "content_llm_unavailable"
     assert client.chat.completions.calls == []

@@ -12,7 +12,7 @@ from src.briefing.models import (
     SourceEvidence,
     ValidationResult,
 )
-from src.briefing.pipeline import run_brief_pipeline
+from src.briefing.pipeline import _brief_audit_fields, run_brief_pipeline
 
 
 def config(**values) -> BriefingConfig:
@@ -82,9 +82,13 @@ def accepted(value: MergedEvent, *, validation_mode: str = "rules_only") -> Vali
 class Builder:
     def __init__(self):
         self.calls = []
+        self.reason_calls = []
 
     def build_batch(self, events, attempts, rebuild_reasons=None):
         self.calls.append(([value.event_key for value in events], dict(attempts)))
+        self.reason_calls.append(
+            ([value.event_key for value in events], dict(rebuild_reasons or {}))
+        )
         return tuple(
             BuildResult(value.event_key, attempts.get(value.event_key, 0) + 1, draft(value), None)
             for value in events
@@ -458,6 +462,133 @@ def test_pipeline_keeps_per_event_audit_for_rebuilt_and_rejected_candidates():
     assert rebuilt["final_state"] == "accepted"
 
 
+def test_pipeline_counts_title_only_items_and_audits_removed_summary_sentences():
+    class DistinctDeduplicator:
+        diagnostics = {}
+
+        def can_replace_any(self, candidate, accepted):
+            return False
+
+        def evaluate(self, candidate, accepted):
+            return DeduplicationOutcome(True)
+
+    class TitleOnlyValidator:
+        def validate(self, value, built, *, generation_attempt):
+            source = value.canonical_evidence
+            return ValidationResult(
+                "accept",
+                (),
+                "rules_only",
+                validated_item=BriefItem(
+                    event_key=value.event_key,
+                    chinese_title=built.chinese_title,
+                    brief="",
+                    canonical_source=source,
+                    related_sources=(),
+                    published_at=source.published_at,
+                    evidence_bindings=built.evidence_bindings,
+                    content_origin=built.content_origin,
+                    validation_mode="rules_only",
+                    brief_mode="title_only",
+                    brief_reason="brief_restates_title",
+                ),
+            )
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        Builder(),
+        TitleOnlyValidator(),
+        semantic_deduplicator=DistinctDeduplicator(),
+    )
+
+    assert result.decision.action == "create"
+    assert result.decision.selected_count == 5
+    assert all(item.brief_mode == "title_only" for item in result.accepted_items)
+    attempt = result.audit_entries[0]["attempts"][0]
+    assert attempt["original_brief"] == "快讯 event-1。"
+    assert attempt["removed_brief_sentences"] == ["快讯 event-1"]
+    assert attempt["final_brief"] == ""
+    assert attempt["brief_mode"] == "title_only"
+    assert attempt["brief_reason"] == "brief_restates_title"
+
+
+def test_brief_audit_counts_duplicate_sentences_instead_of_using_set_membership():
+    built = BuiltBrief(
+        event_key="event-1",
+        input_index=1,
+        chinese_title="示例标题",
+        brief="重复事实。重复事实。",
+        evidence_bindings=(
+            EvidenceBinding("示例标题", "Source 1 update.", "https://example.test/1"),
+        ),
+        content_origin="source",
+    )
+    value = event(1)
+    accepted_once = ValidationResult(
+        "accept",
+        (),
+        "rules_only",
+        validated_item=BriefItem(
+            event_key=value.event_key,
+            chinese_title="示例标题",
+            brief="重复事实。",
+            canonical_source=value.canonical_evidence,
+            related_sources=(),
+            published_at=value.canonical_evidence.published_at,
+            evidence_bindings=built.evidence_bindings,
+            content_origin="source",
+            validation_mode="rules_only",
+        ),
+    )
+
+    audit = _brief_audit_fields(built, accepted_once)
+
+    assert audit["removed_brief_sentences"] == ["重复事实"]
+
+
+def test_brief_audit_uses_normalized_draft_when_validation_requests_rebuild():
+    built = BuiltBrief(
+        event_key="event-1",
+        input_index=1,
+        chinese_title="示例标题",
+        brief="示例标题。",
+        evidence_bindings=(
+            EvidenceBinding("示例标题", "Source 1 update.", "https://example.test/1"),
+        ),
+        content_origin="source",
+    )
+    normalized = BuiltBrief(
+        event_key=built.event_key,
+        input_index=built.input_index,
+        chinese_title=built.chinese_title,
+        brief="",
+        evidence_bindings=built.evidence_bindings,
+        content_origin=built.content_origin,
+        brief_mode="title_only",
+        brief_reason="brief_restates_title",
+    )
+    rebuilding = ValidationResult(
+        "rebuild",
+        ("semantic_review_rejected",),
+        "rules_and_llm",
+        rebuild_request=RebuildRequest(
+            built.event_key,
+            ("semantic_review_rejected",),
+            2,
+        ),
+        audited_draft=normalized,
+    )
+
+    audit = _brief_audit_fields(built, rebuilding)
+
+    assert audit["removed_brief_sentences"] == ["示例标题"]
+    assert audit["final_brief"] == ""
+    assert audit["brief_mode"] == "title_only"
+    assert audit["brief_reason"] == "brief_restates_title"
+
+
 def test_pipeline_audits_invalid_builder_responses_before_rejecting():
     class EmptyBuilder:
         def build_batch(self, events, attempts, rebuild_reasons=None):
@@ -615,6 +746,53 @@ def test_pipeline_does_not_build_x_candidates_beyond_remaining_quota():
     assert audit["event-2"]["final_reason_codes"] == ["x_limit"]
 
 
+def test_pipeline_attempts_lower_ranked_x_candidates_until_soft_target():
+    events = [event(index) for index in range(1, 16)] + [
+        event(index, channel="x") for index in range(16, 19)
+    ]
+    builder = Builder()
+
+    result = run_brief_pipeline(
+        events,
+        (),
+        config(
+            max_items=15,
+            candidate_pool_size=18,
+            max_x_items=5,
+            target_x_items=3,
+        ),
+        builder,
+        Validator(),
+    )
+
+    first_batch_keys = builder.calls[0][0]
+    assert first_batch_keys[:3] == ["event-16", "event-17", "event-18"]
+    assert result.decision.x_count == 3
+    assert len(result.accepted_items) == 15
+
+
+def test_pipeline_does_not_hard_fill_x_soft_target():
+    events = [event(index) for index in range(1, 16)] + [
+        event(index, channel="x") for index in range(16, 18)
+    ]
+
+    result = run_brief_pipeline(
+        events,
+        (),
+        config(
+            max_items=15,
+            candidate_pool_size=17,
+            max_x_items=5,
+            target_x_items=3,
+        ),
+        Builder(),
+        Validator(),
+    )
+
+    assert result.decision.x_count == 2
+    assert len(result.accepted_items) == 15
+
+
 def test_pipeline_rebuild_keeps_x_candidate_ahead_of_deferred_x_items():
     class RebuildingValidator:
         def validate(self, value, built, *, generation_attempt):
@@ -643,6 +821,79 @@ def test_pipeline_rebuild_keeps_x_candidate_ahead_of_deferred_x_items():
     assert built_keys.count("event-1") == 2
     assert "event-2" not in built_keys
     assert result.accepted_items[0].event_key == "event-1"
+
+
+def test_pipeline_rebuilds_failed_x_candidates_one_at_a_time_with_reasons():
+    class RebuildingValidator:
+        def validate(self, value, built, *, generation_attempt):
+            if generation_attempt == 1:
+                return ValidationResult(
+                    "rebuild",
+                    ("protected_token_missing",),
+                    "rules_only",
+                    rebuild_request=RebuildRequest(
+                        value.event_key,
+                        ("protected_token_missing",),
+                        2,
+                    ),
+                )
+            return accepted(value)
+
+    builder = Builder()
+    run_brief_pipeline(
+        [event(1, channel="x"), event(2, channel="x")]
+        + [event(index) for index in range(3, 8)],
+        (),
+        config(max_x_items=2),
+        builder,
+        RebuildingValidator(),
+    )
+
+    rebuild_calls = [
+        (keys, reasons)
+        for keys, reasons in builder.reason_calls
+        if any(key in {"event-1", "event-2"} for key in keys)
+        and reasons
+    ]
+    assert [keys for keys, _reasons in rebuild_calls] == [
+        ["event-1"],
+        ["event-2"],
+    ]
+    assert all(
+        reasons[key] == ("protected_token_missing",)
+        for keys, reasons in rebuild_calls
+        for key in keys
+    )
+
+
+def test_pipeline_audits_source_fallback_without_hiding_builder_failure():
+    class FallbackBuilder:
+        diagnostics = {}
+
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return tuple(
+                BuildResult(
+                    value.event_key,
+                    attempts.get(value.event_key, 0) + 1,
+                    draft(value),
+                    "builder_item_malformed",
+                    source_fallback_used=True,
+                )
+                for value in events
+            )
+
+    result = run_brief_pipeline(
+        [event(index) for index in range(1, 6)],
+        (),
+        config(),
+        FallbackBuilder(),
+        Validator(),
+    )
+
+    first_attempt = result.audit_entries[0]["attempts"][0]["build"]
+    assert first_attempt["reason_code"] == "builder_item_malformed"
+    assert first_attempt["source_fallback_used"] is True
+    assert result.diagnostics["source_fallback_count"] == 5
 
 
 def test_pipeline_audits_quarantined_event():

@@ -214,6 +214,47 @@ def test_only_create_decision_calls_wechat_with_deterministic_html(tmp_path):
     assert "星河科技发布中文推理模型" in publish.call_args.kwargs["rendered_content"]
 
 
+def test_wechat_receives_resolved_media_items_for_post_upload_rendering(tmp_path):
+    env = {**_env(skip=False), "ENABLE_ARTICLE_IMAGE_FETCH": "1"}
+
+    def resolved_media(items, **_kwargs):
+        from src.briefing.adapters import brief_item_to_display_dict
+
+        display_items = [brief_item_to_display_dict(item) for item in items]
+        display_items[0].update({
+            "media_state": "trusted",
+            "normalized_image_path": str(tmp_path / "article.jpg"),
+            "article_image_url": "https://example.test/article.jpg",
+            "image_type": "original",
+        })
+        return display_items, {
+            "total": len(items),
+            "with_original_image": 1,
+            "text_only": len(items) - 1,
+        }
+
+    with (
+        patch.dict("os.environ", env, clear=True),
+        patch(
+            "src.collector.collect_candidates",
+            return_value=[_candidate(index) for index in range(1, 6)],
+        ),
+        patch("src.media_assets.resolve_article_media", side_effect=resolved_media),
+        patch("src.cover.generate_cover_from_news", return_value=str(tmp_path / "cover.jpg")),
+        patch("src.services.production_snapshot.save_production_snapshot"),
+        patch(
+            "src.wechat_draft.publish_daily_article",
+            return_value={"status": "draft_created", "media_id": "media-1"},
+        ) as publish,
+    ):
+        result = daily_main._run_pipeline(docs_dir=str(tmp_path), now=NOW)
+
+    assert result["status"] == "draft_created"
+    published_items = publish.call_args.args[0]
+    assert published_items[0]["media_state"] == "trusted"
+    assert published_items[0]["normalized_image_path"] == str(tmp_path / "article.jpg")
+
+
 def test_wechat_failure_does_not_change_the_create_decision(tmp_path):
     env = _env(skip=False)
     with (

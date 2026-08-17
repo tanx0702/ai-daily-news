@@ -18,6 +18,8 @@ def summary_sentences(value: str) -> tuple[str, ...]:
 def display_targets(title: str, brief: str) -> Mapping[str, str]:
     """Map supported target identifiers to their complete displayed claims."""
     targets = {"title": title.strip()}
+    if not brief.strip():
+        return targets
     for index, sentence in enumerate(summary_sentences(brief), 1):
         targets[f"brief_{index}"] = sentence
     return targets

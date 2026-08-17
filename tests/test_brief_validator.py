@@ -4,7 +4,7 @@ from pathlib import Path
 
 from src.briefing.config import BriefingConfig
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent, SourceEvidence
-from src.briefing.validator import BriefValidator
+from src.briefing.validator import BriefValidator, _cross_language_anchors
 from src.llm_config import LLMConfig
 
 
@@ -74,7 +74,80 @@ def test_validator_accepts_quotes_after_html_entity_and_whitespace_normalization
     assert result.action == "accept"
     assert result.validation_mode == "rules_only"
     assert result.validated_item.chinese_title == "OpenAI 发布 Model 5"
-    assert result.validated_item.evidence_bindings == draft(item).evidence_bindings
+    assert result.validated_item.brief == "该模型提供文本 API。"
+    assert result.validated_item.brief_mode == "expanded"
+    assert result.validated_item.brief_reason == "brief_restates_title"
+
+
+def test_validator_accepts_title_only_when_summary_is_empty():
+    item = event(evidence_text="OpenAI 发布 Model 5")
+    generated = draft(
+        item,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "OpenAI 发布 Model 5",
+                "OpenAI 发布 Model 5",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validated_item.brief == ""
+    assert result.validated_item.brief_mode == "title_only"
+    assert result.validated_item.brief_reason == "brief_empty"
+
+
+def test_validator_removes_all_title_restatement_sentences_without_rebuild():
+    item = event(evidence_text="OpenAI 发布 Model 5。")
+    generated = draft(
+        item,
+        brief="OpenAI 发布 Model 5。",
+        evidence_bindings=(
+            EvidenceBinding(
+                "OpenAI 发布 Model 5",
+                "OpenAI 发布 Model 5",
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                "OpenAI 发布 Model 5",
+                "Model 5",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validated_item.brief == ""
+    assert result.validated_item.brief_mode == "title_only"
+    assert result.validated_item.brief_reason == "brief_restates_title"
+
+
+def test_validator_removes_title_restatement_even_when_quote_includes_body_text():
+    item = event()
+    generated = draft(
+        item,
+        brief="OpenAI 发布 Model 5。",
+        evidence_bindings=(
+            EvidenceBinding(
+                "OpenAI 发布 Model 5",
+                "OpenAI 发布 Model 5。该模型提供文本 API。",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validated_item.brief == ""
+    assert result.validated_item.brief_mode == "title_only"
+    assert result.validated_item.brief_reason == "brief_restates_title"
 
 
 def test_validator_requests_rebuild_for_quote_missing_from_canonical_evidence():
@@ -335,6 +408,14 @@ def test_validator_accepts_anchored_cross_language_claim_when_quality_is_unavail
     assert result.action == "accept"
     assert result.validation_mode == "rules_only"
     assert result.reason_codes == ("quality_llm_unavailable", "rules_only_used")
+
+
+def test_cross_language_anchors_ignore_terminal_punctuation():
+    claim = _cross_language_anchors("MiniMax H3 将在 Magnific SF office 举办活动")
+    quote = _cross_language_anchors("MiniMax H3 at the Magnific SF office.")
+
+    assert claim <= quote
+    assert "office." not in quote
 
 
 def test_validator_accepts_cross_language_claim_when_quality_review_times_out():
@@ -890,7 +971,7 @@ def test_valid_quality_review_marks_rules_and_llm_without_changing_content():
     assert result.action == "accept"
     assert result.validation_mode == "rules_and_llm"
     assert result.validated_item.chinese_title == original.chinese_title
-    assert result.validated_item.brief == original.brief
+    assert result.validated_item.brief == "该模型提供文本 API。"
 
 
 def test_quality_review_request_explicitly_mentions_json_for_json_object_mode():

@@ -22,6 +22,7 @@
 
 1.5 事实简报候选
    -> 从唯一事件生成最多 15 条简报，按排序偏好选择候选
+   -> X 未达到默认软目标 3 条时优先尝试下一条 X 候选；软目标不是配额，候选不足或质检失败时不硬凑
    -> 每个显示声明必须绑定到显示的规范来源证据
 
 1.x v2/shadow/editorial 诊断
@@ -30,8 +31,13 @@
 
 2. 生成与核验事实简报
    -> LLM 只翻译/摘要规范来源证据，不增加新闻事实
-   -> 内容 LLM 返回 title/brief_1/brief_2 展示目标，Python 生成完整 claim 绑定
+   -> 内容 LLM 返回 title 和零至两个 brief 展示目标；没有标题外事实时允许空 brief，Python 生成完整 claim 绑定
+   -> X 首次生成失败后的重建使用单条请求，并携带失败原因以及 @handle、名称和数字保护锚点
+   -> 内容 LLM 超时、不可用、无效 JSON/schema、响应缺项、条目畸形、重复 index 与有效结构下的未翻译输出分别记录，不能统一压缩为 translation_failed
+   -> 供应商可返回空字符串 brief；一至两项非空字符串列表只机械拼接后重新校验，三项以上或其它结构仍拒绝
+   -> 第二次失败若使用完整中文原文回退，独立记录 source_fallback_used，并保留触发回退的原始原因码
    -> 确定性规则核验展示目标、来源 URL、逐字证据引文、名称/数字/动作和唯一事件
+   -> 摘要句引用仅落在原始标题范围时逐句删除；全部删除后转为 title_only，有增量句时保持 expanded
    -> 质量 LLM 只做只读语义增强；缺失、超时或无效响应时，硬规则通过的条目自动使用 rules_only，不请求人工复核
    -> 跨语言 rules_only 必须有逐字实体锚点，且只包含可机械核验的数字、动作和语法词；用途等翻译语义仍需质量 LLM 接受
 
@@ -62,6 +68,9 @@
 
 6. 微信草稿
    -> DraftDecision=create 时才上传封面并创建公众号草稿
+   -> 上传封面和可信新闻配图后，使用微信 CDN URL 重新生成最终正文；上传前预览 HTML 不进入真实草稿
+   -> draft/add 只有明确 API 拒绝才有界重试；超时、断连或响应无法确认时立即记为 draft_create_uncertain，避免重复草稿
+   -> 草稿只保留每条事实简报的规范原始来源链接，不设置公众号 `content_source_url`，也不展示站点“查看完整日报”入口
    -> SKIP_WECHAT_DRAFT=1 是唯一安全干跑边界：生成产物并记录 dry_run，不调用草稿 API
    -> block 或草稿执行 failed 时不创建草稿，任务返回非零
 ```
@@ -75,12 +84,12 @@
 - 高文本相似度不能单独证明同一事件；除冻结的规范化原始来源标题完全相同外，自动合并还必须有共享组织、人物或模型锚点。发布前比较不会使用 LLM 生成的中文标题触发完全匹配；只共享 `OpenAI` 等宽泛组织名不足以判定重复。
 - 质量 LLM 返回 `same_event` 时，至少一个主体必须精确对应两边确定性规则共同抽取出的完整人物或模型实体；强人物锚点只来自逐行提取的已确认姓名。未登记但带人物语境的名称只触发复核，不能被 LLM 的 `same_event` 升级为强主体；此时按歧义重复隔离弱项。未知 Title Case 短语、职位、单句代词语境、`AI`、`executive`、实体片段和宽泛组织名只能作为辅助信息。
 - 聚类和发布前去重共享同一个 `QUALITY_LLM_*` reviewer、调用预算和熔断状态。LLM 只返回 `same_event|distinct|uncertain` 关系，不得改写标题、摘要或证据。
-- 每个完整标题或摘要句都以规范来源中的证据文本和 URL 绑定；同一展示目标允许多条引用，任何缺少目标、错误 URL 或证据引用都不能进入 `brief_items`。
+- `BriefItem.brief_mode` 只能是 `title_only` 或 `expanded`。`title_only` 的 `brief` 为空且正常计入 5-15 条决策；`expanded` 保留一至两句标题外增量事实。每个完整标题或非空摘要句都以规范来源中的证据文本和 URL 绑定；同一展示目标允许多条引用，任何缺少目标、错误 URL 或证据引用都不能进入 `brief_items`。
 - `src.domain`、`src.agents` 和 `src.workflows` 的 v2/shadow/editorial 模型只支持诊断和反馈，不替换生产事实简报契约。
 
 ## 决策与执行契约
 
-`DraftDecision` 是唯一生产决策，动作只能是 `create` 或 `block`。它依据 5-15 条唯一、已核验的事实简报，要求每个声明拥有规范来源证据，并限制最终把 X 用作规范来源的条目不超过 5 条。少于 5 条时 block；5-14 条是正常短版。
+`DraftDecision` 是唯一生产决策，动作只能是 `create` 或 `block`。它依据 5-15 条唯一、已核验的事实简报，要求每个声明拥有规范来源证据，并限制最终把 X 用作规范来源的条目不超过 5 条。`DAILY_X_TARGET_ITEMS` 只控制候选尝试顺序，不是 `DraftDecision` 的来源配额；少于软目标不会 block。少于 5 条时 block；5-14 条是正常短版。
 
 `DraftExecution` 不改变决策，只记录 `draft_created`、`dry_run`、`blocked` 或 `failed`。`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界。旧 `src/publication.py`、`src/quality_gate.py`、`publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核均不是生产控制。
 
@@ -90,12 +99,14 @@
 | --- | --- | --- |
 | 单个 RSS/HN/GitHub/HF/arXiv/X 来源 | 是 | 记录日志，跳过该来源 |
 | X 快照过期/ schema 错误 | 是 | 只跳过 X，保留其它来源 |
-| LLM 批量摘要失败 | 是 | 逐条重试；失败项保留原始信息 |
+| 内容 LLM 超时、不可用、整包无效或条目缺失/畸形/重复 | 是 | 最多重建一次；X 使用携带原因和保护锚点的单条请求，其它来源保持有界批量；失败项记录精确原因，中文原文回退另记独立标志且不覆盖原因 |
 | 原文媒体下载失败 | 是 | 生成 text-only 新闻卡片 |
 | AI 封面失败 | 是 | 使用本地确定性封面/旧链路降级 |
 | 质量 LLM 不可用/无效 | 是 | 有逐字实体锚点且只含可机械核验数字/动作的跨语言条目可用 `rules_only` 自动入选；其余条目重建一次后移除，不进行人工复核 |
 | 语义去重 LLM 不可用/超时/无效/预算耗尽 | 是 | 保守保留较强来源并移除或隔离较弱疑似重复；继续从队列回填，不进入人工复核 |
 | 少于 5 条有效唯一简报或发现遗留重复 | 是 | 保存 HTML、schema v2 JSON、诊断，记录 `block`，返回非零 |
+| 微信封面缺失、上传无 CDN URL 或最终正文未使用微信封面 | 是 | 不创建半成品草稿；保存 HTML、schema v2 JSON、诊断，记录 `failed`，返回非零 |
+| 微信 draft/add 结果不确定 | 是 | 不自动重试；记录 `draft_create_uncertain`，返回非零，由维护者先检查公众号后台 |
 | 微信草稿执行失败 | 是 | 保存 HTML、schema v2 JSON、诊断，记录 `failed`，返回非零 |
 | 无任何候选/无法建立运行结果 | 否 | 记录错误并终止本次任务 |
 
@@ -113,4 +124,4 @@
 
 这些文件是运行时生成物，不应作为源代码提交。
 
-`docs/debug/<date>-briefing.json` 的 `candidate_audit` 仅供维护者逐条追溯：它保留事件的结构化原始证据、每次构建稿、证据绑定、验证或重建结果，以及最终状态和原因码。聚类阶段并入 related evidence 的每个来源使用独立 `clustered_duplicate` 条目记录原始证据、`duplicate_of`、`relationship` 和 `comparison_mode`。审计不写入 `docs/latest.json`、公开 HTML 或微信草稿，也不得包含密钥或完整第三方 API 原始响应。
+`docs/debug/<date>-briefing.json` 的 `candidate_audit` 仅供维护者逐条追溯：它保留事件的结构化原始证据、每次构建稿、证据绑定、验证或重建结果、`original_brief`、`removed_brief_sentences`、`final_brief`、`brief_mode`、`brief_reason`，以及最终状态和原因码。聚类阶段并入 related evidence 的每个来源使用独立 `clustered_duplicate` 条目记录原始证据、`duplicate_of`、`relationship` 和 `comparison_mode`。审计不写入 `docs/latest.json`、公开 HTML 或微信草稿，也不得包含密钥或完整第三方 API 原始响应。
