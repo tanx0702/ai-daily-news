@@ -184,7 +184,8 @@ def test_read_dom_cards_supports_current_schema_org_tweet_cards():
                 "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
                 "[role='article'], "
-                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting'], "
+                "a[href*='/status/']"
             )
             return FakeLocator()
 
@@ -334,7 +335,8 @@ def test_run_probe_uses_dom_fallback_after_empty_xhr(
                 "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
                 "[role='article'], "
-                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+                "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting'], "
+                "a[href*='/status/']"
             )
             return FakeLocator()
 

@@ -43,28 +43,42 @@ DOM_TWEET_SELECTOR = (
     "article:has(a[href*='/status/']), "
     "article[data-testid='tweet'], "
     "[role='article'], "
-    "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
+    "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting'], "
+    "a[href*='/status/']"
 )
 STATUS_ID_PATTERN = re.compile(r"/status/(\d+)(?:[/?#]|$)")
 PUBLIC_ID_PATTERN = re.compile(r"[0-9]{1,32}\Z")
 # 浏览器侧只读取页面已渲染卡片的公开字段，不保存 HTML、脚本或网络请求内容。
 DOM_CARD_EVALUATOR = r"""
 (cards) => cards.map((card) => {
+  const isStatusLink = card.matches && card.matches("a[href*='/status/']");
+  const contentRoot = (() => {
+    if (!isStatusLink) return card;
+    let current = card.parentElement;
+    for (let depth = 0; current && depth < 12; depth += 1) {
+      if (current.querySelector("[data-testid='tweetText'], div[lang]")) return current;
+      current = current.parentElement;
+    }
+    return card.parentElement || card;
+  })();
   const readMeta = (property) => {
-    const node = card.querySelector("meta[itemprop='" + property + "']");
+    const node = contentRoot.querySelector("meta[itemprop='" + property + "']");
     return node ? (node.getAttribute("content") || "").trim() : "";
   };
-  const statusLink = Array.from(card.querySelectorAll("a[href*='/status/']"))
+  const statusLinks = isStatusLink
+    ? [card]
+    : Array.from(card.querySelectorAll("a[href*='/status/']"));
+  const statusLink = statusLinks
     .find((link) => /\/status\/\d+(?:[/?#]|$)/.test(link.href));
   const statusUrl = readMeta("url") || (statusLink ? statusLink.href : "");
-  const text = readMeta("articleBody") || Array.from(card.querySelectorAll(
+  const text = readMeta("articleBody") || Array.from(contentRoot.querySelectorAll(
     "[data-testid='tweetText'], div[lang]"
   ))
     .map((node) => node.innerText.trim())
     .filter(Boolean)
     .join("\n");
-  const authorMeta = card.querySelector("[itemprop='author'] meta[itemprop='alternateName']");
-  const userName = card.querySelector("[data-testid='User-Name']");
+  const authorMeta = contentRoot.querySelector("[itemprop='author'] meta[itemprop='alternateName']");
+  const userName = contentRoot.querySelector("[data-testid='User-Name']");
   const authorLink = userName
     ? Array.from(userName.querySelectorAll("a[href]")).find((link) => {
         const parts = new URL(link.href).pathname.split("/").filter(Boolean);
