@@ -23,7 +23,7 @@ EVENT_ACTION_MARKERS = {
         "tracks",
     ),
     "result": (
-        "达到", "提升", "降低", "超过", "增长", "achieve", "achieved", "improve",
+        "达到", "提升", "降低", "减少", "超过", "增长", "achieve", "achieved", "improve",
         "improved", "reduce", "reduced", "reduces", "exceed", "exceeded",
         "jump", "jumps",
     ),
@@ -191,8 +191,8 @@ def _organization_anchors(value: str) -> set[str]:
 
 def _model_anchors(value: str) -> set[str]:
     pattern = re.compile(
-        r"(?<![a-z0-9])(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"[- ]?[a-z]*\d[\w.+-]*(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
+        r"[- ]?[a-z]*\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
         re.I,
     )
     return {

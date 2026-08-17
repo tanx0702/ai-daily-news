@@ -118,6 +118,28 @@ def test_publishability_accepts_cross_language_titles_with_anchored_details():
         assert result.accepted is True, display_title
 
 
+def test_publishability_accepts_reduces_and_chatgpt_with_anchored_titles():
+    cases = (
+        (
+            "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee",
+            "Nvidia 减少 OpenAI",
+        ),
+        (
+            "ChatGPT’s Computer History tracks your clicks and keystrokes",
+            "ChatGPT 的 Computer History 追踪 clicks and keystrokes",
+        ),
+    )
+
+    for source_title, display_title in cases:
+        result = validate_display_publishability(
+            display_title,
+            "",
+            source(source_title),
+        )
+
+        assert result.accepted is True, display_title
+
+
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
     quote = "Mistral office research. OpenAI releases GPT-5.6."
 
