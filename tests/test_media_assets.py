@@ -4,10 +4,32 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from src.media_assets import resolve_article_media, validate_media_candidate
+from src.media_assets import (
+    evaluate_media_relevance,
+    resolve_article_media,
+    validate_media_candidate,
+)
 
 
 class MediaAssetTests(unittest.TestCase):
+    def test_semantic_media_gate_rejects_brand_only_corporate_image(self):
+        result = evaluate_media_relevance(
+            "Mistral 发布 1GW 数据中心",
+            "Mistral corporate research team photo",
+        )
+
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "missing_semantic_anchor")
+
+    def test_semantic_media_gate_accepts_shared_full_model_anchor(self):
+        result = evaluate_media_relevance(
+            "OpenAI 发布 GPT-5.6",
+            "GPT-5.6 launch image",
+        )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["reason"], "shared_model_anchor")
+
     def test_validator_reencodes_supported_image_to_jpeg(self):
         webp = io.BytesIO()
         Image.new("RGB", (640, 360), (32, 128, 192)).save(webp, "WEBP")
@@ -42,8 +64,16 @@ class MediaAssetTests(unittest.TestCase):
         with patch("src.media_assets.validate_media_candidate", return_value=validated):
             items, _ = resolve_article_media(
                 [
-                    {"title": "First", "article_image_url": "https://example.test/first.jpg"},
-                    {"title": "Second", "article_image_url": "https://example.test/second.jpg"},
+                    {
+                        "title": "Aurora telemetry update",
+                        "article_image_url": "https://example.test/first.jpg",
+                        "article_image_context": "Aurora telemetry launch photo",
+                    },
+                    {
+                        "title": "Borealis deployment report",
+                        "article_image_url": "https://example.test/second.jpg",
+                        "article_image_context": "Borealis deployment photo",
+                    },
                 ],
             )
 

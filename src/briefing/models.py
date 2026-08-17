@@ -49,6 +49,12 @@ class SourceEvidence:
     evidence_text: str
     url: str
     published_at: str
+    discovered_via: str = ""
+    evidence_quality: str = "ready"
+    source_item_id: str = ""
+    thread_id: str = ""
+    reply_to_item_id: str = ""
+    quoted_item_id: str = ""
 
     def __post_init__(self) -> None:
         if self.channel not in _CHANNELS:
@@ -69,6 +75,12 @@ class SourceEvidence:
             "evidence_text": self.evidence_text,
             "url": self.url,
             "published_at": self.published_at,
+            "discovered_via": self.discovered_via,
+            "evidence_quality": self.evidence_quality,
+            "source_item_id": self.source_item_id,
+            "thread_id": self.thread_id,
+            "reply_to_item_id": self.reply_to_item_id,
+            "quoted_item_id": self.quoted_item_id,
         }
 
     def to_public_dict(self) -> dict[str, Any]:
@@ -81,6 +93,8 @@ class SourceEvidence:
             "official_identity_source": self.official_identity_source,
             "url": self.url,
             "published_at": self.published_at,
+            "discovered_via": self.discovered_via,
+            "evidence_quality": self.evidence_quality,
         }
 
     @classmethod
@@ -96,6 +110,12 @@ class SourceEvidence:
             evidence_text=str(data.get("evidence_text") or ""),
             url=str(data["url"]),
             published_at=str(data["published_at"]),
+            discovered_via=str(data.get("discovered_via") or ""),
+            evidence_quality=str(data.get("evidence_quality") or "ready"),
+            source_item_id=str(data.get("source_item_id") or ""),
+            thread_id=str(data.get("thread_id") or ""),
+            reply_to_item_id=str(data.get("reply_to_item_id") or ""),
+            quoted_item_id=str(data.get("quoted_item_id") or ""),
         )
 
     @classmethod

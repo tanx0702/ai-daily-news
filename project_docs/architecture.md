@@ -24,6 +24,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 ├─ src/
 │  ├─ main.py                     生产日报编排入口
 │  ├─ collector.py                采集兼容入口、合并、筛选、评分和最终去重
+│  ├─ source_normalization.py      规范来源 URL、发布者和 HN 发现渠道投影
 │  ├─ collectors/                 HN/GitHub/HF/arXiv/X 等独立采集器
 │  ├─ briefing/                   事实简报配置、聚类、核验、决策和 latest.json schema v2
 │  ├─ agents/                     v2/shadow 分析和候选适配代理（仅诊断）

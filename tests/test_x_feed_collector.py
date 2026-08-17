@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from src import collector
+from src.briefing.evidence import source_evidence_from_candidate
 from src.collectors.x_feed import XFeedCollector
 
 
@@ -82,8 +83,48 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             "x_official": True,
             "x_handle": "OpenAI",
             "x_official_source": "config/x_sources.json",
+            "x_tweet_id": "42",
+            "x_thread_id": "42",
+            "x_reply_to_id": "",
+            "x_quoted_id": "",
         }
     ]
+
+
+def test_x_feed_collector_accepts_legacy_x_date_and_maps_thread_fields(monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["tweets"][0].update(
+        {
+            "created_at": "Sun Aug 03 06:00:00 +0000 2026",
+            "thread_id": "40",
+            "reply_to_id": "41",
+            "quoted_id": "39",
+        }
+    )
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        now=now,
+    ).fetch()
+
+    assert len(items) == 1
+    assert items[0]["published_at"] == datetime(2026, 8, 3, 6, tzinfo=timezone.utc)
+    assert items[0]["x_thread_id"] == "40"
+    assert items[0]["x_reply_to_id"] == "41"
+    assert items[0]["x_quoted_id"] == "39"
+
+    evidence = source_evidence_from_candidate(items[0], trusted_x_collector=True)
+
+    assert evidence is not None
+    assert evidence.source_item_id == "42"
+    assert evidence.thread_id == "40"
+    assert evidence.reply_to_item_id == "41"
+    assert evidence.quoted_item_id == "39"
 
 
 def test_x_feed_collector_rejects_stale_snapshot(monkeypatch):

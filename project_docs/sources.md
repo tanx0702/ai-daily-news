@@ -28,7 +28,7 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 ### Hacker News
 
-`HackerNewsCollector` 先取得 AI 相关条目，再补抓 Hacker News 详情和原文链接。score、comments 和是否有跨源确认用于热度/可信度评分。低 score、低评论且没有官方域名或跨源确认的条目会降权或标记风险。
+`HackerNewsCollector` 先取得 AI 相关条目，再补抓 Hacker News 详情和原文链接。score、comments 和是否有跨源确认只用于热度/可信度评分，绝不能作为新闻摘要或正式发布证据。若 HN 条目有可验证的外链，事实简报使用外链作为规范 URL 和发布者，HN 只记录为发现渠道；只有标题、积分或评论元数据的条目不得进入日报。
 
 ### GitHub
 
@@ -52,6 +52,7 @@ X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，�
 - 快照生成时间在 `X_FEED_MAX_AGE_HOURS`（默认 6 小时）内，允许最多 5 分钟的时钟偏差。
 - `tweet_id` 为数字，文本、source name、author、source tier 和创建时间非空。
 - URL 是 `https://x.com/<handle>/status/<tweet_id>` 或 `www.x.com` 的对应 status URL。
+- Runner 将 X GraphQL 的 legacy 日期规范化为 UTC ISO 8601，并保留受限数字的 `thread_id`、`reply_to_id` 和 `quoted_id`；生产 collector 再映射为事实证据的线程关系字段。无效、非 ASCII 或超长 ID 只清空对应关系，不能影响其它候选。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
 
 快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑；失败的 X 重建使用携带失败原因和保护锚点的单条内容 LLM 请求，`@handle` 可从规范 X status URL 机械恢复。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。

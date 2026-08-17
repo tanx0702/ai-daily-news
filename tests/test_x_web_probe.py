@@ -72,12 +72,38 @@ def test_extract_tweets_reads_nested_payload_and_deduplicates_id():
             "text": "模型已发布",
             "author": "OpenAI",
             "created_at": "Sun Aug 03 06:00:00 +0000 2026",
+            "thread_id": "42",
+            "reply_to_id": "",
+            "quoted_id": "",
             "like_count": 7,
             "repost_count": 3,
             "reply_count": 2,
             "quote_count": 1,
         }
     ]
+
+
+def test_extract_tweets_preserves_graphql_thread_relationship_ids():
+    payload = {
+        "data": {
+            "tweetResult": {
+                "result": {
+                    "rest_id": "42",
+                    "legacy": {
+                        "full_text": "回复并引用",
+                        "created_at": "Sun Aug 03 06:00:00 +0000 2026",
+                        "conversation_id_str": "40",
+                        "in_reply_to_status_id_str": "41",
+                        "quoted_status_id_str": "39",
+                    },
+                }
+            }
+        }
+    }
+
+    assert extract_tweets(payload)[0]["thread_id"] == "40"
+    assert extract_tweets(payload)[0]["reply_to_id"] == "41"
+    assert extract_tweets(payload)[0]["quoted_id"] == "39"
 
 
 def test_report_contains_only_public_fields_and_empty_report_fails():
@@ -130,6 +156,9 @@ def test_extract_dom_tweets_uses_status_url_and_deduplicates_visible_cards():
             "text": "模型已发布",
             "author": "OpenAI",
             "created_at": "2026-08-03T06:00:00.000Z",
+            "thread_id": "42",
+            "reply_to_id": "",
+            "quoted_id": "",
             "like_count": 0,
             "repost_count": 0,
             "reply_count": 0,

@@ -11,6 +11,7 @@ from typing import Literal
 from urllib.parse import urlparse, urlunparse
 
 from src.briefing.models import BriefItem, SourceEvidence
+from src.briefing.publishability import asserted_action_types
 
 
 Relationship = Literal["same_event", "distinct", "review"]
@@ -187,6 +188,7 @@ class EventFeatures:
     person_candidates: frozenset[str]
     models: frozenset[str]
     actions: frozenset[str]
+    asserted_actions: frozenset[str]
     qualifiers: frozenset[str]
     text_tokens: frozenset[str]
 
@@ -220,7 +222,7 @@ class EventDocument:
             url=evidence.url,
             published_at=evidence.published_at,
             evidence=evidence,
-            features=_extract_features(text),
+            features=_extract_features(text, action_text=evidence.source_title),
             editorial_score=editorial_score,
         )
 
@@ -234,7 +236,7 @@ class EventDocument:
             url=source.url,
             published_at=item.published_at,
             evidence=source,
-            features=_extract_features(text),
+            features=_extract_features(text, action_text=source.source_title),
             event_key=item.event_key,
         )
 
@@ -257,6 +259,9 @@ def deterministic_relationship(
     left_features = left.features
     right_features = right.features
     shared_actions = left_features.actions & right_features.actions
+    shared_asserted_actions = (
+        left_features.asserted_actions & right_features.asserted_actions
+    )
     shared_people = _shared_people(left, right)
     if left_features.actions and right_features.actions and not shared_actions:
         return "distinct"
@@ -285,17 +290,26 @@ def deterministic_relationship(
         return "distinct"
 
     shared_strong = shared_strong_subjects(left, right)
-    if shared_strong and shared_actions:
+    if (
+        _same_x_thread(left, right)
+        and shared_strong
+        and (left_features.asserted_actions or right_features.asserted_actions)
+    ):
+        # A reaction often omits the release verb. Keep it out of automatic merging,
+        # but let the bounded reviewer/degradation path remove the weaker duplicate.
+        return "review"
+    if shared_strong and shared_asserted_actions:
         return "same_event"
 
     if (
         _normalized_title(left.title) == _normalized_title(right.title)
         and not shared_person_candidates
+        and shared_asserted_actions
     ):
         return "same_event"
 
     similarity = _text_similarity(left, right)
-    if similarity >= 0.82 and shared_strong:
+    if similarity >= 0.82 and shared_strong and shared_asserted_actions:
         return "same_event"
     if shared_actions and (shared_organizations or shared_person_candidates):
         return "review"
@@ -326,7 +340,7 @@ def shared_strong_subjects(
     )
 
 
-def _extract_features(value: str) -> EventFeatures:
+def _extract_features(value: str, *, action_text: str | None = None) -> EventFeatures:
     normalized = _normalize(value)
     lowered = normalized.casefold()
     organizations = frozenset(
@@ -354,6 +368,7 @@ def _extract_features(value: str) -> EventFeatures:
         person_candidates,
         models,
         actions,
+        asserted_action_types(action_text if action_text is not None else value),
         qualifiers,
         tokens,
     )
@@ -520,6 +535,18 @@ def _x_status_id(value: str) -> str:
         return ""
     match = re.search(r"/status/(\d+)(?:/|$)", parsed.path)
     return match.group(1) if match else ""
+
+
+def _same_x_thread(left: EventDocument, right: EventDocument) -> bool:
+    left_thread = left.evidence.thread_id
+    right_thread = right.evidence.thread_id
+    return bool(
+        left.evidence.channel == "x"
+        and right.evidence.channel == "x"
+        and left_thread
+        and left_thread == right_thread
+        and left.evidence.source_item_id != right.evidence.source_item_id
+    )
 
 
 def _timestamp(value: str) -> float:

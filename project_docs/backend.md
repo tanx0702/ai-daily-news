@@ -41,7 +41,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 
 ## 数据、时间和日志
 
-- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary` 和证据字段；最终 `BriefItem` 还必须保留事件键、规范来源证据、每个显示声明的证据绑定、`brief_mode` 和 `brief_reason`。
+- 候选跨模块传递时保留 `id`、`title`、`url`、`source`、`source_type`、`published_at`、`summary` 和证据字段；X 候选还保留受限数字的 tweet/thread/reply/quote ID。最终 `BriefItem` 还必须保留事件键、规范来源证据、每个显示声明的证据绑定、`brief_mode` 和 `brief_reason`。
 - 写入 JSON 的对象必须可序列化；日期由 `src.pipeline_artifacts.json_serial` 统一转换，不把 Python 对象直接写入产物。
 - 网络时间和持久化时间使用带时区的 `datetime`；日报日期由 `src.time_utils` 按 `APP_TIMEZONE`（生产默认 `Asia/Shanghai`）计算。
 - 所有模块使用 `logging`；日志可以包含来源名、候选数、阶段状态和错误类别，但不得包含 `LLM_API_KEY`、`IMAGE_API_KEY`、微信 secret/token、密码、Authorization 头或完整供应商响应。

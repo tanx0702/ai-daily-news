@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from html import unescape
-from html.parser import HTMLParser
 import re
 from typing import Mapping
 from urllib.parse import urlparse
 
 from src.briefing.models import SourceEvidence
+from src.source_normalization import (
+    normalize_candidate_source,
+    publisher_trust_from_url,
+)
 
 
 _CHANNEL_MAP = {
@@ -21,27 +23,6 @@ _CHANNEL_MAP = {
     "hn": "hacker_news",
     "hacker_news": "hacker_news",
 }
-
-
-class _VisibleText(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.parts: list[str] = []
-
-    def handle_data(self, data: str) -> None:
-        self.parts.append(data)
-
-
-def _clean_text(value: object) -> str:
-    raw = unescape(str(value or ""))
-    parser = _VisibleText()
-    try:
-        parser.feed(raw)
-        parser.close()
-        raw = " ".join(parser.parts)
-    except Exception:
-        pass
-    return re.sub(r"\s+", " ", raw).strip()
 
 
 def _published_iso(value: object) -> str | None:
@@ -85,18 +66,16 @@ def source_evidence_from_candidate(
     if published_at is None:
         return None
 
+    normalized = normalize_candidate_source(candidate)
+    if not normalized.canonical_url or not normalized.source_title:
+        return None
+
     source_type = str(candidate.get("source_type") or "rss").strip().lower()
     channel = _CHANNEL_MAP.get(source_type, "rss")
-    url = str(candidate.get("source_url") or candidate.get("url") or "").strip()
-    source_name = _clean_text(candidate.get("source_name") or candidate.get("source"))
-    source_title = _clean_text(candidate.get("source_title") or candidate.get("title"))
-    evidence_parts = [
-        source_title,
-        _clean_text(candidate.get("source_summary")),
-        _clean_text(candidate.get("source_excerpt")),
-        _clean_text(candidate.get("source_body")),
-    ]
-    evidence_text = "\n".join(dict.fromkeys(part for part in evidence_parts if part))
+    url = normalized.canonical_url
+    source_name = normalized.publisher_name
+    source_title = normalized.source_title
+    evidence_text = normalized.evidence_text
 
     aliases = {
         str(key).strip().lower().lstrip("@"): str(value).strip()
@@ -133,7 +112,14 @@ def source_evidence_from_candidate(
         publisher_id = aliases.get(alias_key) or _slug(handle or source_name)
     else:
         host = _normalized_host(url)
-        if channel == "arxiv" or source_tier == "research":
+        registered_authority, registered_official, registered_identity = (
+            publisher_trust_from_url(url)
+        )
+        if normalized.discovered_via == "hacker_news":
+            authority = registered_authority
+            is_official = registered_official
+            official_identity_source = registered_identity
+        elif channel == "arxiv" or source_tier == "research":
             authority = "research"
         elif source_tier == "primary":
             authority = "official"
@@ -141,9 +127,29 @@ def source_evidence_from_candidate(
             official_identity_source = "rss_source_config"
         elif source_tier in {"media", "professional_media"}:
             authority = "professional_media"
+        elif registered_authority != "community":
+            authority = registered_authority
+            is_official = registered_official
+            official_identity_source = registered_identity
         else:
             authority = "community"
         publisher_id = aliases.get(host) or _slug(host or source_name)
+
+    thread_values = {
+        "source_item_id": "",
+        "thread_id": "",
+        "reply_to_item_id": "",
+        "quoted_item_id": "",
+    }
+    if channel == "x":
+        thread_values = {
+            "source_item_id": str(candidate.get("x_tweet_id") or ""),
+            "thread_id": str(
+                candidate.get("x_thread_id") or candidate.get("x_tweet_id") or ""
+            ),
+            "reply_to_item_id": str(candidate.get("x_reply_to_id") or ""),
+            "quoted_item_id": str(candidate.get("x_quoted_id") or ""),
+        }
 
     return SourceEvidence(
         publisher_id=publisher_id,
@@ -156,4 +162,7 @@ def source_evidence_from_candidate(
         evidence_text=evidence_text,
         url=url,
         published_at=published_at,
+        discovered_via=normalized.discovered_via,
+        evidence_quality=normalized.evidence_quality,
+        **thread_values,
     )

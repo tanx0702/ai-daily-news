@@ -62,11 +62,39 @@ def brief_item(**overrides):
 
 
 def test_source_evidence_round_trips_timezone_aware_iso_timestamp():
-    original = evidence()
+    original = evidence(
+        discovered_via="hacker_news",
+        evidence_quality="title_only",
+        source_item_id="42",
+        thread_id="40",
+        reply_to_item_id="41",
+        quoted_item_id="39",
+    )
 
     restored = SourceEvidence.from_dict(original.to_dict())
 
     assert restored == original
+    assert restored.thread_id == "40"
+
+
+def test_old_source_evidence_payload_defaults_new_fields():
+    payload = evidence().to_dict()
+    for field in (
+        "discovered_via",
+        "evidence_quality",
+        "source_item_id",
+        "thread_id",
+        "reply_to_item_id",
+        "quoted_item_id",
+    ):
+        payload.pop(field, None)
+
+    restored = SourceEvidence.from_dict(payload)
+
+    assert restored.discovered_via == ""
+    assert restored.evidence_quality == "ready"
+    assert restored.source_item_id == ""
+    assert restored.thread_id == ""
 
 
 def test_source_evidence_rejects_naive_or_invalid_timestamp():

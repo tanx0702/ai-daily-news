@@ -101,6 +101,82 @@ def test_validator_accepts_title_only_when_summary_is_empty():
     assert result.validated_item.brief_reason == "brief_empty"
 
 
+def test_validator_rebuilds_vague_title_once_then_rejects():
+    item = event(
+        source_title="Mistral 发布 1GW AI 数据中心计划",
+        evidence_text="Mistral 发布 1GW AI 数据中心计划。",
+        publisher_id="mistral",
+        publisher_name="Mistral AI",
+    )
+    vague = draft(
+        item,
+        chinese_title="Mistral AI 战略",
+        brief="",
+        evidence_bindings=(EvidenceBinding(
+            "Mistral AI 战略",
+            "Mistral 发布 1GW AI 数据中心计划",
+            item.canonical_evidence.url,
+        ),),
+    )
+
+    first = validator().validate(item, vague, generation_attempt=1, now=NOW)
+    second = validator().validate(item, vague, generation_attempt=2, now=NOW)
+
+    assert first.action == "rebuild"
+    assert first.reason_codes == ("title_missing_event_action",)
+    assert second.action == "reject"
+    assert second.reason_codes == first.reason_codes
+
+
+def test_validator_permanently_rejects_non_news_source_before_rebuilding_title():
+    item = event(
+        source_title="AI text watermarking guide",
+        evidence_text="How AI text watermarking works.",
+    )
+    fabricated = draft(
+        item,
+        chinese_title="OpenAI 发布 GPT-5.6",
+        brief="",
+        evidence_bindings=(EvidenceBinding(
+            "OpenAI 发布 GPT-5.6",
+            "How AI text watermarking works",
+            item.canonical_evidence.url,
+        ),),
+    )
+
+    result = validator().validate(item, fabricated, generation_attempt=1, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("non_news_content",)
+
+
+def test_validator_rejects_claim_composed_from_separate_source_sentences():
+    item = event(
+        source_title="Mistral releases Aster",
+        evidence_text="Mistral office research. OpenAI releases GPT-5.6.",
+        publisher_id="media",
+        publisher_name="Example Media",
+        authority="professional_media",
+        is_official=False,
+        official_identity_source="",
+    )
+    composed = draft(
+        item,
+        chinese_title="Mistral 发布 GPT-5.6",
+        brief="",
+        evidence_bindings=(EvidenceBinding(
+            "Mistral 发布 GPT-5.6",
+            "Mistral office research. OpenAI releases GPT-5.6.",
+            item.canonical_evidence.url,
+        ),),
+    )
+
+    result = validator().validate(item, composed, generation_attempt=2, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("title_claim_not_source_bound",)
+
+
 def test_validator_removes_all_title_restatement_sentences_without_rebuild():
     item = event(evidence_text="OpenAI 发布 Model 5。")
     generated = draft(
@@ -197,22 +273,22 @@ def test_validator_rejects_unrelated_quote_even_when_quote_is_real():
 
 def test_validator_accepts_chinese_claim_bound_to_english_quote_with_matching_action():
     item = event(
-        source_title="Company launches a model",
-        evidence_text="Company launches a model in 2026.",
+        source_title="Acme AI launches Model-X",
+        evidence_text="Acme AI launches Model-X in 2026.",
     )
     translated = draft(
         item,
-        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
-        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        chinese_title="Acme AI \u53d1\u5e03 Model-X",
+        brief="Model-X \u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
         evidence_bindings=(
             EvidenceBinding(
-                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
-                "Company launches a model",
+                "Acme AI \u53d1\u5e03 Model-X",
+                "Acme AI launches Model-X",
                 item.canonical_evidence.url,
             ),
             EvidenceBinding(
-                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
-                "Company launches a model in 2026.",
+                "Model-X \u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Acme AI launches Model-X in 2026.",
                 item.canonical_evidence.url,
             ),
         ),
@@ -255,7 +331,7 @@ def test_validator_does_not_degrade_unanchored_cross_language_claim_after_qualit
 
     assert result.action == "reject"
     assert result.validation_mode == "rules_only"
-    assert result.reason_codes == ("claim_quote_mismatch",)
+    assert result.reason_codes == ("source_missing_subject",)
 
 
 def test_validator_does_not_degrade_same_entity_with_different_translated_purpose():
@@ -286,7 +362,7 @@ def test_validator_does_not_degrade_same_entity_with_different_translated_purpos
 
     assert result.action == "reject"
     assert result.validation_mode == "rules_only"
-    assert result.reason_codes == ("claim_quote_mismatch",)
+    assert result.reason_codes == ("title_missing_event_detail",)
 
 
 def test_validator_does_not_degrade_claim_with_fabricated_latin_entity():
@@ -317,28 +393,28 @@ def test_validator_does_not_degrade_claim_with_fabricated_latin_entity():
     result = instance.validate(item, fabricated, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("claim_quote_mismatch",)
+    assert result.reason_codes == ("title_claim_not_source_bound",)
     assert client.calls == []
 
 
 def test_validator_rejects_cross_language_binding_with_unmatched_action_quote():
     item = event(
-        source_title="Company launches a model",
-        evidence_text="Company launches a model in 2026. The weather is sunny.",
+        source_title="Acme launches Model-5",
+        evidence_text="Acme launches Model-5 in 2026. The weather is sunny.",
     )
     unrelated = draft(
         item,
-        chinese_title="\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
-        brief="\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
+        chinese_title="Acme \u53d1\u5e03 Model-5",
+        brief="Model-5 \u4e8e 2026 \u5e74\u53d1\u5e03\u3002",
         evidence_bindings=(
             EvidenceBinding(
-                "\u516c\u53f8\u53d1\u5e03\u6a21\u578b",
+                "Acme \u53d1\u5e03 Model-5",
                 "The weather is sunny.",
                 item.canonical_evidence.url,
             ),
             EvidenceBinding(
-                "\u8be5\u6a21\u578b\u4e8e 2026 \u5e74\u53d1\u5e03",
-                "Company launches a model in 2026.",
+                "Model-5 \u4e8e 2026 \u5e74\u53d1\u5e03",
+                "Acme launches Model-5 in 2026.",
                 item.canonical_evidence.url,
             ),
         ),
@@ -377,7 +453,7 @@ def test_validator_rebuilds_cross_language_claim_with_only_action_and_year_when_
 
     assert result.action == "rebuild"
     assert result.validation_mode == "rules_only"
-    assert result.reason_codes == ("claim_quote_mismatch",)
+    assert result.reason_codes == ("title_missing_subject",)
 
 
 def test_validator_accepts_anchored_cross_language_claim_when_quality_is_unavailable():
@@ -658,7 +734,7 @@ def test_validator_rejects_added_model_number_money_and_date():
     result = validator().validate(item, added, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("protected_token_missing",)
+    assert result.reason_codes == ("title_claim_not_source_bound",)
 
 
 def test_validator_rejects_company_action_without_action_evidence():
@@ -679,7 +755,7 @@ def test_validator_rejects_company_action_without_action_evidence():
     result = validator().validate(item, acquisition, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("action_not_supported",)
+    assert result.reason_codes == ("title_action_not_source_bound",)
 
 
 def test_validator_rejects_non_official_x_written_as_company_announcement():
@@ -719,17 +795,17 @@ def test_validator_accepts_non_official_x_with_explicit_attribution():
         authority="research",
         is_official=False,
         official_identity_source="",
-        source_title="某研究者分享 OpenAI Model 5 信息",
+        source_title="OpenAI 发布 Model 5",
         evidence_text="某研究者分享：OpenAI 发布 Model 5。",
         url="https://x.com/researcher/status/42",
     )
     attributed = draft(
         item,
-        chinese_title="某研究者分享 OpenAI Model 5 信息",
+        chinese_title="OpenAI 发布 Model 5",
         brief="该研究者称 OpenAI 发布 Model 5。",
         evidence_bindings=(
             EvidenceBinding(
-                "某研究者分享 OpenAI Model 5 信息",
+                "OpenAI 发布 Model 5",
                 "某研究者分享：OpenAI 发布 Model 5",
                 item.canonical_evidence.url,
             ),
@@ -858,7 +934,7 @@ def test_validator_accepts_deidentified_2026_08_11_false_positive_cases():
         assert result.action == "accept", case["name"]
 
 
-def test_validator_allows_factual_use_of_former_commentary_keywords():
+def test_validator_rejects_generic_subject_even_when_introduction_is_factual():
     item = event(
         source_title="机构介绍领先模型",
         evidence_text="机构介绍领先模型。帖子包含一条建议配置。",
@@ -883,7 +959,8 @@ def test_validator_allows_factual_use_of_former_commentary_keywords():
 
     result = validator().validate(item, factual, generation_attempt=1, now=NOW)
 
-    assert result.action == "accept"
+    assert result.action == "reject"
+    assert result.reason_codes == ("source_missing_subject",)
 
 
 def test_validator_rejects_unrelated_cross_language_claim_when_quality_is_unavailable():
@@ -912,7 +989,7 @@ def test_validator_rejects_unrelated_cross_language_claim_when_quality_is_unavai
     result = validator().validate(item, unrelated, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("claim_quote_mismatch",)
+    assert result.reason_codes == ("non_news_content",)
 
 
 class FakeResponse:

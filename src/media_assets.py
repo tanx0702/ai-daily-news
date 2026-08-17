@@ -56,6 +56,62 @@ _BAD_IMAGE_HINTS = [
 ]
 
 _GOOD_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".avif")
+_MEDIA_GENERIC_TOKENS = {
+    "ai", "model", "models", "product", "products", "research", "strategy",
+    "team", "image", "photo", "corporate", "company", "launch", "launches",
+    "release", "releases", "new", "the", "and", "for", "with", "from",
+    "模型", "产品", "研究", "战略", "团队", "公司", "图片", "照片", "发布",
+    "推出", "上线", "公开", "新闻", "快讯",
+}
+_MEDIA_ORGANIZATIONS = {
+    "openai", "anthropic", "google", "deepmind", "mistral", "meta", "microsoft",
+    "nvidia", "xai", "cohere", "cerebras", "谷歌", "微软", "英伟达",
+}
+_MEDIA_MODEL_PATTERN = re.compile(
+    r"(?<![a-z0-9])(?:gpt|claude|gemini|llama|qwen|deepseek|model)"
+    r"[- ]?[a-z]*\d[\w.+-]*",
+    re.I,
+)
+
+
+def _media_anchor_tokens(value: object) -> set[str]:
+    normalized = _html.unescape(str(value or "")).casefold()
+    models = {
+        "model:" + re.sub(r"\s+", "-", match.group(0))
+        for match in _MEDIA_MODEL_PATTERN.finditer(normalized)
+    }
+    tokens = {
+        token.strip(".-")
+        for token in re.findall(r"[a-z][a-z0-9.+-]{2,}|[\u4e00-\u9fff]{2,}", normalized)
+    }
+    tokens -= _MEDIA_GENERIC_TOKENS | _MEDIA_ORGANIZATIONS
+    return models | {f"token:{token}" for token in tokens if token}
+
+
+def evaluate_media_relevance(event_text: object, image_text: object) -> dict[str, object]:
+    """Accept only images whose local metadata can be tied to the event facts."""
+    event_anchors = _media_anchor_tokens(event_text)
+    image_anchors = _media_anchor_tokens(image_text)
+    shared = event_anchors & image_anchors
+    shared_models = {anchor for anchor in shared if anchor.startswith("model:")}
+    if shared_models:
+        return {
+            "accepted": True,
+            "reason": "shared_model_anchor",
+            "anchors": tuple(sorted(shared_models)),
+        }
+    shared_tokens = {anchor for anchor in shared if anchor.startswith("token:")}
+    if len(shared_tokens) >= 2:
+        return {
+            "accepted": True,
+            "reason": "shared_event_anchors",
+            "anchors": tuple(sorted(shared_tokens)),
+        }
+    return {
+        "accepted": False,
+        "reason": "missing_semantic_anchor",
+        "anchors": tuple(sorted(shared_tokens)),
+    }
 
 
 def _normalize_image_url(image_url: str, base_url: str = "") -> str:
@@ -70,16 +126,61 @@ def _normalize_image_url(image_url: str, base_url: str = "") -> str:
     return image_url
 
 
-def _add_candidate(candidates: list[dict], image_url: str, source: str, base_url: str = ""):
+def _clean_html_text(value: object) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", _html.unescape(str(value or "")))).strip()
+
+
+def _add_candidate(
+    candidates: list[dict],
+    image_url: str,
+    source: str,
+    base_url: str = "",
+    semantic_text: object = "",
+) -> None:
     """追加候选图并去重。"""
     image_url = _normalize_image_url(image_url, base_url)
     if not image_url:
         return
     if not image_url.startswith(("http://", "https://")):
         return
-    if any(c.get("url") == image_url for c in candidates):
+    cleaned_context = _html.unescape(str(semantic_text or "")).strip()
+    for candidate in candidates:
+        if candidate.get("url") != image_url:
+            continue
+        existing = str(candidate.get("semantic_text") or "")
+        if cleaned_context and cleaned_context not in existing:
+            candidate["semantic_text"] = " ".join(
+                part for part in (existing, cleaned_context) if part
+            )
         return
-    candidates.append({"url": image_url, "source": source})
+    candidates.append({
+        "url": image_url,
+        "source": source,
+        "semantic_text": cleaned_context,
+    })
+
+
+def _media_event_text(item: BriefItem | Mapping[str, Any]) -> str:
+    """Build private image-matching context from verified display/source facts only."""
+    if isinstance(item, BriefItem):
+        parts = [item.chinese_title, item.canonical_source.source_title]
+        parts.extend(binding.source_quote for binding in item.evidence_bindings)
+        return "\n".join(part for part in parts if part)
+    bindings = item.get("evidence_bindings") if isinstance(item, Mapping) else None
+    binding_quotes = [
+        str(binding.get("source_quote") or "")
+        for binding in bindings or ()
+        if isinstance(binding, Mapping)
+    ]
+    return "\n".join(
+        part
+        for part in (
+            str(item.get("chinese_title") or item.get("title") or ""),
+            str(item.get("source_title") or ""),
+            *binding_quotes,
+        )
+        if part
+    )
 
 
 def _score_image_url(image_url: str, source: str = "") -> tuple[int, list[str]]:
@@ -282,6 +383,12 @@ def _fetch_page_image_candidates(article_url: str, timeout: int = 8) -> list[dic
             return candidates
 
         html_text = resp.text[:180000]
+        page_title_match = re.search(
+            r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)',
+            html_text,
+            re.IGNORECASE,
+        ) or re.search(r"<title[^>]*>(.*?)</title>", html_text, re.IGNORECASE | re.DOTALL)
+        page_context = _clean_html_text(page_title_match.group(1)) if page_title_match else ""
 
         # og:image（优先）
         for pattern, source in [
@@ -291,7 +398,7 @@ def _fetch_page_image_candidates(article_url: str, timeout: int = 8) -> list[dic
             (r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image(?::src)?["\']', "twitter:image"),
         ]:
             for m in re.finditer(pattern, html_text, re.IGNORECASE):
-                _add_candidate(candidates, m.group(1), source, article_url)
+                _add_candidate(candidates, m.group(1), source, article_url, page_context)
 
         # JSON-LD image
         for m in re.finditer(
@@ -305,26 +412,32 @@ def _fetch_page_image_candidates(article_url: str, timeout: int = 8) -> list[dic
                 array_body = image_match.group(2)
                 object_body = image_match.group(3)
                 if direct:
-                    _add_candidate(candidates, direct, "jsonld:image", article_url)
+                    _add_candidate(candidates, direct, "jsonld:image", article_url, page_context)
                 if array_body:
                     for url_m in re.finditer(r'"(https?://[^"]+|/[^"]+)"', array_body):
-                        _add_candidate(candidates, url_m.group(1), "jsonld:image", article_url)
+                        _add_candidate(candidates, url_m.group(1), "jsonld:image", article_url, page_context)
                 if object_body:
                     url_m = re.search(r'"url"\s*:\s*"([^"]+)"', object_body)
                     if url_m:
-                        _add_candidate(candidates, url_m.group(1), "jsonld:image", article_url)
+                        _add_candidate(candidates, url_m.group(1), "jsonld:image", article_url, page_context)
 
         # srcset: 优先取每个 srcset 的最后一个（通常最大）。
         for m in re.finditer(r'<img[^>]+srcset=["\']([^"\']+)["\']', html_text, re.IGNORECASE):
             srcset = m.group(1)
             parts = [p.strip().split()[0] for p in srcset.split(",") if p.strip()]
             if parts:
-                _add_candidate(candidates, parts[-1], "html:srcset", article_url)
+                _add_candidate(candidates, parts[-1], "html:srcset", article_url, page_context)
 
         # 正文 img src 候选，最多取前 5 张。
         img_count = 0
-        for m in re.finditer(r'<img[^>]+src=["\']([^"\']+)["\']', html_text, re.IGNORECASE):
-            _add_candidate(candidates, m.group(1), "html:first_img", article_url)
+        for m in re.finditer(r"<img\b([^>]*)>", html_text, re.IGNORECASE):
+            attributes = m.group(1)
+            src_match = re.search(r"\bsrc=[\"']([^\"']+)[\"']", attributes, re.IGNORECASE)
+            if not src_match:
+                continue
+            alt_match = re.search(r"\balt=[\"']([^\"']+)[\"']", attributes, re.IGNORECASE)
+            context = _clean_html_text(alt_match.group(1)) if alt_match else page_context
+            _add_candidate(candidates, src_match.group(1), "html:first_img", article_url, context)
             img_count += 1
             if img_count >= 5:
                 break
@@ -371,6 +484,7 @@ def resolve_article_media(
         (news_list, media_report)
     """
     display_news = _display_news(news_list)
+    media_contexts = [_media_event_text(item) for item in news_list]
     if not display_news:
         return display_news, {
             "date": date_str,
@@ -402,19 +516,30 @@ def resolve_article_media(
                 file.write(validation["jpeg_bytes"])
         return image_path
 
-    def validate_candidates(candidates: list[dict]) -> tuple[dict | None, str]:
+    def validate_candidates(
+        candidates: list[dict], event_text: str
+    ) -> tuple[dict | None, str]:
         failures: list[str] = []
         scored = []
         for candidate in candidates:
             score, reasons = _score_image_url(candidate["url"], candidate.get("source", ""))
             scored.append((score, candidate, reasons))
         for score, candidate, reasons in sorted(scored, key=lambda value: value[0], reverse=True):
+            relevance = evaluate_media_relevance(
+                event_text,
+                candidate.get("semantic_text", ""),
+            )
+            if not relevance["accepted"]:
+                failures.append(str(relevance["reason"]))
+                continue
             validation = validate_media_candidate(candidate["url"], timeout)
             if validation.get("valid"):
                 validation.setdefault("url", candidate["url"])
                 validation["source"] = candidate.get("source", "")
                 validation["score"] = score
                 validation["score_reasons"] = reasons
+                validation["semantic_reason"] = relevance["reason"]
+                validation["semantic_anchors"] = relevance["anchors"]
                 return validation, ""
             failures.append(validation.get("reason", "validation_failed"))
         return None, ";".join(failures[:3]) or "no_valid_image_candidate"
@@ -424,17 +549,34 @@ def resolve_article_media(
         source = item.get("source", "")
         source_type = item.get("source_type", "")
         article_url = item.get("url", "")
+        event_text = media_contexts[index]
         candidates: list[dict] = []
-        _add_candidate(candidates, item.get("article_image_url", ""), "existing article_image_url", article_url)
+        _add_candidate(
+            candidates,
+            item.get("article_image_url", ""),
+            "existing article_image_url",
+            article_url,
+            item.get("article_image_context") or item.get("media_semantic_text"),
+        )
         for candidate in item.get("image_candidates", []) or []:
             if isinstance(candidate, dict):
-                _add_candidate(candidates, candidate.get("url", ""), candidate.get("source", "item:candidate"), article_url)
+                _add_candidate(
+                    candidates,
+                    candidate.get("url", ""),
+                    candidate.get("source", "item:candidate"),
+                    article_url,
+                    candidate.get("semantic_text") or candidate.get("alt") or candidate.get("caption"),
+                )
             else:
                 _add_candidate(candidates, str(candidate), "item:candidate", article_url)
         if not candidates and not _is_text_only_source(source, source_type) and article_url:
             candidates.extend(_fetch_page_image_candidates(article_url, timeout=timeout))
 
-        validation, reason = validate_candidates(candidates) if candidates else (None, "no_image_candidate")
+        validation, reason = (
+            validate_candidates(candidates, event_text)
+            if candidates
+            else (None, "no_image_candidate")
+        )
         if not validation:
             state = "text_only" if _is_text_only_source(source, source_type) and not candidates else "rejected"
             set_text_only(item, reason, state)
@@ -450,7 +592,9 @@ def resolve_article_media(
 
         item["image_type"] = "original"
         item["media_state"] = "trusted"
-        item["image_reason"] = f"validated image ({validation['source']})"
+        item["image_reason"] = (
+            f"validated image ({validation['source']}; {validation['semantic_reason']})"
+        )
         item["article_image_url"] = validation["url"]
         item["article_original_image_url"] = validation["url"]
         item["normalized_image_path"] = persist_normalized_image(validation)

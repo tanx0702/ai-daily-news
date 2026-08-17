@@ -63,7 +63,7 @@ def test_frozen_candidates_create_a_unique_evidence_bound_dry_run(tmp_path):
     assert selection["excluded_counts"]["content_llm_unavailable"] >= 1
     assert "unsupported_claim" not in selection["excluded_counts"]
     assert selection["excluded_counts"]["x_limit"] >= 1
-    assert selection["rules_only_count"] == 15
+    assert selection["rules_only_count"] == len(snapshot.brief_items)
     assert selection["rules_and_llm_count"] == 0
     assert selection["build_attempt_count"] >= len(snapshot.brief_items)
     assert snapshot.diagnostics["content_fingerprint_before_media"] == snapshot.diagnostics[

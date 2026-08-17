@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Mapping
 from urllib.parse import urlparse
@@ -18,6 +19,7 @@ from src.text_utils import clean_display_text
 LOGGER = logging.getLogger(__name__)
 FEED_SCHEMA_VERSION = "x-feed-v1"
 DEFAULT_MAX_AGE_HOURS = 6
+PUBLIC_ID_PATTERN = re.compile(r"[0-9]{1,32}\Z")
 
 
 class XFeedCollector(BaseCollector):
@@ -111,7 +113,7 @@ def _tweet_to_candidate(
     """转换单条已脱敏公开推文，并拒绝不完整或非 X 链接记录。"""
     if not isinstance(tweet, Mapping):
         return None
-    tweet_id = str(tweet.get("tweet_id") or "").strip()
+    tweet_id = _public_id(tweet.get("tweet_id"))
     text = clean_display_text(str(tweet.get("text") or ""), collapse_whitespace=False)
     url = str(tweet.get("url") or "").strip()
     source_name = clean_display_text(str(tweet.get("source_name") or ""))
@@ -120,7 +122,7 @@ def _tweet_to_candidate(
     source_tier = str(tweet.get("source_tier") or "").strip()
     published_at = _parse_timestamp(tweet.get("created_at"))
     if (
-        not tweet_id.isdigit()
+        not tweet_id
         or not text
         or not source_name
         or not source_handle
@@ -158,7 +160,17 @@ def _tweet_to_candidate(
     candidate["x_official"] = official
     candidate["x_handle"] = source_handle
     candidate["x_official_source"] = official_source
+    candidate["x_tweet_id"] = tweet_id
+    candidate["x_thread_id"] = _public_id(tweet.get("thread_id")) or tweet_id
+    candidate["x_reply_to_id"] = _public_id(tweet.get("reply_to_id"))
+    candidate["x_quoted_id"] = _public_id(tweet.get("quoted_id"))
     return candidate
+
+
+def _public_id(value: object) -> str:
+    """限制来自远程快照的 ID 为有限 ASCII 数字。"""
+    candidate = str(value or "").strip()
+    return candidate if PUBLIC_ID_PATTERN.fullmatch(candidate) else ""
 
 
 def _parse_timestamp(value: object) -> datetime | None:
@@ -169,7 +181,10 @@ def _parse_timestamp(value: object) -> datetime | None:
     try:
         return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
     except ValueError:
-        return None
+        try:
+            return datetime.strptime(text, "%a %b %d %H:%M:%S %z %Y").astimezone(timezone.utc)
+        except ValueError:
+            return None
 
 
 def _is_fresh_snapshot(value: object, now: datetime, max_age_hours: int) -> bool:
