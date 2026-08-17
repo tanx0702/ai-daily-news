@@ -19,11 +19,13 @@ EVENT_ACTION_MARKERS = {
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
         "upgrade", "upgraded", "upgrades", "add", "added", "adds",
-        "deprecate", "deprecated",
+        "deprecate", "deprecated", "暂停", "追踪", "pause", "paused", "pauses",
+        "tracks",
     ),
     "result": (
-        "达到", "提升", "降低", "超过", "achieve", "achieved", "improve",
-        "improved", "reduce", "reduced", "exceed", "exceeded",
+        "达到", "提升", "降低", "超过", "增长", "achieve", "achieved", "improve",
+        "improved", "reduce", "reduced", "reduces", "exceed", "exceeded",
+        "jump", "jumps",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
@@ -46,6 +48,7 @@ EVENT_ACTION_MARKERS = {
         "宣布离职", "宣布辞职", "announces departure", "announced departure", "departs", "departed", "离职", "辞职", "离开", "卸任", "leaving", "leaves", "left", "takes off",
         "headed out the door", "steps down", "resigns", "resigned",
     ),
+    "organizational_change": ("解散", "disband", "disbanded", "disbands"),
     "joining": ("入职", "加入", "joins", "joined", "hired"),
     "layoff": ("裁员", "layoffs", "laid off", "cuts jobs"),
     "policy": (

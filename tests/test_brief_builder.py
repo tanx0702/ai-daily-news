@@ -161,6 +161,20 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
     assert "标题之外" in system_prompt
 
 
+def test_builder_limits_cross_language_titles_to_verifiable_anchors():
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    builder.build_batch([item], attempts={})
+
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    assert "非实体、非数字细节" in system_prompt
+    assert "保留原文锚点" in system_prompt
+
+
 def test_builder_accepts_title_only_response_without_summary_target():
     item = event(1)
     payload = generated_item(1, item.event_key, item.canonical_evidence.url)

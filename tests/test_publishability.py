@@ -69,6 +69,55 @@ def test_hn_metrics_and_tutorial_titles_are_not_news_events():
     )
 
 
+def test_source_publishability_recognizes_common_factual_news_verbs():
+    titles = (
+        "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee",
+        "OpenAI reportedly disbanded its preparedness team",
+        "Sainsbury's pauses AI cameras after shopper ousted",
+        "ChatGPT's Computer History tracks your clicks and keystrokes",
+        "Anthropic revenue jumps 14x to more than $11.5B in second quarter",
+    )
+
+    for title in titles:
+        result = validate_source_publishability(source(title))
+
+        assert result.accepted is True, title
+
+
+def test_publishability_accepts_cross_language_titles_with_anchored_details():
+    cases = (
+        (
+            "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee",
+            "Nvidia 降低 OpenAI",
+        ),
+        (
+            "OpenAI reportedly disbanded its preparedness team",
+            "OpenAI 解散 preparedness team",
+        ),
+        (
+            "Sainsbury's pauses AI cameras after shopper ousted",
+            "Sainsbury's 暂停 cameras",
+        ),
+        (
+            "ChatGPT's Computer History tracks your clicks and keystrokes",
+            "ChatGPT's Computer History 追踪 clicks",
+        ),
+        (
+            "Anthropic revenue jumps 14x to more than $11.5B in second quarter",
+            "Anthropic 增长 14x",
+        ),
+    )
+
+    for source_title, display_title in cases:
+        result = validate_display_publishability(
+            display_title,
+            "",
+            source(source_title),
+        )
+
+        assert result.accepted is True, display_title
+
+
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
     quote = "Mistral office research. OpenAI releases GPT-5.6."
 

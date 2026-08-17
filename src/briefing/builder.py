@@ -337,6 +337,7 @@ class BriefBuilder:
                             "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
                             "brief_1 或 brief_2，同一 target 可有多条引用；quote 必须逐字来自 evidence_text，"
                             "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"
+                            "跨语言标题只能翻译动作和语法词；非实体、非数字细节必须删去或保留原文锚点，"
                             "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
                             "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
