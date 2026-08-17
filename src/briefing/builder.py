@@ -47,17 +47,22 @@ def _response_content(response: object) -> str:
 
 def _is_nonrecoverable(error: Exception) -> bool:
     status_code = getattr(error, "status_code", None)
-    if status_code in {401, 403, 404}:
+    if status_code in {401, 402, 403, 404}:
         return True
     text = str(error).lower()
     markers = (
         "401",
+        "402",
         "403",
         "unauthorized",
         "invalid api key",
         "invalid_api_key",
         "invalid model",
         "model not found",
+        "insufficient balance",
+        "payment required",
+        "subscription_not_found",
+        "subscription not found",
         "unsupported protocol",
         "invalid url",
         "invalid base url",
@@ -370,6 +375,7 @@ class BriefBuilder:
                     for index, event in enumerate(events, 1)
                 ]
             if _is_timeout(exc):
+                self._circuit_open = True
                 self.diagnostics["content_llm_timeout_count"] += 1
                 request_failure_reason = "content_llm_timeout"
             elif isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
@@ -476,6 +482,7 @@ class BriefBuilder:
                 api_key=self.llm_config.api_key,
                 base_url=self.llm_config.base_url,
                 timeout=self.timeout,
+                max_retries=0,
             )
         return self._client
 

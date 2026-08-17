@@ -580,8 +580,7 @@ def generate_cover_from_news(
 
     if img is None:
         logger.warning(
-            "AI cover generation failed after %d attempts, using minimal text-free fallback cover",
-            max_retries,
+            "AI cover generation unavailable, using minimal text-free fallback cover",
         )
         return _fallback_cover(news_list, date_str, output_path, cover_title, cover_subject)
 
@@ -616,7 +615,7 @@ def _generate_ai_cover_image(
     调用图片生成 API 生成封面图，带指数退避重试。
 
     每次失败都记录具体原因（HTTP 状态码 + API error code + message），便于排查：
-    - content_policy_violation（关键词命中审核）→ 重试无效，立即放弃
+    - 配置、鉴权、余额或 content_policy_violation 错误 → 重试无效，立即放弃
     - 超时 / 429 / 5xx 等临时故障 → 重试（最多 max_retries 次）
 
     成功返回 PIL Image，全部失败返回 None。
@@ -662,9 +661,10 @@ def _generate_ai_cover_image(
                     "invalid_api_key",
                     "authentication_error",
                     "permission_denied",
+                    "subscription_not_found",
                 }
-                # 配置、鉴权、权限和内容审核错误重试无效，立即降级。
-                if resp.status_code in {400, 401, 403} or err_code in non_retryable_codes:
+                # 配置、鉴权、权限、余额和内容审核错误重试无效，立即降级。
+                if resp.status_code in {400, 401, 402, 403} or err_code in non_retryable_codes:
                     logger.warning(
                         "Image generation error is non-retryable (HTTP %d, code=%s); using fallback.",
                         resp.status_code, err_code,

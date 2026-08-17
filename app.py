@@ -44,7 +44,14 @@ app = Flask(__name__)
 WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "")
 WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "")
 WECHAT_TOKEN = os.environ.get("WECHAT_TOKEN", "")
-NEWS_DATA_FILE = os.environ.get("NEWS_DATA_FILE", "/app/docs/latest.json")
+
+
+def _default_news_data_file() -> str:
+    """Resolve the runtime snapshot relative to this checkout in every environment."""
+    return str(Path(__file__).resolve().parent / "docs" / "latest.json")
+
+
+NEWS_DATA_FILE = os.environ.get("NEWS_DATA_FILE", _default_news_data_file())
 EDITORIAL_REVIEW_USERNAME = os.environ.get("EDITORIAL_REVIEW_USERNAME", "")
 EDITORIAL_REVIEW_PASSWORD = os.environ.get("EDITORIAL_REVIEW_PASSWORD", "")
 SHADOW_HISTORY_DIR = Path(
@@ -355,7 +362,7 @@ def health():
     decision = snapshot.draft_decision if snapshot else None
     execution = snapshot.draft_execution if snapshot else None
     callback_configured = bool(WECHAT_TOKEN)
-    degraded = not callback_configured or (
+    degraded = snapshot is None or not callback_configured or (
         execution is not None and execution.status in {"blocked", "failed"}
     )
     return jsonify({

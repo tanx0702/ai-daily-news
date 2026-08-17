@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 try:
     import app
@@ -74,6 +75,26 @@ class WeChatAppTests(unittest.TestCase):
         self.assertEqual(root.findtext("ToUserName"), "openid-1")
         self.assertEqual(root.findtext("MsgType"), "text")
         self.assertEqual(root.findtext("Content"), "今日摘要")
+
+    def test_default_news_data_file_is_relative_to_project_root(self):
+        expected = Path(app.__file__).resolve().parent / "docs" / "latest.json"
+
+        self.assertEqual(Path(app._default_news_data_file()), expected)
+
+    def test_health_reports_degraded_when_latest_snapshot_is_missing(self):
+        original_token = app.WECHAT_TOKEN
+        original_data_file = app.NEWS_DATA_FILE
+        try:
+            app.WECHAT_TOKEN = "configured-token"
+            app.NEWS_DATA_FILE = str(Path(tempfile.gettempdir()) / "missing-latest.json")
+
+            response = app.app.test_client().get("/health")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["status"], "degraded")
+        finally:
+            app.WECHAT_TOKEN = original_token
+            app.NEWS_DATA_FILE = original_data_file
 
     def test_verify_signature_uses_configured_token(self):
         original_token = app.WECHAT_TOKEN

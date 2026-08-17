@@ -113,6 +113,24 @@ def test_builder_splits_requests_into_batches_of_at_most_five():
     assert request_sizes == [5, 1]
 
 
+def test_builder_disables_sdk_retries_to_keep_timeout_budget_bounded():
+    events = [event(1)]
+    payload = {
+        "items": [generated_item(1, events[0].event_key, events[0].canonical_evidence.url)]
+    }
+    client = FakeClient([payload])
+    captured = {}
+    builder = BriefBuilder(
+        BriefingConfig.from_env({}),
+        LLMConfig("key", "model", "https://llm.example/v1"),
+        client_factory=lambda **kwargs: (captured.update(kwargs) or client),
+    )
+
+    builder.build_batch(events, attempts={})
+
+    assert captured["max_retries"] == 0
+
+
 def test_builder_requests_5000_output_tokens():
     item = event(1)
     payload = {
@@ -648,6 +666,35 @@ def test_sdk_timeout_message_reports_transport_failure():
     assert result.draft is None
     assert result.reason_code == "content_llm_timeout"
     assert builder.diagnostics["content_llm_timeout_count"] == 1
+
+
+def test_timeout_opens_circuit_and_skips_later_batches():
+    events = [event(index, chinese=True) for index in range(1, 7)]
+    builder, client = builder_with_responses([TimeoutError("Request timed out.")])
+
+    results = builder.build_batch(events, attempts={})
+
+    assert len(client.chat.completions.calls) == 1
+    assert all(result.circuit_open is True for result in results)
+    assert all(result.draft is not None for result in results[5:])
+    assert all(result.reason_code == "content_llm_unavailable" for result in results[5:])
+
+
+def test_payment_required_opens_circuit_and_skips_later_batches():
+    class PaymentRequiredError(Exception):
+        status_code = 402
+
+    events = [event(index, chinese=True) for index in range(1, 7)]
+    builder, client = builder_with_responses(
+        [PaymentRequiredError("Insufficient Balance")]
+    )
+
+    results = builder.build_batch(events, attempts={})
+
+    assert len(client.chat.completions.calls) == 1
+    assert all(result.circuit_open is True for result in results)
+    assert all(result.draft is not None for result in results)
+    assert all(result.reason_code == "content_llm_unavailable" for result in results)
 
 
 def test_nonrecoverable_error_opens_circuit_and_avoids_later_calls():

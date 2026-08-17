@@ -67,6 +67,30 @@ class CoverValidationTests(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(post.call_count, 1)
 
+    def test_payment_required_image_api_error_stops_after_one_attempt(self):
+        class Response:
+            status_code = 402
+            text = "subscription request not allowed"
+
+            def json(self):
+                return {
+                    "error": {
+                        "code": "subscription_not_found",
+                        "message": "subscription request not allowed",
+                    }
+                }
+
+        with patch("src.cover.requests.post", return_value=Response()) as post:
+            result = cover._generate_ai_cover_image(
+                "https://images.example",
+                "key",
+                "prompt",
+                max_retries=3,
+            )
+
+        self.assertIsNone(result)
+        self.assertEqual(post.call_count, 1)
+
     def test_image_generation_uses_configured_request_timeout(self):
         class Response:
             status_code = 400

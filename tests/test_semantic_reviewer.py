@@ -101,6 +101,20 @@ def test_reviewer_accepts_distinct_and_uncertain_enum_values():
     assert instance.review(LEFT, RIGHT).relationship == "uncertain"
 
 
+def test_reviewer_disables_sdk_retries_to_keep_timeout_budget_bounded():
+    client = FakeClient([response()])
+    captured = {}
+    instance = SemanticDuplicateReviewer(
+        LLMConfig("quality-key", "quality-model", "https://quality.example/v1"),
+        client_factory=lambda **kwargs: (captured.update(kwargs) or client),
+        timeout=12,
+    )
+
+    instance.review(LEFT, RIGHT)
+
+    assert captured["max_retries"] == 0
+
+
 def test_reviewer_accepts_distinct_without_shared_anchors():
     instance, _ = reviewer(
         [response("distinct", shared_subjects=[], shared_action="")]

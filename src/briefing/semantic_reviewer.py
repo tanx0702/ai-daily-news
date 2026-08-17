@@ -193,6 +193,7 @@ class SemanticDuplicateReviewer:
                 api_key=self.quality_llm_config.api_key,
                 base_url=self.quality_llm_config.base_url,
                 timeout=self.timeout,
+                max_retries=0,
             )
         return self._client
 
