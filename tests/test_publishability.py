@@ -104,6 +104,10 @@ def test_publishability_accepts_cross_language_titles_with_anchored_details():
             "ChatGPT's Computer History 追踪 clicks",
         ),
         (
+            "ChatGPT's Computer History tracks your clicks and keystrokes",
+            "ChatGPT 的 Computer History 跟踪 clicks and keystrokes",
+        ),
+        (
             "Anthropic revenue jumps 14x to more than $11.5B in second quarter",
             "Anthropic 增长 14x",
         ),
@@ -159,6 +163,14 @@ def test_source_anchored_title_keeps_literal_detail_anchor_after_action():
     title = source_anchored_title(supported)
 
     assert title == "ChatGPT 追踪 clicks"
+    assert validate_display_publishability(title, "", supported).accepted is True
+
+
+def test_source_anchored_title_preserves_publishable_literal_subject():
+    supported = source("Sainsbury's pauses AI cameras after shopper ousted")
+    title = source_anchored_title(supported)
+
+    assert title == "Sainsbury's 暂停 cameras"
     assert validate_display_publishability(title, "", supported).accepted is True
 
 

@@ -19,7 +19,7 @@ EVENT_ACTION_MARKERS = {
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
         "upgrade", "upgraded", "upgrades", "add", "added", "adds",
-        "deprecate", "deprecated", "暂停", "追踪", "pause", "paused", "pauses",
+        "deprecate", "deprecated", "暂停", "追踪", "跟踪", "pause", "paused", "pauses",
         "tracks",
     ),
     "result": (
@@ -305,9 +305,9 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
     start, end, action = min(action_matches, key=lambda item: item[0])
     subjects = _surface_anchor_matches(title[:start])
     details = _surface_anchor_matches(title[end:])
-    if not subjects:
+    subject = subjects[0] if subjects else _literal_subject_surface(title[:start])
+    if not subject:
         return None
-    subject = subjects[0]
     detail = next(
         (anchor for anchor in details if anchor.casefold() != subject.casefold()),
         None,
@@ -333,6 +333,13 @@ def _literal_subject(value: str) -> str:
     if re.fullmatch(r"\d+(?:[.,]\d+)?", subject):
         return ""
     return f"literal-subject:{subject.casefold()}"
+
+
+def _literal_subject_surface(value: str) -> str:
+    subject = _normalize(value).strip(" ,，:：-—")
+    subject = re.sub(r"^(?:在|于|截至)\s*", "", subject)
+    subject = re.sub(r"\b(?:has|have|had|is|are|was|were|will)\s*$", "", subject, flags=re.I)
+    return subject if _literal_subject(subject) else ""
 
 
 def _detail_anchors(value: str) -> set[str]:

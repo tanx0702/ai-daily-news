@@ -454,6 +454,14 @@ class BriefBuilder:
                 if len(candidates) == 1
                 else None
             )
+            fallback_reason = next(
+                (
+                    reason
+                    for reason in rebuild_reasons.get(event.event_key, ())
+                    if reason in {"title_claim_not_source_bound", "title_missing_event_action"}
+                ),
+                None,
+            )
             safe_fallback = (
                 _source_fallback(
                     event,
@@ -461,7 +469,7 @@ class BriefBuilder:
                     allow_anchored_english_title=True,
                 )
                 if attempt >= 2
-                and "title_claim_not_source_bound" in rebuild_reasons.get(event.event_key, ())
+                and fallback_reason is not None
                 else None
             )
             if safe_fallback is not None:
@@ -470,7 +478,7 @@ class BriefBuilder:
                         event.event_key,
                         attempt,
                         safe_fallback,
-                        "title_claim_not_source_bound",
+                        fallback_reason,
                         self._circuit_open,
                         True,
                     )

@@ -163,6 +163,34 @@ def test_validator_accepts_source_fallback_with_literal_detail_anchor():
     assert result.validated_item.chinese_title == "ChatGPT 追踪 clicks"
 
 
+def test_validator_accepts_source_fallback_with_literal_subject_anchor():
+    item = event(
+        publisher_id="bbc-co-uk",
+        publisher_name="BBC",
+        authority="professional_media",
+        is_official=False,
+        official_identity_source="",
+        source_title="Sainsbury's pauses AI cameras after shopper ousted",
+        evidence_text="Sainsbury's pauses AI cameras after shopper ousted",
+    )
+    title = source_anchored_title(item.canonical_evidence)
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(title, item.canonical_evidence.source_title, item.canonical_evidence.url),
+        ),
+        content_origin="source",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=2, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validation_mode == "rules_only"
+    assert result.validated_item.chinese_title == "Sainsbury's 暂停 cameras"
+
+
 def test_validator_rebuilds_vague_title_once_then_rejects():
     item = event(
         source_title="Mistral 发布 1GW AI 数据中心计划",

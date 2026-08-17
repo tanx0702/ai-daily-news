@@ -214,6 +214,39 @@ def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
     assert result.draft.brief == ""
 
 
+def test_second_missing_action_rebuild_uses_safe_source_fallback():
+    original = event(1)
+    source = original.canonical_evidence
+    sainsburys_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="bbc-co-uk",
+            publisher_name="BBC",
+            channel="rss",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title="Sainsbury's pauses AI cameras after shopper ousted",
+            evidence_text="Sainsbury's pauses AI cameras after shopper ousted",
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    payload = {"items": [generated_item(1, sainsburys_event.event_key, source.url)]}
+    builder, _ = builder_with_responses([payload])
+
+    result = builder.build_batch(
+        [sainsburys_event],
+        attempts={sainsburys_event.event_key: 1},
+        rebuild_reasons={sainsburys_event.event_key: ("title_missing_event_action",)},
+    )[0]
+
+    assert result.source_fallback_used is True
+    assert result.reason_code == "title_missing_event_action"
+    assert result.draft is not None
+    assert result.draft.chinese_title == "Sainsbury's 暂停 cameras"
+
+
 def test_builder_accepts_title_only_response_without_summary_target():
     item = event(1)
     payload = generated_item(1, item.event_key, item.canonical_evidence.url)
