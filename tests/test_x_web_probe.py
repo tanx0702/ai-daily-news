@@ -180,9 +180,10 @@ def test_read_dom_cards_supports_current_schema_org_tweet_cards():
         @staticmethod
         def locator(selector):
             assert selector == (
-                "[data-testid='cellInnerDiv']:has([data-testid='tweetText']), "
+                "[data-testid='cellInnerDiv'], "
                 "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
+                "[role='article'], "
                 "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
             )
             return FakeLocator()
@@ -329,9 +330,10 @@ def test_run_probe_uses_dom_fallback_after_empty_xhr(
         @staticmethod
         def locator(selector):
             assert selector == (
-                "[data-testid='cellInnerDiv']:has([data-testid='tweetText']), "
+                "[data-testid='cellInnerDiv'], "
                 "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
+                "[role='article'], "
                 "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
             )
             return FakeLocator()

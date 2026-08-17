@@ -36,12 +36,13 @@ PUBLIC_TWEET_FIELDS = (
     "reply_count",
     "quote_count",
 )
-# 兼容当前 X 页面 cellInnerDiv/article 卡片，以及旧版 data-testid/Schema.org 标记。
+# 兼容当前 X 页面 cellInnerDiv/role=article 卡片，以及旧版 data-testid/Schema.org 标记。
 # 页面改版后卡片仍包含规范 /status/ 链接，评估器会继续校验正文和状态 ID。
 DOM_TWEET_SELECTOR = (
-    "[data-testid='cellInnerDiv']:has([data-testid='tweetText']), "
+    "[data-testid='cellInnerDiv'], "
     "article:has(a[href*='/status/']), "
     "article[data-testid='tweet'], "
+    "[role='article'], "
     "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
 )
 STATUS_ID_PATTERN = re.compile(r"/status/(\d+)(?:[/?#]|$)")
@@ -56,7 +57,9 @@ DOM_CARD_EVALUATOR = r"""
   const statusLink = Array.from(card.querySelectorAll("a[href*='/status/']"))
     .find((link) => /\/status\/\d+(?:[/?#]|$)/.test(link.href));
   const statusUrl = readMeta("url") || (statusLink ? statusLink.href : "");
-  const text = readMeta("articleBody") || Array.from(card.querySelectorAll("[data-testid='tweetText']"))
+  const text = readMeta("articleBody") || Array.from(card.querySelectorAll(
+    "[data-testid='tweetText'], div[lang]"
+  ))
     .map((node) => node.innerText.trim())
     .filter(Boolean)
     .join("\n");
