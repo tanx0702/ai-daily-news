@@ -180,6 +180,7 @@ def test_read_dom_cards_supports_current_schema_org_tweet_cards():
         @staticmethod
         def locator(selector):
             assert selector == (
+                "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
                 "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
             )
@@ -327,6 +328,7 @@ def test_run_probe_uses_dom_fallback_after_empty_xhr(
         @staticmethod
         def locator(selector):
             assert selector == (
+                "article:has(a[href*='/status/']), "
                 "article[data-testid='tweet'], "
                 "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
             )

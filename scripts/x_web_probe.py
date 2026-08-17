@@ -36,8 +36,10 @@ PUBLIC_TWEET_FIELDS = (
     "reply_count",
     "quote_count",
 )
-# 兼容旧版 data-testid 与当前 X 页面使用的 Schema.org 推文卡片标记。
+# 兼容当前 X 页面普通 article 卡片，以及旧版 data-testid/Schema.org 标记。
+# 页面改版后卡片仍包含规范 /status/ 链接，评估器会继续校验正文和状态 ID。
 DOM_TWEET_SELECTOR = (
+    "article:has(a[href*='/status/']), "
     "article[data-testid='tweet'], "
     "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
 )
