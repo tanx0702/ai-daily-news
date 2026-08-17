@@ -114,6 +114,51 @@ _METADATA_PATTERNS = (
     re.compile(r"\bComments:\s*\d+", re.I),
 )
 _NEGATION = re.compile(r"\b(?:not|never|without|would not)\b|未|没有|并未|不会")
+_SOURCE_ACTION_TRANSLATIONS = {
+    "release": "发布",
+    "released": "发布",
+    "releases": "发布",
+    "launch": "发布",
+    "launched": "发布",
+    "launches": "发布",
+    "update": "更新",
+    "updated": "更新",
+    "updates": "更新",
+    "upgrade": "升级",
+    "upgraded": "升级",
+    "upgrades": "升级",
+    "pause": "暂停",
+    "paused": "暂停",
+    "pauses": "暂停",
+    "track": "追踪",
+    "tracks": "追踪",
+    "reduce": "减少",
+    "reduced": "减少",
+    "reduces": "减少",
+    "improve": "提升",
+    "improved": "提升",
+    "exceed": "超过",
+    "exceeded": "超过",
+    "jump": "增长",
+    "jumps": "增长",
+    "disband": "解散",
+    "disbanded": "解散",
+    "disbands": "解散",
+    "raise": "融资",
+    "raises": "融资",
+    "raised": "融资",
+    "acquire": "收购",
+    "acquired": "收购",
+    "acquires": "收购",
+    "appoint": "任命",
+    "appointed": "任命",
+    "appoints": "任命",
+    "join": "加入",
+    "joins": "加入",
+    "joined": "加入",
+    "hire": "入职",
+    "hired": "入职",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +246,58 @@ def _model_anchors(value: str) -> set[str]:
         )
         for match in pattern.finditer(_normalize(value))
     }
+
+
+def _surface_anchor_matches(value: str) -> tuple[str, ...]:
+    normalized = _normalize(value)
+    matches: list[tuple[int, str]] = []
+    for alias in sorted(_ORGANIZATION_ALIASES, key=len, reverse=True):
+        match = re.search(
+            rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])",
+            normalized,
+            flags=re.I,
+        )
+        if match:
+            matches.append((match.start(), match.group(0)))
+    model_pattern = re.compile(
+        r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
+        r"[- ]?[a-z]*\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        re.I,
+    )
+    matches.extend((match.start(), match.group(0)) for match in model_pattern.finditer(normalized))
+    return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
+
+
+def source_anchored_title(source: SourceEvidence) -> str | None:
+    """Build a minimal cross-language title solely from known source anchors."""
+    title = _normalize(source.source_title)
+    if not title or any("\u4e00" <= char <= "\u9fff" for char in title):
+        return None
+    action_matches = [
+        (match.start(), match.end(), translation)
+        for marker, translation in _SOURCE_ACTION_TRANSLATIONS.items()
+        for match in [
+            re.search(
+                rf"(?<![a-z0-9]){re.escape(marker)}(?![a-z0-9])",
+                title,
+                flags=re.I,
+            )
+        ]
+        if match
+    ]
+    if not action_matches:
+        return None
+    start, end, action = min(action_matches, key=lambda item: item[0])
+    subjects = _surface_anchor_matches(title[:start])
+    details = _surface_anchor_matches(title[end:])
+    if not subjects or not details:
+        return None
+    subject = subjects[0]
+    detail = next(
+        (anchor for anchor in details if anchor.casefold() != subject.casefold()),
+        None,
+    )
+    return f"{subject} {action} {detail}" if detail else None
 
 
 def _numeric_anchors(value: str) -> set[str]:

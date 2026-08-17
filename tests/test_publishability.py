@@ -1,6 +1,7 @@
 from src.briefing.models import SourceEvidence
 from src.briefing.publishability import (
     claim_supported_by_quote,
+    source_anchored_title,
     validate_display_publishability,
     validate_source_publishability,
 )
@@ -138,6 +139,17 @@ def test_publishability_accepts_reduces_and_chatgpt_with_anchored_titles():
         )
 
         assert result.accepted is True, display_title
+
+
+def test_source_anchored_title_requires_two_source_anchors():
+    supported = source(
+        "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
+    )
+    title = source_anchored_title(supported)
+
+    assert title == "Nvidia 减少 OpenAI"
+    assert validate_display_publishability(title, "", supported).accepted is True
+    assert source_anchored_title(source("Nvidia reduces costs")) is None
 
 
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():

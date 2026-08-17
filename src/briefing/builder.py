@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from src.briefing.config import BriefingConfig
 from src.briefing.display_targets import display_targets, summary_sentences
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent
+from src.briefing.publishability import source_anchored_title
 from src.llm_config import LLMConfig
 
 
@@ -126,11 +127,39 @@ def _protected_anchors(event: MergedEvent) -> list[str]:
     return list(dict.fromkeys(anchors))
 
 
-def _source_fallback(event: MergedEvent, input_index: int) -> BuiltBrief | None:
+def _source_fallback(
+    event: MergedEvent,
+    input_index: int,
+    *,
+    allow_anchored_english_title: bool = False,
+) -> BuiltBrief | None:
     evidence = event.canonical_evidence
     title = evidence.source_title.strip()
-    if not title or not _contains_chinese(title):
+    source_title_is_chinese = _contains_chinese(title)
+    if not title or not source_title_is_chinese:
+        if not allow_anchored_english_title:
+            return None
+        title = source_anchored_title(evidence) or ""
+    if not title:
         return None
+
+    if not source_title_is_chinese:
+        return BuiltBrief(
+            event_key=event.event_key,
+            input_index=input_index,
+            chinese_title=title,
+            brief="",
+            evidence_bindings=(
+                EvidenceBinding(
+                    claim=title,
+                    source_quote=evidence.source_title,
+                    source_url=evidence.url,
+                ),
+            ),
+            content_origin="source",
+            brief_mode="title_only",
+            brief_reason="brief_empty",
+        )
 
     body = evidence.evidence_text.strip()
     remainder = body
@@ -425,6 +454,28 @@ class BriefBuilder:
                 if len(candidates) == 1
                 else None
             )
+            safe_fallback = (
+                _source_fallback(
+                    event,
+                    index,
+                    allow_anchored_english_title=True,
+                )
+                if attempt >= 2
+                and "title_claim_not_source_bound" in rebuild_reasons.get(event.event_key, ())
+                else None
+            )
+            if safe_fallback is not None:
+                results.append(
+                    BuildResult(
+                        event.event_key,
+                        attempt,
+                        safe_fallback,
+                        "title_claim_not_source_bound",
+                        self._circuit_open,
+                        True,
+                    )
+                )
+                continue
             untranslated = bool(
                 draft is not None
                 and (

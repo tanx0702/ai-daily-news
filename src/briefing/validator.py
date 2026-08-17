@@ -22,6 +22,7 @@ from src.briefing.models import (
     ValidationResult,
 )
 from src.briefing.publishability import (
+    EVENT_ACTION_MARKERS,
     asserted_action_types,
     claim_supported_by_quote,
     validate_display_publishability,
@@ -52,15 +53,7 @@ _ATTRIBUTION_MARKERS = (
     "开发者",
     "媒体",
 )
-_ACTION_GROUPS = {
-    "release": (
-        "发布", "推出", "上线", "release", "launch", "roll out",
-        "introduce", "introducing",
-    ),
-    "acquisition": ("收购", "合并", "acquire", "acquisition", "merge"),
-    "funding": ("融资", "投资", "估值", "funding", "raise", "valuation"),
-    "open_source": ("开源", "open source", "open-source"),
-}
+_ACTION_GROUPS = EVENT_ACTION_MARKERS
 _CROSS_LANGUAGE_ANCHOR_STOPWORDS = {
     "acquire", "acquisition", "agentic", "and", "company", "for", "from",
     "funding", "in", "initiative", "introduce", "introducing", "lab", "launch",

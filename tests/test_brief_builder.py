@@ -175,6 +175,45 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     assert "保留原文锚点" in system_prompt
 
 
+def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
+    original = event(1)
+    source = original.canonical_evidence
+    nvidia_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="reuters-com",
+            publisher_name="Reuters",
+            channel="rss",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title=(
+                "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
+            ),
+            evidence_text=(
+                "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
+            ),
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    payload = {"items": [generated_item(1, nvidia_event.event_key, source.url)]}
+    builder, _ = builder_with_responses([payload])
+
+    result = builder.build_batch(
+        [nvidia_event],
+        attempts={nvidia_event.event_key: 1},
+        rebuild_reasons={nvidia_event.event_key: ("title_claim_not_source_bound",)},
+    )[0]
+
+    assert result.source_fallback_used is True
+    assert result.reason_code == "title_claim_not_source_bound"
+    assert result.draft is not None
+    assert result.draft.content_origin == "source"
+    assert result.draft.chinese_title == "Nvidia 减少 OpenAI"
+    assert result.draft.brief == ""
+
+
 def test_builder_accepts_title_only_response_without_summary_target():
     item = event(1)
     payload = generated_item(1, item.event_key, item.canonical_evidence.url)

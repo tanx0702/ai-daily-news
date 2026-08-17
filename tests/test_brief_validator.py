@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.briefing.config import BriefingConfig
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent, SourceEvidence
+from src.briefing.publishability import source_anchored_title
 from src.briefing.validator import BriefValidator, _cross_language_anchors
 from src.llm_config import LLMConfig
 
@@ -99,6 +100,39 @@ def test_validator_accepts_title_only_when_summary_is_empty():
     assert result.validated_item.brief == ""
     assert result.validated_item.brief_mode == "title_only"
     assert result.validated_item.brief_reason == "brief_empty"
+
+
+def test_validator_accepts_deterministic_cross_language_source_fallback():
+    item = event(
+        publisher_id="reuters-com",
+        publisher_name="Reuters",
+        authority="professional_media",
+        is_official=False,
+        official_identity_source="",
+        source_title=(
+            "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
+        ),
+        evidence_text=(
+            "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
+        ),
+    )
+    title = source_anchored_title(item.canonical_evidence)
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(title, item.canonical_evidence.source_title, item.canonical_evidence.url),
+        ),
+        content_origin="source",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=2, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validation_mode == "rules_only"
+    assert result.validated_item.chinese_title == "Nvidia 减少 OpenAI"
+    assert result.validated_item.brief_mode == "title_only"
 
 
 def test_validator_rebuilds_vague_title_once_then_rejects():
