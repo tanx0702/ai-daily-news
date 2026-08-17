@@ -159,6 +159,12 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "hire": "入职",
     "hired": "入职",
 }
+_SOURCE_LITERAL_DETAIL_STOPWORDS = {
+    "a", "an", "and", "at", "before", "by", "can", "for", "from", "in", "it",
+    "its", "may", "model", "models", "more", "new", "of", "on", "our", "over",
+    "product", "products", "service", "services", "that", "the", "their", "this",
+    "to", "with", "will", "your",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +274,15 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
 
+def _literal_detail_matches(value: str) -> tuple[str, ...]:
+    return tuple(
+        match.group(0)
+        for match in re.finditer(r"(?<![a-z0-9])[a-z][a-z0-9.+-]*(?![a-z0-9])", value, re.I)
+        if len(match.group(0)) >= 3
+        and match.group(0).casefold() not in _SOURCE_LITERAL_DETAIL_STOPWORDS
+    )
+
+
 def source_anchored_title(source: SourceEvidence) -> str | None:
     """Build a minimal cross-language title solely from known source anchors."""
     title = _normalize(source.source_title)
@@ -290,13 +305,15 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
     start, end, action = min(action_matches, key=lambda item: item[0])
     subjects = _surface_anchor_matches(title[:start])
     details = _surface_anchor_matches(title[end:])
-    if not subjects or not details:
+    if not subjects:
         return None
     subject = subjects[0]
     detail = next(
         (anchor for anchor in details if anchor.casefold() != subject.casefold()),
         None,
     )
+    if detail is None:
+        detail = next(iter(_literal_detail_matches(title[end:])), None)
     return f"{subject} {action} {detail}" if detail else None
 
 

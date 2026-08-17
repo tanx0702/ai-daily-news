@@ -141,7 +141,7 @@ def test_publishability_accepts_reduces_and_chatgpt_with_anchored_titles():
         assert result.accepted is True, display_title
 
 
-def test_source_anchored_title_requires_two_source_anchors():
+def test_source_anchored_title_requires_subject_and_detail_anchor():
     supported = source(
         "Nvidia dramatically reduces amount of OpenAI infra financing it may guarantee"
     )
@@ -149,7 +149,17 @@ def test_source_anchored_title_requires_two_source_anchors():
 
     assert title == "Nvidia 减少 OpenAI"
     assert validate_display_publishability(title, "", supported).accepted is True
-    assert source_anchored_title(source("Nvidia reduces costs")) is None
+    assert source_anchored_title(source("Nvidia reduces it")) is None
+
+
+def test_source_anchored_title_keeps_literal_detail_anchor_after_action():
+    supported = source(
+        "ChatGPT’s Computer History tracks your clicks and keystrokes"
+    )
+    title = source_anchored_title(supported)
+
+    assert title == "ChatGPT 追踪 clicks"
+    assert validate_display_publishability(title, "", supported).accepted is True
 
 
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
