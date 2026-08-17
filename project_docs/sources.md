@@ -57,7 +57,7 @@ X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，�
 - Runner 将 X GraphQL 的 legacy 日期规范化为 UTC ISO 8601，并保留受限数字的 `thread_id`、`reply_to_id` 和 `quoted_id`；生产 collector 再映射为事实证据的线程关系字段。无效、非 ASCII 或超长 ID 只清空对应关系，不能影响其它候选。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
 
-快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑；失败的 X 重建使用携带失败原因和保护锚点的单条内容 LLM 请求，`@handle` 可从规范 X status URL 机械恢复。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
+快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。Runner 即使本轮没有任何可验证推文，也会发布带当前 `generated_at` 和失败统计的新鲜空快照，生产 collector 随后跳过 X；不能用旧快照伪造新鲜来源。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑；失败的 X 重建使用携带失败原因和保护锚点的单条内容 LLM 请求，`@handle` 可从规范 X status URL 机械恢复。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
 
 ## 新增或修改来源的检查清单
 

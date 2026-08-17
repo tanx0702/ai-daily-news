@@ -2,7 +2,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from scripts.x_web_feed import collect_x_feed, load_x_sources
+from scripts.x_web_feed import collect_x_feed, load_x_sources, main
 
 
 def test_production_x_sources_keep_expanded_tier_distribution():
@@ -170,6 +170,49 @@ def test_collect_x_feed_normalizes_legacy_graphql_date_and_keeps_thread_ids(
             "quoted_id": "39",
         }
     ]
+
+
+def test_x_feed_main_publishes_a_fresh_empty_snapshot_when_all_probes_fail(
+    tmp_path: Path, monkeypatch
+):
+    output_path = tmp_path / "x-feed.json"
+
+    monkeypatch.setattr(
+        "scripts.x_web_feed.load_x_sources",
+        lambda _path: [
+            {
+                "name": "OpenAI",
+                "handle": "OpenAI",
+                "tier": "primary",
+                "official": True,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.x_web_feed.collect_x_feed",
+        lambda _sources, _work_dir: {
+            "schema_version": "x-feed-v1",
+            "generated_at": "2026-08-17T10:00:00Z",
+            "source_count": 1,
+            "successful_source_count": 0,
+            "failed_source_count": 1,
+            "failures": [{"handle": "openai", "reason": "no_public_tweets"}],
+            "tweet_count": 0,
+            "tweets": [],
+        },
+    )
+
+    assert main(
+        [
+            "--sources",
+            str(tmp_path / "sources.json"),
+            "--work-dir",
+            str(tmp_path / "work"),
+            "--output",
+            str(output_path),
+        ]
+    ) == 0
+    assert json.loads(output_path.read_text(encoding="utf-8"))["tweet_count"] == 0
 
 
 def test_x_feed_workflow_publishes_a_scheduled_snapshot_without_vps_access():

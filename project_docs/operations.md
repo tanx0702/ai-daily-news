@@ -97,7 +97,7 @@ cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防�
 
 X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/workflows/x-feed.yml` 每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发；06:07 批次为 08:00 日报提供最新快照。若当天日报日志出现 X 快照过期，应先检查该工作流是否已成功发布 `x-feed` 分支的 `x-feed.json`。
 
-若工作流失败且探针报告所有来源 `tweet_count=0`，先检查报告中的 `extraction_method` 和失败截图。网页探针在 GraphQL 响应为空时会读取已渲染的公开 `cellInnerDiv`/`article` 卡片，并要求正文和 `/status/` 数字 ID；截图能看到推文而报告仍为 0 时，优先检查 `scripts/x_web_probe.py` 的 DOM 选择器和 Runner 浏览器版本，再考虑来源本身不可用。
+若工作流报告所有来源 `tweet_count=0`，先检查报告中的 `extraction_method` 和失败截图。网页探针在 GraphQL 响应为空时会读取已渲染的公开 `cellInnerDiv`/`article` 卡片，并要求正文和 `/status/` 数字 ID；截图能看到推文而报告仍为 0 时，优先检查 `scripts/x_web_probe.py` 的 DOM 选择器和 Runner 浏览器版本。X 工作流仍会发布带当前时间的空快照，生产任务会跳过 X，不应回退使用过期快照。
 
 ## HTTP 入口
 

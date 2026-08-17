@@ -200,7 +200,10 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         LOGGER.error("生成 X 快照失败: %s", exc)
         return 2
-    return 0 if int(feed["tweet_count"]) > 0 else 1
+    if int(feed["tweet_count"]) == 0:
+        # X 是可选附加来源；空快照仍需发布，避免旧快照过期后继续污染生产输入。
+        LOGGER.warning("X 来源本轮没有可验证推文，发布新鲜空快照并由生产采集跳过 X")
+    return 0
 
 
 if __name__ == "__main__":
