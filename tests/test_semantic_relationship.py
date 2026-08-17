@@ -136,7 +136,7 @@ def test_person_extraction_does_not_cross_title_and_evidence_boundary():
     )
 
     assert titled.features.people == {"mira murati"}
-    assert deterministic_relationship(titled, bare, window_hours=48) == "same_event"
+    assert deterministic_relationship(titled, bare, window_hours=48) == "review"
 
 
 def test_unknown_title_case_phrase_stays_non_person_in_person_like_contexts():
@@ -463,6 +463,56 @@ def test_shared_organization_and_action_without_strong_subject_needs_review():
     )
 
     assert deterministic_relationship(first, second, window_hours=48) == "review"
+
+
+def test_nominal_topic_cannot_auto_merge_a_distinct_model_paper():
+    topic = EventDocument.from_evidence(
+        evidence(
+            source_title="OpenAI GPT-5.6 research strategy",
+            evidence_text="OpenAI GPT-5.6 research strategy.",
+            authority="official",
+            is_official=True,
+            url="https://openai.example/research-strategy",
+        )
+    )
+    paper = EventDocument.from_evidence(
+        evidence(
+            source_title="OpenAI publishes a GPT-5.6 safety paper",
+            evidence_text="OpenAI publishes a GPT-5.6 safety paper.",
+            url="https://media.example/gpt-safety-paper",
+        )
+    )
+
+    assert "research" in topic.features.actions
+    assert not topic.features.asserted_actions
+    assert "research" in paper.features.asserted_actions
+    assert deterministic_relationship(topic, paper, window_hours=48) == "review"
+
+
+def test_same_x_thread_reaction_with_a_shared_model_needs_review():
+    release = EventDocument.from_evidence(
+        evidence(
+            channel="x",
+            source_item_id="100",
+            thread_id="100",
+            source_title="OpenAI releases GPT-5.6",
+            evidence_text="OpenAI releases GPT-5.6 to developers.",
+            url="https://x.com/openai/status/100",
+        )
+    )
+    reaction = EventDocument.from_evidence(
+        evidence(
+            channel="x",
+            source_item_id="101",
+            thread_id="100",
+            reply_to_item_id="100",
+            source_title="GPT-5.6 is extremely fast",
+            evidence_text="GPT-5.6 is extremely fast.",
+            url="https://x.com/openai/status/101",
+        )
+    )
+
+    assert deterministic_relationship(release, reaction, window_hours=48) == "review"
 
 
 def test_same_subject_outside_time_window_is_distinct():

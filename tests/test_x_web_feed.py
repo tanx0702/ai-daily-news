@@ -104,12 +104,70 @@ def test_collect_x_feed_keeps_successful_source_when_another_probe_fails(
             "tweet_id": "42",
             "text": "发布新的 AI 模型",
             "author": "OpenAI",
-            "created_at": "2026-08-04T00:00:00.000Z",
+            "created_at": "2026-08-04T00:00:00Z",
             "url": "https://x.com/OpenAI/status/42",
             "source_name": "OpenAI",
             "source_handle": "OpenAI",
             "source_tier": "primary",
             "official": True,
+            "thread_id": "42",
+            "reply_to_id": "",
+            "quoted_id": "",
+        }
+    ]
+
+
+def test_collect_x_feed_normalizes_legacy_graphql_date_and_keeps_thread_ids(
+    tmp_path: Path, monkeypatch
+):
+    def fake_run_probe(_target_url: str, output_dir: Path) -> int:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "probe-report.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "x-web-probe-v1",
+                    "tweet_count": 1,
+                    "tweets": [
+                        {
+                            "tweet_id": "42",
+                            "text": "回复并引用",
+                            "author": "OpenAI",
+                            "created_at": "Sun Aug 03 06:00:00 +0000 2026",
+                            "thread_id": "40",
+                            "reply_to_id": "41",
+                            "quoted_id": "39",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return 0
+
+    monkeypatch.setattr("scripts.x_web_feed.run_probe", fake_run_probe)
+
+    feed = collect_x_feed(
+        [{"name": "OpenAI", "handle": "OpenAI", "tier": "primary", "official": True}],
+        tmp_path,
+    )
+
+    assert feed["tweets"] == [
+        {
+            "tweet_id": "42",
+            "text": "回复并引用",
+            "author": "OpenAI",
+            "created_at": "2026-08-03T06:00:00Z",
+            "url": "https://x.com/OpenAI/status/42",
+            "source_name": "OpenAI",
+            "source_handle": "OpenAI",
+            "source_tier": "primary",
+            "official": True,
+            "thread_id": "42",
+            "reply_to_id": "",
+            "quoted_id": "",
+            "thread_id": "40",
+            "reply_to_id": "41",
+            "quoted_id": "39",
         }
     ]
 

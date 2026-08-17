@@ -21,6 +21,12 @@ from src.briefing.models import (
     RebuildRequest,
     ValidationResult,
 )
+from src.briefing.publishability import (
+    asserted_action_types,
+    claim_supported_by_quote,
+    validate_display_publishability,
+    validate_source_publishability,
+)
 from src.llm_config import LLMConfig
 
 
@@ -308,6 +314,15 @@ class BriefValidator:
                 "rules_only",
             )
 
+        source_editorial = validate_source_publishability(event.canonical_evidence)
+        if not source_editorial.accepted:
+            return ValidationResult(
+                "reject",
+                source_editorial.reason_codes,
+                "rules_only",
+                audited_draft=draft,
+            )
+
         issue_reasons = self._display_contract_reasons(event, draft)
         if issue_reasons:
             return self._issue_result(
@@ -462,6 +477,13 @@ class BriefValidator:
             quote = _quote_match_text(binding.source_quote)
             if not quote or quote not in evidence_quote_text:
                 return ("quote_not_found",)
+        editorial = validate_display_publishability(
+            draft.chinese_title,
+            draft.brief,
+            source,
+        )
+        if not editorial.accepted:
+            return editorial.reason_codes
         if _unsupported_protected_tokens(display, evidence_normalized):
             return ("protected_token_missing",)
         if _unsupported_action(display, evidence_normalized):
@@ -472,6 +494,16 @@ class BriefValidator:
             )
             if _unsupported_action(display_claim, combined_quotes):
                 return ("action_not_supported",)
+            if (
+                display_claim == draft.chinese_title
+                and asserted_action_types(display_claim)
+                and not claim_supported_by_quote(
+                    display_claim,
+                    source.source_title,
+                    source=source,
+                )
+            ):
+                return ("claim_quote_mismatch",)
             cross_language = (
                 _contains_chinese(display_claim)
                 and not _contains_chinese(combined_quotes)

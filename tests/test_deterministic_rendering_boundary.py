@@ -68,7 +68,10 @@ def test_media_and_cover_use_copies_for_brief_item_inputs():
         "score_reasons": [],
     }
 
-    with patch("src.media_assets._fetch_page_image_candidates", return_value=[{"url": validation["url"]}]):
+    with patch(
+        "src.media_assets._fetch_page_image_candidates",
+        return_value=[{"url": validation["url"], "semantic_text": "Example 发布模型"}],
+    ):
         with patch("src.media_assets.validate_media_candidate", return_value=validation):
             enriched, _ = resolve_article_media([item])
 

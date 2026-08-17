@@ -28,6 +28,9 @@ PUBLIC_TWEET_FIELDS = (
     "text",
     "author",
     "created_at",
+    "thread_id",
+    "reply_to_id",
+    "quoted_id",
     "like_count",
     "repost_count",
     "reply_count",
@@ -39,6 +42,7 @@ DOM_TWEET_SELECTOR = (
     "article[data-tweet-id][itemtype='https://schema.org/SocialMediaPosting']"
 )
 STATUS_ID_PATTERN = re.compile(r"/status/(\d+)(?:[/?#]|$)")
+PUBLIC_ID_PATTERN = re.compile(r"[0-9]{1,32}\Z")
 # 浏览器侧只读取页面已渲染卡片的公开字段，不保存 HTML、脚本或网络请求内容。
 DOM_CARD_EVALUATOR = r"""
 (cards) => cards.map((card) => {
@@ -125,6 +129,12 @@ def _string(value: object) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
+def _public_id(value: object) -> str:
+    """只保留受限数字 ID，避免不可信关系字段进入后续聚类。"""
+    candidate = _string(value)
+    return candidate if PUBLIC_ID_PATTERN.fullmatch(candidate) else ""
+
+
 def _count(value: object) -> int:
     """把互动统计转换为非负整数，异常值不进入报告。"""
     if isinstance(value, bool):
@@ -160,7 +170,7 @@ def extract_tweets(payload: object) -> list[dict[str, object]]:
         if not isinstance(legacy, Mapping):
             continue
 
-        tweet_id = _string(candidate.get("rest_id") or legacy.get("id_str"))
+        tweet_id = _public_id(candidate.get("rest_id") or legacy.get("id_str"))
         text = _string(legacy.get("full_text"))
         if not tweet_id or not text or tweet_id in seen_ids:
             continue
@@ -172,6 +182,9 @@ def extract_tweets(payload: object) -> list[dict[str, object]]:
                 "text": text,
                 "author": _author_name(candidate),
                 "created_at": _string(legacy.get("created_at")),
+                "thread_id": _public_id(legacy.get("conversation_id_str")) or tweet_id,
+                "reply_to_id": _public_id(legacy.get("in_reply_to_status_id_str")),
+                "quoted_id": _public_id(legacy.get("quoted_status_id_str")),
                 "like_count": _count(legacy.get("favorite_count")),
                 "repost_count": _count(legacy.get("retweet_count")),
                 "reply_count": _count(legacy.get("reply_count")),
@@ -198,7 +211,7 @@ def extract_dom_tweets(cards: list[object]) -> list[dict[str, object]]:
             continue
         status_url = _string(card.get("status_url"))
         match = STATUS_ID_PATTERN.search(status_url)
-        tweet_id = match.group(1) if match else ""
+        tweet_id = _public_id(match.group(1)) if match else ""
         text = _string(card.get("text"))
         if not tweet_id or not text or tweet_id in seen_ids:
             continue
@@ -210,6 +223,9 @@ def extract_dom_tweets(cards: list[object]) -> list[dict[str, object]]:
                 "text": text,
                 "author": _string(card.get("author")),
                 "created_at": _string(card.get("created_at")),
+                "thread_id": tweet_id,
+                "reply_to_id": "",
+                "quoted_id": "",
                 "like_count": 0,
                 "repost_count": 0,
                 "reply_count": 0,
@@ -224,7 +240,7 @@ def _public_tweet(value: object) -> dict[str, object] | None:
     """复制字段白名单，确保原始响应对象不会写入诊断报告。"""
     if not isinstance(value, Mapping):
         return None
-    tweet_id = _string(value.get("tweet_id"))
+    tweet_id = _public_id(value.get("tweet_id"))
     text = _string(value.get("text"))
     if not tweet_id or not text:
         return None
@@ -233,6 +249,9 @@ def _public_tweet(value: object) -> dict[str, object] | None:
         "text": text,
         "author": _string(value.get("author")),
         "created_at": _string(value.get("created_at")),
+        "thread_id": _public_id(value.get("thread_id")) or tweet_id,
+        "reply_to_id": _public_id(value.get("reply_to_id")),
+        "quoted_id": _public_id(value.get("quoted_id")),
         "like_count": _count(value.get("like_count")),
         "repost_count": _count(value.get("repost_count")),
         "reply_count": _count(value.get("reply_count")),

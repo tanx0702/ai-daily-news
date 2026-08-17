@@ -18,6 +18,7 @@ LOGGER = logging.getLogger(__name__)
 SCHEMA_VERSION = "x-feed-v1"
 SOURCE_SCHEMA_VERSION = "x-sources-v1"
 HANDLE_PATTERN = re.compile(r"^[A-Za-z0-9_]{1,15}$")
+PUBLIC_ID_PATTERN = re.compile(r"[0-9]{1,32}\Z")
 
 
 def load_x_sources(path: Path) -> list[dict[str, object]]:
@@ -135,9 +136,9 @@ def _normalize_tweet(
     """把 Probe 公共字段转换为日报快照契约，不携带浏览器或网络原始数据。"""
     if not isinstance(raw_tweet, Mapping):
         return None
-    tweet_id = str(raw_tweet.get("tweet_id") or "").strip()
+    tweet_id = _public_id(raw_tweet.get("tweet_id"))
     text = str(raw_tweet.get("text") or "").strip()
-    created_at = str(raw_tweet.get("created_at") or "").strip()
+    created_at = _normalize_created_at(raw_tweet.get("created_at"))
     handle = str(source.get("handle") or "").strip()
     if not tweet_id or not text or not created_at or not HANDLE_PATTERN.fullmatch(handle):
         return None
@@ -151,7 +152,33 @@ def _normalize_tweet(
         "source_handle": handle,
         "source_tier": str(source.get("tier") or "media").strip() or "media",
         "official": bool(source.get("official", False)),
+        "thread_id": _public_id(raw_tweet.get("thread_id")) or tweet_id,
+        "reply_to_id": _public_id(raw_tweet.get("reply_to_id")),
+        "quoted_id": _public_id(raw_tweet.get("quoted_id")),
     }
+
+
+def _public_id(value: object) -> str:
+    """拒绝非 ASCII 或超长 ID，防止远程快照伪造线程关联。"""
+    candidate = str(value or "").strip()
+    return candidate if PUBLIC_ID_PATTERN.fullmatch(candidate) else ""
+
+
+def _normalize_created_at(value: object) -> str:
+    """将 X legacy/ISO 时间统一投影为 UTC ISO，供生产 collector 解析。"""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text, "%a %b %d %H:%M:%S %z %Y")
+        except ValueError:
+            return ""
+    if parsed.tzinfo is None:
+        return ""
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
