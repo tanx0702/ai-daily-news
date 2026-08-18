@@ -148,7 +148,7 @@ Mount `${AI_NEWS_X_FEED_DIR:-./runtime/x-feed}` to `/app/runtime/x-feed:ro` in `
 
 - [ ] **Step 3: Document server-only trial commands**
 
-Document the root-only wrapper launching the producer in the `ai-news_egress` network with `TWS_PROXY=http://proxy:7890`, writing `/root/ai-news-x-poc/feed/x-feed.json`, setting `AI_NEWS_X_FEED_DIR=/root/ai-news-x-poc/feed` and `X_FEED_LOCAL_PATH=/app/runtime/x-feed/x-feed.json`, then `docker compose up -d --force-recreate`.
+Document `scripts/run_x_authenticated_feed.sh` launching the producer in the `ai-news_egress` network with `TWS_PROXY=http://proxy:7890`, writing `/root/ai-news-x-poc/feed/x-feed.json`, setting `AI_NEWS_X_FEED_DIR=/root/ai-news-x-poc/feed` and `X_FEED_LOCAL_PATH=/app/runtime/x-feed/x-feed.json`, then `docker compose up -d --force-recreate`.
 
 - [ ] **Step 4: Document rollback and four-hour trial cron**
 
