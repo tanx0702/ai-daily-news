@@ -66,6 +66,8 @@ docker compose up -d --force-recreate
 | `ENABLE_HF_COLLECTOR` / `ENABLE_ARXIV_COLLECTOR` | `1` | HF/arXiv 采集开关 |
 | `ENABLE_X_COLLECTOR` | `1`（代码默认） | X 快照采集开关；省略时按代码默认开启 |
 | `X_FEED_URL` | 仓库 `x-feed/x-feed.json` | X 快照 HTTPS 地址 |
+| `X_FEED_LOCAL_PATH` | 空 | 可选的容器内本机快照路径；新鲜有效时优先于 `X_FEED_URL` |
+| `AI_NEWS_X_FEED_DIR` | `./runtime/x-feed` | Compose 将 VPS 本机快照目录挂载到容器的目录 |
 | `X_FEED_MAX_AGE_HOURS` | `6` | X 快照最大年龄 |
 | `DAILY_X_TARGET_ITEMS` | `min(3, DAILY_X_MAX_ITEMS)` | X 规范来源软目标；达到前优先尝试，未通过质检时不硬凑 |
 | `DAILY_X_MAX_ITEMS` | `5` | 最终最多五条可将 X 用作规范来源 |

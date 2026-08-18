@@ -11,7 +11,7 @@
 | GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | stars/push 等项目活跃度；只能作为社区/活跃度信号，不等同正式发布 |
 | Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads 和模型卡证据；低信号条目降权 |
 | arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；仍需经过时效和编辑筛选 |
-| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | GitHub Runner 每四小时生成的公开 JSON 快照；最多六小时有效，默认优先尝试形成三条合格 X 简报，最终最多五条可将 X 用作规范来源 |
+| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、可选 `X_FEED_LOCAL_PATH`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | 优先读取 VPS 本机认证采集生成的 JSON 快照；本机文件缺失、损坏或过期时回退 GitHub Runner 的公开快照；最多六小时有效，默认优先尝试形成三条合格 X 简报，最终最多五条可将 X 用作规范来源 |
 
 ## RSS 配置
 
@@ -44,7 +44,7 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 ## X 快照来源
 
-X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，默认地址为仓库 `x-feed` 分支中的 `x-feed.json`；该快照由 GitHub Runner/相关工作流生成。工作流按 UTC `07` 分、`02/06/10/14/18/22` 点运行，对应 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07`；06:07 的快照必须先于 08:00 日报完成发布。
+X 不通过日报生产进程直接调用 X。试运行期间，如果设置了 `X_FEED_LOCAL_PATH`，生产采集先读取 VPS 上由 `scripts/x_authenticated_feed.py` 生成的本机快照；本机快照必须新鲜且符合 `x-feed-v1`，否则回退读取 `X_FEED_URL`。默认 HTTPS 地址仍为仓库 `x-feed` 分支中的 `x-feed.json`，由 GitHub Runner/相关工作流生成，作为回滚路径。工作流按 UTC `07` 分、`02/06/10/14/18/22` 点运行，对应 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07`。
 
 网页探针优先读取允许的 X GraphQL 响应；当响应没有可用推文时，再从已渲染的公开 `cellInnerDiv`/`article` 卡片回退提取。当前页面可能不再提供旧版推文 `data-testid` 或 Schema.org 标记，但正文容器与规范 `/status/<id>` 链接仍需同时可读取；评估器继续要求正文和数字状态 ID，避免把导航或登录区域写入快照。
 
@@ -57,7 +57,7 @@ X 不通过生产任务直接调用 X API。生产采集读取 `X_FEED_URL`，�
 - Runner 将 X GraphQL 的 legacy 日期规范化为 UTC ISO 8601，并保留受限数字的 `thread_id`、`reply_to_id` 和 `quoted_id`；生产 collector 再映射为事实证据的线程关系字段。无效、非 ASCII 或超长 ID 只清空对应关系，不能影响其它候选。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
 
-快照下载失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。Runner 即使本轮没有任何可验证推文，也会发布带当前 `generated_at` 和失败统计的新鲜空快照，生产 collector 随后跳过 X；不能用旧快照伪造新鲜来源。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑；失败的 X 重建使用携带失败原因和保护锚点的单条内容 LLM 请求，`@handle` 可从规范 X status URL 机械恢复。官方 X 账号可帮助确认品牌声明，但不能越过事实简报核验或 `DraftDecision`。
+快照读取失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。有效的本机空快照是权威结果，不会被旧的远程快照覆盖；本机文件失效才允许回退远程来源。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑。认证网页自动化仅用于短期试运行，账号、Cookie、SQLite 会话和代理配置必须保存在服务器 root 私有目录，试运行结束后删除并恢复 GitHub 快照路径。
 
 ## 新增或修改来源的检查清单
 
