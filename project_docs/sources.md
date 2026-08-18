@@ -50,6 +50,8 @@ X 不通过日报生产进程直接调用 X。试运行期间，如果设置了 
 
 `config/x_sources.json` 是受控账号白名单，账号按 `primary`、`research`、`media` 分层，并标记 `official`。快照中的每条记录必须满足：
 
+当前白名单包含 20 个 `primary` 官方账号、18 个 `research` 研究/技术账号和 13 个 `media` 专业资讯账号。个人研究者、记者和资讯作者统一标记 `official=false`，只能提供候选线索或本人公开陈述，不能自动升级为机构官方事实；扩容不能放宽事实门禁、X 最终占比或规范证据绑定要求。
+
 - schema 为 `x-feed-v1`，并且顶层包含有效 `generated_at` 和 `tweets` 列表。
 - 快照生成时间在 `X_FEED_MAX_AGE_HOURS`（默认 6 小时）内，允许最多 5 分钟的时钟偏差。
 - `tweet_id` 为数字，文本、source name、author、source tier 和创建时间非空。

@@ -8,12 +8,33 @@ from scripts.x_web_feed import collect_x_feed, load_x_sources, main
 def test_production_x_sources_keep_expanded_tier_distribution():
     sources = load_x_sources(Path("config/x_sources.json"))
 
-    assert len(sources) == 35
+    assert len(sources) == 51
     assert Counter(item["tier"] for item in sources) == Counter(
-        {"primary": 20, "research": 10, "media": 5}
+        {"primary": 20, "research": 18, "media": 13}
     )
     assert all(item["url"].startswith("https://x.com/") for item in sources)
-    assert len({item["handle"].lower() for item in sources}) == 35
+    assert len({item["handle"].lower() for item in sources}) == 51
+    added_handles = {
+        "lilianweng",
+        "jeffdean",
+        "oriolvinyalsml",
+        "soumithchintala",
+        "NandoDF".lower(),
+        "abhi1thakur",
+        "DaphneKoller".lower(),
+        "nathanbenaich",
+        "dotey",
+        "Barret_China".lower(),
+        "shao__meng",
+        "Gorden_Sun".lower(),
+        "WaytoAGI".lower(),
+        "_karenhao",
+        "CadeMetz".lower(),
+        "Valley101_Qian".lower(),
+    }
+    configured = {item["handle"].lower(): item for item in sources}
+    assert added_handles <= configured.keys()
+    assert all(not configured[handle]["official"] for handle in added_handles)
 
 
 def test_load_x_sources_returns_only_configured_public_profiles(tmp_path: Path):
