@@ -50,7 +50,7 @@ docker compose up -d
 docker compose up -d --force-recreate
 ```
 
-`web` 挂载 `docs`、`logs`、`src`、`app.py`、`templates` 和 `config`；`nginx` 只读挂载 `docs`、nginx 模板和 `/etc/letsencrypt`。nginx 依赖 `web` 的 `/health` healthcheck 通过后启动。
+`web` 挂载 `docs`、`logs`、`src`、`app.py`、`templates`、`config` 和只读的 `AI_NEWS_X_FEED_DIR` 本机快照目录；`nginx` 只读挂载 `docs`、nginx 模板和 `/etc/letsencrypt`。nginx 依赖 `web` 的 `/health` healthcheck 通过后启动。
 
 ### 服务器出网代理
 
@@ -95,7 +95,13 @@ cron 在宿主机运行，不在 Compose 容器内运行。生产示例：
 
 cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防止宿主机命令并发，后者防止应用进程重复执行。锁 TTL 默认 6 小时；只有确认任务异常残留时才调整或清理。
 
-X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。`.github/workflows/x-feed.yml` 每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发；06:07 批次为 08:00 日报提供最新快照。若当天日报日志出现 X 快照过期，应先检查该工作流是否已成功发布 `x-feed` 分支的 `x-feed.json`。
+默认 X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。临时认证试运行时，VPS 额外在日报前生成本机快照，生产容器通过 `X_FEED_LOCAL_PATH` 优先读取；本机快照失败或过期会自动回退 GitHub 快照。`.github/workflows/x-feed.yml` 仍每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发，作为回滚路径。试运行 cron 示例：
+
+```bash
+7 2,6,10,14,18,22 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-x.lock env TWS_PROXY=http://proxy:7890 TWS_TELEMETRY=0 /root/ai-news-x-poc/.venv/bin/python -m scripts.x_authenticated_feed --sources config/x_sources.json --db /root/ai-news-x-poc/accounts.db --output /root/ai-news-x-poc/feed/x-feed.json >> /root/ai-news-x-poc/collector.log 2>&1
+```
+
+该 cron 只适用于短期试运行；Cookie、SQLite 会话、日志和输出目录必须保持 root-only，试运行结束后移除 cron 并取消 `X_FEED_LOCAL_PATH`。
 
 若工作流报告所有来源 `tweet_count=0`，先检查报告中的 `extraction_method` 和失败截图。网页探针在 GraphQL 响应为空时会读取已渲染的公开 `cellInnerDiv`/`article` 卡片，并要求正文和 `/status/` 数字 ID；截图能看到推文而报告仍为 0 时，优先检查 `scripts/x_web_probe.py` 的 DOM 选择器和 Runner 浏览器版本。X 工作流仍会发布带当前时间的空快照，生产任务会跳过 X，不应回退使用过期快照。
 

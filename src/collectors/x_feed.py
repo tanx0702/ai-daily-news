@@ -32,9 +32,11 @@ class XFeedCollector(BaseCollector):
         max_age_hours: int = DEFAULT_MAX_AGE_HOURS,
         now: datetime | None = None,
         source_registry: Mapping[str, Mapping[str, object]] | None = None,
+        local_snapshot_path: str = "",
     ) -> None:
         super().__init__(timeout)
         self.feed_url = feed_url.strip()
+        self.local_snapshot_path = local_snapshot_path.strip()
         self.max_age_hours = max(int(max_age_hours), 1)
         self.now = now
         self.source_registry = dict(
@@ -43,32 +45,13 @@ class XFeedCollector(BaseCollector):
 
     def fetch(self) -> list[dict]:
         """获取新鲜快照；网络或契约异常不影响其他采集器。"""
-        if not _is_https_url(self.feed_url):
-            LOGGER.warning("X feed URL is not a valid HTTPS URL")
-            return []
-        try:
-            response = requests.get(
-                self.feed_url,
-                timeout=self.timeout,
-                headers={"User-Agent": "AI-Daily-News-XFeed/1.0"},
-            )
-            response.raise_for_status()
-            payload = response.json()
-        except (requests.RequestException, ValueError) as exc:
-            LOGGER.warning("X feed fetch failed: %s", exc)
+        payload = self._read_local_snapshot()
+        if payload is None:
+            payload = self._read_remote_snapshot()
+        if payload is None:
             return []
 
-        if not isinstance(payload, Mapping) or payload.get("schema_version") != FEED_SCHEMA_VERSION:
-            LOGGER.warning("X feed schema is invalid")
-            return []
-        if not _is_fresh_snapshot(payload.get("generated_at"), self._current_time(), self.max_age_hours):
-            LOGGER.warning("X feed snapshot is stale or has an invalid generation time")
-            return []
-
-        tweets = payload.get("tweets")
-        if not isinstance(tweets, list):
-            LOGGER.warning("X feed does not contain a tweet list")
-            return []
+        tweets = payload["tweets"]
 
         candidates: list[dict] = []
         seen_ids: set[str] = set()
@@ -80,6 +63,52 @@ class XFeedCollector(BaseCollector):
             candidates.append(candidate)
         LOGGER.info("X feed fetched %d valid candidates", len(candidates))
         return candidates
+
+    def _read_local_snapshot(self) -> Mapping[str, object] | None:
+        """Read a VPS-generated snapshot; invalid files leave HTTPS fallback available."""
+        if not self.local_snapshot_path:
+            return None
+        try:
+            with open(self.local_snapshot_path, "r", encoding="utf-8") as file:
+                payload = json.load(file)
+        except (OSError, ValueError) as exc:
+            LOGGER.warning("Local X feed snapshot unavailable: %s", exc)
+            return None
+        validated = self._validate_payload(payload, "local")
+        if validated is not None:
+            LOGGER.info("Using local X feed snapshot: %s", self.local_snapshot_path)
+        return validated
+
+    def _read_remote_snapshot(self) -> Mapping[str, object] | None:
+        """Read the existing GitHub snapshot as the rollback path."""
+        if not _is_https_url(self.feed_url):
+            LOGGER.warning("X feed URL is not a valid HTTPS URL")
+            return None
+        try:
+            response = requests.get(
+                self.feed_url,
+                timeout=self.timeout,
+                headers={"User-Agent": "AI-Daily-News-XFeed/1.0"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            LOGGER.warning("X feed fetch failed: %s", exc)
+            return None
+        return self._validate_payload(payload, "remote")
+
+    def _validate_payload(self, payload: object, label: str) -> Mapping[str, object] | None:
+        if not isinstance(payload, Mapping) or payload.get("schema_version") != FEED_SCHEMA_VERSION:
+            LOGGER.warning("%s X feed schema is invalid", label.capitalize())
+            return None
+        if not _is_fresh_snapshot(payload.get("generated_at"), self._current_time(), self.max_age_hours):
+            LOGGER.warning("%s X feed snapshot is stale or has an invalid generation time", label.capitalize())
+            return None
+        tweets = payload.get("tweets")
+        if not isinstance(tweets, list):
+            LOGGER.warning("%s X feed does not contain a tweet list", label.capitalize())
+            return None
+        return payload
 
     def _current_time(self) -> datetime:
         """返回统一 UTC 当前时间，便于在测试中固定快照时效。"""

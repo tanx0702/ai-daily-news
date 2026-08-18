@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
+
+import pytest
 
 from src import collector
 from src.briefing.evidence import source_evidence_from_candidate
@@ -34,6 +38,12 @@ def _feed(generated_at: datetime) -> dict:
             }
         ],
     }
+
+
+def _empty_feed(generated_at: datetime) -> dict:
+    payload = _feed(generated_at)
+    payload["tweets"] = []
+    return payload
 
 
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
@@ -89,6 +99,60 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             "x_quoted_id": "",
         }
     ]
+
+
+def test_x_feed_collector_prefers_fresh_local_snapshot_without_http(tmp_path: Path, monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    local_path = tmp_path / "x-feed.json"
+    local_path.write_text(json.dumps(_feed(now)), encoding="utf-8")
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: pytest.fail("fresh local snapshot must not use HTTP"),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        local_snapshot_path=str(local_path),
+        now=now,
+    ).fetch()
+
+    assert len(items) == 1
+
+
+def test_x_feed_collector_treats_fresh_local_empty_snapshot_as_authoritative(
+    tmp_path: Path, monkeypatch
+):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    local_path = tmp_path / "x-feed.json"
+    local_path.write_text(json.dumps(_empty_feed(now)), encoding="utf-8")
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: pytest.fail("fresh local empty snapshot must be authoritative"),
+    )
+
+    assert XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        local_snapshot_path=str(local_path),
+        now=now,
+    ).fetch() == []
+
+
+def test_x_feed_collector_falls_back_to_http_for_stale_local_snapshot(tmp_path: Path, monkeypatch):
+    now = datetime(2026, 8, 4, 7, 0, tzinfo=timezone.utc)
+    local_path = tmp_path / "x-feed.json"
+    local_path.write_text(json.dumps(_feed(now - timedelta(hours=7))), encoding="utf-8")
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(_feed(now)),
+    )
+
+    items = XFeedCollector(
+        feed_url="https://example.com/x-feed.json",
+        local_snapshot_path=str(local_path),
+        now=now,
+    ).fetch()
+
+    assert len(items) == 1
 
 
 def test_x_feed_collector_accepts_legacy_x_date_and_maps_thread_fields(monkeypatch):

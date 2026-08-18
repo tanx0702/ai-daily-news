@@ -1428,6 +1428,7 @@ def _fetch_x(timeout: int = 30) -> list[dict]:
             feed_url=os.environ.get("X_FEED_URL", DEFAULT_X_FEED_URL),
             timeout=timeout,
             max_age_hours=_env_nonnegative_int("X_FEED_MAX_AGE_HOURS", 6) or 6,
+            local_snapshot_path=os.environ.get("X_FEED_LOCAL_PATH", ""),
         )
         return collector.fetch()
     except Exception as e:
