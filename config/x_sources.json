@@ -31,10 +31,26 @@
     {"name": "Demis Hassabis", "handle": "demishassabis", "tier": "research", "official": false},
     {"name": "Fei-Fei Li", "handle": "drfeifei", "tier": "research", "official": false},
     {"name": "Sebastian Raschka", "handle": "rasbt", "tier": "research", "official": false},
+    {"name": "Lilian Weng", "handle": "lilianweng", "tier": "research", "official": false},
+    {"name": "Jeff Dean", "handle": "jeffdean", "tier": "research", "official": false},
+    {"name": "Oriol Vinyals", "handle": "oriolvinyalsml", "tier": "research", "official": false},
+    {"name": "Soumith Chintala", "handle": "soumithchintala", "tier": "research", "official": false},
+    {"name": "Nando de Freitas", "handle": "NandoDF", "tier": "research", "official": false},
+    {"name": "Abhishek Thakur", "handle": "abhi1thakur", "tier": "research", "official": false},
+    {"name": "Daphne Koller", "handle": "DaphneKoller", "tier": "research", "official": false},
+    {"name": "Nathan Benaich", "handle": "nathanbenaich", "tier": "research", "official": false},
     {"name": "Artificial Analysis", "handle": "ArtificialAnlys", "tier": "media", "official": false},
     {"name": "The Rundown AI", "handle": "TheRundownAI", "tier": "media", "official": false},
     {"name": "swyx", "handle": "swyx", "tier": "media", "official": false},
     {"name": "Simon Willison", "handle": "simonw", "tier": "media", "official": false},
-    {"name": "The AI Breakdown", "handle": "TheAIBreakdown", "tier": "media", "official": false}
+    {"name": "The AI Breakdown", "handle": "TheAIBreakdown", "tier": "media", "official": false},
+    {"name": "宝玉", "handle": "dotey", "tier": "media", "official": false},
+    {"name": "Barret李靖", "handle": "Barret_China", "tier": "media", "official": false},
+    {"name": "meng shao", "handle": "shao__meng", "tier": "media", "official": false},
+    {"name": "Gorden Sun", "handle": "Gorden_Sun", "tier": "media", "official": false},
+    {"name": "WaytoAGI", "handle": "WaytoAGI", "tier": "media", "official": false},
+    {"name": "Karen Hao", "handle": "_karenhao", "tier": "media", "official": false},
+    {"name": "Cade Metz", "handle": "CadeMetz", "tier": "media", "official": false},
+    {"name": "硅谷101陈茜", "handle": "Valley101_Qian", "tier": "media", "official": false}
   ]
 }
