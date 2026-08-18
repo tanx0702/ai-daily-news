@@ -4,9 +4,9 @@
 
 **Goal:** Temporarily replace the empty anonymous X snapshot with a VPS-generated authenticated snapshot for several days, without making X access a direct dependency of the daily pipeline.
 
-**Architecture:** A host-side command using the already verified `/root/ai-news-x-poc/.venv` calls `twscrape` through the existing `proxy:7890` route and writes an atomic `x-feed-v1` file. `XFeedCollector` reads an explicitly mounted local snapshot first and falls back to the current HTTPS GitHub snapshot only when the local file is unavailable or invalid. No `src.main` code calls X or `twscrape`.
+**Architecture:** A root-only wrapper launches a one-shot container on the existing `ai-news_egress` Docker network, where `twscrape` can reach `proxy:7890`, and writes an atomic `x-feed-v1` file. `XFeedCollector` reads an explicitly mounted local snapshot first and falls back to the current HTTPS GitHub snapshot only when the local file is unavailable or invalid. No `src.main` code calls X or `twscrape`.
 
-**Tech Stack:** Python 3.12+ project code, Python 3.10 POC venv on the VPS, `twscrape==0.20.0`, SQLite session state, Docker bind mount, host cron + `flock`, pytest.
+**Tech Stack:** Python 3.12+ project code, Docker one-shot runtime, `twscrape==0.20.0`, SQLite session state, Docker bind mount, host cron + `flock`, pytest.
 
 ## Global Constraints
 
@@ -148,7 +148,7 @@ Mount `${AI_NEWS_X_FEED_DIR:-./runtime/x-feed}` to `/app/runtime/x-feed:ro` in `
 
 - [ ] **Step 3: Document server-only trial commands**
 
-Document installing `requirements-x.txt` into `/root/ai-news-x-poc/.venv`, running the authenticated producer through `TWS_PROXY=http://proxy:7890`, writing `/root/ai-news-x-poc/feed/x-feed.json`, setting `AI_NEWS_X_FEED_DIR=/root/ai-news-x-poc/feed` and `X_FEED_LOCAL_PATH=/app/runtime/x-feed/x-feed.json`, then `docker compose up -d --force-recreate`.
+Document the root-only wrapper launching the producer in the `ai-news_egress` network with `TWS_PROXY=http://proxy:7890`, writing `/root/ai-news-x-poc/feed/x-feed.json`, setting `AI_NEWS_X_FEED_DIR=/root/ai-news-x-poc/feed` and `X_FEED_LOCAL_PATH=/app/runtime/x-feed/x-feed.json`, then `docker compose up -d --force-recreate`.
 
 - [ ] **Step 4: Document rollback and four-hour trial cron**
 

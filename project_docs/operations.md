@@ -98,7 +98,7 @@ cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防�
 默认 X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。临时认证试运行时，VPS 额外在日报前生成本机快照，生产容器通过 `X_FEED_LOCAL_PATH` 优先读取；本机快照失败或过期会自动回退 GitHub 快照。`.github/workflows/x-feed.yml` 仍每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发，作为回滚路径。试运行 cron 示例：
 
 ```bash
-7 2,6,10,14,18,22 * * * cd /opt/ai-news && /usr/bin/flock -n /tmp/ai-news-x.lock env TWS_PROXY=http://proxy:7890 TWS_TELEMETRY=0 /root/ai-news-x-poc/.venv/bin/python -m scripts.x_authenticated_feed --sources config/x_sources.json --db /root/ai-news-x-poc/accounts.db --output /root/ai-news-x-poc/feed/x-feed.json >> /root/ai-news-x-poc/collector.log 2>&1
+7 2,6,10,14,18,22 * * * /usr/bin/flock -n /tmp/ai-news-x.lock /root/ai-news-x-poc/run-collector.sh >> /root/ai-news-x-poc/collector.log 2>&1
 ```
 
 该 cron 只适用于短期试运行；Cookie、SQLite 会话、日志和输出目录必须保持 root-only，试运行结束后移除 cron 并取消 `X_FEED_LOCAL_PATH`。
