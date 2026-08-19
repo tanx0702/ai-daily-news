@@ -9,6 +9,7 @@ arXiv 采集器
 
 import logging
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from html import unescape
 from typing import Optional
@@ -80,16 +81,35 @@ class ArxivCollector(BaseCollector):
         }
         url = f"{ARXIV_API_BASE}?{urlencode(params)}"
 
-        try:
-            resp = requests.get(url, timeout=self.timeout, headers={
-                "User-Agent": "AIDailyNewsBot/1.0",
-            })
-            resp.raise_for_status()
-        except requests.exceptions.Timeout:
-            logger.warning("arXiv API timeout")
-            return []
-        except Exception as e:
-            logger.warning("arXiv API failed: %s", e)
+        resp = None
+        for attempt in range(2):
+            try:
+                resp = requests.get(url, timeout=self.timeout, headers={
+                    "User-Agent": "AIDailyNewsBot/1.0",
+                })
+                resp.raise_for_status()
+                break
+            except requests.exceptions.Timeout:
+                if attempt == 0:
+                    logger.info("arXiv API timeout; retrying once")
+                    time.sleep(0.25)
+                    continue
+                logger.warning("arXiv API timeout after 2 attempts")
+                return []
+            except requests.exceptions.HTTPError as exc:
+                status = getattr(exc.response, "status_code", None)
+                retryable = status == 429 or (isinstance(status, int) and status >= 500)
+                if attempt == 0 and retryable:
+                    logger.info("arXiv API HTTP %s; retrying once", status)
+                    time.sleep(0.25)
+                    continue
+                logger.warning("arXiv API failed: %s", exc)
+                return []
+            except Exception as exc:
+                logger.warning("arXiv API failed: %s", exc)
+                return []
+
+        if resp is None:
             return []
 
         feed = feedparser.parse(resp.content)

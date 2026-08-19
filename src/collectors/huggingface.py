@@ -267,6 +267,7 @@ class HuggingFaceCollector(BaseCollector):
             metrics={
                 "hf_likes": likes,
                 "hf_downloads": downloads,
+                "hf_activity_type": "model_activity",
             },
         )
         candidate["scores"]["community"] = round(community_hotness, 1)

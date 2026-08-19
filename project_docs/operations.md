@@ -95,6 +95,10 @@ cron 在宿主机运行，不在 Compose 容器内运行。生产示例：
 
 cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防止宿主机命令并发，后者防止应用进程重复执行。锁 TTL 默认 6 小时；只有确认任务异常残留时才调整或清理。
 
+生产任务使用 `DAILY_NEWS_HOURS=36` 作为默认新闻窗口。服务器曾为排查临时覆盖为 `24` 时，应从 `.env` 删除该覆盖或恢复为 `36`，然后执行 `docker compose up -d --force-recreate`。
+
+候选池诊断中的 `publishability_preflight_*` 用于判断采集后是否有足够的可发布事件。`publishability_preflight_rejected` 较高而 `publishability_preflight_passed` 较低表示候选主要是教程、观点、活动元数据或缺少完整事件动作，不应通过降低最终事实门禁解决。
+
 默认 X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。临时认证试运行时，VPS 额外在日报前生成本机快照，生产容器通过 `X_FEED_LOCAL_PATH` 优先读取；本机快照失败或过期会自动回退 GitHub 快照。`.github/workflows/x-feed.yml` 仍每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发，作为回滚路径。试运行 cron 示例：
 
 ```bash

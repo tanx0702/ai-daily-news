@@ -2,7 +2,10 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
+from src.briefing.evidence import source_evidence_from_candidate
+from src.briefing.publishability import validate_source_publishability
 from src.collectors.github import GitHubCollector
+from src.evidence import preserve_source_evidence
 
 
 def _repo(repo_id, name, *, created_at, pushed_at, stars=30, description="AI tooling"):
@@ -61,6 +64,34 @@ class GitHubCollectorTests(unittest.TestCase):
         self.assertEqual(candidate["metrics"]["github_release_tag"], "v1.4.0")
         self.assertIn("project_description", candidate["github_evidence"])
         self.assertIn("release_notes", candidate["github_evidence"])
+
+    def test_recent_release_candidate_is_source_publishable(self):
+        collector = GitHubCollector(token="test-token")
+        repo = _repo(
+            22,
+            "acme/coding-agent",
+            created_at="2025-01-01T00:00:00Z",
+            pushed_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+        release = {
+            "tag_name": "v1.4.0",
+            "html_url": "https://github.com/acme/coding-agent/releases/tag/v1.4.0",
+            "published_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "body": "Adds repository rule packs and a TypeScript integration for coding agents.",
+            "draft": False,
+            "prerelease": False,
+        }
+        candidate = collector._release_to_candidate(
+            repo,
+            release,
+            project_description="A tool that applies repository rules to coding agents.",
+        )
+
+        preserve_source_evidence(candidate)
+        source = source_evidence_from_candidate(candidate)
+        result = validate_source_publishability(source)
+
+        self.assertTrue(result.accepted, result.reason_codes)
 
     def test_fetch_keeps_recent_push_out_of_daily_candidates(self):
         collector = GitHubCollector(token="test-token")
@@ -184,7 +215,7 @@ class GitHubCollectorTests(unittest.TestCase):
              patch("src.collectors.github.time.sleep"):
             candidates = collector.fetch()
 
-        self.assertEqual([item["title"] for item in candidates], ["acme/release-agent v1.4.0"])
+        self.assertEqual([item["title"] for item in candidates], ["acme/release-agent releases v1.4.0"])
 
 
 if __name__ == "__main__":

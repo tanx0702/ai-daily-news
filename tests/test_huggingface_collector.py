@@ -23,6 +23,10 @@ class HuggingFaceCollectorTests(unittest.TestCase):
         self.assertEqual(candidates[0]["_hf_category"], "文本生成")
         self.assertIn("recently updated language model", candidates[0]["summary"])
         self.assertEqual(candidates[0]["metrics"]["hf_downloads"], 8000)
+        self.assertEqual(
+            candidates[0]["metrics"]["hf_activity_type"],
+            "model_activity",
+        )
 
 
 if __name__ == "__main__":

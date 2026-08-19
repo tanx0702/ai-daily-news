@@ -8,9 +8,9 @@
 | --- | --- | --- | --- |
 | RSS | `src/collector.py::_fetch_source` | `config/rss_sources.json`、`DAILY_NEWS_HOURS`、`DAILY_RSS_TIMEOUT` | AI 关键词、发布时间窗口、URL/标题去重；配置中的 `tier`/`region` 参与编辑平衡 |
 | Hacker News | `src/collectors/hackernews.py` | `ENABLE_HN_COLLECTOR`、`HN_DETAILS_TIMEOUT` | score/comments 和原文链接；低信号 HN-only 条目降权 |
-| GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | stars/push 等项目活跃度；只能作为社区/活跃度信号，不等同正式发布 |
-| Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads 和模型卡证据；低信号条目降权 |
-| arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；仍需经过时效和编辑筛选 |
+| GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | 只有近期正式 release、项目说明和可读 release notes 同时存在才形成候选；stars/push 只能作为社区信号 |
+| Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads/lastModified 统一标记为 `model_activity`，不能自动等同模型发布 |
+| arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；超时、429、5xx 有界重试一次，仍失败则降级为空 |
 | X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、可选 `X_FEED_LOCAL_PATH`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | 优先读取 VPS 本机认证采集生成的 JSON 快照；本机文件缺失、损坏或过期时回退 GitHub Runner 的公开快照；最多六小时有效，默认优先尝试形成三条合格 X 简报，最终最多五条可将 X 用作规范来源 |
 
 ## RSS 配置
@@ -34,13 +34,19 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 `GitHubCollector` 采集近期 AI 项目和仓库活跃度。GitHub 最近 push 只能说明项目活跃，不能被摘要写成“官方发布”或新产品发布；正式发布声明仍需原始官方证据或跨源确认。`GITHUB_TOKEN` 只用于提高 API 限额，不能写入日志。
 
+正式候选标题使用 `<owner/repo> releases <tag>`，其中动作、仓库名和版本号均直接来自 GitHub Release API；候选还必须具有 release URL、发布时间、项目用途和足够长度的 release notes。普通 push、stars 和缺少变更说明的 tag 不进入正式候选。
+
 ### Hugging Face
 
 `HuggingFaceCollector` 采集近期模型/论文/社区信号。likes 和 downloads 只影响热度，不能替代模型卡、论文或官方公告等内容证据。接口限流或字段异常时返回空列表并继续日报。
 
+Hub API 的 `lastModified`、累计 downloads 和 likes 使用 `hf_activity_type=model_activity` 明确标记为活跃度雷达。若标题和模型卡证据没有可机械核验的发布动作，该条目会在候选池确定性预检中排到正式发布事件之后，不能为了补足条目把普通模型更新写成发布新闻。
+
 ### arXiv
 
 `ArxivCollector` 采集近期 AI 论文，保留论文 URL、摘要和时间。论文是研究来源，不自动等同产品发布；编辑层需要根据主题、影响和可验证性决定是否进入日报。
+
+arXiv API 对超时、HTTP 429 和 5xx 最多重试一次，重试前短暂退避；其它 4xx 不重试。两次请求仍失败时记录原因并返回空列表，不阻断 RSS、HN、GitHub、HF 或 X。
 
 ## X 快照来源
 

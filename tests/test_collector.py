@@ -301,6 +301,56 @@ class CollectorTests(unittest.TestCase):
         self.assertNotIn("_publish_risk", items[0])
         self.assertNotIn("publish_risk_penalty", items[0]["scores"])
 
+    def test_collect_candidates_publishability_preflight_refills_before_limit(self):
+        now = datetime.now(timezone.utc)
+        tutorial = {
+            "title": "How OpenAI works: a practical AI guide",
+            "url": "https://example.com/openai-guide",
+            "source": "Example Media",
+            "source_type": "rss",
+            "source_tier": "media",
+            "published_at": now,
+            "summary": "A tutorial explaining how OpenAI systems work.",
+            "metrics": {},
+            "scores": {},
+        }
+        release = {
+            "title": "OpenAI releases Model 5 for developers",
+            "url": "https://openai.com/news/model-5",
+            "source": "OpenAI Blog",
+            "source_type": "rss",
+            "source_tier": "primary",
+            "published_at": now,
+            "summary": "OpenAI releases Model 5 for developers.",
+            "metrics": {},
+            "scores": {},
+        }
+        diagnostics = {}
+
+        def score(item, _all_items, **_kwargs):
+            return 100.0 if item["url"].endswith("openai-guide") else 10.0
+
+        with patch.object(
+            collector,
+            "_fetch_raw_candidates",
+            return_value=[tutorial, release],
+        ), patch.object(collector, "_score_item", side_effect=score):
+            items = collector.collect_candidates(
+                limit=1,
+                hours=36,
+                diagnostics=diagnostics,
+                now=now,
+            )
+
+        self.assertEqual([item["url"] for item in items], [release["url"]])
+        self.assertEqual(diagnostics["publishability_preflight_total"], 2)
+        self.assertEqual(diagnostics["publishability_preflight_passed"], 1)
+        self.assertEqual(diagnostics["publishability_preflight_rejected"], 1)
+        self.assertEqual(
+            diagnostics["publishability_preflight_reason_counts"],
+            {"non_news_content": 1},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

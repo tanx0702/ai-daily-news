@@ -1510,27 +1510,69 @@ def collect_candidates(
         preserve_source_evidence(item)
         filtered.append(item)
 
+    from src.briefing.evidence import source_evidence_from_candidate
+    from src.briefing.publishability import validate_source_publishability
+
+    publishable: list[dict] = []
+    preflight_rejected: list[dict] = []
+    invalid_evidence: list[dict] = []
+    preflight_reason_counts: dict[str, int] = {}
     for item in filtered:
         item["_score"] = _score_item(
             item,
             filtered,
             include_publish_risk=False,
         )
-    filtered.sort(
-        key=lambda item: (
+        source_evidence = source_evidence_from_candidate(
+            item,
+            trusted_x_collector=(
+                str(item.get("source_type") or "").strip().lower() == "x"
+            ),
+        )
+        if source_evidence is None:
+            item["_publishability_preflight"] = {
+                "accepted": False,
+                "reason_codes": ["invalid_source_evidence"],
+            }
+            invalid_evidence.append(item)
+            continue
+        preflight = validate_source_publishability(source_evidence)
+        item["_publishability_preflight"] = {
+            "accepted": preflight.accepted,
+            "reason_codes": list(preflight.reason_codes),
+        }
+        if preflight.accepted:
+            publishable.append(item)
+            continue
+        preflight_rejected.append(item)
+        for reason in preflight.reason_codes:
+            preflight_reason_counts[reason] = preflight_reason_counts.get(reason, 0) + 1
+
+    def preflight_sort_key(item: dict) -> tuple:
+        return (
             item.get("_score", 0),
             item.get("published_at") or datetime.min.replace(tzinfo=timezone.utc),
             str(item.get("url") or ""),
-        ),
-        reverse=True,
-    )
-    result = filtered if limit is None else filtered[:max(int(limit), 0)]
+        )
+
+    publishable.sort(key=preflight_sort_key, reverse=True)
+    preflight_rejected.sort(key=preflight_sort_key, reverse=True)
+    invalid_evidence.sort(key=preflight_sort_key, reverse=True)
+    prioritized = [*publishable, *preflight_rejected, *invalid_evidence]
+    result = prioritized if limit is None else prioritized[:max(int(limit), 0)]
     if diagnostics is not None:
         diagnostics.update(
             {
                 **stats,
                 "filtered_total": len(filtered),
                 "returned_candidate_count": len(result),
+                "publishability_preflight_total": len(filtered),
+                "publishability_preflight_passed": len(publishable),
+                "publishability_preflight_rejected": len(preflight_rejected),
+                "publishability_preflight_invalid_evidence": len(invalid_evidence),
+                "publishability_preflight_reason_counts": dict(
+                    sorted(preflight_reason_counts.items())
+                ),
                 "source_merge_removed": 0,
                 "topic_cluster_removed": 0,
                 "final_editorial_dedup_removed": 0,

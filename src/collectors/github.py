@@ -507,7 +507,7 @@ class GitHubCollector(BaseCollector):
         )
         candidate = self.make_candidate(
             id_=f"github-release-{repo['id']}-{tag_name}",
-            title=f"{name} {tag_name}"[:200],
+            title=f"{name} releases {tag_name}"[:200],
             url=release_url,
             source="GitHub",
             source_type="github",
