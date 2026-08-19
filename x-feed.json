@@ -1,9 +1,9 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-08-18T22:41:16.699358Z",
-  "source_count": 51,
+  "generated_at": "2026-08-19T10:51:26.706957Z",
+  "source_count": 64,
   "successful_source_count": 0,
-  "failed_source_count": 51,
+  "failed_source_count": 64,
   "failures": [
     {
       "handle": "OpenAI",
@@ -158,6 +158,46 @@
       "reason": "no_public_tweets"
     },
     {
+      "handle": "geoffreyhinton",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "GaryMarcus",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "timnitGebru",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "erikbryn",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "katecrawford",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "ID_AA_Carmack",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "rodneyabrooks",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "etzioni",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "dongxi_nlp",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "kaifulee",
+      "reason": "no_public_tweets"
+    },
+    {
       "handle": "ArtificialAnlys",
       "reason": "no_public_tweets"
     },
@@ -207,6 +247,18 @@
     },
     {
       "handle": "Valley101_Qian",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "wshuyi",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "turingou",
+      "reason": "no_public_tweets"
+    },
+    {
+      "handle": "vista8",
       "reason": "no_public_tweets"
     }
   ],
