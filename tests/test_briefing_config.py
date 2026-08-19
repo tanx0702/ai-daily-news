@@ -9,8 +9,10 @@ def test_briefing_config_uses_approved_defaults():
     assert config.min_items == 5
     assert config.max_items == 15
     assert config.candidate_pool_size == 45
-    assert config.max_x_items == 5
-    assert config.target_x_items == 3
+    assert config.min_fact_items == 3
+    assert config.max_opinion_items == 3
+    assert config.max_x_items == 8
+    assert config.target_x_items == 5
     assert config.x_feed_max_age_hours == 6
     assert config.builder_batch_size == 5
     assert config.news_hours == 36
@@ -36,7 +38,7 @@ def test_briefing_config_accepts_all_hard_boundaries():
             "DAILY_MIN_ITEMS": "15",
             "DAILY_TOP_N": "15",
             "DAILY_CANDIDATE_POOL_N": "45",
-            "DAILY_X_MAX_ITEMS": "5",
+            "DAILY_X_MAX_ITEMS": "8",
             "X_FEED_MAX_AGE_HOURS": "6",
             "SKIP_WECHAT_DRAFT": "0",
         }
@@ -45,8 +47,8 @@ def test_briefing_config_accepts_all_hard_boundaries():
     assert (lower.min_items, lower.max_items, lower.max_x_items) == (5, 5, 0)
     assert lower.target_x_items == 0
     assert lower.skip_wechat_draft is True
-    assert (upper.min_items, upper.max_items, upper.max_x_items) == (15, 15, 5)
-    assert upper.target_x_items == 3
+    assert (upper.min_items, upper.max_items, upper.max_x_items) == (15, 15, 8)
+    assert upper.target_x_items == 5
     assert upper.skip_wechat_draft is False
 
 
@@ -59,9 +61,13 @@ def test_briefing_config_accepts_all_hard_boundaries():
         {"DAILY_TOP_N": "16"},
         {"DAILY_CANDIDATE_POOL_N": "14", "DAILY_TOP_N": "15"},
         {"DAILY_X_MAX_ITEMS": "-1"},
-        {"DAILY_X_MAX_ITEMS": "6"},
+        {"DAILY_X_MAX_ITEMS": "9"},
         {"DAILY_X_TARGET_ITEMS": "-1"},
         {"DAILY_X_MAX_ITEMS": "2", "DAILY_X_TARGET_ITEMS": "3"},
+        {"DAILY_MIN_FACT_ITEMS": "2"},
+        {"DAILY_MIN_FACT_ITEMS": "6", "DAILY_MIN_ITEMS": "5"},
+        {"DAILY_MAX_OPINION_ITEMS": "-1"},
+        {"DAILY_MAX_OPINION_ITEMS": "4"},
         {"X_FEED_MAX_AGE_HOURS": "0"},
         {"X_FEED_MAX_AGE_HOURS": "7"},
         {"DAILY_NEWS_HOURS": "0"},

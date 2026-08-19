@@ -7,7 +7,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 工程按运行职责分为：
 
 1. 采集层：从 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照取得候选。
-2. 事实简报层：保留规范来源证据，聚类唯一事件，隔离歧义重复项，生成并核验可显示的事实简报。
+2. 简报层：保留规范来源证据，聚类唯一事件/观点，隔离歧义重复项，生成并核验可显示的事实新闻与署名观点。
 3. 内容生产层：调用 LLM 生成中文摘要，解析原文媒体，渲染日报、微信预览和封面。
 4. 发布触达层：写入静态日报产物、读取 `latest.json`，创建微信公众号草稿并响应微信客服消息。
 5. 运行支撑层：Docker Compose、nginx、cron、运行锁、日志和 shadow/editorial 反馈。
@@ -20,7 +20,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 ├─ app.py                         Flask 微信回调、健康检查和新闻/审阅接口
 ├─ config/
 │  ├─ rss_sources.json            RSS 源定义
-│  └─ x_sources.json              X 账号白名单和来源等级
+│  └─ x_sources.json              X 账号白名单、来源等级和观点资格
 ├─ src/
 │  ├─ main.py                     生产日报编排入口
 │  ├─ collector.py                采集兼容入口、合并、筛选、评分和最终去重

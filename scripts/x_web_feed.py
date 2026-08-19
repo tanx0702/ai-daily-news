@@ -51,6 +51,7 @@ def load_x_sources(path: Path) -> list[dict[str, object]]:
                 "handle": handle,
                 "tier": tier,
                 "official": bool(raw_source.get("official", False)),
+                "opinion_eligible": bool(raw_source.get("opinion_eligible", False)),
                 "url": f"https://x.com/{handle}",
             }
         )

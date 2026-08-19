@@ -8,12 +8,12 @@ from scripts.x_web_feed import collect_x_feed, load_x_sources, main
 def test_production_x_sources_keep_expanded_tier_distribution():
     sources = load_x_sources(Path("config/x_sources.json"))
 
-    assert len(sources) == 51
+    assert len(sources) >= 51
     assert Counter(item["tier"] for item in sources) == Counter(
-        {"primary": 20, "research": 18, "media": 13}
+        {"primary": 20, "research": 28, "media": 16}
     )
     assert all(item["url"].startswith("https://x.com/") for item in sources)
-    assert len({item["handle"].lower() for item in sources}) == 51
+    assert len({item["handle"].lower() for item in sources}) == 64
     added_handles = {
         "lilianweng",
         "jeffdean",
@@ -35,6 +35,8 @@ def test_production_x_sources_keep_expanded_tier_distribution():
     configured = {item["handle"].lower(): item for item in sources}
     assert added_handles <= configured.keys()
     assert all(not configured[handle]["official"] for handle in added_handles)
+    assert configured["karpathy"]["opinion_eligible"] is True
+    assert configured["openai"]["opinion_eligible"] is False
 
 
 def test_load_x_sources_returns_only_configured_public_profiles(tmp_path: Path):
@@ -62,6 +64,7 @@ def test_load_x_sources_returns_only_configured_public_profiles(tmp_path: Path):
             "handle": "OpenAI",
             "tier": "primary",
             "official": True,
+            "opinion_eligible": False,
             "url": "https://x.com/OpenAI",
         }
     ]

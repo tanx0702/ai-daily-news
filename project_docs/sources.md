@@ -11,7 +11,7 @@
 | GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | 只有近期正式 release、项目说明和可读 release notes 同时存在才形成候选；stars/push 只能作为社区信号 |
 | Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads/lastModified 统一标记为 `model_activity`，不能自动等同模型发布 |
 | arXiv | `src/collectors/arxiv.py` | `ENABLE_ARXIV_COLLECTOR` | 论文日期、摘要和技术信号；超时、429、5xx 有界重试一次，仍失败则降级为空 |
-| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、可选 `X_FEED_LOCAL_PATH`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | 优先读取 VPS 本机认证采集生成的 JSON 快照；本机文件缺失、损坏或过期时回退 GitHub Runner 的公开快照；最多六小时有效，默认优先尝试形成三条合格 X 简报，最终最多五条可将 X 用作规范来源 |
+| X | `src/collectors/x_feed.py` | `ENABLE_X_COLLECTOR`、`X_FEED_URL`、可选 `X_FEED_LOCAL_PATH`、`X_FEED_MAX_AGE_HOURS`、`DAILY_X_TARGET_ITEMS`、`DAILY_X_MAX_ITEMS` | 优先读取 VPS 本机认证采集生成的 JSON 快照；本机文件缺失、损坏或过期时回退 GitHub Runner 的公开快照；最多六小时有效，默认优先尝试形成五条合格 X 内容，最终最多八条可将 X 用作规范来源 |
 
 ## RSS 配置
 
@@ -54,9 +54,9 @@ X 不通过日报生产进程直接调用 X。试运行期间，如果设置了 
 
 网页探针优先读取允许的 X GraphQL 响应；当响应没有可用推文时，再从已渲染的公开 `cellInnerDiv`/`article` 卡片回退提取。当前页面可能不再提供旧版推文 `data-testid` 或 Schema.org 标记，但正文容器与规范 `/status/<id>` 链接仍需同时可读取；评估器继续要求正文和数字状态 ID，避免把导航或登录区域写入快照。
 
-`config/x_sources.json` 是受控账号白名单，账号按 `primary`、`research`、`media` 分层，并标记 `official`。快照中的每条记录必须满足：
+`config/x_sources.json` 是受控账号白名单，账号按 `primary`、`research`、`media` 分层，并标记 `official`。自然人还可显式标记 `opinion_eligible=true`，该字段只授予署名观点候选资格，不改变来源权威等级。快照中的每条记录必须满足：
 
-当前白名单包含 20 个 `primary` 官方账号、18 个 `research` 研究/技术账号和 13 个 `media` 专业资讯账号。个人研究者、记者和资讯作者统一标记 `official=false`，只能提供候选线索或本人公开陈述，不能自动升级为机构官方事实；扩容不能放宽事实门禁、X 最终占比或规范证据绑定要求。
+当前白名单包含 20 个 `primary` 官方账号、28 个 `research` 研究/技术账号和 16 个 `media` 专业资讯账号。个人研究者、记者和资讯作者统一标记 `official=false`，只能提供候选线索或本人公开陈述；仅 `opinion_eligible=true` 的自然人可进入署名观点预检，不能自动升级为机构官方事实。
 
 - schema 为 `x-feed-v1`，并且顶层包含有效 `generated_at` 和 `tweets` 列表。
 - 快照生成时间在 `X_FEED_MAX_AGE_HOURS`（默认 6 小时）内，允许最多 5 分钟的时钟偏差。
