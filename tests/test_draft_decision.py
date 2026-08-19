@@ -17,7 +17,7 @@ def config(**values) -> BriefingConfig:
         "min_items": 5,
         "max_items": 15,
         "candidate_pool_size": 45,
-        "max_x_items": 5,
+        "max_x_items": 8,
         "x_feed_max_age_hours": 6,
     }
     defaults.update(values)
@@ -30,6 +30,8 @@ def item(
     channel: str = "rss",
     event_key: str | None = None,
     validation_mode: str = "rules_only",
+    content_type: str = "fact_event",
+    opinion_author: str = "",
 ) -> BriefItem:
     source = SourceEvidence(
         publisher_id=f"publisher-{index}",
@@ -42,6 +44,12 @@ def item(
         evidence_text=f"Source {index} update.",
         url=f"https://example.test/{index}",
         published_at="2026-08-07T08:00:00+00:00",
+        content_type=content_type,
+        opinion_author=opinion_author,
+        opinion_eligible=content_type == "attributed_opinion",
+        original_post=content_type == "attributed_opinion",
+        context_complete=content_type == "attributed_opinion",
+        stance_type="opinion" if content_type == "attributed_opinion" else "",
     )
     return BriefItem(
         event_key=event_key or f"event-{index}",
@@ -53,6 +61,8 @@ def item(
         evidence_bindings=(EvidenceBinding(f"快讯 {index}", source.evidence_text, source.url),),
         content_origin="source",
         validation_mode=validation_mode,
+        content_type=content_type,
+        opinion_author=opinion_author,
     )
 
 
@@ -152,6 +162,39 @@ def test_too_few_items_blocks_only_for_insufficient_items():
 
     assert decision.action == "block"
     assert decision.reasons == ("insufficient_items",)
+
+
+def test_decision_requires_three_facts_and_limits_opinions_and_authors():
+    two_facts = [item(1), item(2)]
+    opinions = [
+        item(
+            index,
+            channel="x",
+            content_type="attributed_opinion",
+            opinion_author=f"Author {index}",
+        )
+        for index in range(3, 7)
+    ]
+
+    decision = decide_draft([*two_facts, *opinions[:3]], config())
+    assert decision.action == "block"
+    assert "insufficient_fact_items" in decision.reasons
+
+    decision = decide_draft([item(1), item(2), item(3), *opinions], config())
+    assert decision.action == "block"
+    assert "opinion_limit" in decision.reasons
+
+    duplicate_author = [
+        item(
+            index,
+            channel="x",
+            content_type="attributed_opinion",
+            opinion_author="Same Author",
+        )
+        for index in (4, 5)
+    ]
+    decision = decide_draft([item(1), item(2), item(3), *duplicate_author], config())
+    assert "opinion_author_limit" in decision.reasons
 
 
 def test_duplicate_quarantined_over_limit_and_invalid_items_block():

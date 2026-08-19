@@ -13,6 +13,8 @@ def event(
     published_at: str = "2026-08-07T08:00:00+00:00",
     related=(),
     rank_reasons=(),
+    content_type: str = "fact_event",
+    opinion_author: str = "",
 ) -> MergedEvent:
     source = SourceEvidence(
         publisher_id=publisher.lower().replace(" ", "-"),
@@ -25,6 +27,12 @@ def event(
         evidence_text=f"{publisher} update.",
         url=f"https://example.test/{key}",
         published_at=published_at,
+        content_type=content_type,
+        opinion_author=opinion_author,
+        opinion_eligible=content_type == "attributed_opinion",
+        original_post=content_type == "attributed_opinion",
+        context_complete=content_type == "attributed_opinion",
+        stance_type="opinion" if content_type == "attributed_opinion" else "",
     )
     return MergedEvent(
         event_key=key,
@@ -49,6 +57,8 @@ def item(value: MergedEvent) -> BriefItem:
         ),
         content_origin="source",
         validation_mode="rules_only",
+        content_type=source.content_type,
+        opinion_author=source.opinion_author,
     )
 
 
@@ -165,3 +175,34 @@ def test_selector_restores_x_limited_candidate_after_replacement_frees_quota():
 
     assert waiting.event_key in [value.event_key for value in selector.pending()]
     assert selector.excluded_counts.get("x_limit", 0) == 0
+
+
+def test_selector_rejects_opinion_limit_and_duplicate_author():
+    opinions = [
+        event(
+            f"opinion-{index}",
+            channel="x",
+            content_type="attributed_opinion",
+            opinion_author="Same Author" if index == 2 else f"Author {index}",
+        )
+        for index in range(1, 5)
+    ]
+    selector = BriefSelector(opinions, config(max_opinion_items=3, max_x_items=8))
+
+    assert selector.accept(item(opinions[0])) is True
+    assert selector.accept(item(opinions[1])) is True
+    assert selector.accept(item(opinions[2])) is True
+    assert selector.accept(item(opinions[3])) is False
+    assert selector.opinion_count == 3
+
+    duplicate = event(
+        "duplicate-author",
+        channel="x",
+        content_type="attributed_opinion",
+        opinion_author="Author 1",
+    )
+    duplicate_selector = BriefSelector(
+        [opinions[0], duplicate], config(max_opinion_items=3, max_x_items=8)
+    )
+    assert duplicate_selector.accept(item(opinions[0])) is True
+    assert duplicate_selector.accept(item(duplicate)) is False

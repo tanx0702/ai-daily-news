@@ -64,7 +64,21 @@ def _pop_next_event(
     queue: deque[MergedEvent],
     *,
     prefer_x: bool,
+    prefer_fact: bool = False,
 ) -> MergedEvent:
+    if prefer_fact and prefer_x:
+        for event in queue:
+            if (
+                event.canonical_evidence.content_type == "fact_event"
+                and event.canonical_evidence.channel == "x"
+            ):
+                queue.remove(event)
+                return event
+    if prefer_fact:
+        for event in queue:
+            if event.canonical_evidence.content_type == "fact_event":
+                queue.remove(event)
+                return event
     if prefer_x:
         for event in queue:
             if event.canonical_evidence.channel == "x":
@@ -203,6 +217,7 @@ def run_brief_pipeline(
         remaining_slots = max(config.max_items - len(selector.accepted_items), 0)
         remaining_x_slots = max(config.max_x_items - selector.x_count, 0)
         batched_x_count = 0
+        batched_fact_count = 0
         single_x_retry = bool(
             retry_queue
             and retry_queue[0].canonical_evidence.channel == "x"
@@ -223,10 +238,17 @@ def run_brief_pipeline(
                 prefer_x=(
                     selector.x_count + batched_x_count < config.target_x_items
                 ),
+                prefer_fact=(
+                    selector.fact_count + batched_fact_count < config.min_fact_items
+                ),
             )
             audit_entry = audit_by_event_identity[id(event)]
             if not selector.can_attempt(event):
-                if event.canonical_evidence.channel == "x":
+                limit_reason = selector.limit_reason(event)
+                if limit_reason in {"opinion_limit", "opinion_author_limit"}:
+                    selector.reject(event.event_key, limit_reason)
+                    _finalize_audit(audit_entry, "rejected", (limit_reason,))
+                elif event.canonical_evidence.channel == "x":
                     deferred_x.append(event)
                 continue
             if (
@@ -242,6 +264,8 @@ def run_brief_pipeline(
                 batch.append(event)
                 if event.canonical_evidence.channel == "x":
                     batched_x_count += 1
+                if event.canonical_evidence.content_type == "fact_event":
+                    batched_fact_count += 1
             else:
                 _finalize_audit(audit_entry, "not_selected", ("target_reached",))
         if not batch:

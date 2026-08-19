@@ -407,6 +407,10 @@ class DraftDecision:
     max_items: int
     x_count: int
     max_x_items: int
+    fact_count: int = 0
+    min_fact_items: int = 3
+    opinion_count: int = 0
+    max_opinion_items: int = 3
     reasons: tuple[str, ...] = ()
     excluded_counts: Mapping[str, int] = field(
         default_factory=lambda: MappingProxyType({})
@@ -430,6 +434,10 @@ class DraftDecision:
             "max_items": self.max_items,
             "x_count": self.x_count,
             "max_x_items": self.max_x_items,
+            "fact_count": self.fact_count,
+            "min_fact_items": self.min_fact_items,
+            "opinion_count": self.opinion_count,
+            "max_opinion_items": self.max_opinion_items,
             "reasons": list(self.reasons),
             "excluded_counts": dict(self.excluded_counts),
             "source_counts": dict(self.source_counts),
@@ -444,6 +452,10 @@ class DraftDecision:
             max_items=int(data["max_items"]),
             x_count=int(data["x_count"]),
             max_x_items=int(data["max_x_items"]),
+            fact_count=int(data.get("fact_count", data.get("selected_count", 0))),
+            min_fact_items=int(data.get("min_fact_items", 3)),
+            opinion_count=int(data.get("opinion_count", 0)),
+            max_opinion_items=int(data.get("max_opinion_items", 3)),
             reasons=tuple(data.get("reasons", [])),
             excluded_counts=data.get("excluded_counts", {}),
             source_counts=data.get("source_counts", {}),

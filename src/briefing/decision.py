@@ -34,9 +34,21 @@ def decide_draft(
         item.canonical_source.publisher_id for item in valid_items
     )
     x_count = sum(item.canonical_source.channel == "x" for item in valid_items)
+    fact_count = sum(item.content_type == "fact_event" for item in valid_items)
+    opinion_items = [
+        item for item in valid_items if item.content_type == "attributed_opinion"
+    ]
+    opinion_count = len(opinion_items)
+    opinion_authors = [item.opinion_author.strip().lower() for item in opinion_items]
 
     if len(values) < config.min_items:
         reasons.append("insufficient_items")
+    if fact_count < config.min_fact_items:
+        reasons.append("insufficient_fact_items")
+    if opinion_count > config.max_opinion_items:
+        reasons.append("opinion_limit")
+    if not all(opinion_authors) or len(opinion_authors) != len(set(opinion_authors)):
+        reasons.append("opinion_author_limit")
     if len(values) > config.max_items or invalid or x_count > config.max_x_items:
         reasons.append("invalid_final_item")
     if len(event_keys) != len(set(event_keys)) or any(
@@ -51,6 +63,10 @@ def decide_draft(
         max_items=config.max_items,
         x_count=x_count,
         max_x_items=config.max_x_items,
+        fact_count=fact_count,
+        min_fact_items=config.min_fact_items,
+        opinion_count=opinion_count,
+        max_opinion_items=config.max_opinion_items,
         reasons=tuple(reasons),
         excluded_counts=excluded_counts,
         source_counts=source_counts,
