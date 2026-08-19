@@ -134,6 +134,20 @@ def test_x_feed_collector_drops_reposts_and_promotional_posts(
     ).fetch() == []
 
 
+def test_x_feed_collector_does_not_treat_of_course_as_course_promotion(monkeypatch):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["tweets"][0]["text"] = "Of course, OpenAI releases a new AI model today."
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    items = XFeedCollector(feed_url="https://example.com/x-feed.json", now=now).fetch()
+
+    assert len(items) == 1
+
+
 def test_x_feed_collector_prefers_fresh_local_snapshot_without_http(tmp_path: Path, monkeypatch):
     now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     local_path = tmp_path / "x-feed.json"

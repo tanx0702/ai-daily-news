@@ -8,8 +8,12 @@ from typing import Mapping
 
 
 _PROMOTIONAL = (
-    "招聘", "课程", "报名", "折扣", "优惠", "join us", "hiring", "course",
+    "招聘", "课程", "报名", "折扣", "优惠", "join us", "hiring",
     "register", "workshop", "webinar", "congratulations", "congrats", "祝贺",
+)
+_COURSE_PROMOTION = re.compile(
+    r"\b(?:(?:our|this|new|ai)\s+course|course\s+(?:registration|enrollment))\b",
+    re.IGNORECASE,
 )
 _REPOST_PREFIX = re.compile(r"^\s*(?:rt\s+@|转发\s*[:：])", re.IGNORECASE)
 _STANCE_MARKERS = {
@@ -38,7 +42,7 @@ def x_content_rejection_reason(candidate: Mapping[str, object]) -> str:
     ):
         return "x_repost"
     lower = text.lower()
-    if any(marker in lower for marker in _PROMOTIONAL):
+    if any(marker in lower for marker in _PROMOTIONAL) or _COURSE_PROMOTION.search(text):
         return "x_promotional_content"
     return ""
 
@@ -68,7 +72,7 @@ def evaluate_opinion_candidate(
             original_post=True,
         )
     lower = text.lower()
-    if any(marker in lower for marker in _PROMOTIONAL):
+    if any(marker in lower for marker in _PROMOTIONAL) or _COURSE_PROMOTION.search(text):
         return OpinionEligibility(
             False,
             ("opinion_promotional_content",),
