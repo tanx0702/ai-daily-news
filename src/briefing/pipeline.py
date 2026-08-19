@@ -96,6 +96,20 @@ class BriefPipelineResult:
     audit_entries: tuple[Mapping[str, object], ...]
 
 
+def _opinion_audit_fields(source: object) -> dict[str, object]:
+    return {
+        "content_type": str(getattr(source, "content_type", "fact_event")),
+        "opinion_author": str(getattr(source, "opinion_author", "")),
+        "opinion_eligible": bool(getattr(source, "opinion_eligible", False)),
+        "original_post": bool(getattr(source, "original_post", False)),
+        "context_complete": bool(getattr(source, "context_complete", False)),
+        "stance_type": str(getattr(source, "stance_type", "")),
+        "affiliation_disclosure": bool(
+            getattr(source, "affiliation_disclosure", False)
+        ),
+    }
+
+
 def run_brief_pipeline(
     events: Iterable[MergedEvent],
     quarantined: Iterable[QuarantinedEvent],
@@ -146,6 +160,7 @@ def run_brief_pipeline(
             "attempts": [],
             "final_state": "not_evaluated",
             "final_reason_codes": [],
+            **_opinion_audit_fields(event.canonical_evidence),
         }
         audit_entries.append(audit_entry)
         audit_by_event_identity.setdefault(id(event), audit_entry)

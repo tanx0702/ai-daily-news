@@ -25,6 +25,22 @@ SAMPLE_NEWS = [
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_renderers_label_attributed_opinion_and_keep_original_link(self):
+        opinion = {
+            **SAMPLE_NEWS[0],
+            "content_type": "attributed_opinion",
+            "content_label": "圈内观点",
+            "opinion_author": "Andrej Karpathy",
+            "url": "https://x.com/karpathy/status/42",
+        }
+
+        daily = render_daily_html([opinion], date_str="2026-07-11")
+        wechat = render_wechat_article([opinion], date_str="2026-07-11")
+
+        self.assertIn("圈内观点", daily)
+        self.assertIn("圈内观点", wechat)
+        self.assertIn("https://x.com/karpathy/status/42", wechat)
+
     def test_render_daily_html_contains_news_and_archive(self):
         html = render_daily_html(
             SAMPLE_NEWS,

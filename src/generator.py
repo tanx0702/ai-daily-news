@@ -310,6 +310,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                         <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.chinese_title or item.title }}</a>
                     </div>
                     <div class="news-meta">
+                        {% if item.content_type == "attributed_opinion" %}
+                        <span class="news-source-tag">{{ item.content_label or "圈内观点" }}</span>
+                        {% endif %}
                         <span class="news-source-tag">{{ item.source }}</span>
                         {% if item.published_at %}
                         <span>{{ item.published_at }}</span>
@@ -590,6 +593,10 @@ def render_wechat_article(
         url = safe_http_url(item.get("url", ""))
         article_img = safe_http_url(item.get("article_image_url", ""))
         image_type = item.get("image_type", "")
+        content_label = clean_display_text(
+            item.get("content_label")
+            or ("圈内观点" if item.get("content_type") == "attributed_opinion" else "快讯")
+        )
 
         # 判断是否为图文卡片。
         # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
@@ -620,7 +627,7 @@ def render_wechat_article(
             # 编号（图片下方）
             parts.append(
                 f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
-                f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d}</p>'
+                f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d} · {esc(content_label)}</p>'
             )
             # 标题
             parts.append(
@@ -658,7 +665,7 @@ def render_wechat_article(
             parts.append(
                 f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
                 f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
-                f'NEWS {idx + 1:02d} · 快讯'
+                f'NEWS {idx + 1:02d} · {esc(content_label)}'
                 f'</p>'
             )
             # 标题（略小于图文卡片）

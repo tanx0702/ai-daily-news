@@ -50,7 +50,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 
 - 首次部署只复制 `.env.example`；高级覆盖从 `.env.advanced.example` 逐项复制。
 - `QUALITY_LLM_*` 未设置时继承 `LLM_*`，用于可选的事实核验和语义去重增强；语义去重默认 48 小时窗口、单期共享最多 20 次 LLM 调用，新增配置仍以 `.env.advanced.example` 为参考。
-- 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_TARGET_ITEMS=3`、`DAILY_X_MAX_ITEMS=5`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只在达到三条前优先尝试 X，不能绕过质检或硬凑，最终最多五条可将 X 用作规范来源。
+- 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_MAX_OPINION_ITEMS=3`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true` 的自然人原帖，同一作者每期最多一条。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。
 - 不提交 `.env`、API key、微信密钥/token、Basic Auth 密码、日志、媒体缓存、`docs/` 生成物或完整外部 API 响应。
 - 不提交订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置或服务器私有二进制；它们只可保存在 `/root/ai-news-proxy/` 等 root 受限目录。

@@ -12,7 +12,7 @@ from src.briefing.models import (
     SourceEvidence,
     ValidationResult,
 )
-from src.briefing.pipeline import _brief_audit_fields, run_brief_pipeline
+from src.briefing.pipeline import _brief_audit_fields, _opinion_audit_fields, run_brief_pipeline
 
 
 def config(**values) -> BriefingConfig:
@@ -111,6 +111,37 @@ class Validator:
                 rebuild_request=RebuildRequest(value.event_key, ("unsupported_claim",), 2),
             )
         return accepted(value)
+
+
+def test_opinion_audit_fields_are_explicit_and_json_safe():
+    source = SourceEvidence(
+        publisher_id="karpathy",
+        publisher_name="Andrej Karpathy",
+        channel="x",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        source_title="I think open models will win",
+        evidence_text="I think open models will win because they are easier to adapt.",
+        url="https://x.com/karpathy/status/42",
+        published_at="2026-08-07T08:00:00+00:00",
+        content_type="attributed_opinion",
+        opinion_author="Andrej Karpathy",
+        opinion_eligible=True,
+        original_post=True,
+        context_complete=True,
+        stance_type="opinion",
+    )
+
+    assert _opinion_audit_fields(source) == {
+        "content_type": "attributed_opinion",
+        "opinion_author": "Andrej Karpathy",
+        "opinion_eligible": True,
+        "original_post": True,
+        "context_complete": True,
+        "stance_type": "opinion",
+        "affiliation_disclosure": False,
+    }
 
 
 def test_pipeline_rejects_backfills_and_rebuilds_before_the_single_decision():
