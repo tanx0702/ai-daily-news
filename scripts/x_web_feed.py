@@ -153,9 +153,12 @@ def _normalize_tweet(
         "source_handle": handle,
         "source_tier": str(source.get("tier") or "media").strip() or "media",
         "official": bool(source.get("official", False)),
+        "opinion_eligible": bool(source.get("opinion_eligible", False)),
         "thread_id": _public_id(raw_tweet.get("thread_id")) or tweet_id,
         "reply_to_id": _public_id(raw_tweet.get("reply_to_id")),
         "quoted_id": _public_id(raw_tweet.get("quoted_id")),
+        "is_repost": bool(raw_tweet.get("is_repost", False)),
+        "context_complete": bool(raw_tweet.get("context_complete", False)),
     }
 
 

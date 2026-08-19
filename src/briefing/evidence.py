@@ -140,6 +140,13 @@ def source_evidence_from_candidate(
         "thread_id": "",
         "reply_to_item_id": "",
         "quoted_item_id": "",
+        "content_type": "fact_event",
+        "opinion_author": "",
+        "opinion_eligible": False,
+        "original_post": False,
+        "context_complete": False,
+        "stance_type": "",
+        "affiliation_disclosure": False,
     }
     if channel == "x":
         thread_values = {
@@ -149,6 +156,13 @@ def source_evidence_from_candidate(
             ),
             "reply_to_item_id": str(candidate.get("x_reply_to_id") or ""),
             "quoted_item_id": str(candidate.get("x_quoted_id") or ""),
+            "content_type": str(candidate.get("content_type") or "fact_event"),
+            "opinion_author": str(candidate.get("opinion_author") or ""),
+            "opinion_eligible": bool(candidate.get("opinion_eligible", False)),
+            "original_post": bool(candidate.get("opinion_original_post", False)),
+            "context_complete": bool(candidate.get("opinion_context_complete", False)),
+            "stance_type": str(candidate.get("opinion_stance_type") or ""),
+            "affiliation_disclosure": bool(candidate.get("affiliation_disclosure", False)),
         }
 
     return SourceEvidence(

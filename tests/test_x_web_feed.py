@@ -65,6 +65,7 @@ def test_load_x_sources_returns_only_configured_public_profiles(tmp_path: Path):
             "tier": "primary",
             "official": True,
             "opinion_eligible": False,
+            "opinion_eligible": False,
             "url": "https://x.com/OpenAI",
         }
     ]
@@ -134,9 +135,12 @@ def test_collect_x_feed_keeps_successful_source_when_another_probe_fails(
             "source_handle": "OpenAI",
             "source_tier": "primary",
             "official": True,
+            "opinion_eligible": False,
             "thread_id": "42",
             "reply_to_id": "",
             "quoted_id": "",
+            "is_repost": False,
+            "context_complete": False,
         }
     ]
 
@@ -186,12 +190,15 @@ def test_collect_x_feed_normalizes_legacy_graphql_date_and_keeps_thread_ids(
             "source_handle": "OpenAI",
             "source_tier": "primary",
             "official": True,
+            "opinion_eligible": False,
             "thread_id": "42",
             "reply_to_id": "",
             "quoted_id": "",
             "thread_id": "40",
             "reply_to_id": "41",
             "quoted_id": "39",
+            "is_repost": False,
+            "context_complete": False,
         }
     ]
 

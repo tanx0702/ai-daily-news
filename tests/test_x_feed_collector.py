@@ -97,6 +97,15 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             "x_thread_id": "42",
             "x_reply_to_id": "",
             "x_quoted_id": "",
+            "x_is_repost": False,
+            "x_context_complete": False,
+            "opinion_eligible": False,
+            "content_type": "fact_event",
+            "opinion_author": "",
+            "opinion_original_post": False,
+            "opinion_context_complete": False,
+            "opinion_stance_type": "",
+            "opinion_reason_codes": ["opinion_author_not_allowed"],
         }
     ]
 

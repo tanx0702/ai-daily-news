@@ -141,6 +141,7 @@ def load_sources(path: Path) -> list[dict[str, object]]:
                 "handle": handle,
                 "tier": tier,
                 "official": bool(raw_source.get("official", False)),
+                "opinion_eligible": bool(raw_source.get("opinion_eligible", False)),
             }
         )
     return sources
@@ -157,6 +158,7 @@ def _to_snapshot_tweet(raw_tweet: Any, source: Mapping[str, object]) -> dict[str
         return None
 
     quoted = _field(raw_tweet, "quotedTweet")
+    retweeted = _field(raw_tweet, "retweetedTweet")
     return {
         "tweet_id": tweet_id,
         "text": text,
@@ -167,9 +169,12 @@ def _to_snapshot_tweet(raw_tweet: Any, source: Mapping[str, object]) -> dict[str
         "source_handle": handle,
         "source_tier": str(source.get("tier") or "media").strip() or "media",
         "official": bool(source.get("official", False)),
+        "opinion_eligible": bool(source.get("opinion_eligible", False)),
         "thread_id": _numeric_id(_field(raw_tweet, "conversationId")) or tweet_id,
         "reply_to_id": _numeric_id(_field(raw_tweet, "inReplyToTweetId")),
         "quoted_id": _numeric_id(_field(quoted, "id")),
+        "is_repost": bool(retweeted),
+        "context_complete": not bool(_numeric_id(_field(raw_tweet, "inReplyToTweetId"))),
     }
 
 

@@ -55,12 +55,21 @@ class SourceEvidence:
     thread_id: str = ""
     reply_to_item_id: str = ""
     quoted_item_id: str = ""
+    content_type: str = "fact_event"
+    opinion_author: str = ""
+    opinion_eligible: bool = False
+    original_post: bool = False
+    context_complete: bool = False
+    stance_type: str = ""
+    affiliation_disclosure: bool = False
 
     def __post_init__(self) -> None:
         if self.channel not in _CHANNELS:
             raise ValueError(f"invalid channel: {self.channel}")
         if self.authority not in _AUTHORITIES:
             raise ValueError(f"invalid authority: {self.authority}")
+        if self.content_type not in {"fact_event", "attributed_opinion"}:
+            raise ValueError(f"invalid content_type: {self.content_type}")
         _validate_aware_iso(self.published_at, "published_at")
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +90,13 @@ class SourceEvidence:
             "thread_id": self.thread_id,
             "reply_to_item_id": self.reply_to_item_id,
             "quoted_item_id": self.quoted_item_id,
+            "content_type": self.content_type,
+            "opinion_author": self.opinion_author,
+            "opinion_eligible": self.opinion_eligible,
+            "original_post": self.original_post,
+            "context_complete": self.context_complete,
+            "stance_type": self.stance_type,
+            "affiliation_disclosure": self.affiliation_disclosure,
         }
 
     def to_public_dict(self) -> dict[str, Any]:
@@ -95,6 +111,10 @@ class SourceEvidence:
             "published_at": self.published_at,
             "discovered_via": self.discovered_via,
             "evidence_quality": self.evidence_quality,
+            "content_type": self.content_type,
+            "opinion_author": self.opinion_author,
+            "stance_type": self.stance_type,
+            "affiliation_disclosure": self.affiliation_disclosure,
         }
 
     @classmethod
@@ -116,6 +136,13 @@ class SourceEvidence:
             thread_id=str(data.get("thread_id") or ""),
             reply_to_item_id=str(data.get("reply_to_item_id") or ""),
             quoted_item_id=str(data.get("quoted_item_id") or ""),
+            content_type=str(data.get("content_type") or "fact_event"),
+            opinion_author=str(data.get("opinion_author") or ""),
+            opinion_eligible=bool(data.get("opinion_eligible", False)),
+            original_post=bool(data.get("original_post", False)),
+            context_complete=bool(data.get("context_complete", False)),
+            stance_type=str(data.get("stance_type") or ""),
+            affiliation_disclosure=bool(data.get("affiliation_disclosure", False)),
         )
 
     @classmethod

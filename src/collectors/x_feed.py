@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import requests
 
 from src.collectors import BaseCollector
+from src.briefing.opinion import evaluate_opinion_candidate
 from src.text_utils import clean_display_text
 
 
@@ -168,9 +169,11 @@ def _tweet_to_candidate(
         source_tier = str(registry_source.get("tier") or source_tier).strip()
         official = bool(registry_source.get("official", False))
         official_source = "config/x_sources.json"
+        opinion_eligible = bool(registry_source.get("opinion_eligible", False))
     else:
         official = False
         official_source = ""
+        opinion_eligible = False
 
     title_text = " ".join(text.split())
     candidate = BaseCollector.make_candidate(
@@ -193,6 +196,16 @@ def _tweet_to_candidate(
     candidate["x_thread_id"] = _public_id(tweet.get("thread_id")) or tweet_id
     candidate["x_reply_to_id"] = _public_id(tweet.get("reply_to_id"))
     candidate["x_quoted_id"] = _public_id(tweet.get("quoted_id"))
+    candidate["x_is_repost"] = bool(tweet.get("is_repost", False))
+    candidate["x_context_complete"] = bool(tweet.get("context_complete", False))
+    candidate["opinion_eligible"] = opinion_eligible
+    opinion = evaluate_opinion_candidate(candidate, registry_source)
+    candidate["content_type"] = "attributed_opinion" if opinion.eligible else "fact_event"
+    candidate["opinion_author"] = source_name if opinion.eligible else ""
+    candidate["opinion_original_post"] = opinion.original_post
+    candidate["opinion_context_complete"] = opinion.context_complete
+    candidate["opinion_stance_type"] = opinion.stance_type
+    candidate["opinion_reason_codes"] = list(opinion.reason_codes)
     return candidate
 
 
