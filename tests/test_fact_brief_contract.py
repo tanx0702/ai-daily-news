@@ -171,6 +171,33 @@ def test_empty_brief_is_a_serializable_title_only_item():
     assert restored.brief_reason == "brief_empty"
 
 
+def test_brief_item_round_trips_content_type_and_opinion_author():
+    source = evidence(
+        channel="x",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        content_type="attributed_opinion",
+        opinion_author="Andrej Karpathy",
+        opinion_eligible=True,
+        original_post=True,
+        context_complete=True,
+        stance_type="opinion",
+    )
+    original = brief_item(
+        canonical_source=source,
+        related_sources=(),
+        published_at=source.published_at,
+        content_type="attributed_opinion",
+        opinion_author="Andrej Karpathy",
+    )
+
+    restored = BriefItem.from_dict(original.to_dict())
+
+    assert restored.content_type == "attributed_opinion"
+    assert restored.opinion_author == "Andrej Karpathy"
+
+
 def test_brief_item_rejects_invalid_brief_mode():
     with pytest.raises(ValueError, match="brief_mode"):
         brief_item(brief_mode="summary")

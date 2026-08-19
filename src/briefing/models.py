@@ -222,11 +222,15 @@ class BuiltBrief:
     content_origin: str
     brief_mode: str = ""
     brief_reason: str = ""
+    content_type: str = "fact_event"
+    opinion_author: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "evidence_bindings", tuple(self.evidence_bindings))
         if self.content_origin not in _CONTENT_ORIGINS:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
+        if self.content_type not in {"fact_event", "attributed_opinion"}:
+            raise ValueError(f"invalid content_type: {self.content_type}")
         mode = self.brief_mode or ("title_only" if not self.brief.strip() else "expanded")
         if mode not in _BRIEF_MODES:
             raise ValueError(f"invalid brief_mode: {mode}")
@@ -248,6 +252,8 @@ class BuiltBrief:
             "content_origin": self.content_origin,
             "brief_mode": self.brief_mode,
             "brief_reason": self.brief_reason,
+            "content_type": self.content_type,
+            "opinion_author": self.opinion_author,
         }
 
 
@@ -264,6 +270,8 @@ class BriefItem:
     validation_mode: str
     brief_mode: str = ""
     brief_reason: str = ""
+    content_type: str = "fact_event"
+    opinion_author: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "related_sources", tuple(self.related_sources))
@@ -273,6 +281,10 @@ class BriefItem:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
         if self.validation_mode not in _VALIDATION_MODES:
             raise ValueError(f"invalid validation_mode: {self.validation_mode}")
+        if self.content_type not in {"fact_event", "attributed_opinion"}:
+            raise ValueError(f"invalid content_type: {self.content_type}")
+        if self.content_type == "attributed_opinion" and not self.opinion_author.strip():
+            raise ValueError("attributed_opinion requires opinion_author")
         mode = self.brief_mode or ("title_only" if not self.brief.strip() else "expanded")
         if mode not in _BRIEF_MODES:
             raise ValueError(f"invalid brief_mode: {mode}")
@@ -297,6 +309,8 @@ class BriefItem:
             "validation_mode": self.validation_mode,
             "brief_mode": self.brief_mode,
             "brief_reason": self.brief_reason,
+            "content_type": self.content_type,
+            "opinion_author": self.opinion_author,
         }
 
     @classmethod
@@ -322,6 +336,8 @@ class BriefItem:
                 or ("title_only" if not str(data.get("brief", "")).strip() else "expanded")
             ),
             brief_reason=str(data.get("brief_reason") or ""),
+            content_type=str(data.get("content_type") or "fact_event"),
+            opinion_author=str(data.get("opinion_author") or ""),
         )
 
 

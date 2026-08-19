@@ -159,6 +159,8 @@ def _source_fallback(
             content_origin="source",
             brief_mode="title_only",
             brief_reason="brief_empty",
+            content_type=evidence.content_type,
+            opinion_author=evidence.opinion_author,
         )
 
     body = evidence.evidence_text.strip()
@@ -185,6 +187,8 @@ def _source_fallback(
         content_origin="source",
         brief_mode="expanded" if brief else "title_only",
         brief_reason="" if brief else "brief_empty",
+        content_type=evidence.content_type,
+        opinion_author=evidence.opinion_author,
     )
 
 
@@ -256,6 +260,8 @@ def _strict_item(
         content_origin="llm",
         brief_mode="expanded" if brief else "title_only",
         brief_reason="" if brief else "brief_empty",
+        content_type=event.canonical_evidence.content_type,
+        opinion_author=event.canonical_evidence.opinion_author,
     )
 
 
@@ -346,6 +352,9 @@ class BriefBuilder:
                     "publisher": event.canonical_evidence.publisher_name,
                     "channel": event.canonical_evidence.channel,
                     "is_official": event.canonical_evidence.is_official,
+                    "content_type": event.canonical_evidence.content_type,
+                    "opinion_author": event.canonical_evidence.opinion_author,
+                    "stance_type": event.canonical_evidence.stance_type,
                     "rebuild_reasons": list(rebuild_reasons.get(event.event_key, ())),
                     "protected_anchors": _protected_anchors(event),
                 }
@@ -360,7 +369,7 @@ class BriefBuilder:
                     {
                         "role": "system",
                         "content": (
-                            "你是 AI 圈事实快讯编辑。只根据每条 canonical source 证据生成中文标题和"
+                            "你是 AI 圈新闻与观点编辑。只根据每条 canonical source 证据生成中文标题和"
                             "零至两句事实摘要，不写评论、趋势、影响分析或输入外事实。摘要必须提取"
                             "标题之外的原始证据；没有可安全提取的标题外事实时，允许 brief 为空字符串。为标题和摘要中的"
                             "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
@@ -369,6 +378,8 @@ class BriefBuilder:
                             "跨语言标题只能翻译动作和语法词；非实体、非数字细节必须删去或保留原文锚点，"
                             "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
                             "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
+                            "content_type=attributed_opinion 时必须保留 opinion_author 的明确归因，"
+                            "只能压缩作者原意，不得改写成无主语的客观事实或机构公告；"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
                             "包含且只包含 index、event_key、chinese_title、brief、evidence_targets；brief 必须是字符串。"
                         ),

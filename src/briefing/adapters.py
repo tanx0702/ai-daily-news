@@ -26,6 +26,9 @@ def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
         "published_at": item.published_at,
         "brief_mode": item.brief_mode,
         "brief_reason": item.brief_reason,
+        "content_type": item.content_type,
+        "content_label": "圈内观点" if item.content_type == "attributed_opinion" else "事实简报",
+        "opinion_author": item.opinion_author,
     }
 
 

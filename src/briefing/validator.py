@@ -307,14 +307,25 @@ class BriefValidator:
                 "rules_only",
             )
 
-        source_editorial = validate_source_publishability(event.canonical_evidence)
-        if not source_editorial.accepted:
-            return ValidationResult(
-                "reject",
-                source_editorial.reason_codes,
-                "rules_only",
-                audited_draft=draft,
-            )
+        if event.canonical_evidence.content_type == "attributed_opinion":
+            opinion_reasons = self._opinion_contract_reasons(event, draft)
+            if opinion_reasons:
+                return self._issue_result(
+                    event.event_key,
+                    opinion_reasons,
+                    generation_attempt,
+                    validation_mode="rules_only",
+                    audited_draft=draft,
+                )
+        else:
+            source_editorial = validate_source_publishability(event.canonical_evidence)
+            if not source_editorial.accepted:
+                return ValidationResult(
+                    "reject",
+                    source_editorial.reason_codes,
+                    "rules_only",
+                    audited_draft=draft,
+                )
 
         issue_reasons = self._display_contract_reasons(event, draft)
         if issue_reasons:
@@ -470,13 +481,14 @@ class BriefValidator:
             quote = _quote_match_text(binding.source_quote)
             if not quote or quote not in evidence_quote_text:
                 return ("quote_not_found",)
-        editorial = validate_display_publishability(
-            draft.chinese_title,
-            draft.brief,
-            source,
-        )
-        if not editorial.accepted:
-            return editorial.reason_codes
+        if source.content_type != "attributed_opinion":
+            editorial = validate_display_publishability(
+                draft.chinese_title,
+                draft.brief,
+                source,
+            )
+            if not editorial.accepted:
+                return editorial.reason_codes
         if _unsupported_protected_tokens(display, evidence_normalized):
             return ("protected_token_missing",)
         if _unsupported_action(display, evidence_normalized):
@@ -526,6 +538,26 @@ class BriefValidator:
                 related = bool(numeric_overlap or latin_overlap or action_overlap)
             if not related:
                 return ("claim_quote_mismatch",)
+        return ()
+
+    def _opinion_contract_reasons(
+        self,
+        event: MergedEvent,
+        draft: BuiltBrief,
+    ) -> tuple[str, ...]:
+        source = event.canonical_evidence
+        if (
+            draft.content_type != "attributed_opinion"
+            or not source.opinion_eligible
+            or not source.original_post
+            or not source.context_complete
+        ):
+            return ("opinion_author_not_allowed",)
+        author = source.opinion_author.strip()
+        if not author or author.lower() not in draft.chinese_title.lower():
+            return ("opinion_attribution_missing",)
+        if draft.opinion_author.strip().lower() != author.lower():
+            return ("opinion_attribution_missing",)
         return ()
 
     def _normalize_title_restatements(
@@ -669,6 +701,8 @@ class BriefValidator:
             validation_mode=validation_mode,
             brief_mode=draft.brief_mode,
             brief_reason=draft.brief_reason,
+            content_type=draft.content_type,
+            opinion_author=draft.opinion_author,
         )
         return ValidationResult(
             "accept",
