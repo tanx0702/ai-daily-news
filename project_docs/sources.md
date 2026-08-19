@@ -64,6 +64,7 @@ X 不通过日报生产进程直接调用 X。试运行期间，如果设置了 
 - URL 是 `https://x.com/<handle>/status/<tweet_id>` 或 `www.x.com` 的对应 status URL。
 - Runner 将 X GraphQL 的 legacy 日期规范化为 UTC ISO 8601，并保留受限数字的 `thread_id`、`reply_to_id` 和 `quoted_id`；生产 collector 再映射为事实证据的线程关系字段。无效、非 ASCII 或超长 ID 只清空对应关系，不能影响其它候选。
 - 转换后的候选 `source_type` 为 `x`，来源名带 `(X)`，官方账号记录 `x_official=True`。
+- 转换前会确定性跳过转发/`RT @...`、招聘课程报名和祝贺推广等非独立新闻内容，并记录跳过原因；这些内容不能在观点预检失败后回落成 `fact_event`。
 
 快照读取失败、schema 不合法、时间过期或单条记录不完整时只跳过对应 X 候选/整份 X 快照，不影响 RSS、HN、GitHub、HF 和 arXiv。有效的本机空快照是权威结果，不会被旧的远程快照覆盖；本机文件失效才允许回退远程来源。X 候选仍须经过事件聚类和规范来源证据绑定；歧义重复项隔离且不得回填。`DAILY_X_TARGET_ITEMS` 只在未达到软目标时提高 X 候选的尝试顺序，不能绕过质检或硬凑。认证网页自动化仅用于短期试运行，账号、Cookie、SQLite 会话和代理配置必须保存在服务器 root 私有目录，试运行结束后删除并恢复 GitHub 快照路径。
 

@@ -110,6 +110,30 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
     ]
 
 
+@pytest.mark.parametrize(
+    "text,extra",
+    [
+        ("RT @tomaarsen: released Sentence Transformers v6.0", {}),
+        ("Congrats to our long-term partner on the launch of Miles v0.1!", {}),
+        ("转发：OpenAI 发布新的 AI 模型", {"is_repost": True}),
+    ],
+)
+def test_x_feed_collector_drops_reposts_and_promotional_posts(
+    monkeypatch, text, extra
+):
+    now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
+    payload = _feed(now)
+    payload["tweets"][0].update({"text": text, **extra})
+    monkeypatch.setattr(
+        "src.collectors.x_feed.requests.get",
+        lambda *_args, **_kwargs: FakeResponse(payload),
+    )
+
+    assert XFeedCollector(
+        feed_url="https://example.com/x-feed.json", now=now
+    ).fetch() == []
+
+
 def test_x_feed_collector_prefers_fresh_local_snapshot_without_http(tmp_path: Path, monkeypatch):
     now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     local_path = tmp_path / "x-feed.json"

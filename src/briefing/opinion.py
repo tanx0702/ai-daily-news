@@ -9,8 +9,9 @@ from typing import Mapping
 
 _PROMOTIONAL = (
     "招聘", "课程", "报名", "折扣", "优惠", "join us", "hiring", "course",
-    "register", "workshop", "webinar", "congratulations", "祝贺",
+    "register", "workshop", "webinar", "congratulations", "congrats", "祝贺",
 )
+_REPOST_PREFIX = re.compile(r"^\s*(?:rt\s+@|转发\s*[:：])", re.IGNORECASE)
 _STANCE_MARKERS = {
     "prediction": ("will", "likely", "expect", "predict", "将会", "可能", "预计"),
     "critique": ("wrong", "fail", "problem", "overrated", "质疑", "错误", "问题", "局限"),
@@ -26,6 +27,20 @@ class OpinionEligibility:
     stance_type: str = ""
     context_complete: bool = False
     original_post: bool = False
+
+
+def x_content_rejection_reason(candidate: Mapping[str, object]) -> str:
+    """Reject reposts and promotional posts before they can become X facts."""
+    text = str(candidate.get("summary") or candidate.get("text") or "").strip()
+    if (
+        bool(candidate.get("x_is_repost") or candidate.get("is_repost"))
+        or _REPOST_PREFIX.match(text)
+    ):
+        return "x_repost"
+    lower = text.lower()
+    if any(marker in lower for marker in _PROMOTIONAL):
+        return "x_promotional_content"
+    return ""
 
 
 def evaluate_opinion_candidate(

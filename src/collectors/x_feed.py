@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import requests
 
 from src.collectors import BaseCollector
-from src.briefing.opinion import evaluate_opinion_candidate
+from src.briefing.opinion import evaluate_opinion_candidate, x_content_rejection_reason
 from src.text_utils import clean_display_text
 
 
@@ -198,6 +198,15 @@ def _tweet_to_candidate(
     candidate["x_quoted_id"] = _public_id(tweet.get("quoted_id"))
     candidate["x_is_repost"] = bool(tweet.get("is_repost", False))
     candidate["x_context_complete"] = bool(tweet.get("context_complete", False))
+    rejection_reason = x_content_rejection_reason(candidate)
+    if rejection_reason:
+        LOGGER.info(
+            "Skipping X tweet %s from %s: %s",
+            tweet_id,
+            source_handle,
+            rejection_reason,
+        )
+        return None
     candidate["opinion_eligible"] = opinion_eligible
     opinion = evaluate_opinion_candidate(candidate, registry_source)
     candidate["content_type"] = "attributed_opinion" if opinion.eligible else "fact_event"
