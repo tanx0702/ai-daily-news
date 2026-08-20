@@ -2,7 +2,7 @@
 
 ## 工程分类
 
-AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，附带一个轻量 Flask 服务和 Docker/nginx 部署。它不是前后端 Monorepo，也没有数据库、消息队列或长期任务服务作为当前主链路的前置依赖。
+AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，附带一个轻量 Flask 服务和 Docker/nginx 部署。它不是前后端 Monorepo，也没有外部数据库、消息队列或长期任务服务作为当前主链路的前置依赖；本地 SQLite 只持久化来源健康状态，不保存新闻事实或发布决策。
 
 工程按运行职责分为：
 
@@ -24,6 +24,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 ├─ src/
 │  ├─ main.py                     生产日报编排入口
 │  ├─ collector.py                采集兼容入口、合并、筛选、评分和最终去重
+│  ├─ source_state.py             RSS 来源健康状态 SQLite 账本
 │  ├─ source_normalization.py      规范来源 URL、发布者和 HN 发现渠道投影
 │  ├─ collectors/                 HN/GitHub/HF/arXiv/X 等独立采集器
 │  ├─ briefing/                   事实简报配置、聚类、核验、决策和 latest.json schema v2
@@ -44,6 +45,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 ├─ tests/                         单元、边界、采集器和工作流测试
 ├─ project_docs/                  面向维护者的中文工程文档
 ├─ docs/                          nginx 发布的运行时日报、媒体和诊断产物
+├─ runtime/                       来源状态账本和 X 本机快照等私有运行时状态
 ├─ Dockerfile                     Flask/Gunicorn 容器镜像
 ├─ docker-compose.yml             web + nginx 服务编排
 └─ nginx/                         静态文件、反代和 TLS 模板
@@ -51,7 +53,7 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 
 ## 依赖方向
 
-生产主链路由 `src/main.py` 编排，依赖采集、事件聚类、事实简报、摘要、媒体、封面、产物和微信模块。采集器只产生候选，不创建发布产物；X 采集器在候选进入事实/观点分类前过滤转发和推广内容；`src/briefing/` 只接受绑定规范来源证据的唯一事件，并产生唯一的草稿决策；产物模块负责落盘；微信模块只负责公众号 API 边界。
+生产主链路由 `src/main.py` 编排，依赖采集、事件聚类、事实简报、摘要、媒体、封面、产物和微信模块。采集器只产生候选，不创建发布产物；RSS 每次尝试会把成功、空结果、超时或解析失败写入 `src/source_state.py` 管理的本地 SQLite 账本，并将只读快照附加到采集诊断；该账本不能作为事实证据。X 采集器在候选进入事实/观点分类前过滤转发和推广内容；`src/briefing/` 只接受绑定规范来源证据的唯一事件，并产生唯一的草稿决策；产物模块负责落盘；微信模块只负责公众号 API 边界。
 
 ```text
 cron / 手动命令

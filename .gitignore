@@ -18,6 +18,9 @@ docs/
 # 日志文件 — 按天切割，不入库
 logs/
 
+# RSS 来源健康账本
+runtime/source-state.db
+
 # spec-superflow 项目级工作流资产需要随仓库提交；
 # 其他本地 agent 资产继续忽略。
 .agents/*

@@ -25,7 +25,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 ```
 
 - `src/main.py` 是生产日报主入口；`app.py` 是 Flask 服务入口。
-- 采集层包含 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照。X 通过 GitHub Runner 生成的 `x-feed.json` 接入，不是生产任务直接调用 X API。
+- 采集层包含 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照。RSS 请求状态写入 `runtime/source-state.db` 的本地 SQLite 账本，但账本只用于诊断且不能作为事实证据；X 通过 GitHub Runner 生成的 `x-feed.json` 接入，不是生产任务直接调用 X API。
 - `src/agents`、`src/domain`、`src/services`、`src/workflows` 支持 v2/shadow/editorial 诊断和反馈闭环；它们不能改变已经接受的事实简报或 `DraftDecision`。
 - `src/tencent_scf/` 是历史兼容代码，当前 Docker 主流程不依赖它。
 - `docs/` 是 nginx 公开/运行时产物目录，不是维护文档目录；长期说明放在 `project_docs/`。
@@ -49,6 +49,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 ## 配置与安全
 
 - 首次部署只复制 `.env.example`；高级覆盖从 `.env.advanced.example` 逐项复制。
+- `SOURCE_STATE_DB_PATH` 默认 `runtime/source-state.db`，只保存 RSS 来源健康状态；Compose 必须持久化挂载 `runtime/`，数据库文件不得提交。
 - `QUALITY_LLM_*` 未设置时继承 `LLM_*`，用于可选的事实核验和语义去重增强；语义去重默认 48 小时窗口、单期共享最多 20 次 LLM 调用，新增配置仍以 `.env.advanced.example` 为参考。
 - 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_MAX_OPINION_ITEMS=3`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true` 的自然人原帖，同一作者每期最多一条。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。

@@ -64,6 +64,7 @@ docker compose up -d --force-recreate
 | `DAILY_NEWS_HOURS` | `36` | 新闻时间窗口 |
 | `DAILY_ALLOW_UNDATED` | `0` | 是否接受无发布时间候选 |
 | `DAILY_RSS_TIMEOUT` | `30` | 单个采集请求超时 |
+| `SOURCE_STATE_DB_PATH` | `runtime/source-state.db` | RSS 来源健康 SQLite 账本；只保存运行状态，不保存新闻事实，Docker 中由 `runtime/` 挂载持久化 |
 | `ENABLE_HN_COLLECTOR` / `ENABLE_GITHUB_COLLECTOR` | `1` | HN/GitHub 采集开关 |
 | `ENABLE_HF_COLLECTOR` / `ENABLE_ARXIV_COLLECTOR` | `1` | HF/arXiv 采集开关 |
 | `ENABLE_X_COLLECTOR` | `1`（代码默认） | X 快照采集开关；省略时按代码默认开启 |
