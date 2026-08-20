@@ -713,6 +713,13 @@ def _fetch_single_outcome(name: str, url: str, timeout: int) -> dict:
         item = _parse_rss_item(entry, name_hint=name)
         if item:
             items.append(item)
+    if getattr(feed, "bozo", False) and not items:
+        parse_error = type(getattr(feed, "bozo_exception", None)).__name__
+        logger.warning("Source '%s' returned malformed RSS: %s", name, parse_error)
+        outcome["status"] = "invalid_feed"
+        outcome["error"] = "parse_error"
+        outcome["latency_ms"] = _elapsed_ms(started)
+        return outcome
     logger.info("Source '%s' (%s): fetched %d items", name, url.split("//")[-1][:40], len(items))
     outcome["items"] = items
     outcome["status"] = "success" if items else "empty"

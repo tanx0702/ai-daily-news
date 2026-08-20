@@ -26,6 +26,7 @@ services:
       - ./app.py:/app/app.py
       - ./templates:/app/templates:ro
       - ./config:/app/config
+      - ./runtime:/app/runtime
       - ${AI_NEWS_X_FEED_DIR:-./runtime/x-feed}:/app/runtime/x-feed:ro
     networks:
       - app

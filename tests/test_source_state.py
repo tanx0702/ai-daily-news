@@ -57,3 +57,37 @@ def test_source_state_from_environment_uses_runtime_default(monkeypatch):
 
     assert Path(store.path).parts[-2:] == ("runtime", "source-state.db")
     store.close()
+
+
+def test_source_state_from_environment_degrades_when_database_cannot_open(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setenv("SOURCE_STATE_DB_PATH", str(tmp_path))
+
+    store = SourceStateStore.from_environment()
+
+    store.record(
+        "Feed",
+        "https://example.test/feed",
+        status="success",
+        item_count=1,
+        latency_ms=10,
+    )
+    assert store.snapshot() == {}
+
+
+def test_source_state_write_failure_does_not_break_collection():
+    store = SourceStateStore(":memory:")
+    store.close()
+
+    store.record(
+        "Feed",
+        "https://example.test/feed",
+        status="error",
+        item_count=0,
+        latency_ms=10,
+        error="timeout",
+    )
+
+    assert store.snapshot() == {}

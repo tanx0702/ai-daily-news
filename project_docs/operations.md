@@ -50,7 +50,7 @@ docker compose up -d
 docker compose up -d --force-recreate
 ```
 
-`web` 挂载 `docs`、`logs`、`src`、`app.py`、`templates`、`config` 和只读的 `AI_NEWS_X_FEED_DIR` 本机快照目录；`nginx` 只读挂载 `docs`、nginx 模板和 `/etc/letsencrypt`。nginx 依赖 `web` 的 `/health` healthcheck 通过后启动。
+`web` 挂载 `docs`、`logs`、`src`、`app.py`、`templates`、`config`、可写的 `runtime` 和只读的 `AI_NEWS_X_FEED_DIR` 本机快照目录；`runtime/source-state.db` 因此在容器重建后仍保留。`nginx` 只读挂载 `docs`、nginx 模板和 `/etc/letsencrypt`。nginx 依赖 `web` 的 `/health` healthcheck 通过后启动。
 
 ### 服务器出网代理
 
@@ -99,6 +99,8 @@ cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防�
 
 候选池诊断中的 `publishability_preflight_*` 用于判断采集后是否有足够的可发布事件。`publishability_preflight_rejected` 较高而 `publishability_preflight_passed` 较低表示候选主要是教程、观点、活动元数据或缺少完整事件动作，不应通过降低最终事实门禁解决。
 
+`diagnostics.source_health` 记录每个 RSS 源的最近状态、连续失败次数、条目数和延迟。`status=empty` 表示 feed 可访问但本轮没有解析到条目，`timeout`/`error`/`invalid_feed` 表示外部请求或格式故障；这些状态用于定位供给问题，不会改变事实门禁。需要迁移账本时可通过 `SOURCE_STATE_DB_PATH` 指向 `runtime/` 下的其它私有路径。
+
 默认 X 快照由 GitHub Actions 独立生成，不在 VPS cron 中执行。临时认证试运行时，VPS 额外在日报前生成本机快照，生产容器通过 `X_FEED_LOCAL_PATH` 优先读取；本机快照失败或过期会自动回退 GitHub 快照。`.github/workflows/x-feed.yml` 仍每 4 小时在 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07` 触发，作为回滚路径。试运行 cron 示例：
 
 ```bash
@@ -137,6 +139,7 @@ cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防�
 | `docs/debug/` | 聚类、核验、媒体和 shadow 诊断 | nginx 不公开，不提交；不改变简报或决策 |
 | `docs/media/` | 原文媒体缓存 | 运行时缓存，不提交 |
 | `logs/` | 应用和 cron 日志 | 不提交，检查时脱敏 |
+| `runtime/source-state.db` | RSS 来源健康 SQLite 账本 | 私有运行状态；Compose 持久化，不提交，不作为事实证据 |
 
 HTML/JSON/诊断通常会在草稿被阻止时继续生成。查看 `latest.json.draft_decision`、`latest.json.draft_execution` 和 `diagnostics`，不得手动绕过决策。旧 publication、质量状态、来源占比阻断、9 分目标和人工复核不是生产控制。
 

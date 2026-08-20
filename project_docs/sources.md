@@ -6,7 +6,7 @@
 
 | 来源 | 代码入口 | 配置/开关 | 主要信号和限制 |
 | --- | --- | --- | --- |
-| RSS | `src/collector.py::_fetch_source` | `config/rss_sources.json`、`DAILY_NEWS_HOURS`、`DAILY_RSS_TIMEOUT` | AI 关键词、发布时间窗口、URL/标题去重；配置中的 `tier`/`region` 参与编辑平衡 |
+| RSS | `src/collector.py::_fetch_source` | `config/rss_sources.json`、`DAILY_NEWS_HOURS`、`DAILY_RSS_TIMEOUT`、`SOURCE_STATE_DB_PATH` | AI 关键词、发布时间窗口、URL/标题去重；配置中的 `tier`/`region` 参与编辑平衡；每次请求写入来源健康账本 |
 | Hacker News | `src/collectors/hackernews.py` | `ENABLE_HN_COLLECTOR`、`HN_DETAILS_TIMEOUT` | score/comments 和原文链接；低信号 HN-only 条目降权 |
 | GitHub | `src/collectors/github.py` | `ENABLE_GITHUB_COLLECTOR`、可选 `GITHUB_TOKEN` | 只有近期正式 release、项目说明和可读 release notes 同时存在才形成候选；stars/push 只能作为社区信号 |
 | Hugging Face | `src/collectors/huggingface.py` | `ENABLE_HF_COLLECTOR`、可选 `HF_TOKEN` | likes/downloads/lastModified 统一标记为 `model_activity`，不能自动等同模型发布 |
@@ -22,7 +22,9 @@
 3. 在 `tests/test_rss_sources.py` 或对应采集测试中覆盖配置结构。
 4. 同步本文件和 `project_docs/architecture.md`，必要时同步环境变量说明。
 
-RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间窗口过滤和中文 bigram/英文 Jaccard 标题去重。采集器失败不会阻断其它 RSS 源。
+RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间窗口过滤和中文 bigram/英文 Jaccard 标题去重。采集器失败不会阻断其它 RSS 源。当前在原有官方与媒体源之外，补充了 `Hugging Face Blog`、`MIT Technology Review AI` 和 `Ars Technica AI` 三个已验证的专题 feed，用来增加非 X 的官方技术信息和专业媒体事实供给；它们仍须通过统一发布时间、发布性和事实门禁。
+
+每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。
 
 ## 社区和研究来源
 

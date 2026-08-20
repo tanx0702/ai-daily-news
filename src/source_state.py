@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 import os
 from pathlib import Path
 import sqlite3
@@ -11,6 +12,7 @@ from typing import Any
 
 _HEALTHY_STATUSES = frozenset({"success", "not_modified"})
 _DEFAULT_PATH = "runtime/source-state.db"
+logger = logging.getLogger(__name__)
 
 
 class SourceStateStore:
@@ -42,9 +44,16 @@ class SourceStateStore:
         self._connection.commit()
 
     @classmethod
-    def from_environment(cls) -> "SourceStateStore":
+    def from_environment(cls) -> "SourceStateStore | NullSourceStateStore":
         path = os.environ.get("SOURCE_STATE_DB_PATH", "").strip() or _DEFAULT_PATH
-        return cls(path)
+        try:
+            return cls(path)
+        except (OSError, sqlite3.Error) as exc:
+            logger.warning(
+                "Source health state is unavailable; continuing without persistence: %s",
+                type(exc).__name__,
+            )
+            return NullSourceStateStore()
 
     def record(
         self,
@@ -59,63 +68,76 @@ class SourceStateStore:
         attempted_at: str | None = None,
     ) -> None:
         now = attempted_at or datetime.now(timezone.utc).isoformat()
-        previous = self._connection.execute(
-            """
-            SELECT consecutive_failures, last_success_at
-            FROM source_health
-            WHERE source_name = ? AND source_url = ?
-            """,
-            (source_name, source_url),
-        ).fetchone()
-        prior_failures = int(previous["consecutive_failures"]) if previous else 0
-        failures = 0 if status in _HEALTHY_STATUSES else prior_failures + 1
-        last_success_at = (
-            now
-            if status in _HEALTHY_STATUSES
-            else previous["last_success_at"] if previous else None
-        )
-        self._connection.execute(
-            """
-            INSERT INTO source_health (
-                source_name, source_url, last_attempt_at, last_success_at,
-                status, consecutive_failures, last_item_count,
-                last_latency_ms, last_error, last_content_hash
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(source_name, source_url) DO UPDATE SET
-                last_attempt_at = excluded.last_attempt_at,
-                last_success_at = excluded.last_success_at,
-                status = excluded.status,
-                consecutive_failures = excluded.consecutive_failures,
-                last_item_count = excluded.last_item_count,
-                last_latency_ms = excluded.last_latency_ms,
-                last_error = excluded.last_error,
-                last_content_hash = excluded.last_content_hash
-            """,
-            (
-                source_name,
-                source_url,
-                now,
-                last_success_at,
-                status,
-                failures,
-                max(int(item_count), 0),
-                max(int(latency_ms), 0),
-                str(error or "")[:300],
-                str(content_hash or "")[:128],
-            ),
-        )
-        self._connection.commit()
+        try:
+            previous = self._connection.execute(
+                """
+                SELECT consecutive_failures, last_success_at
+                FROM source_health
+                WHERE source_name = ? AND source_url = ?
+                """,
+                (source_name, source_url),
+            ).fetchone()
+            prior_failures = int(previous["consecutive_failures"]) if previous else 0
+            failures = 0 if status in _HEALTHY_STATUSES else prior_failures + 1
+            last_success_at = (
+                now
+                if status in _HEALTHY_STATUSES
+                else previous["last_success_at"] if previous else None
+            )
+            self._connection.execute(
+                """
+                INSERT INTO source_health (
+                    source_name, source_url, last_attempt_at, last_success_at,
+                    status, consecutive_failures, last_item_count,
+                    last_latency_ms, last_error, last_content_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_name, source_url) DO UPDATE SET
+                    last_attempt_at = excluded.last_attempt_at,
+                    last_success_at = excluded.last_success_at,
+                    status = excluded.status,
+                    consecutive_failures = excluded.consecutive_failures,
+                    last_item_count = excluded.last_item_count,
+                    last_latency_ms = excluded.last_latency_ms,
+                    last_error = excluded.last_error,
+                    last_content_hash = excluded.last_content_hash
+                """,
+                (
+                    source_name,
+                    source_url,
+                    now,
+                    last_success_at,
+                    status,
+                    failures,
+                    max(int(item_count), 0),
+                    max(int(latency_ms), 0),
+                    str(error or "")[:300],
+                    str(content_hash or "")[:128],
+                ),
+            )
+            self._connection.commit()
+        except sqlite3.Error as exc:
+            logger.warning(
+                "Could not persist source health state; collection will continue: %s",
+                type(exc).__name__,
+            )
 
     def snapshot(self) -> dict[str, dict[str, Any]]:
-        rows = self._connection.execute(
-            """
-            SELECT source_name, source_url, last_attempt_at, last_success_at,
-                   status, consecutive_failures, last_item_count,
-                   last_latency_ms, last_error, last_content_hash
-            FROM source_health
-            ORDER BY source_name, source_url
-            """
-        ).fetchall()
+        try:
+            rows = self._connection.execute(
+                """
+                SELECT source_name, source_url, last_attempt_at, last_success_at,
+                       status, consecutive_failures, last_item_count,
+                       last_latency_ms, last_error, last_content_hash
+                FROM source_health
+                ORDER BY source_name, source_url
+                """
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning(
+                "Could not read source health state; returning empty diagnostics: %s",
+                type(exc).__name__,
+            )
+            return {}
         return {
             str(row["source_name"]): {
                 "source_name": str(row["source_name"]),
@@ -136,6 +158,25 @@ class SourceStateStore:
         self._connection.close()
 
     def __enter__(self) -> "SourceStateStore":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+
+class NullSourceStateStore:
+    """No-op fallback used when the local health database is unavailable."""
+
+    def record(self, *_args: object, **_kwargs: object) -> None:
+        return None
+
+    def snapshot(self) -> dict[str, dict[str, Any]]:
+        return {}
+
+    def close(self) -> None:
+        return None
+
+    def __enter__(self) -> "NullSourceStateStore":
         return self
 
     def __exit__(self, *_exc: object) -> None:

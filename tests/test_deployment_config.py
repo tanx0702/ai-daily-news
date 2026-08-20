@@ -22,6 +22,7 @@ class DeploymentConfigTests(unittest.TestCase):
 
         self.assertIn("./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro", compose)
         self.assertIn("./templates:/app/templates:ro", compose)
+        self.assertIn("./runtime:/app/runtime", compose)
         self.assertIn("healthcheck:", compose)
         self.assertIn("condition: service_healthy", compose)
 

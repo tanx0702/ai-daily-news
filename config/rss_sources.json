@@ -35,15 +35,27 @@
             "tier": "primary"
         },
         {
+            "name": "Hugging Face Blog",
+            "url": "https://huggingface.co/blog/feed.xml",
+            "region": "overseas",
+            "tier": "primary"
+        },
+        {
             "name": "NVIDIA AI Blog",
             "url": "https://blogs.nvidia.com/blog/category/deep-learning/feed/",
             "region": "overseas",
             "tier": "primary"
         },
         {
-            "name": "MIT Technology Review AI",
+            "name": "MIT Technology Review",
             "url": "https://www.technologyreview.com/feed/",
             "region": "overseas"
+        },
+        {
+            "name": "MIT Technology Review AI",
+            "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
+            "region": "overseas",
+            "tier": "media"
         },
         {
             "name": "VentureBeat AI",
@@ -54,6 +66,12 @@
         {
             "name": "Ars Technica Technology Lab",
             "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "Ars Technica AI",
+            "url": "https://arstechnica.com/ai/feed/",
             "region": "overseas",
             "tier": "media"
         },

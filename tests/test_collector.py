@@ -22,6 +22,15 @@ class _RssResponse:
         return None
 
 
+class _MalformedRssResponse:
+    content = b"<rss><channel><item>"
+    text = content.decode("utf-8")
+    headers = {"Content-Type": "application/rss+xml"}
+
+    def raise_for_status(self):
+        return None
+
+
 class CollectorTests(unittest.TestCase):
     def test_fetch_source_records_success_and_item_count(self):
         store = SourceStateStore(":memory:")
@@ -41,6 +50,24 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(health["status"], "success")
         self.assertEqual(health["last_item_count"], 1)
         self.assertTrue(health["last_content_hash"])
+        store.close()
+
+    def test_fetch_source_records_malformed_xml_as_invalid_feed(self):
+        store = SourceStateStore(":memory:")
+        with patch.object(collector.requests, "get", return_value=_MalformedRssResponse()):
+            items = collector._fetch_source(
+                {
+                    "name": "Broken Feed",
+                    "url": "https://example.test/broken.xml",
+                },
+                5,
+                store,
+            )
+
+        self.assertEqual(items, [])
+        health = store.snapshot()["Broken Feed"]
+        self.assertEqual(health["status"], "invalid_feed")
+        self.assertEqual(health["last_error"], "parse_error")
         store.close()
 
     def _ranked_item(self, title, source, score, publish_risk_category=None):
