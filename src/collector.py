@@ -5,6 +5,7 @@ RSS 新闻采集模块
 """
 
 import json
+import hashlib
 import logging
 import os
 import re
@@ -597,7 +598,11 @@ def _is_official_ai_org(url: str) -> bool:
     return False
 
 
-def _fetch_source(source: dict, timeout: int = 30) -> list[dict]:
+def _fetch_source(
+    source: dict,
+    timeout: int = 30,
+    state_store=None,
+) -> list[dict]:
     """抓取单个 RSS 源，支持代理 fallback。"""
     name = source["name"]
     url = source["url"]
@@ -610,19 +615,66 @@ def _fetch_source(source: dict, timeout: int = 30) -> list[dict]:
         path = url.replace("https://", "").replace("http://", "").split("/", 1)[-1]
         urls_to_try.append(f"https://rsshub.app/{path}")
 
+    outcomes = []
     for attempt_url in urls_to_try:
-        items = _fetch_single(name, attempt_url, timeout)
-        if items:
-            for item in items:
+        outcome = _fetch_single_outcome(name, attempt_url, timeout)
+        outcomes.append(outcome)
+        if outcome["items"]:
+            for item in outcome["items"]:
                 item["source_tier"] = source.get("tier", "media")
-            return items
+            if state_store is not None:
+                state_store.record(
+                    name,
+                    url,
+                    status="success",
+                    item_count=len(outcome["items"]),
+                    latency_ms=outcome["latency_ms"],
+                    content_hash=outcome["content_hash"],
+                )
+            return outcome["items"]
 
+    final = next(
+        (outcome for outcome in reversed(outcomes) if outcome["status"] != "empty"),
+        outcomes[-1] if outcomes else {
+            "status": "error",
+            "items": [],
+            "latency_ms": 0,
+            "content_hash": "",
+            "error": "no_attempt",
+        },
+    )
+    status = final["status"]
+    if all(outcome["status"] == "empty" for outcome in outcomes):
+        status = "empty"
+    if state_store is not None:
+        state_store.record(
+            name,
+            url,
+            status=status,
+            item_count=0,
+            latency_ms=sum(outcome["latency_ms"] for outcome in outcomes),
+            error=final["error"],
+            content_hash=final["content_hash"],
+        )
     logger.warning("Source '%s' returned no items after all fallbacks", name)
     return []
 
 
 def _fetch_single(name: str, url: str, timeout: int) -> list[dict]:
     """抓取单个 URL，验证返回内容是否为有效 RSS。"""
+    return _fetch_single_outcome(name, url, timeout)["items"]
+
+
+def _fetch_single_outcome(name: str, url: str, timeout: int) -> dict:
+    """Fetch one feed while retaining sanitized health metadata."""
+    started = time.monotonic()
+    outcome = {
+        "items": [],
+        "status": "error",
+        "latency_ms": 0,
+        "content_hash": "",
+        "error": "",
+    }
     try:
         resp = requests.get(url, timeout=timeout, headers={
             "User-Agent": "Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)"
@@ -630,10 +682,19 @@ def _fetch_single(name: str, url: str, timeout: int) -> list[dict]:
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         logger.warning("Source %s timed out after %ds", name, timeout)
-        return []
+        outcome["status"] = "timeout"
+        outcome["error"] = "timeout"
+        outcome["latency_ms"] = _elapsed_ms(started)
+        return outcome
     except requests.exceptions.RequestException as e:
         logger.warning("Source %s (%s) failed: %s", name, url, e)
-        return []
+        outcome["status"] = "error"
+        outcome["error"] = type(e).__name__
+        outcome["latency_ms"] = _elapsed_ms(started)
+        return outcome
+
+    content = bytes(resp.content or b"")
+    outcome["content_hash"] = hashlib.sha256(content).hexdigest()
 
     # 验证：RSS 响应应为 XML，不是 HTML
     content_type = resp.headers.get("Content-Type", "").lower()
@@ -641,16 +702,27 @@ def _fetch_single(name: str, url: str, timeout: int) -> list[dict]:
         # 检查是否是 SPA 页面（返回 HTML 而非 XML）
         if "<html" in resp.text[:500].lower():
             logger.warning("Source '%s' returned HTML, not RSS. Skipping.", name)
-            return []
+            outcome["status"] = "invalid_feed"
+            outcome["error"] = "html_response"
+            outcome["latency_ms"] = _elapsed_ms(started)
+            return outcome
 
-    feed = feedparser.parse(resp.content)
+    feed = feedparser.parse(content)
     items = []
     for entry in feed.entries:
         item = _parse_rss_item(entry, name_hint=name)
         if item:
             items.append(item)
     logger.info("Source '%s' (%s): fetched %d items", name, url.split("//")[-1][:40], len(items))
-    return items
+    outcome["items"] = items
+    outcome["status"] = "success" if items else "empty"
+    outcome["latency_ms"] = _elapsed_ms(started)
+    return outcome
+
+
+def _elapsed_ms(started: float) -> int:
+    """Return a bounded integer duration for source diagnostics."""
+    return max(int((time.monotonic() - started) * 1000), 0)
 
 
 def _title_similarity(a: str, b: str) -> float:
@@ -1436,12 +1508,19 @@ def _fetch_x(timeout: int = 30) -> list[dict]:
         return []
 
 
-def _fetch_raw_candidates(config_path: str | None, rss_timeout: int) -> list[dict]:
+def _fetch_raw_candidates(
+    config_path: str | None,
+    rss_timeout: int,
+    source_health: dict | None = None,
+) -> list[dict]:
     """Fetch and normalize every enabled source without merging or ranking."""
     sources = _load_sources(config_path)
     rss_items: list[dict] = []
-    for source in sources:
-        rss_items.extend(_fetch_source(source, rss_timeout))
+    with _source_state_store() as state_store:
+        for source in sources:
+            rss_items.extend(_fetch_source(source, rss_timeout, state_store))
+        if source_health is not None:
+            source_health.update(state_store.snapshot())
     logger.info("RSS fetched: %d items from %d sources", len(rss_items), len(sources))
     rss_candidates = [_normalize_rss_item(item) for item in rss_items]
 
@@ -1463,6 +1542,13 @@ def _fetch_raw_candidates(config_path: str | None, rss_timeout: int) -> list[dic
     return collected
 
 
+def _source_state_store():
+    """Create the per-run source state store without leaking a DB connection."""
+    from src.source_state import SourceStateStore
+
+    return SourceStateStore.from_environment()
+
+
 def collect_candidates(
     config_path: str | None = None,
     hours: int | None = None,
@@ -1477,7 +1563,12 @@ def collect_candidates(
     current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     cutoff = current_time - timedelta(hours=hours)
     allow_undated = _env_enabled("DAILY_ALLOW_UNDATED", default=False)
-    all_candidates = _fetch_raw_candidates(config_path, rss_timeout)
+    source_health: dict = {}
+    all_candidates = _fetch_raw_candidates(
+        config_path,
+        rss_timeout,
+        source_health=source_health,
+    )
 
     from src.evidence import preserve_source_evidence
     from src.editorial_selection import assign_source_tier
@@ -1576,6 +1667,7 @@ def collect_candidates(
                 "source_merge_removed": 0,
                 "topic_cluster_removed": 0,
                 "final_editorial_dedup_removed": 0,
+                "source_health": source_health,
             }
         )
     logger.info(

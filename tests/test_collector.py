@@ -1,12 +1,48 @@
 import os
 import unittest
 from datetime import datetime, timezone
+import os
 from unittest.mock import patch
 
 from src import collector
+from src.source_state import SourceStateStore
+
+
+class _RssResponse:
+    content = (
+        b"<rss><channel><item>"
+        b"<title>OpenAI releases Model 5</title>"
+        b"<link>https://openai.com/model-5</link>"
+        b"</item></channel></rss>"
+    )
+    text = content.decode()
+    headers = {"Content-Type": "application/rss+xml"}
+
+    def raise_for_status(self):
+        return None
 
 
 class CollectorTests(unittest.TestCase):
+    def test_fetch_source_records_success_and_item_count(self):
+        store = SourceStateStore(":memory:")
+        with patch.object(collector.requests, "get", return_value=_RssResponse()):
+            items = collector._fetch_source(
+                {
+                    "name": "OpenAI Blog",
+                    "url": "https://example.test/feed",
+                    "tier": "primary",
+                },
+                5,
+                store,
+            )
+
+        self.assertEqual(len(items), 1)
+        health = store.snapshot()["OpenAI Blog"]
+        self.assertEqual(health["status"], "success")
+        self.assertEqual(health["last_item_count"], 1)
+        self.assertTrue(health["last_content_hash"])
+        store.close()
+
     def _ranked_item(self, title, source, score, publish_risk_category=None):
         item = {
             "title": title,
@@ -300,6 +336,28 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertNotIn("_publish_risk", items[0])
         self.assertNotIn("publish_risk_penalty", items[0]["scores"])
+
+    def test_collect_candidates_exposes_source_health_diagnostics(self):
+        diagnostics = {}
+        with patch.dict(
+            os.environ,
+            {
+                "ENABLE_HN_COLLECTOR": "0",
+                "ENABLE_GITHUB_COLLECTOR": "0",
+                "ENABLE_HF_COLLECTOR": "0",
+                "ENABLE_ARXIV_COLLECTOR": "0",
+                "ENABLE_X_COLLECTOR": "0",
+            },
+            clear=False,
+        ), patch.object(collector, "_load_sources", return_value=[]):
+            collector.collect_candidates(
+                limit=0,
+                hours=36,
+                diagnostics=diagnostics,
+                now=datetime.now(timezone.utc),
+            )
+
+        self.assertEqual(diagnostics["source_health"], {})
 
     def test_collect_candidates_publishability_preflight_refills_before_limit(self):
         now = datetime.now(timezone.utc)
