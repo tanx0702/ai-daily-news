@@ -9,6 +9,11 @@ from typing import Mapping
 from src.briefing.opinion import x_content_rejection_reason
 
 
+_TECHNICAL_OBJECT = re.compile(
+    r"\b(?:benchmark|leaderboard|evaluation|experiment|framework|training|"
+    r"inference|gguf|quant)\b|基准测试|排行榜|评测|实验|框架|训练|推理|量化",
+    re.IGNORECASE,
+)
 _MODEL_VERSION = re.compile(
     r"\b(?:gpt|claude|gemini|llama|qwen|deepseek|mistral)[\w.+-]*\d[\w.+-]*\b|"
     r"\b(?:model|模型)\s*v?\d+(?:\.\d+)*\b",
@@ -17,7 +22,11 @@ _MODEL_VERSION = re.compile(
 _MECHANICAL_PROGRESS = re.compile(
     r"\b\d+(?:\.\d+)?\s*%|#\s*\d+\b|\b(?:rank|排名)\s*#?\s*\d+|"
     r"\b\d+(?:\.\d+)?\s*(?:x|ms|s|tok/s|tokens/s)\b|"
-    r"\b(?:speed|latency|速度|延迟)\s*\d+",
+    r"\b(?:speed|latency|速度|延迟)\s*\d+|第\s*\d+\s*名",
+    re.IGNORECASE,
+)
+_BENCHMARK_RESULT = re.compile(
+    r"\b(?:benchmark|leaderboard|evaluation)\b|基准测试|排行榜|评测",
     re.IGNORECASE,
 )
 _RESULT_RELATION = re.compile(
@@ -51,7 +60,7 @@ def evaluate_ai_update_candidate(candidate: Mapping[str, object]) -> UpdateEligi
 
 def _has_update_anchor(text: str) -> bool:
     return bool(
-        _MODEL_VERSION.search(text)
-        and _MECHANICAL_PROGRESS.search(text)
-        and _RESULT_RELATION.search(text)
+        _RESULT_RELATION.search(text)
+        and (_MODEL_VERSION.search(text) or _TECHNICAL_OBJECT.search(text))
+        and (_MECHANICAL_PROGRESS.search(text) or _BENCHMARK_RESULT.search(text))
     )
