@@ -48,7 +48,9 @@ def _response_content(response: object) -> str:
 
 def _is_nonrecoverable(error: Exception) -> bool:
     status_code = getattr(error, "status_code", None)
-    if status_code in {401, 402, 403, 404}:
+    if status_code in {401, 402, 403, 404} or (
+        isinstance(status_code, int) and (status_code == 429 or status_code >= 500)
+    ):
         return True
     text = str(error).lower()
     markers = (
@@ -67,6 +69,10 @@ def _is_nonrecoverable(error: Exception) -> bool:
         "unsupported protocol",
         "invalid url",
         "invalid base url",
+        "429",
+        "bad gateway",
+        "service unavailable",
+        "gateway timeout",
     )
     return any(marker in text for marker in markers)
 

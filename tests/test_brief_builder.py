@@ -783,6 +783,20 @@ def test_payment_required_opens_circuit_and_skips_later_batches():
     assert all(result.reason_code == "content_llm_unavailable" for result in results)
 
 
+def test_provider_502_opens_circuit_and_skips_later_batches():
+    class BadGatewayError(Exception):
+        status_code = 502
+
+    events = [event(index, chinese=True) for index in range(1, 7)]
+    builder, client = builder_with_responses([BadGatewayError("502 Bad Gateway")])
+
+    results = builder.build_batch(events, attempts={})
+
+    assert len(client.chat.completions.calls) == 1
+    assert all(result.circuit_open is True for result in results)
+    assert all(result.reason_code == "content_llm_unavailable" for result in results)
+
+
 def test_nonrecoverable_error_opens_circuit_and_avoids_later_calls():
     chinese = event(1, chinese=True)
     english = event(2)
