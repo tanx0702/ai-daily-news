@@ -59,8 +59,12 @@ def evaluate_ai_update_candidate(candidate: Mapping[str, object]) -> UpdateEligi
 
 
 def _has_update_anchor(text: str) -> bool:
-    return bool(
-        _RESULT_RELATION.search(text)
-        and (_MODEL_VERSION.search(text) or _TECHNICAL_OBJECT.search(text))
-        and (_MECHANICAL_PROGRESS.search(text) or _BENCHMARK_RESULT.search(text))
+    result_relation = bool(_RESULT_RELATION.search(text))
+    model_version = bool(_MODEL_VERSION.search(text))
+    technical_object = bool(_TECHNICAL_OBJECT.search(text))
+    mechanical_progress = bool(_MECHANICAL_PROGRESS.search(text))
+    benchmark_result = bool(_BENCHMARK_RESULT.search(text))
+    return result_relation and (
+        (model_version and (mechanical_progress or benchmark_result))
+        or (technical_object and mechanical_progress)
     )

@@ -45,6 +45,14 @@ def test_bare_rank_without_concrete_progress_is_not_an_update():
     assert result.eligible is False
 
 
+def test_generalized_benchmark_comment_without_mechanical_anchor_is_not_an_update():
+    result = evaluate_ai_update_candidate({
+        "title": "I think benchmark scores are higher this year for model training",
+    })
+
+    assert result.eligible is False
+
+
 @pytest.mark.parametrize("text", [
     "Register for our AI workshop",
     "https://t.co/example",
