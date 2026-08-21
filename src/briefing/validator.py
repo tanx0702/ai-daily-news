@@ -41,6 +41,16 @@ _COMMENTARY_PATTERNS = (
     "建议读者",
     "我们建议",
 )
+_UNTRANSLATED_TITLE_WORDS = {
+    "a", "acquire", "acquires", "an", "and", "announces", "are", "as",
+    "at", "be", "been", "being", "benchmarks", "by", "can", "capitalizes",
+    "classes", "could", "denies", "did", "do", "does", "fastest", "for",
+    "from", "frustration", "has", "have", "if", "in", "into", "is", "it",
+    "its", "may", "more", "new", "not", "of", "on", "open", "optimization",
+    "or", "out", "output", "over", "parameters", "problem", "report", "rival",
+    "setting", "solver", "source", "startup", "style", "than", "that", "the",
+    "their", "this", "to", "tried", "up", "was", "were", "will", "with",
+}
 _ATTRIBUTION_MARKERS = (
     "称",
     "分享",
@@ -125,6 +135,18 @@ def _sentences(value: str) -> list[str]:
 
 def _contains_chinese(value: str) -> bool:
     return any("\u4e00" <= char <= "\u9fff" for char in value)
+
+
+def _has_untranslated_title_prose(value: str) -> bool:
+    protected = re.sub(r"https?://\S+", " ", value, flags=re.I)
+    protected = re.sub(
+        r"(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+",
+        " ",
+        protected,
+    )
+    protected = re.sub(r'[`\"]([A-Za-z][^`\"]*)[`\"]', " ", protected)
+    words = re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z-]*(?![A-Za-z0-9])", protected)
+    return any(word == word.lower() and word in _UNTRANSLATED_TITLE_WORDS for word in words)
 
 
 def _display_claims(draft: BuiltBrief) -> list[str]:
@@ -432,6 +454,11 @@ class BriefValidator:
             or not draft.evidence_bindings
         ):
             return ("invalid_builder_response",)
+        if (
+            draft.content_origin == "llm"
+            and _has_untranslated_title_prose(draft.chinese_title)
+        ):
+            return ("translation_failed",)
         if any(pattern in display for pattern in _COMMENTARY_PATTERNS):
             return ("unsupported_commentary",)
         if source.channel == "github":
@@ -788,5 +815,6 @@ class BriefValidator:
                 api_key=self.quality_llm_config.api_key,
                 base_url=self.quality_llm_config.base_url,
                 timeout=self.timeout,
+                max_retries=0,
             )
         return self._client

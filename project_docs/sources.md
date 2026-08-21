@@ -38,6 +38,8 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 正式候选标题使用 `<owner/repo> releases <tag>`，其中动作、仓库名和版本号均直接来自 GitHub Release API；候选还必须具有 release URL、发布时间、项目用途和足够长度的 release notes。普通 push、stars 和缺少变更说明的 tag 不进入正式候选。
 
+通过来源发布性预检的 GitHub release 仍属于社区候选。最终简报尝试队列会把它们排在全部非 GitHub 事件之后，只有官方、研究、专业媒体、X 等其它合格事件不足时才回填；stars 和新鲜度不能让小项目 release 提前占满日报名额。
+
 ### Hugging Face
 
 `HuggingFaceCollector` 采集近期模型/论文/社区信号。likes 和 downloads 只影响热度，不能替代模型卡、论文或官方公告等内容证据。接口限流或字段异常时返回空列表并继续日报。
