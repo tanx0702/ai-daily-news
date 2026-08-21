@@ -31,6 +31,11 @@ def _topic_key(event: MergedEvent) -> str:
     return event.event_key
 
 
+def _publication_priority(event: MergedEvent) -> int:
+    source = event.canonical_evidence
+    return int(source.channel == "github" and source.authority == "community")
+
+
 class BriefSelector:
     """Keep all independent events available while applying only soft preferences."""
 
@@ -227,6 +232,7 @@ class BriefSelector:
         ranked = sorted(
             events,
             key=lambda event: (
+                _publication_priority(event),
                 -event.editorial_score,
                 _AUTHORITY_ORDER.get(event.canonical_evidence.authority, 99),
                 -_published_at(event).timestamp(),

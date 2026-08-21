@@ -816,6 +816,67 @@ def test_validator_requires_chinese_in_the_title_and_each_summary_sentence():
         assert result.reason_codes == ("invalid_builder_response",)
 
 
+def test_validator_rebuilds_titles_with_untranslated_english_prose():
+    titles = (
+        "Cognition CEO denies report that SpaceX tried to 收购 startup",
+        "Scaling Law 不仅是 parameters 的 Scaling",
+        "NVIDIA cuOpt 是 Hans Mittelmann benchmarks 上三个 optimization "
+        "problem classes 中最快的 open source solver",
+        'Claude Code 新增 "concise" output style setting',
+        "Cursor capitalizes on GitHub frustration 发布 rival",
+    )
+    source_title = "Example releases an AI update"
+
+    for title in titles:
+        item = event(
+            publisher_id="example-media",
+            publisher_name="Example Media",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title=source_title,
+            evidence_text=source_title,
+        )
+        generated = draft(
+            item,
+            chinese_title=title,
+            brief="",
+            evidence_bindings=(
+                EvidenceBinding(title, source_title, item.canonical_evidence.url),
+            ),
+        )
+
+        result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+        assert result.action == "rebuild", title
+        assert result.reason_codes == ("translation_failed",), title
+
+
+def test_validator_allows_product_names_models_and_units_in_chinese_title():
+    title = "PyTorch 内置 GELU 将 LLM 训练速度提升至 25,000 tokens/second"
+    item = event(
+        source_title=title,
+        evidence_text=title,
+    )
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+
+    instance, _ = quality_validator({"items": [review_item()]})
+    result = instance.validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept", result.reason_codes
+
+
 def test_validator_does_not_remove_punctuation_when_matching_quotes():
     item = event(evidence_text="OpenAI: 发布 Model 5。该模型提供文本 API。")
     changed_quote = draft(
@@ -1166,6 +1227,24 @@ def review_item(action="accept", reasons=None, **extras):
     }
     value.update(extras)
     return value
+
+
+def test_quality_validator_disables_sdk_retries():
+    captured = {}
+    client = FakeClient({"items": [review_item()]})
+    instance = validator(
+        quality_config=LLMConfig(
+            api_key="quality-key",
+            model="quality-model",
+            base_url="https://quality.example/v1",
+        ),
+        client_factory=lambda **kwargs: (captured.update(kwargs) or client),
+    )
+
+    result = instance.validate(event(), draft(), generation_attempt=1, now=NOW)
+
+    assert result.action == "accept"
+    assert captured["max_retries"] == 0
 
 
 def test_valid_quality_review_marks_rules_and_llm_without_changing_content():

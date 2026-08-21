@@ -90,6 +90,29 @@ def test_pending_orders_by_score_authority_date_then_event_key():
     ]
 
 
+def test_community_github_release_is_reserve_behind_professional_news():
+    github_release = event(
+        "small-release",
+        score=100,
+        publisher="GitHub",
+        authority="community",
+        channel="github",
+    )
+    media_report = event(
+        "reported-news",
+        score=10,
+        publisher="Reuters",
+        authority="professional_media",
+    )
+
+    selector = BriefSelector([github_release, media_report], config())
+
+    assert [value.event_key for value in selector.pending()] == [
+        "reported-news",
+        "small-release",
+    ]
+
+
 def test_source_preferences_demote_without_deleting_events():
     events = [
         event("a-first", score=10, publisher="Publisher A"),
