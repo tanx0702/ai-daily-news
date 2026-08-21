@@ -97,6 +97,17 @@ def test_x_collector_classifies_opinion_before_update_and_release_as_fact():
     assert update["content_type"] == "ai_update"
 
 
+def test_x_collector_does_not_promote_non_opinion_benchmark_comment_to_update():
+    comment = _tweet_to_candidate(
+        _classification_tweet(
+            "I think benchmark rankings are overrated in model training today"
+        ),
+        {"karpathy": _official_source()},
+    )
+
+    assert comment["content_type"] == "fact_event"
+
+
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
     now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(
