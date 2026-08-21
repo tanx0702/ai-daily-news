@@ -14,6 +14,8 @@ import requests
 
 from src.collectors import BaseCollector
 from src.briefing.opinion import evaluate_opinion_candidate, x_content_rejection_reason
+from src.briefing.publishability import asserted_action_types
+from src.briefing.update import evaluate_ai_update_candidate
 from src.text_utils import clean_display_text
 
 
@@ -209,7 +211,14 @@ def _tweet_to_candidate(
         return None
     candidate["opinion_eligible"] = opinion_eligible
     opinion = evaluate_opinion_candidate(candidate, registry_source)
-    candidate["content_type"] = "attributed_opinion" if opinion.eligible else "fact_event"
+    if opinion.eligible:
+        candidate["content_type"] = "attributed_opinion"
+    elif asserted_action_types(candidate["summary"]):
+        candidate["content_type"] = "fact_event"
+    elif evaluate_ai_update_candidate(candidate).eligible:
+        candidate["content_type"] = "ai_update"
+    else:
+        candidate["content_type"] = "fact_event"
     candidate["opinion_author"] = source_name if opinion.eligible else ""
     candidate["opinion_original_post"] = opinion.original_post
     candidate["opinion_context_complete"] = opinion.context_complete
