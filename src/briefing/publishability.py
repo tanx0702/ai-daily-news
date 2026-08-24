@@ -493,6 +493,14 @@ def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]
     normalized = _normalize(value)
     relation = _UPDATE_RESULT_RELATION.search(normalized)
     subject_text = normalized[:relation.start()] if relation else ""
+    # In comparison headlines, anchors after `vs`/`than` are comparison
+    # objects, not alternate subjects for the displayed claim.
+    if re.search(
+        r"\b(?:vs\.?|versus|than|compared\s+with)\b|对比|相比|与",
+        subject_text,
+        flags=re.I,
+    ):
+        return set()
     if publisher_name:
         subject_text = re.sub(
             rf"^\s*{re.escape(_normalize(publisher_name))}\s*[:：]\s*",

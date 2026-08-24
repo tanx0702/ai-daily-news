@@ -167,6 +167,19 @@ def test_ai_update_rejects_metric_direction_from_different_clauses():
     assert result.accepted is False
 
 
+def test_ai_update_comparison_object_cannot_become_subject():
+    evidence = source(
+        "GPT-4 vs Qwen3.8-27B scores 10% higher on MMLU",
+        content_type="ai_update",
+    )
+    result = validate_update_display_publishability(
+        "GPT-4 scores 10% higher on MMLU",
+        "",
+        evidence,
+    )
+    assert result.accepted is False
+
+
 def test_fact_publishability_does_not_adopt_ai_update_rules():
     evidence = source(
         "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
