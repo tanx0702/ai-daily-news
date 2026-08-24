@@ -322,3 +322,14 @@ def test_action_and_model_must_be_supported_by_same_binding_quote():
         "title_action_not_source_bound",
         "title_claim_not_source_bound",
     }
+
+
+def test_ai_update_rejects_unregistered_metric_dimension_swap():
+    source_evidence = source(
+        "Qwen3.8 improves accuracy by 10%",
+    )
+    assert validate_update_display_publishability(
+        "Qwen3.8 improves quality by 10%",
+        "",
+        source_evidence,
+    ).accepted is False
