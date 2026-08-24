@@ -27,6 +27,8 @@ from src.briefing.publishability import (
     claim_supported_by_quote,
     validate_display_publishability,
     validate_source_publishability,
+    validate_update_display_publishability,
+    validate_update_source_publishability,
 )
 from src.llm_config import LLMConfig
 
@@ -86,6 +88,17 @@ _CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
             "工具", "系统", "服务", "项目", "版本", "该", "其", "一个", "一款",
             "于", "年", "并", "与", "和", "的", "了", "已", "已经", "将", "在",
             "为", "向", "由", "新", "正式",
+        },
+        key=len,
+        reverse=True,
+    )
+)
+_UPDATE_CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
+    sorted(
+        {
+            *_CROSS_LANGUAGE_RULE_ONLY_MARKERS,
+            "得分", "高出", "低于", "排名", "位列", "快于", "慢于",
+            "速度", "延迟", "测试", "基准",
         },
         key=len,
         reverse=True,
@@ -200,11 +213,23 @@ def _cross_language_anchors(value: str) -> set[str]:
 
 
 def _cross_language_rule_only_verifiable(claim: str, quote: str) -> bool:
+    return _cross_language_rule_only_verifiable_with_markers(
+        claim,
+        quote,
+        _CROSS_LANGUAGE_RULE_ONLY_MARKERS,
+    )
+
+
+def _cross_language_rule_only_verifiable_with_markers(
+    claim: str,
+    quote: str,
+    allowed_markers: tuple[str, ...],
+) -> bool:
     claim_anchors = _cross_language_anchors(claim)
     if not claim_anchors or not claim_anchors <= _cross_language_anchors(quote):
         return False
     residual = "".join(re.findall(r"[\u4e00-\u9fff]", claim))
-    for marker in _CROSS_LANGUAGE_RULE_ONLY_MARKERS:
+    for marker in allowed_markers:
         residual = residual.replace(marker, "")
     return not residual
 
@@ -340,7 +365,11 @@ class BriefValidator:
                     audited_draft=draft,
                 )
         else:
-            source_editorial = validate_source_publishability(event.canonical_evidence)
+            source_editorial = (
+                validate_update_source_publishability(event.canonical_evidence)
+                if event.canonical_evidence.content_type == "ai_update"
+                else validate_source_publishability(event.canonical_evidence)
+            )
             if not source_editorial.accepted:
                 return ValidationResult(
                     "reject",
@@ -426,6 +455,8 @@ class BriefValidator:
         source = event.canonical_evidence
         if draft.event_key != event.event_key:
             return "invalid_builder_response"
+        if draft.content_type != source.content_type:
+            return "invalid_builder_response"
         if not source.source_title.strip() or not source.evidence_text.strip():
             return "missing_evidence"
         if not _valid_http_url(source.url):
@@ -509,10 +540,18 @@ class BriefValidator:
             if not quote or quote not in evidence_quote_text:
                 return ("quote_not_found",)
         if source.content_type != "attributed_opinion":
-            editorial = validate_display_publishability(
-                draft.chinese_title,
-                draft.brief,
-                source,
+            editorial = (
+                validate_update_display_publishability(
+                    draft.chinese_title,
+                    draft.brief,
+                    source,
+                )
+                if source.content_type == "ai_update"
+                else validate_display_publishability(
+                    draft.chinese_title,
+                    draft.brief,
+                    source,
+                )
             )
             if not editorial.accepted:
                 return editorial.reason_codes
@@ -647,6 +686,11 @@ class BriefValidator:
         self,
         draft: BuiltBrief,
     ) -> tuple[str, ...]:
+        allowed_markers = (
+            _UPDATE_CROSS_LANGUAGE_RULE_ONLY_MARKERS
+            if draft.content_type == "ai_update"
+            else _CROSS_LANGUAGE_RULE_ONLY_MARKERS
+        )
         for display_claim in _display_claims(draft):
             combined_quotes = " ".join(
                 _quote_match_text(binding.source_quote)
@@ -656,9 +700,8 @@ class BriefValidator:
             if (
                 _contains_chinese(display_claim)
                 and not _contains_chinese(combined_quotes)
-                and not _cross_language_rule_only_verifiable(
-                    display_claim,
-                    combined_quotes,
+                and not _cross_language_rule_only_verifiable_with_markers(
+                    display_claim, combined_quotes, allowed_markers
                 )
             ):
                 return ("claim_quote_mismatch",)

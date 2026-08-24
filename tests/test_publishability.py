@@ -4,6 +4,8 @@ from src.briefing.publishability import (
     source_anchored_title,
     validate_display_publishability,
     validate_source_publishability,
+    validate_update_display_publishability,
+    validate_update_source_publishability,
 )
 
 
@@ -34,6 +36,78 @@ def test_complete_title_only_news_event_is_publishable():
     assert result.accepted is True
     assert result.title_completeness == "complete"
     assert result.event_type == "release"
+
+
+def test_ai_update_accepts_concrete_result_without_release_action():
+    evidence = source(
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark.",
+        content_type="ai_update",
+    )
+
+    result = validate_update_source_publishability(evidence)
+
+    assert result.accepted is True
+    assert result.event_type == "ai_update"
+
+
+def test_ai_update_rejects_vague_or_promotional_content():
+    cases = (
+        source(
+            "Interesting AI trend",
+            "Interesting AI trend",
+            content_type="ai_update",
+        ),
+        source(
+            "Join our Qwen3.8 workshop for a 20% discount",
+            "Join our Qwen3.8 workshop for a 20% discount",
+            content_type="ai_update",
+        ),
+    )
+
+    for evidence in cases:
+        assert validate_update_source_publishability(evidence).reason_codes == (
+            "update_missing_concrete_detail",
+        )
+
+
+def test_ai_update_display_requires_source_bound_subject_and_detail():
+    evidence = source(
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark.",
+        content_type="ai_update",
+    )
+
+    accepted = validate_update_display_publishability(
+        "Qwen3.8-27B GGUF 在 Div-300 得分高出 10%",
+        "",
+        evidence,
+    )
+    invented = validate_update_display_publishability(
+        "Qwen3.8-27B GGUF 在 Div-300 得分高出 20%",
+        "",
+        evidence,
+    )
+    inverted = validate_update_display_publishability(
+        "Qwen3.8-27B GGUF 在 Div-300 得分低于 10%",
+        "",
+        evidence,
+    )
+
+    assert accepted.accepted is True
+    assert invented.reason_codes == ("update_claim_not_source_bound",)
+    assert inverted.reason_codes == ("update_claim_not_source_bound",)
+
+
+def test_fact_publishability_does_not_adopt_ai_update_rules():
+    evidence = source(
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        content_type="fact_event",
+    )
+
+    assert validate_source_publishability(evidence).reason_codes == (
+        "non_news_content",
+    )
 
 
 def test_vague_topic_titles_are_not_publishable():

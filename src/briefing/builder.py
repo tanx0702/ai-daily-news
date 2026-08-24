@@ -386,6 +386,8 @@ class BriefBuilder:
                             "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
                             "content_type=attributed_opinion 时必须保留 opinion_author 的明确归因，"
                             "只能压缩作者原意，不得改写成无主语的客观事实或机构公告；"
+                            "content_type=ai_update 时只能概括原始项目、模型、实验或榜单的具体进展，"
+                            "不得改写成正式发布，不得改写成确定性行业结论；"
                             "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
                             "包含且只包含 index、event_key、chinese_title、brief、evidence_targets；brief 必须是字符串。"
                         ),

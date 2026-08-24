@@ -67,6 +67,109 @@ def validator(*, quality_config=None, client_factory=None):
     )
 
 
+def update_event():
+    return event(
+        publisher_id="qwen-researcher",
+        publisher_name="Qwen Researcher",
+        channel="x",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        source_title="Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        evidence_text=(
+            "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark."
+        ),
+        url="https://x.com/qwen_researcher/status/42",
+        content_type="ai_update",
+    )
+
+
+def bound_update_draft(item):
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 10%"
+    return draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+
+def invented_update_draft(item):
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 20%"
+    return draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+
+def test_validator_accepts_bound_ai_update_but_rejects_invented_result():
+    item = update_event()
+
+    accepted = validator().validate(
+        item,
+        bound_update_draft(item),
+        generation_attempt=1,
+        now=NOW,
+    )
+    rejected = validator().validate(
+        item,
+        invented_update_draft(item),
+        generation_attempt=1,
+        now=NOW,
+    )
+
+    assert accepted.action == "accept"
+    assert accepted.validated_item.content_type == "ai_update"
+    assert rejected.reason_codes in {
+        ("claim_quote_mismatch",),
+        ("update_claim_not_source_bound",),
+    }
+
+
+def test_validator_rejects_draft_content_type_override():
+    item = event(
+        publisher_id="anthropic",
+        publisher_name="Anthropic",
+        source_title="Anthropic revenue jumps 14x in second quarter",
+        evidence_text="Anthropic revenue jumps 14x in second quarter.",
+    )
+    title = "Anthropic 得分增长 14x"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("invalid_builder_response",)
+
+
 def test_validator_accepts_quotes_after_html_entity_and_whitespace_normalization():
     item = event()
 
