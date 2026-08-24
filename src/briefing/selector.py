@@ -151,8 +151,11 @@ class BriefSelector:
 
     def limit_reason(self, event: MergedEvent) -> str | None:
         source = event.canonical_evidence
-        if source.channel == "x" and self.x_count >= self.config.max_x_items:
-            return "x_limit"
+        if (
+            source.content_type == "ai_update"
+            and self.update_count >= self.config.max_update_items
+        ):
+            return "update_limit"
         if source.content_type == "attributed_opinion":
             if self.opinion_count >= self.config.max_opinion_items:
                 return "opinion_limit"
@@ -160,16 +163,22 @@ class BriefSelector:
             if not author or author in self.opinion_author_counts:
                 return "opinion_author_limit"
         if (
-            source.content_type == "ai_update"
-            and self.update_count >= self.config.max_update_items
+            source.channel == "x"
+            and self.x_count >= self.config.max_x_items
         ):
-            return "update_limit"
+            return "x_limit"
         return None
 
     def accept(self, item: BriefItem) -> bool:
         """Accept one validated item and consume its quota only at this boundary."""
         event = self._events_by_key.get(item.event_key)
         if event is None or item.event_key in self._processed:
+            return False
+        if (
+            item.content_type == "ai_update"
+            and self.update_count >= self.config.max_update_items
+        ):
+            self._excluded["update_limit"] += 1
             return False
         if event.canonical_evidence.channel == "x" and self.x_count >= self.config.max_x_items:
             return False
@@ -181,12 +190,6 @@ class BriefSelector:
             if not author or author in self.opinion_author_counts:
                 self._excluded["opinion_author_limit"] += 1
                 return False
-        if (
-            item.content_type == "ai_update"
-            and self.update_count >= self.config.max_update_items
-        ):
-            self._excluded["update_limit"] += 1
-            return False
         self._accepted.append(item)
         self._processed.add(item.event_key)
         return True
