@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from jinja2 import BaseLoader, Environment
-from src.briefing.adapters import brief_item_to_display_dict
+from src.briefing.adapters import CONTENT_LABELS, brief_item_to_display_dict
 from src.briefing.models import BriefItem
 from src.llm_config import resolve_text_llm_config
 from src.text_utils import clean_display_text, safe_http_url
@@ -310,8 +310,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                         <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.chinese_title or item.title }}</a>
                     </div>
                     <div class="news-meta">
-                        {% if item.content_type == "attributed_opinion" %}
-                        <span class="news-source-tag">{{ item.content_label or "圈内观点" }}</span>
+                        {% if item.content_type in ("ai_update", "attributed_opinion") %}
+                        <span class="news-source-tag">{{ item.content_label or ("AI 圈动态" if item.content_type == "ai_update" else "圈内观点") }}</span>
                         {% endif %}
                         <span class="news-source-tag">{{ item.source }}</span>
                         {% if item.published_at %}
@@ -595,7 +595,7 @@ def render_wechat_article(
         image_type = item.get("image_type", "")
         content_label = clean_display_text(
             item.get("content_label")
-            or ("圈内观点" if item.get("content_type") == "attributed_opinion" else "快讯")
+            or CONTENT_LABELS.get(str(item.get("content_type", "fact_event")), "事实简报")
         )
 
         # 判断是否为图文卡片。

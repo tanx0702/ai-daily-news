@@ -50,11 +50,12 @@ docker compose up -d --force-recreate
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `DAILY_TOP_N` | `15` | 事实简报上限；仅允许 5-15，5-14 为正常短版 |
+| `DAILY_TOP_N` | `20` | 日报内容上限；仅允许 5-20 |
 | `DAILY_MIN_ITEMS` | `5` | 创建草稿所需的最少唯一事实简报；少于此值 block |
 | `DAILY_MIN_FACT_ITEMS` | `3` | 每期至少保留的事实新闻数量；署名观点不能替代该下限 |
-| `DAILY_MAX_OPINION_ITEMS` | `3` | 每期最多发布的署名观点数量 |
-| `DAILY_CANDIDATE_POOL_N` | `45` | 聚类前候选池，必须不小于 `DAILY_TOP_N`；歧义重复项隔离且不可回填 |
+| `DAILY_TARGET_UPDATE_ITEMS` / `DAILY_MAX_UPDATE_ITEMS` | `5` / `8` | AI 圈动态目标与硬上限；目标只控制尝试顺序 |
+| `DAILY_TARGET_OPINION_ITEMS` / `DAILY_MAX_OPINION_ITEMS` | `5` / `8` | 署名观点目标与硬上限；目标只控制尝试顺序 |
+| `DAILY_CANDIDATE_POOL_N` | `60` | 聚类前候选池，必须不小于 `DAILY_TOP_N`；歧义重复项隔离且不可回填 |
 | `DAILY_MAX_ITEMS_PER_SOURCE` | `2` | 候选排序偏好，不是最终来源占比阻断 |
 | `DAILY_MAX_ITEMS_PER_TOPIC` | `2` | 候选排序偏好；最终重复由事件聚类处理 |
 | `DAILY_MIN_PRIMARY_OR_RESEARCH` | `2` | 候选排序偏好，不替代规范来源证据绑定 |
@@ -79,7 +80,7 @@ docker compose up -d --force-recreate
 生产任务在采集、LLM 和微信等任何外部调用前校验以下硬约束：
 
 ```text
-5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 15
+5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 20
 3 <= DAILY_MIN_FACT_ITEMS <= DAILY_MIN_ITEMS
 0 <= DAILY_MAX_OPINION_ITEMS <= 3
 DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
