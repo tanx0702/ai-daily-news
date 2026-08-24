@@ -7,10 +7,11 @@ def test_briefing_config_uses_approved_defaults():
     config = BriefingConfig.from_env({})
 
     assert config.min_items == 5
-    assert config.max_items == 15
-    assert config.candidate_pool_size == 45
+    assert config.max_items == 20
+    assert config.candidate_pool_size == 60
     assert config.min_fact_items == 3
-    assert config.max_opinion_items == 3
+    assert (config.target_update_items, config.max_update_items) == (5, 8)
+    assert (config.target_opinion_items, config.max_opinion_items) == (5, 8)
     assert config.max_x_items == 8
     assert config.target_x_items == 5
     assert config.x_feed_max_age_hours == 6
@@ -35,9 +36,9 @@ def test_briefing_config_accepts_all_hard_boundaries():
     )
     upper = BriefingConfig.from_env(
         {
-            "DAILY_MIN_ITEMS": "15",
-            "DAILY_TOP_N": "15",
-            "DAILY_CANDIDATE_POOL_N": "45",
+            "DAILY_MIN_ITEMS": "20",
+            "DAILY_TOP_N": "20",
+            "DAILY_CANDIDATE_POOL_N": "60",
             "DAILY_X_MAX_ITEMS": "8",
             "X_FEED_MAX_AGE_HOURS": "6",
             "SKIP_WECHAT_DRAFT": "0",
@@ -47,7 +48,7 @@ def test_briefing_config_accepts_all_hard_boundaries():
     assert (lower.min_items, lower.max_items, lower.max_x_items) == (5, 5, 0)
     assert lower.target_x_items == 0
     assert lower.skip_wechat_draft is True
-    assert (upper.min_items, upper.max_items, upper.max_x_items) == (15, 15, 8)
+    assert (upper.min_items, upper.max_items, upper.max_x_items) == (20, 20, 8)
     assert upper.target_x_items == 5
     assert upper.skip_wechat_draft is False
 
@@ -56,9 +57,9 @@ def test_briefing_config_accepts_all_hard_boundaries():
     "env",
     [
         {"DAILY_MIN_ITEMS": "4"},
-        {"DAILY_MIN_ITEMS": "16"},
+        {"DAILY_MIN_ITEMS": "21"},
         {"DAILY_MIN_ITEMS": "10", "DAILY_TOP_N": "9"},
-        {"DAILY_TOP_N": "16"},
+        {"DAILY_TOP_N": "21"},
         {"DAILY_CANDIDATE_POOL_N": "14", "DAILY_TOP_N": "15"},
         {"DAILY_X_MAX_ITEMS": "-1"},
         {"DAILY_X_MAX_ITEMS": "9"},
@@ -67,7 +68,7 @@ def test_briefing_config_accepts_all_hard_boundaries():
         {"DAILY_MIN_FACT_ITEMS": "2"},
         {"DAILY_MIN_FACT_ITEMS": "6", "DAILY_MIN_ITEMS": "5"},
         {"DAILY_MAX_OPINION_ITEMS": "-1"},
-        {"DAILY_MAX_OPINION_ITEMS": "4"},
+        {"DAILY_MAX_OPINION_ITEMS": "9"},
         {"X_FEED_MAX_AGE_HOURS": "0"},
         {"X_FEED_MAX_AGE_HOURS": "7"},
         {"DAILY_NEWS_HOURS": "0"},
@@ -103,6 +104,24 @@ def test_semantic_dedup_timeout_inherits_quality_timeout():
 
     assert inherited.semantic_dedup_timeout == 61
     assert overridden.semantic_dedup_timeout == 17
+
+
+def test_content_mix_targets_cannot_exceed_caps():
+    with pytest.raises(InvalidBriefingConfiguration):
+        BriefingConfig.from_env(
+            {
+                "DAILY_TARGET_UPDATE_ITEMS": "9",
+                "DAILY_MAX_UPDATE_ITEMS": "8",
+            }
+        )
+
+    with pytest.raises(InvalidBriefingConfiguration):
+        BriefingConfig.from_env(
+            {
+                "DAILY_TARGET_OPINION_ITEMS": "9",
+                "DAILY_MAX_OPINION_ITEMS": "8",
+            }
+        )
 
 
 @pytest.mark.parametrize(

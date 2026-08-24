@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 _CHANNELS = {"rss", "x", "github", "huggingface", "arxiv", "hacker_news"}
 _AUTHORITIES = {"official", "research", "professional_media", "community"}
+_CONTENT_TYPES = {"fact_event", "ai_update", "attributed_opinion"}
 _CONTENT_ORIGINS = {"llm", "source"}
 _VALIDATION_MODES = {"rules_and_llm", "rules_only"}
 _BRIEF_MODES = {"title_only", "expanded"}
@@ -68,7 +69,7 @@ class SourceEvidence:
             raise ValueError(f"invalid channel: {self.channel}")
         if self.authority not in _AUTHORITIES:
             raise ValueError(f"invalid authority: {self.authority}")
-        if self.content_type not in {"fact_event", "attributed_opinion"}:
+        if self.content_type not in _CONTENT_TYPES:
             raise ValueError(f"invalid content_type: {self.content_type}")
         _validate_aware_iso(self.published_at, "published_at")
 
@@ -229,7 +230,7 @@ class BuiltBrief:
         object.__setattr__(self, "evidence_bindings", tuple(self.evidence_bindings))
         if self.content_origin not in _CONTENT_ORIGINS:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
-        if self.content_type not in {"fact_event", "attributed_opinion"}:
+        if self.content_type not in _CONTENT_TYPES:
             raise ValueError(f"invalid content_type: {self.content_type}")
         mode = self.brief_mode or ("title_only" if not self.brief.strip() else "expanded")
         if mode not in _BRIEF_MODES:
@@ -281,7 +282,7 @@ class BriefItem:
             raise ValueError(f"invalid content_origin: {self.content_origin}")
         if self.validation_mode not in _VALIDATION_MODES:
             raise ValueError(f"invalid validation_mode: {self.validation_mode}")
-        if self.content_type not in {"fact_event", "attributed_opinion"}:
+        if self.content_type not in _CONTENT_TYPES:
             raise ValueError(f"invalid content_type: {self.content_type}")
         if self.content_type == "attributed_opinion" and not self.opinion_author.strip():
             raise ValueError("attributed_opinion requires opinion_author")
@@ -411,6 +412,10 @@ class DraftDecision:
     min_fact_items: int = 3
     opinion_count: int = 0
     max_opinion_items: int = 3
+    update_count: int = 0
+    max_update_items: int = 0
+    target_update_items: int = 0
+    target_opinion_items: int = 0
     reasons: tuple[str, ...] = ()
     excluded_counts: Mapping[str, int] = field(
         default_factory=lambda: MappingProxyType({})
@@ -438,6 +443,10 @@ class DraftDecision:
             "min_fact_items": self.min_fact_items,
             "opinion_count": self.opinion_count,
             "max_opinion_items": self.max_opinion_items,
+            "update_count": self.update_count,
+            "max_update_items": self.max_update_items,
+            "target_update_items": self.target_update_items,
+            "target_opinion_items": self.target_opinion_items,
             "reasons": list(self.reasons),
             "excluded_counts": dict(self.excluded_counts),
             "source_counts": dict(self.source_counts),
@@ -456,6 +465,10 @@ class DraftDecision:
             min_fact_items=int(data.get("min_fact_items", 3)),
             opinion_count=int(data.get("opinion_count", 0)),
             max_opinion_items=int(data.get("max_opinion_items", 3)),
+            update_count=int(data.get("update_count", 0)),
+            max_update_items=int(data.get("max_update_items", 0)),
+            target_update_items=int(data.get("target_update_items", 0)),
+            target_opinion_items=int(data.get("target_opinion_items", 0)),
             reasons=tuple(data.get("reasons", [])),
             excluded_counts=data.get("excluded_counts", {}),
             source_counts=data.get("source_counts", {}),

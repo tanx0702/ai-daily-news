@@ -67,6 +67,244 @@ def validator(*, quality_config=None, client_factory=None):
     )
 
 
+def update_event():
+    return event(
+        publisher_id="qwen-researcher",
+        publisher_name="Qwen Researcher",
+        channel="x",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        source_title="Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        evidence_text=(
+            "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark."
+        ),
+        url="https://x.com/qwen_researcher/status/42",
+        content_type="ai_update",
+    )
+
+
+def bound_update_draft(item):
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 10%"
+    return draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+
+def invented_update_draft(item):
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 20%"
+    return draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+
+def test_validator_accepts_bound_ai_update_but_rejects_invented_result():
+    item = update_event()
+
+    accepted = validator().validate(
+        item,
+        bound_update_draft(item),
+        generation_attempt=1,
+        now=NOW,
+    )
+    rejected = validator().validate(
+        item,
+        invented_update_draft(item),
+        generation_attempt=1,
+        now=NOW,
+    )
+
+    assert accepted.action == "accept"
+    assert accepted.validated_item.content_type == "ai_update"
+    assert rejected.reason_codes in {
+        ("claim_quote_mismatch",),
+        ("update_claim_not_source_bound",),
+    }
+
+
+def test_validator_rejects_draft_content_type_override():
+    item = event(
+        publisher_id="anthropic",
+        publisher_name="Anthropic",
+        source_title="Anthropic revenue jumps 14x in second quarter",
+        evidence_text="Anthropic revenue jumps 14x in second quarter.",
+    )
+    title = "Anthropic 得分增长 14x"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("invalid_builder_response",)
+
+
+def test_ai_update_brief_cannot_turn_release_notes_into_formal_release():
+    item = event(
+        publisher_id="qwen",
+        publisher_name="Qwen",
+        source_title="Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        evidence_text=(
+            "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark. "
+            "Qwen3.8-27B GGUF release notes are available."
+        ),
+        content_type="ai_update",
+    )
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 10%"
+    invented_release = "Qwen3.8-27B GGUF 正式发布 release notes"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief=f"{invented_release}。",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                invented_release,
+                "Qwen3.8-27B GGUF release notes are available",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "rebuild"
+    assert result.reason_codes == ("update_claim_not_source_bound",)
+
+
+def test_ai_update_claim_must_match_its_own_binding_quote():
+    item = event(
+        publisher_id="qwen",
+        publisher_name="Qwen",
+        source_title="Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        evidence_text=(
+            "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark. "
+            "Qwen3.8-27B GGUF release notes are available."
+        ),
+        content_type="ai_update",
+    )
+    title = "Qwen3.8-27B GGUF 在 Div-300 得分高出 10%"
+    brief_claim = "Qwen3.8-27B GGUF 的 Div-300 得分高出 10%"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief=f"{brief_claim}。",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                brief_claim,
+                "Qwen3.8-27B GGUF release notes are available",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "rebuild"
+    assert result.reason_codes == ("update_claim_not_source_bound",)
+
+
+def test_ai_update_metric_and_direction_must_match_each_binding_quote():
+    item = event(
+        publisher_id="qwen",
+        publisher_name="Qwen",
+        source_title=(
+            "Qwen3.8-27B has 10% lower latency on Div-300 benchmark"
+        ),
+        evidence_text=(
+            "Qwen3.8-27B has 10% lower latency on Div-300 benchmark."
+        ),
+        content_type="ai_update",
+    )
+    title = "Qwen3.8-27B 在 Div-300 延迟降低 10%"
+    invented_score = "Qwen3.8-27B 在 Div-300 得分低于 10%"
+    valid_title_only = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief=f"{invented_score}。",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+            EvidenceBinding(
+                invented_score,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    accepted = validator().validate(
+        item,
+        valid_title_only,
+        generation_attempt=1,
+        now=NOW,
+    )
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert accepted.action == "accept"
+    assert result.action == "rebuild"
+    assert result.reason_codes == ("update_claim_not_source_bound",)
+
+
 def test_validator_accepts_quotes_after_html_entity_and_whitespace_normalization():
     item = event()
 

@@ -9,6 +9,12 @@ from typing import Any
 
 from src.briefing.models import BriefItem
 
+CONTENT_LABELS = {
+    "fact_event": "事实简报",
+    "ai_update": "AI 圈动态",
+    "attributed_opinion": "圈内观点",
+}
+
 
 def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
     """Project a validated item into the stable fields public renderers consume."""
@@ -27,7 +33,7 @@ def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
         "brief_mode": item.brief_mode,
         "brief_reason": item.brief_reason,
         "content_type": item.content_type,
-        "content_label": "圈内观点" if item.content_type == "attributed_opinion" else "事实简报",
+        "content_label": CONTENT_LABELS.get(item.content_type, "事实简报"),
         "opinion_author": item.opinion_author,
     }
 

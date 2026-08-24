@@ -36,9 +36,10 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - 外部 RSS、X、GitHub、HF、arXiv、LLM、图片和微信 API 失败必须记录并降级，不能让单条故障无日志地中断整期日报。
 - LLM 只能翻译和摘要原始证据，不能新增事实；GitHub 活跃度不能写成正式发布证据。
 - 候选池截断前必须复用确定性来源发布性规则，让可发布事件优先填充并记录拒绝原因；预检只调整尝试顺序，不能替代或放宽最终事实门禁。GitHub 只有具备项目说明和 release notes 的正式 release 可作为候选；社区 GitHub release 在最终尝试队列中只能排在非 GitHub 事件之后作为候补，不能仅凭新鲜度或 stars 抢占新闻名额。HF 的 likes/downloads/lastModified 只能标记为模型活跃度，arXiv 超时、429 和 5xx 最多有界重试一次后降级。
-- 生产日报只能展示 5-15 条唯一事实简报；跨语言、跨来源的同一事件只能占一个名额。候选先做确定性聚类，对少量疑似重复使用有预算的只读质量 LLM 复核，歧义重复和跨事件桥接冲突按来源强度隔离弱项且不得回填，每个显示声明都必须绑定显示的规范来源证据。
+- 生产日报只能展示 5-20 条唯一内容，至少 3 条 `fact_event`；内容分为 `fact_event`、`ai_update` 和 `attributed_opinion`。动态/观点目标只控制尝试顺序，上限是硬配额；跨语言、跨来源的同一事件只能占一个名额。候选先做确定性聚类，对少量疑似重复使用有预算的只读质量 LLM 复核，歧义重复和跨事件桥接冲突按来源强度隔离弱项且不得回填，每个显示声明都必须绑定显示的规范来源证据。
 - 语义去重失败、超时、无效、熔断、预算耗尽或返回 `uncertain` 时，保守保留官方/研究/专业媒体/非 X 等更强来源，移除或隔离较弱疑似重复，不得转人工复核；强人物锚点只接受逐行提取的已确认完整姓名，未登记但带人物语境的名称只触发复核且不得由 LLM 升级为强主体，未知 Title Case 短语和单句职位/代词语境不得升级为强人物；发布前去重后继续消费候选回填，最终不足 5 条仍然 `block`。
-- 事实简报分为 `brief_mode=title_only|expanded`：标题型快讯允许 `brief=""` 并正常计入 5-15 条；扩展型快讯只保留一至两句由原始标题之外证据支持的摘要。摘要句全部引用只落在规范来源原始标题范围内时删除并记录 `brief_restates_title`；无证据或新增事实仍重建一次后移除，不能靠清空摘要绕过门禁。
+- 事实简报分为 `brief_mode=title_only|expanded`：标题型快讯允许 `brief=""` 并正常计入 5-20 条；扩展型快讯只保留一至两句由原始标题之外证据支持的摘要。摘要句全部引用只落在规范来源原始标题范围内时删除并记录 `brief_restates_title`；无证据或新增事实仍重建一次后移除，不能靠清空摘要绕过门禁。
+- `content_type=ai_update` 使用独立发布性门禁，不要求正式发布等硬新闻动作，但仍必须有明确模型/项目主体、机械可核验的实验/榜单/数值细节以及逐条 quote、规范 URL 和保护锚点绑定；每个标题/摘要声明必须在同一条绑定 quote 内同时匹配谓词前主体、命名对象/指标及指标维度与方向，不能跨句拼接，也不能把来源前缀、比较对象或泛技术词当成主体/具体细节；泛标题、推广、虚构结果、确定性行业结论和类型篡改必须拒绝，`fact_event` 继续使用原硬新闻门禁。
 - 质量 LLM 是可选增强，缺失、超时或无效响应时，确定性事实规则通过的条目统一退回 `rules_only` 自动入选，不得转为人工复核或要求 LLM 修正事实；跨语言自动降级必须有逐字实体锚点，且只包含可机械核验的数字、动作和语法词，无法核验的翻译语义重建一次后移除。LLM 生成的中文标题可以保留产品名、模型名、缩写、仓库路径、版本号和单位，但残留普通英文语法、动作或叙述词时必须记录 `translation_failed` 并重建一次。内容、质量和语义去重客户端都关闭 SDK 隐式重试；内容 LLM 遇到 429、5xx 或网关不可用时立即打开本期熔断，后续条目直接走既有降级，不得逐条重复撞击中转站。等待上限由流水线的有界重建、熔断和 `rules_only` 降级控制。失败的 X 重建必须单条调用内容 LLM 并携带失败原因和保护锚点；内容 LLM 超时、不可用、无效响应、条目缺失/畸形/重复与真实未翻译输出必须使用不同审计原因，中文原文回退另记 `source_fallback_used` 且不得覆盖原始失败原因。builder 允许空字符串 brief，或将一至两项非空字符串 brief 列表机械拼接后继续走完整校验，其它结构仍按畸形响应拒绝。
 - `DraftDecision` 是唯一 `create|block` 决策，`DraftExecution` 只记录执行结果；旧发布模块、旧质量状态、来源占比阻断、9 分目标和人工复核均不是生产控制。
 - 微信草稿只保留每条事实简报的规范原始来源链接，不设置 `content_source_url`，也不展示指向 `PAGES_URL` 的“查看完整日报”入口。真实草稿必须在封面和新闻配图上传微信后重新调用确定性渲染器；正文首图使用上传返回的微信 CDN URL，不能复用上传前含公网封面的 HTML。`draft/add` 超时、断连或响应无法确认时不得自动重试，避免重复创建草稿；只有明确 API 拒绝才允许有界重试。
@@ -51,7 +52,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - 首次部署只复制 `.env.example`；高级覆盖从 `.env.advanced.example` 逐项复制。
 - `SOURCE_STATE_DB_PATH` 默认 `runtime/source-state.db`，只保存 RSS 来源健康状态；Compose 必须持久化挂载 `runtime/`，数据库文件不得提交。
 - `QUALITY_LLM_*` 未设置时继承 `LLM_*`，用于可选的事实核验和语义去重增强；语义去重默认 48 小时窗口、单期共享最多 20 次 LLM 调用，新增配置仍以 `.env.advanced.example` 为参考。
-- 默认简报配置为 `DAILY_TOP_N=15`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_MAX_OPINION_ITEMS=3`、`DAILY_CANDIDATE_POOL_N=45`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true` 的自然人原帖，同一作者每期最多一条。
+- 默认简报配置为 `DAILY_TOP_N=20`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_TARGET_UPDATE_ITEMS=5`、`DAILY_MAX_UPDATE_ITEMS=8`、`DAILY_TARGET_OPINION_ITEMS=5`、`DAILY_MAX_OPINION_ITEMS=8`、`DAILY_CANDIDATE_POOL_N=60`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true` 的自然人原帖，同一作者每期最多一条。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。
 - 不提交 `.env`、API key、微信密钥/token、Basic Auth 密码、日志、媒体缓存、`docs/` 生成物或完整外部 API 响应。
 - 不提交订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置或服务器私有二进制；它们只可保存在 `/root/ai-news-proxy/` 等 root 受限目录。

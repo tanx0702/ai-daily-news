@@ -41,6 +41,21 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("圈内观点", wechat)
         self.assertIn("https://x.com/karpathy/status/42", wechat)
 
+    def test_renderers_label_ai_update_and_keep_original_link(self):
+        update = {
+            **SAMPLE_NEWS[0],
+            "content_type": "ai_update",
+            "content_label": "AI 圈动态",
+            "url": "https://x.com/example/status/42",
+        }
+
+        daily = render_daily_html([update], date_str="2026-07-11")
+        wechat = render_wechat_article([update], date_str="2026-07-11")
+
+        self.assertIn("AI 圈动态", daily)
+        self.assertIn("AI 圈动态", wechat)
+        self.assertIn(update["url"], wechat)
+
     def test_render_daily_html_contains_news_and_archive(self):
         html = render_daily_html(
             SAMPLE_NEWS,

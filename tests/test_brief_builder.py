@@ -6,7 +6,12 @@ from src.briefing.models import MergedEvent, SourceEvidence
 from src.llm_config import LLMConfig
 
 
-def event(index: int, *, chinese: bool = False) -> MergedEvent:
+def event(
+    index: int,
+    *,
+    chinese: bool = False,
+    content_type: str = "fact_event",
+) -> MergedEvent:
     if chinese:
         title = f"示例公司发布模型 {index}"
         evidence_text = f"示例公司发布模型 {index}。该模型提供新的文本能力。"
@@ -24,6 +29,7 @@ def event(index: int, *, chinese: bool = False) -> MergedEvent:
         evidence_text=evidence_text,
         url=f"https://example.com/model-{index}",
         published_at="2026-08-07T08:00:00+00:00",
+        content_type=content_type,
     )
     return MergedEvent(
         event_key=f"event-{index}",
@@ -173,6 +179,23 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "非实体、非数字细节" in system_prompt
     assert "保留原文锚点" in system_prompt
+
+
+def test_builder_preserves_ai_update_type_and_forbids_release_rewrite():
+    item = event(1, content_type="ai_update")
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.content_type == "ai_update"
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    assert "content_type=ai_update" in system_prompt
+    assert "不得改写成正式发布" in system_prompt
+    assert "不得改写成确定性行业结论" in system_prompt
 
 
 def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():

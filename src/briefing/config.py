@@ -40,10 +40,13 @@ class BriefingConfig:
     """Validated production settings used by every briefing component."""
 
     min_items: int = 5
-    max_items: int = 15
+    max_items: int = 20
     min_fact_items: int = 3
-    max_opinion_items: int = 3
-    candidate_pool_size: int = 45
+    max_opinion_items: int = 8
+    target_opinion_items: int = 5
+    max_update_items: int = 8
+    target_update_items: int = 5
+    candidate_pool_size: int = 60
     max_x_items: int = 8
     target_x_items: int = 5
     x_feed_max_age_hours: int = 6
@@ -61,12 +64,25 @@ class BriefingConfig:
     def from_env(cls, env: Mapping[str, str] | None = None) -> "BriefingConfig":
         values = os.environ if env is None else env
         max_x_items = _integer(values, "DAILY_X_MAX_ITEMS", 8)
+        max_opinion_items = _integer(values, "DAILY_MAX_OPINION_ITEMS", 8)
+        max_update_items = _integer(values, "DAILY_MAX_UPDATE_ITEMS", 8)
         config = cls(
             min_items=_integer(values, "DAILY_MIN_ITEMS", 5),
-            max_items=_integer(values, "DAILY_TOP_N", 15),
+            max_items=_integer(values, "DAILY_TOP_N", 20),
             min_fact_items=_integer(values, "DAILY_MIN_FACT_ITEMS", 3),
-            max_opinion_items=_integer(values, "DAILY_MAX_OPINION_ITEMS", 3),
-            candidate_pool_size=_integer(values, "DAILY_CANDIDATE_POOL_N", 45),
+            max_opinion_items=max_opinion_items,
+            target_opinion_items=_integer(
+                values,
+                "DAILY_TARGET_OPINION_ITEMS",
+                min(5, max_opinion_items),
+            ),
+            max_update_items=max_update_items,
+            target_update_items=_integer(
+                values,
+                "DAILY_TARGET_UPDATE_ITEMS",
+                min(5, max_update_items),
+            ),
+            candidate_pool_size=_integer(values, "DAILY_CANDIDATE_POOL_N", 60),
             max_x_items=max_x_items,
             target_x_items=_integer(
                 values,
@@ -104,9 +120,9 @@ class BriefingConfig:
         return config
 
     def _validate(self) -> None:
-        if not 5 <= self.min_items <= self.max_items <= 15:
+        if not 5 <= self.min_items <= self.max_items <= 20:
             raise InvalidBriefingConfiguration(
-                "expected 5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 15"
+                "expected 5 <= DAILY_MIN_ITEMS <= DAILY_TOP_N <= 20"
             )
         if self.candidate_pool_size < self.max_items:
             raise InvalidBriefingConfiguration(
@@ -116,9 +132,13 @@ class BriefingConfig:
             raise InvalidBriefingConfiguration(
                 "DAILY_MIN_FACT_ITEMS must be between 3 and DAILY_MIN_ITEMS"
             )
-        if not 0 <= self.max_opinion_items <= 3:
+        if not 0 <= self.target_update_items <= self.max_update_items <= 8:
             raise InvalidBriefingConfiguration(
-                "DAILY_MAX_OPINION_ITEMS must be between 0 and 3"
+                "expected 0 <= DAILY_TARGET_UPDATE_ITEMS <= DAILY_MAX_UPDATE_ITEMS <= 8"
+            )
+        if not 0 <= self.target_opinion_items <= self.max_opinion_items <= 8:
+            raise InvalidBriefingConfiguration(
+                "expected 0 <= DAILY_TARGET_OPINION_ITEMS <= DAILY_MAX_OPINION_ITEMS <= 8"
             )
         if not 0 <= self.max_x_items <= 8:
             raise InvalidBriefingConfiguration(

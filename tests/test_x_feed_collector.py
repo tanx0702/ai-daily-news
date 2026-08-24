@@ -6,7 +6,7 @@ import pytest
 
 from src import collector
 from src.briefing.evidence import source_evidence_from_candidate
-from src.collectors.x_feed import XFeedCollector
+from src.collectors.x_feed import XFeedCollector, _tweet_to_candidate
 
 
 class FakeResponse:
@@ -44,6 +44,68 @@ def _empty_feed(generated_at: datetime) -> dict:
     payload = _feed(generated_at)
     payload["tweets"] = []
     return payload
+
+
+def _classification_tweet(text: str) -> dict:
+    return {
+        "tweet_id": "42",
+        "text": text,
+        "author": "Andrej Karpathy",
+        "created_at": "2026-08-04T00:00:00.000Z",
+        "url": "https://x.com/karpathy/status/42",
+        "source_name": "Andrej Karpathy",
+        "source_handle": "karpathy",
+        "source_tier": "research",
+        "official": False,
+    }
+
+
+def _opinion_source() -> dict:
+    return {
+        "name": "Andrej Karpathy",
+        "tier": "research",
+        "official": False,
+        "opinion_eligible": True,
+    }
+
+
+def _official_source() -> dict:
+    return {
+        "name": "OpenAI",
+        "tier": "primary",
+        "official": True,
+        "opinion_eligible": False,
+    }
+
+
+def test_x_collector_classifies_opinion_before_update_and_release_as_fact():
+    opinion = _tweet_to_candidate(
+        _classification_tweet("I think open models will win because they are easier to adapt."),
+        {"karpathy": _opinion_source()},
+    )
+    release = _tweet_to_candidate(
+        _classification_tweet("We released Model 2.0"),
+        {"karpathy": _official_source()},
+    )
+    update = _tweet_to_candidate(
+        _classification_tweet("Model 2.0 reaches #6 on the benchmark"),
+        {"karpathy": _official_source()},
+    )
+
+    assert opinion["content_type"] == "attributed_opinion"
+    assert release["content_type"] == "fact_event"
+    assert update["content_type"] == "ai_update"
+
+
+def test_x_collector_does_not_promote_non_opinion_benchmark_comment_to_update():
+    comment = _tweet_to_candidate(
+        _classification_tweet(
+            "I think benchmark rankings are overrated in model training today"
+        ),
+        {"karpathy": _official_source()},
+    )
+
+    assert comment["content_type"] == "fact_event"
 
 
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):

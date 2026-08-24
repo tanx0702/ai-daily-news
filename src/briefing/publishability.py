@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from src.briefing.models import SourceEvidence
+from src.briefing.opinion import x_content_rejection_reason
 
 
 EVENT_ACTION_MARKERS = {
@@ -165,6 +166,58 @@ _SOURCE_LITERAL_DETAIL_STOPWORDS = {
     "product", "products", "service", "services", "that", "the", "their", "this",
     "to", "with", "will", "your",
 }
+_UPDATE_RESULT_RELATION = re.compile(
+    r"\b(?:scores?|reaches?|rank(?:s|ed)?|places?|improves?|improved|"
+    r"increases?|increased|decreases?|decreased|higher|lower|faster|slower|"
+    r"outperforms?|beats?|achieves?|achieved)\b|"
+    r"得分|达到|提升|降低|高出|低于|加快|减少|超过|排名|位列",
+    re.IGNORECASE,
+)
+_UPDATE_DIRECTION_PATTERNS = {
+    "higher": re.compile(
+        r"\b(?:improves?|improved|increases?|increased|higher|faster|"
+        r"outperforms?|beats?)\b|提升|高出|加快|超过|快于",
+        re.IGNORECASE,
+    ),
+    "lower": re.compile(
+        r"\b(?:decreases?|decreased|lower|slower)\b|降低|低于|减少|慢于",
+        re.IGNORECASE,
+    ),
+}
+_UPDATE_VALUE_RELATION = re.compile(
+    r"\b(?:scores?|reaches?|achieves?|achieved|rank(?:s|ed)?|places?)\b|"
+    r"得分|达到|排名|位列",
+    re.IGNORECASE,
+)
+_UPDATE_DIMENSION_PATTERNS = (
+    ("score", re.compile(r"\b(?:scores?|scoring)\b|得分|分数", re.IGNORECASE)),
+    ("latency", re.compile(r"\blatency\b|延迟", re.IGNORECASE)),
+    (
+        "speed",
+        re.compile(
+            r"\b(?:speed|throughput|faster|slower|tok/s|tokens/s)\b|"
+            r"速度|吞吐|快于|慢于",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "rank",
+        re.compile(
+            r"\b(?:rank(?:s|ed)?|places?)\b|排名|位列|第\s*\d+\s*名",
+            re.IGNORECASE,
+        ),
+    ),
+)
+_UPDATE_MECHANICAL_PROGRESS = re.compile(
+    r"\b\d+(?:\.\d+)?\s*%|#\s*\d+\b|\b(?:rank|排名)\s*#?\s*\d+|"
+    r"\b\d+(?:\.\d+)?\s*(?:x|ms|s|tok/s|tokens/s)\b|"
+    r"\b(?:speed|latency|速度|延迟)\s*\d+|第\s*\d+\s*名",
+    re.IGNORECASE,
+)
+_UPDATE_METRIC_STOPWORDS = {
+    "a", "an", "and", "by", "for", "higher", "lower", "more", "on",
+    "than", "the", "to", "with", "benchmark", "evaluation", "result",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +234,13 @@ class _ClaimFrame:
     actions: frozenset[str]
     subjects: frozenset[str]
     details: frozenset[str]
+
+
+@dataclass(frozen=True, slots=True)
+class _UpdateClaimFrame:
+    subjects: frozenset[str]
+    details: frozenset[str]
+    relations: frozenset[str]
 
 
 def _normalize(value: str) -> str:
@@ -417,6 +477,225 @@ def claim_supported_by_quote(
         frame is not None
         and _frame_supported(display, frame, publisher_subjects=publisher_subjects)
         for frame in (_claim_frame(sentence) for sentence in _sentences(quote))
+    )
+
+
+def _is_promotional_or_vague(title: str, evidence_text: str) -> bool:
+    combined = _normalize(f"{title} {evidence_text}")
+    return bool(
+        x_content_rejection_reason({"summary": combined})
+        or re.search(r"\b(?:interesting|trend)\b", title, flags=re.I)
+        or any(re.search(pattern, title, flags=re.I) for pattern in _NON_NEWS_PATTERNS)
+    )
+
+
+def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    subject_text = normalized[:relation.start()] if relation else ""
+    # In comparison headlines, anchors after `vs`/`than` are comparison
+    # objects, not alternate subjects for the displayed claim.
+    if re.search(
+        r"\b(?:vs\.?|versus|than|compared\s+with)\b|对比|相比|与",
+        subject_text,
+        flags=re.I,
+    ):
+        return set()
+    if publisher_name:
+        subject_text = re.sub(
+            rf"^\s*{re.escape(_normalize(publisher_name))}\s*[:：]\s*",
+            "",
+            subject_text,
+            flags=re.I,
+        )
+    anchors = _organization_anchors(subject_text) | _model_anchors(subject_text)
+    if anchors:
+        return anchors
+    for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", subject_text):
+        letters = "".join(char for char in token if char.isalpha())
+        if (
+            any(char.isdigit() for char in token)
+            or (letters.isupper() and len(letters) >= 2)
+            or (any(char.isupper() for char in letters[1:]) and any(char.islower() for char in letters))
+        ):
+            anchors.add(f"entity:{token.casefold().rstrip('.,;:!?')}")
+    return anchors
+
+
+def _update_named_detail_anchors(value: str) -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    detail_text = normalized[relation.end():] if relation else ""
+    anchors: set[str] = set()
+    for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", detail_text):
+        stripped = token.rstrip(".,;:!?")
+        letters = "".join(char for char in stripped if char.isalpha())
+        if (
+            "/" in stripped
+            or (
+                "-" in stripped
+                and (
+                    any(char.isdigit() for char in stripped)
+                    or letters.isupper()
+                )
+            )
+            or (letters.isupper() and len(letters) >= 3)
+            or (
+                any(char.isupper() for char in letters[1:])
+                and any(char.islower() for char in letters)
+            )
+        ):
+            anchors.add(f"named:{stripped.casefold()}")
+    return anchors
+
+
+def _update_metric_anchors(value: str) -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    if not relation:
+        return set()
+    detail_text = normalized[relation.end():]
+    return {
+        f"metric:{token.casefold()}"
+        for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9-]*", detail_text)
+        if len(token) >= 3 and token.casefold() not in _UPDATE_METRIC_STOPWORDS
+    }
+
+
+def _update_detail_anchors(value: str) -> set[str]:
+    normalized = _normalize(value)
+    named = _update_named_detail_anchors(normalized)
+    metrics = _update_metric_anchors(normalized)
+    if not _UPDATE_RESULT_RELATION.search(normalized) or not (
+        _UPDATE_MECHANICAL_PROGRESS.search(normalized) or named or metrics
+    ):
+        return set()
+    anchors = _numeric_anchors(normalized)
+    anchors.update(named | metrics)
+    return anchors
+
+
+def _update_relation_types(value: str) -> set[str]:
+    normalized = _normalize(value)
+    dimensions = {
+        dimension
+        for dimension, pattern in _UPDATE_DIMENSION_PATTERNS
+        if pattern.search(normalized)
+    }
+    # Only dimensions with an explicit deterministic vocabulary may establish
+    # a relation frame. Named evaluation details remain evidence anchors, not
+    # metric dimensions (for example, Div-300 is a benchmark, not a metric).
+    # Do not collapse unknown metric wording into a generic result dimension:
+    # that would let an accepted claim swap accuracy, quality, or another
+    # unregistered metric while preserving only the number and direction.
+    directions = {
+        direction
+        for direction, pattern in _UPDATE_DIRECTION_PATTERNS.items()
+        if pattern.search(normalized)
+    }
+    if not directions and _UPDATE_VALUE_RELATION.search(normalized):
+        directions = {"value"}
+    return {
+        f"{dimension}:{direction}"
+        for dimension in dimensions
+        for direction in directions
+    }
+
+
+def _update_claim_frame(
+    value: str,
+    *,
+    source: SourceEvidence,
+) -> _UpdateClaimFrame:
+    return _UpdateClaimFrame(
+        frozenset(
+            _update_subject_anchors(value, publisher_name=source.publisher_name)
+        ),
+        frozenset(_update_detail_anchors(value)),
+        frozenset(_update_relation_types(value)),
+    )
+
+
+def update_claim_supported_by_quote(
+    claim: str,
+    quote: str,
+    *,
+    source: SourceEvidence,
+) -> bool:
+    """Require one bound quote to contain the complete AI-update claim frame."""
+    display = _update_claim_frame(claim, source=source)
+    if not display.subjects or not display.details or not display.relations:
+        return False
+    for sentence in _sentences(quote):
+        evidence = _update_claim_frame(sentence, source=source)
+        # A sentence containing multiple metric/direction pairs is ambiguous
+        # under the deterministic frame model. Do not allow its cartesian
+        # product to authorize a mismatched display claim.
+        if len(evidence.relations) != 1:
+            continue
+        if (
+            display.subjects <= evidence.subjects
+            and display.details <= evidence.details
+            and display.relations <= evidence.relations
+        ):
+            return True
+    return False
+
+
+def validate_update_source_publishability(
+    source: SourceEvidence,
+) -> PublishabilityResult:
+    """Validate a concrete AI update without requiring a hard-news action."""
+    title = _normalize(source.source_title)
+    if _is_promotional_or_vague(title, source.evidence_text):
+        return PublishabilityResult(False, ("update_missing_concrete_detail",))
+    subjects = _update_subject_anchors(title, publisher_name=source.publisher_name)
+    details = _update_detail_anchors(title)
+    if not subjects:
+        return PublishabilityResult(False, ("update_missing_subject",))
+    if not details:
+        return PublishabilityResult(False, ("update_missing_concrete_detail",))
+    return PublishabilityResult(
+        True,
+        (),
+        "ai_update",
+        tuple(sorted(subjects)),
+        "complete",
+    )
+
+
+def validate_update_display_publishability(
+    title: str,
+    brief: str,
+    source: SourceEvidence,
+) -> PublishabilityResult:
+    """Validate that a displayed AI update keeps source-bound concrete anchors."""
+    normalized = _normalize(title)
+    if _is_promotional_or_vague(normalized, source.evidence_text):
+        return PublishabilityResult(False, ("update_missing_concrete_detail",))
+    subjects = _update_subject_anchors(
+        normalized,
+        publisher_name=source.publisher_name,
+    )
+    details = _update_detail_anchors(normalized)
+    if not subjects:
+        return PublishabilityResult(False, ("update_missing_subject",))
+    if not details:
+        return PublishabilityResult(False, ("update_missing_concrete_detail",))
+
+    source_quotes = (source.source_title, *_sentences(source.evidence_text))
+    for claim in (normalized, *_sentences(brief)):
+        if not any(
+            update_claim_supported_by_quote(claim, quote, source=source)
+            for quote in source_quotes
+        ):
+            return PublishabilityResult(False, ("update_claim_not_source_bound",))
+    return PublishabilityResult(
+        True,
+        (),
+        "ai_update",
+        tuple(sorted(subjects)),
+        "complete",
     )
 
 

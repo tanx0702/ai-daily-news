@@ -93,6 +93,21 @@ class BriefSelector:
         )
 
     @property
+    def update_count(self) -> int:
+        return sum(item.content_type == "ai_update" for item in self._accepted)
+
+    def target_deficit(self, content_type: str) -> int:
+        targets = {
+            "ai_update": self.config.target_update_items,
+            "attributed_opinion": self.config.target_opinion_items,
+        }
+        current = {
+            "ai_update": self.update_count,
+            "attributed_opinion": self.opinion_count,
+        }
+        return max(targets.get(content_type, 0) - current.get(content_type, 0), 0)
+
+    @property
     def opinion_author_counts(self) -> Counter[str]:
         return Counter(
             item.opinion_author.strip().lower()
@@ -124,6 +139,11 @@ class BriefSelector:
             )
         ):
             return False
+        if (
+            event.canonical_evidence.content_type == "ai_update"
+            and self.update_count >= self.config.max_update_items
+        ):
+            return False
         return not (
             event.canonical_evidence.channel == "x"
             and self.x_count >= self.config.max_x_items
@@ -131,20 +151,34 @@ class BriefSelector:
 
     def limit_reason(self, event: MergedEvent) -> str | None:
         source = event.canonical_evidence
-        if source.channel == "x" and self.x_count >= self.config.max_x_items:
-            return "x_limit"
+        if (
+            source.content_type == "ai_update"
+            and self.update_count >= self.config.max_update_items
+        ):
+            return "update_limit"
         if source.content_type == "attributed_opinion":
             if self.opinion_count >= self.config.max_opinion_items:
                 return "opinion_limit"
             author = source.opinion_author.strip().lower()
             if not author or author in self.opinion_author_counts:
                 return "opinion_author_limit"
+        if (
+            source.channel == "x"
+            and self.x_count >= self.config.max_x_items
+        ):
+            return "x_limit"
         return None
 
     def accept(self, item: BriefItem) -> bool:
         """Accept one validated item and consume its quota only at this boundary."""
         event = self._events_by_key.get(item.event_key)
         if event is None or item.event_key in self._processed:
+            return False
+        if (
+            item.content_type == "ai_update"
+            and self.update_count >= self.config.max_update_items
+        ):
+            self._excluded["update_limit"] += 1
             return False
         if event.canonical_evidence.channel == "x" and self.x_count >= self.config.max_x_items:
             return False
@@ -204,6 +238,11 @@ class BriefSelector:
             ):
                 self._excluded["opinion_author_limit"] += 1
                 return False
+        if item.content_type == "ai_update" and sum(
+            value.content_type == "ai_update" for value in projected
+        ) >= self.config.max_update_items:
+            self._excluded["update_limit"] += 1
+            return False
         self._accepted = projected + [item]
         self._processed.update(removed_keys)
         self._processed.add(item.event_key)

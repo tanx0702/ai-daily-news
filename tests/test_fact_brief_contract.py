@@ -97,6 +97,14 @@ def test_old_source_evidence_payload_defaults_new_fields():
     assert restored.thread_id == ""
 
 
+def test_ai_update_contract_round_trips():
+    source = evidence(content_type="ai_update")
+
+    restored = SourceEvidence.from_dict(source.to_dict())
+
+    assert restored.content_type == "ai_update"
+
+
 def test_source_evidence_rejects_naive_or_invalid_timestamp():
     with pytest.raises(ValueError, match="timezone"):
         evidence(published_at="2026-08-07T08:00:00")
@@ -270,6 +278,10 @@ def test_draft_decision_is_serializable_and_has_frozen_diagnostics():
         max_items=15,
         x_count=1,
         max_x_items=5,
+        update_count=3,
+        max_update_items=8,
+        target_update_items=5,
+        target_opinion_items=5,
         reasons=(),
         excluded_counts={"translation_failed": 2},
         source_counts={"OpenAI": 1},
@@ -283,6 +295,33 @@ def test_draft_decision_is_serializable_and_has_frozen_diagnostics():
         decision.source_counts["Other"] = 1
     with pytest.raises(ValueError, match="action"):
         DraftDecision("review", 5, 5, 15, 0, 5)
+
+
+def test_legacy_draft_decision_defaults_content_mix_counts():
+    payload = DraftDecision(
+        action="create",
+        selected_count=5,
+        min_items=5,
+        max_items=20,
+        x_count=1,
+        max_x_items=5,
+    ).to_dict()
+    for field in (
+        "update_count",
+        "max_update_items",
+        "target_update_items",
+        "target_opinion_items",
+    ):
+        payload.pop(field)
+
+    restored = DraftDecision.from_dict(payload)
+
+    assert (
+        restored.update_count,
+        restored.max_update_items,
+        restored.target_update_items,
+        restored.target_opinion_items,
+    ) == (0, 0, 0, 0)
 
 
 def test_draft_execution_round_trips_and_validates_status_contract():

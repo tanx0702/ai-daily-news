@@ -27,7 +27,13 @@ def config(**values) -> BriefingConfig:
     return BriefingConfig(**defaults)
 
 
-def event(index: int, *, channel: str = "rss") -> MergedEvent:
+def event(
+    index: int,
+    *,
+    channel: str = "rss",
+    content_type: str = "fact_event",
+    opinion_author: str = "",
+) -> MergedEvent:
     source = SourceEvidence(
         publisher_id=f"publisher-{index}",
         publisher_name=f"Publisher {index}",
@@ -39,6 +45,12 @@ def event(index: int, *, channel: str = "rss") -> MergedEvent:
         evidence_text=f"Source {index} update.",
         url=f"https://example.test/{index}",
         published_at="2026-08-07T08:00:00+00:00",
+        content_type=content_type,
+        opinion_author=opinion_author,
+        opinion_eligible=content_type == "attributed_opinion",
+        original_post=content_type == "attributed_opinion",
+        context_complete=content_type == "attributed_opinion",
+        stance_type="opinion" if content_type == "attributed_opinion" else "",
     )
     return MergedEvent(f"event-{index}", source, editorial_score=10 - index)
 
@@ -75,6 +87,8 @@ def accepted(value: MergedEvent, *, validation_mode: str = "rules_only") -> Vali
             ),
             content_origin="source",
             validation_mode=validation_mode,
+            content_type=source.content_type,
+            opinion_author=source.opinion_author,
         ),
     )
 
@@ -111,6 +125,47 @@ class Validator:
                 rebuild_request=RebuildRequest(value.event_key, ("unsupported_claim",), 2),
             )
         return accepted(value)
+
+
+def test_pipeline_reaches_category_targets_before_quality_fill():
+    values = [
+        *[event(index) for index in range(1, 4)],
+        *[
+            event(index, content_type="ai_update")
+            for index in range(4, 9)
+        ],
+        *[
+            event(
+                index,
+                channel="x",
+                content_type="attributed_opinion",
+                opinion_author=f"Author {index}",
+            )
+            for index in range(9, 14)
+        ],
+        *[event(index) for index in range(14, 22)],
+    ]
+    result = run_brief_pipeline(
+        values,
+        (),
+        config(
+            min_items=5,
+            max_items=20,
+            candidate_pool_size=30,
+            max_x_items=8,
+            target_update_items=5,
+            max_update_items=8,
+            target_opinion_items=5,
+            max_opinion_items=8,
+        ),
+        Builder(),
+        Validator(),
+    )
+
+    assert sum(i.content_type == "fact_event" for i in result.accepted_items) >= 3
+    assert sum(i.content_type == "ai_update" for i in result.accepted_items) >= 5
+    assert sum(i.content_type == "attributed_opinion" for i in result.accepted_items) >= 5
+    assert len(result.accepted_items) == 20
 
 
 def test_opinion_audit_fields_are_explicit_and_json_safe():
