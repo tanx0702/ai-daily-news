@@ -71,7 +71,7 @@ def _run_with_candidates(tmp_path: Path, candidates: list[dict], env: dict):
 
 
 def test_invalid_configuration_fails_before_any_external_or_render_call(tmp_path):
-    env = _env(top_n=16)
+    env = _env(top_n=21)
     with (
         patch.dict("os.environ", env, clear=True),
         patch("src.collector.collect_candidates") as collect,
