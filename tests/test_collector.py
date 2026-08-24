@@ -374,6 +374,7 @@ class CollectorTests(unittest.TestCase):
                 "ENABLE_HF_COLLECTOR": "0",
                 "ENABLE_ARXIV_COLLECTOR": "0",
                 "ENABLE_X_COLLECTOR": "0",
+                "SOURCE_STATE_DB_PATH": ":memory:",
             },
             clear=False,
         ), patch.object(collector, "_load_sources", return_value=[]):
