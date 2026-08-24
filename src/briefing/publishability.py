@@ -574,10 +574,9 @@ def _update_relation_types(value: str) -> set[str]:
         for dimension, pattern in _UPDATE_DIMENSION_PATTERNS
         if pattern.search(normalized)
     }
-    dimensions.update(
-        anchor.removeprefix("metric:")
-        for anchor in _update_metric_anchors(normalized)
-    )
+    # Only dimensions with an explicit deterministic vocabulary may establish
+    # a relation frame. Named evaluation details remain evidence anchors, not
+    # metric dimensions (for example, Div-300 is a benchmark, not a metric).
     # Do not collapse unknown metric wording into a generic result dimension:
     # that would let an accepted claim swap accuracy, quality, or another
     # unregistered metric while preserving only the number and direction.
@@ -621,6 +620,11 @@ def update_claim_supported_by_quote(
         return False
     for sentence in _sentences(quote):
         evidence = _update_claim_frame(sentence, source=source)
+        # A sentence containing multiple metric/direction pairs is ambiguous
+        # under the deterministic frame model. Do not allow its cartesian
+        # product to authorize a mismatched display claim.
+        if len(evidence.relations) != 1:
+            continue
         if (
             display.subjects <= evidence.subjects
             and display.details <= evidence.details

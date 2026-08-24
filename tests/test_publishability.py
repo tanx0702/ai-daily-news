@@ -154,6 +154,19 @@ def test_ai_update_unknown_metric_dimension_cannot_be_swapped():
     assert result.reason_codes == ("update_claim_not_source_bound",)
 
 
+def test_ai_update_rejects_metric_direction_from_different_clauses():
+    evidence = source(
+        "Qwen3.8 improves accuracy by 10% but latency decreases by 20%",
+        content_type="ai_update",
+    )
+    result = validate_update_display_publishability(
+        "Qwen3.8 latency improves by 20%",
+        "",
+        evidence,
+    )
+    assert result.accepted is False
+
+
 def test_fact_publishability_does_not_adopt_ai_update_rules():
     evidence = source(
         "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
