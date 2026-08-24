@@ -173,29 +173,40 @@ _UPDATE_RESULT_RELATION = re.compile(
     r"得分|达到|提升|降低|高出|低于|加快|减少|超过|排名|位列",
     re.IGNORECASE,
 )
-_UPDATE_RELATION_PATTERNS = {
-    "increase": re.compile(
+_UPDATE_DIRECTION_PATTERNS = {
+    "higher": re.compile(
         r"\b(?:improves?|improved|increases?|increased|higher|faster|"
         r"outperforms?|beats?)\b|提升|高出|加快|超过|快于",
         re.IGNORECASE,
     ),
-    "decrease": re.compile(
+    "lower": re.compile(
         r"\b(?:decreases?|decreased|lower|slower)\b|降低|低于|减少|慢于",
         re.IGNORECASE,
     ),
-    "measurement": re.compile(
-        r"\b(?:scores?|reaches?|achieves?|achieved)\b|得分|达到",
-        re.IGNORECASE,
-    ),
-    "ranking": re.compile(
-        r"\b(?:rank(?:s|ed)?|places?)\b|排名|位列",
-        re.IGNORECASE,
-    ),
 }
-_UPDATE_TECHNICAL_OBJECT = re.compile(
-    r"\b(?:benchmark|leaderboard|evaluation|experiment|framework|training|"
-    r"inference|gguf|quant)\b|基准测试|排行榜|评测|实验|框架|训练|推理|量化",
+_UPDATE_VALUE_RELATION = re.compile(
+    r"\b(?:scores?|reaches?|achieves?|achieved|rank(?:s|ed)?|places?)\b|"
+    r"得分|达到|排名|位列",
     re.IGNORECASE,
+)
+_UPDATE_DIMENSION_PATTERNS = (
+    ("score", re.compile(r"\b(?:scores?|scoring)\b|得分|分数", re.IGNORECASE)),
+    ("latency", re.compile(r"\blatency\b|延迟", re.IGNORECASE)),
+    (
+        "speed",
+        re.compile(
+            r"\b(?:speed|throughput|faster|slower|tok/s|tokens/s)\b|"
+            r"速度|吞吐|快于|慢于",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "rank",
+        re.compile(
+            r"\b(?:rank(?:s|ed)?|places?)\b|排名|位列|第\s*\d+\s*名",
+            re.IGNORECASE,
+        ),
+    ),
 )
 _UPDATE_MECHANICAL_PROGRESS = re.compile(
     r"\b\d+(?:\.\d+)?\s*%|#\s*\d+\b|\b(?:rank|排名)\s*#?\s*\d+|"
@@ -219,6 +230,13 @@ class _ClaimFrame:
     actions: frozenset[str]
     subjects: frozenset[str]
     details: frozenset[str]
+
+
+@dataclass(frozen=True, slots=True)
+class _UpdateClaimFrame:
+    subjects: frozenset[str]
+    details: frozenset[str]
+    relations: frozenset[str]
 
 
 def _normalize(value: str) -> str:
@@ -462,16 +480,25 @@ def _is_promotional_or_vague(title: str, evidence_text: str) -> bool:
     combined = _normalize(f"{title} {evidence_text}")
     return bool(
         x_content_rejection_reason({"summary": combined})
+        or re.search(r"\b(?:interesting|trend)\b", title, flags=re.I)
         or any(re.search(pattern, title, flags=re.I) for pattern in _NON_NEWS_PATTERNS)
     )
 
 
-def _update_subject_anchors(value: str) -> set[str]:
-    anchors = _organization_anchors(value) | _model_anchors(value)
+def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    subject_text = normalized[:relation.start()] if relation else ""
+    if publisher_name:
+        subject_text = re.sub(
+            rf"^\s*{re.escape(_normalize(publisher_name))}\s*[:：]\s*",
+            "",
+            subject_text,
+            flags=re.I,
+        )
+    anchors = _organization_anchors(subject_text) | _model_anchors(subject_text)
     if anchors:
         return anchors
-    relation = _UPDATE_RESULT_RELATION.search(_normalize(value))
-    subject_text = value[:relation.start()] if relation else value
     for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", subject_text):
         letters = "".join(char for char in token if char.isalpha())
         if (
@@ -483,32 +510,105 @@ def _update_subject_anchors(value: str) -> set[str]:
     return anchors
 
 
+def _update_named_detail_anchors(value: str) -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    detail_text = normalized[relation.end():] if relation else ""
+    anchors: set[str] = set()
+    for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", detail_text):
+        stripped = token.rstrip(".,;:!?")
+        letters = "".join(char for char in stripped if char.isalpha())
+        if (
+            "/" in stripped
+            or (
+                "-" in stripped
+                and (
+                    any(char.isdigit() for char in stripped)
+                    or letters.isupper()
+                )
+            )
+            or (letters.isupper() and len(letters) >= 3)
+            or (
+                any(char.isupper() for char in letters[1:])
+                and any(char.islower() for char in letters)
+            )
+        ):
+            anchors.add(f"named:{stripped.casefold()}")
+    return anchors
+
+
 def _update_detail_anchors(value: str) -> set[str]:
     normalized = _normalize(value)
+    named = _update_named_detail_anchors(normalized)
     if not _UPDATE_RESULT_RELATION.search(normalized) or not (
-        _UPDATE_MECHANICAL_PROGRESS.search(normalized)
-        or _UPDATE_TECHNICAL_OBJECT.search(normalized)
+        _UPDATE_MECHANICAL_PROGRESS.search(normalized) or named
     ):
         return set()
     anchors = _numeric_anchors(normalized)
-    anchors.update(
-        f"technical:{match.group(0).casefold()}"
-        for match in _UPDATE_TECHNICAL_OBJECT.finditer(normalized)
-    )
-    anchors.update(
-        f"literal:{token.casefold().rstrip('.,;:!?')}"
-        for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+-]*", normalized)
-        if any(char.isdigit() for char in token) or token.isupper()
-    )
+    anchors.update(named)
     return anchors
 
 
 def _update_relation_types(value: str) -> set[str]:
-    return {
-        relation
-        for relation, pattern in _UPDATE_RELATION_PATTERNS.items()
-        if pattern.search(_normalize(value))
+    normalized = _normalize(value)
+    dimensions = {
+        dimension
+        for dimension, pattern in _UPDATE_DIMENSION_PATTERNS
+        if pattern.search(normalized)
     }
+    if not dimensions:
+        dimensions = {
+            "benchmark"
+            if re.search(r"\b(?:benchmark|evaluation)\b|基准|评测", normalized, re.I)
+            else "result"
+        }
+    directions = {
+        direction
+        for direction, pattern in _UPDATE_DIRECTION_PATTERNS.items()
+        if pattern.search(normalized)
+    }
+    if not directions and _UPDATE_VALUE_RELATION.search(normalized):
+        directions = {"value"}
+    return {
+        f"{dimension}:{direction}"
+        for dimension in dimensions
+        for direction in directions
+    }
+
+
+def _update_claim_frame(
+    value: str,
+    *,
+    source: SourceEvidence,
+) -> _UpdateClaimFrame:
+    return _UpdateClaimFrame(
+        frozenset(
+            _update_subject_anchors(value, publisher_name=source.publisher_name)
+        ),
+        frozenset(_update_detail_anchors(value)),
+        frozenset(_update_relation_types(value)),
+    )
+
+
+def update_claim_supported_by_quote(
+    claim: str,
+    quote: str,
+    *,
+    source: SourceEvidence,
+) -> bool:
+    """Require one bound quote to contain the complete AI-update claim frame."""
+    display = _update_claim_frame(claim, source=source)
+    if not display.subjects or not display.details or not display.relations:
+        return False
+    for sentence in _sentences(quote):
+        evidence = _update_claim_frame(sentence, source=source)
+        if (
+            display.subjects <= evidence.subjects
+            and display.details <= evidence.details
+            and display.relations <= evidence.relations
+        ):
+            return True
+    return False
 
 
 def validate_update_source_publishability(
@@ -518,7 +618,7 @@ def validate_update_source_publishability(
     title = _normalize(source.source_title)
     if _is_promotional_or_vague(title, source.evidence_text):
         return PublishabilityResult(False, ("update_missing_concrete_detail",))
-    subjects = _update_subject_anchors(title)
+    subjects = _update_subject_anchors(title, publisher_name=source.publisher_name)
     details = _update_detail_anchors(title)
     if not subjects:
         return PublishabilityResult(False, ("update_missing_subject",))
@@ -539,28 +639,26 @@ def validate_update_display_publishability(
     source: SourceEvidence,
 ) -> PublishabilityResult:
     """Validate that a displayed AI update keeps source-bound concrete anchors."""
-    del brief
     normalized = _normalize(title)
     if _is_promotional_or_vague(normalized, source.evidence_text):
         return PublishabilityResult(False, ("update_missing_concrete_detail",))
-    subjects = _update_subject_anchors(normalized)
+    subjects = _update_subject_anchors(
+        normalized,
+        publisher_name=source.publisher_name,
+    )
     details = _update_detail_anchors(normalized)
     if not subjects:
         return PublishabilityResult(False, ("update_missing_subject",))
     if not details:
         return PublishabilityResult(False, ("update_missing_concrete_detail",))
 
-    source_text = _normalize(f"{source.source_title} {source.evidence_text}")
-    source_subjects = _update_subject_anchors(source_text)
-    source_details = _update_detail_anchors(source_text)
-    relations = _update_relation_types(normalized)
-    source_relations = _update_relation_types(source_text)
-    if (
-        not subjects <= source_subjects
-        or not details <= source_details
-        or not relations <= source_relations
-    ):
-        return PublishabilityResult(False, ("update_claim_not_source_bound",))
+    source_quotes = (source.source_title, *_sentences(source.evidence_text))
+    for claim in (normalized, *_sentences(brief)):
+        if not any(
+            update_claim_supported_by_quote(claim, quote, source=source)
+            for quote in source_quotes
+        ):
+            return PublishabilityResult(False, ("update_claim_not_source_bound",))
     return PublishabilityResult(
         True,
         (),

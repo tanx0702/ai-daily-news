@@ -25,6 +25,7 @@ from src.briefing.publishability import (
     EVENT_ACTION_MARKERS,
     asserted_action_types,
     claim_supported_by_quote,
+    update_claim_supported_by_quote,
     validate_display_publishability,
     validate_source_publishability,
     validate_update_display_publishability,
@@ -557,9 +558,22 @@ class BriefValidator:
                 return editorial.reason_codes
         if _unsupported_protected_tokens(display, evidence_normalized):
             return ("protected_token_missing",)
-        if _unsupported_action(display, evidence_normalized):
+        if source.content_type != "ai_update" and _unsupported_action(
+            display, evidence_normalized
+        ):
             return ("action_not_supported",)
         for display_claim, bindings in bindings_by_claim.items():
+            if source.content_type == "ai_update":
+                if not any(
+                    update_claim_supported_by_quote(
+                        display_claim,
+                        _quote_match_text(binding.source_quote),
+                        source=source,
+                    )
+                    for binding in bindings
+                ):
+                    return ("update_claim_not_source_bound",)
+                continue
             combined_quotes = " ".join(
                 _quote_match_text(binding.source_quote) for binding in bindings
             )

@@ -99,6 +99,46 @@ def test_ai_update_display_requires_source_bound_subject_and_detail():
     assert inverted.reason_codes == ("update_claim_not_source_bound",)
 
 
+def test_ai_update_subject_must_precede_relation_and_not_be_publisher_prefix():
+    comparison_only = source(
+        "Scores 10% higher than GPT-4 on MMLU benchmark",
+        content_type="ai_update",
+    )
+    publisher_prefix = source(
+        "VentureBeat: scores 10% higher on MMLU benchmark",
+        content_type="ai_update",
+        publisher_name="VentureBeat",
+    )
+    named_project = source(
+        "ProjectNova scores 10% higher on MMLU benchmark",
+        content_type="ai_update",
+    )
+
+    assert validate_update_source_publishability(comparison_only).reason_codes == (
+        "update_missing_subject",
+    )
+    assert validate_update_source_publishability(publisher_prefix).reason_codes == (
+        "update_missing_subject",
+    )
+    assert validate_update_source_publishability(named_project).accepted is True
+
+
+def test_ai_update_requires_metric_or_named_detail_not_generic_technical_word():
+    generic = source(
+        "Qwen3.8 improves benchmark",
+        content_type="ai_update",
+    )
+    named = source(
+        "Qwen3.8 improves MMLU-Pro benchmark",
+        content_type="ai_update",
+    )
+
+    assert validate_update_source_publishability(generic).reason_codes == (
+        "update_missing_concrete_detail",
+    )
+    assert validate_update_source_publishability(named).accepted is True
+
+
 def test_fact_publishability_does_not_adopt_ai_update_rules():
     evidence = source(
         "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
