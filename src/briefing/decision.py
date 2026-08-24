@@ -35,6 +35,7 @@ def decide_draft(
     )
     x_count = sum(item.canonical_source.channel == "x" for item in valid_items)
     fact_count = sum(item.content_type == "fact_event" for item in valid_items)
+    update_count = sum(item.content_type == "ai_update" for item in valid_items)
     opinion_items = [
         item for item in valid_items if item.content_type == "attributed_opinion"
     ]
@@ -47,6 +48,8 @@ def decide_draft(
         reasons.append("insufficient_fact_items")
     if opinion_count > config.max_opinion_items:
         reasons.append("opinion_limit")
+    if update_count > config.max_update_items:
+        reasons.append("update_limit")
     if not all(opinion_authors) or len(opinion_authors) != len(set(opinion_authors)):
         reasons.append("opinion_author_limit")
     if len(values) > config.max_items or invalid or x_count > config.max_x_items:
@@ -67,6 +70,10 @@ def decide_draft(
         min_fact_items=config.min_fact_items,
         opinion_count=opinion_count,
         max_opinion_items=config.max_opinion_items,
+        update_count=update_count,
+        max_update_items=config.max_update_items,
+        target_update_items=config.target_update_items,
+        target_opinion_items=config.target_opinion_items,
         reasons=tuple(reasons),
         excluded_counts=excluded_counts,
         source_counts=source_counts,

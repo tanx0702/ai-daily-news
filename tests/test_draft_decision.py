@@ -180,7 +180,10 @@ def test_decision_requires_three_facts_and_limits_opinions_and_authors():
     assert decision.action == "block"
     assert "insufficient_fact_items" in decision.reasons
 
-    decision = decide_draft([item(1), item(2), item(3), *opinions], config())
+    decision = decide_draft(
+        [item(1), item(2), item(3), *opinions],
+        config(max_opinion_items=3),
+    )
     assert decision.action == "block"
     assert "opinion_limit" in decision.reasons
 
@@ -195,6 +198,28 @@ def test_decision_requires_three_facts_and_limits_opinions_and_authors():
     ]
     decision = decide_draft([item(1), item(2), item(3), *duplicate_author], config())
     assert "opinion_author_limit" in decision.reasons
+
+
+def test_target_shortfall_does_not_block_a_valid_short_draft():
+    values = [
+        item(index) for index in range(1, 4)
+    ] + [
+        item(index, content_type="ai_update") for index in range(4, 6)
+    ]
+    decision = decide_draft(
+        values,
+        config(
+            target_update_items=5,
+            max_update_items=8,
+            target_opinion_items=5,
+            max_opinion_items=8,
+        ),
+    )
+
+    assert decision.action == "create"
+    assert "insufficient_update_items" not in decision.reasons
+    assert decision.update_count == 2
+    assert decision.target_update_items == 5
 
 
 def test_duplicate_quarantined_over_limit_and_invalid_items_block():

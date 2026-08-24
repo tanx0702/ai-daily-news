@@ -229,3 +229,32 @@ def test_selector_rejects_opinion_limit_and_duplicate_author():
     )
     assert duplicate_selector.accept(item(opinions[0])) is True
     assert duplicate_selector.accept(item(duplicate)) is False
+
+
+def test_selector_enforces_update_and_opinion_caps():
+    updates = [event(f"update-{index}", content_type="ai_update") for index in range(8)]
+    opinions = [
+        event(
+            f"opinion-{index}",
+            content_type="attributed_opinion",
+            opinion_author=f"Author {index}",
+        )
+        for index in range(8)
+    ]
+    ninth_update = event("update-9", content_type="ai_update")
+    ninth_opinion = event(
+        "opinion-9",
+        content_type="attributed_opinion",
+        opinion_author="Author 9",
+    )
+    selector = BriefSelector(
+        [*updates, *opinions, ninth_update, ninth_opinion],
+        config(max_items=20, max_x_items=20, max_update_items=8, max_opinion_items=8),
+    )
+
+    for value in updates + opinions:
+        assert selector.accept(item(value)) is True
+
+    assert selector.accept(item(ninth_update)) is False
+    assert selector.accept(item(ninth_opinion)) is False
+    assert selector.update_count == 8

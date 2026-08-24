@@ -65,7 +65,21 @@ def _pop_next_event(
     *,
     prefer_x: bool,
     prefer_fact: bool = False,
+    preferred_content_type: str | None = None,
 ) -> MergedEvent:
+    if preferred_content_type and prefer_x:
+        for event in queue:
+            if (
+                event.canonical_evidence.content_type == preferred_content_type
+                and event.canonical_evidence.channel == "x"
+            ):
+                queue.remove(event)
+                return event
+    if preferred_content_type:
+        for event in queue:
+            if event.canonical_evidence.content_type == preferred_content_type:
+                queue.remove(event)
+                return event
     if prefer_fact and prefer_x:
         for event in queue:
             if (
@@ -248,6 +262,31 @@ def run_brief_pipeline(
                 and retry_queue[0].canonical_evidence.channel == "x"
             ):
                 break
+            preferred_content_type = None
+            projected_fact_count = selector.fact_count + batched_fact_count
+            if projected_fact_count < config.min_fact_items:
+                preferred_content_type = "fact_event"
+            else:
+                projected_updates = selector.update_count + sum(
+                    value.canonical_evidence.content_type == "ai_update"
+                    for value in batch
+                )
+                projected_opinions = selector.opinion_count + sum(
+                    value.canonical_evidence.content_type == "attributed_opinion"
+                    for value in batch
+                )
+                update_deficit = max(
+                    config.target_update_items - projected_updates,
+                    0,
+                )
+                opinion_deficit = max(
+                    config.target_opinion_items - projected_opinions,
+                    0,
+                )
+                if update_deficit > opinion_deficit:
+                    preferred_content_type = "ai_update"
+                elif opinion_deficit > update_deficit:
+                    preferred_content_type = "attributed_opinion"
             event = retry_queue.popleft() if retry_queue else _pop_next_event(
                 queue,
                 prefer_x=(
@@ -256,11 +295,16 @@ def run_brief_pipeline(
                 prefer_fact=(
                     selector.fact_count + batched_fact_count < config.min_fact_items
                 ),
+                preferred_content_type=preferred_content_type,
             )
             audit_entry = audit_by_event_identity[id(event)]
             if not selector.can_attempt(event):
                 limit_reason = selector.limit_reason(event)
-                if limit_reason in {"opinion_limit", "opinion_author_limit"}:
+                if limit_reason in {
+                    "opinion_limit",
+                    "opinion_author_limit",
+                    "update_limit",
+                }:
                     selector.reject(event.event_key, limit_reason)
                     _finalize_audit(audit_entry, "rejected", (limit_reason,))
                 elif event.canonical_evidence.channel == "x":
