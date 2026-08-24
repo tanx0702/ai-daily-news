@@ -578,12 +578,9 @@ def _update_relation_types(value: str) -> set[str]:
         anchor.removeprefix("metric:")
         for anchor in _update_metric_anchors(normalized)
     )
-    if not dimensions:
-        dimensions = {
-            "benchmark"
-            if re.search(r"\b(?:benchmark|evaluation)\b|基准|评测", normalized, re.I)
-            else "result"
-        }
+    # Do not collapse unknown metric wording into a generic result dimension:
+    # that would let an accepted claim swap accuracy, quality, or another
+    # unregistered metric while preserving only the number and direction.
     directions = {
         direction
         for direction, pattern in _UPDATE_DIRECTION_PATTERNS.items()
