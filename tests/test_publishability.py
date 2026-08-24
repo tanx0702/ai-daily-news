@@ -139,6 +139,21 @@ def test_ai_update_requires_metric_or_named_detail_not_generic_technical_word():
     assert validate_update_source_publishability(named).accepted is True
 
 
+def test_ai_update_unknown_metric_dimension_cannot_be_swapped():
+    evidence = source(
+        "Qwen3.8 improves accuracy by 10%",
+        content_type="ai_update",
+    )
+
+    result = validate_update_display_publishability(
+        "Qwen3.8 improves quality by 10%",
+        "",
+        evidence,
+    )
+
+    assert result.reason_codes == ("update_claim_not_source_bound",)
+
+
 def test_fact_publishability_does_not_adopt_ai_update_rules():
     evidence = source(
         "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",

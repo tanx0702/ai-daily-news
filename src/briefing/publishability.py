@@ -214,6 +214,10 @@ _UPDATE_MECHANICAL_PROGRESS = re.compile(
     r"\b(?:speed|latency|速度|延迟)\s*\d+|第\s*\d+\s*名",
     re.IGNORECASE,
 )
+_UPDATE_METRIC_STOPWORDS = {
+    "a", "an", "and", "by", "for", "higher", "lower", "more", "on",
+    "than", "the", "to", "with", "benchmark", "evaluation", "result",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -537,15 +541,29 @@ def _update_named_detail_anchors(value: str) -> set[str]:
     return anchors
 
 
+def _update_metric_anchors(value: str) -> set[str]:
+    normalized = _normalize(value)
+    relation = _UPDATE_RESULT_RELATION.search(normalized)
+    if not relation:
+        return set()
+    detail_text = normalized[relation.end():]
+    return {
+        f"metric:{token.casefold()}"
+        for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9-]*", detail_text)
+        if len(token) >= 3 and token.casefold() not in _UPDATE_METRIC_STOPWORDS
+    }
+
+
 def _update_detail_anchors(value: str) -> set[str]:
     normalized = _normalize(value)
     named = _update_named_detail_anchors(normalized)
+    metrics = _update_metric_anchors(normalized)
     if not _UPDATE_RESULT_RELATION.search(normalized) or not (
-        _UPDATE_MECHANICAL_PROGRESS.search(normalized) or named
+        _UPDATE_MECHANICAL_PROGRESS.search(normalized) or named or metrics
     ):
         return set()
     anchors = _numeric_anchors(normalized)
-    anchors.update(named)
+    anchors.update(named | metrics)
     return anchors
 
 
@@ -556,6 +574,10 @@ def _update_relation_types(value: str) -> set[str]:
         for dimension, pattern in _UPDATE_DIMENSION_PATTERNS
         if pattern.search(normalized)
     }
+    dimensions.update(
+        anchor.removeprefix("metric:")
+        for anchor in _update_metric_anchors(normalized)
+    )
     if not dimensions:
         dimensions = {
             "benchmark"
