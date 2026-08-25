@@ -55,6 +55,8 @@ AI Daily News Agent 是一个单体 Python AI 新闻采编与发布流水线，�
 
 生产主链路由 `src/main.py` 编排，依赖采集、事件聚类、事实简报、摘要、媒体、封面、产物和微信模块。采集器只产生候选，不创建发布产物；RSS 每次尝试会把成功、空结果、超时或解析失败写入 `src/source_state.py` 管理的本地 SQLite 账本，并将只读快照附加到采集诊断；该账本不能作为事实证据。X 采集器在候选进入事实/观点分类前过滤转发和推广内容；`src/briefing/` 只接受绑定规范来源证据的唯一事件，并产生唯一的草稿决策；产物模块负责落盘；微信模块只负责公众号 API 边界。
 
+X 的认证请求位于日报进程之外的 VPS 快照 runner。`scripts/twscrape_xclid_compat.py` 只在该 runner 内包装 `twscrape` 的动画索引解析：它受限扫描 `abs.twimg.com` 的直接 legacy bundle，找到内联索引后继续复用上游交易标识算法，未匹配时退回原解析器。账号 Cookie、SQLite 会话和代理不进入生产容器配置或公开产物；生产采集器仍只消费经过 schema 和时效校验的 `x-feed-v1` 文件。
+
 X 候选的内容分类是确定性的，优先级为 `attributed_opinion → fact_event → ai_update`：合格的署名观点优先归为 `attributed_opinion`；若存在明确硬新闻动作，则保持为 `fact_event`；仅当没有硬新闻动作且正文包含可机械核验的模型/版本、数值或具体技术进展时，才归为 `ai_update`。推广、转发、纯链接和泛评论不得因出现技术词或数字而升级；不满足动态资格的候选继续按 `fact_event` 处理或被前置过滤。
 
 ```text
