@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence
 
+from scripts.twscrape_xclid_compat import install_twscrape_xclid_compat
+
 
 LOGGER = logging.getLogger(__name__)
 FEED_SCHEMA_VERSION = "x-feed-v1"
@@ -223,6 +225,7 @@ def _reason_code(exc: Exception) -> str:
 def _build_twscrape_client(database: str, timeout_seconds: int) -> TimelineClient:
     from twscrape import API
 
+    install_twscrape_xclid_compat()
     return API(
         database,
         proxy=os.environ.get("TWS_PROXY") or None,

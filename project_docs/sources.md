@@ -56,6 +56,8 @@ arXiv API 对超时、HTTP 429 和 5xx 最多重试一次，重试前短暂退�
 
 X 不通过日报生产进程直接调用 X。试运行期间，如果设置了 `X_FEED_LOCAL_PATH`，生产采集先读取 VPS 上由 `scripts/x_authenticated_feed.py` 生成的本机快照；本机快照必须新鲜且符合 `x-feed-v1`，否则回退读取 `X_FEED_URL`。默认 HTTPS 地址仍为仓库 `x-feed` 分支中的 `x-feed.json`，由 GitHub Runner/相关工作流生成，作为回滚路径。工作流按 UTC `07` 分、`02/06/10/14/18/22` 点运行，对应 Asia/Shanghai 的 `02:07、06:07、10:07、14:07、18:07、22:07`。
 
+VPS 认证 runner 在创建 `twscrape.API` 前安装一个可移除的 XClId 兼容适配器。适配器只读取 `abs.twimg.com/responsive-web/client-web/*.js` 受信任脚本，并在旧版认证页面将动画索引内联到 `main` 时复用上游索引表达式和交易标识算法；页面不匹配或没有内联索引时仍调用上游解析器。适配器不改变账号数据库、GraphQL 查询或 `x-feed-v1` schema，Cookie 和 SQLite 会话仍只保存在服务器 root 私有目录。
+
 网页探针优先读取允许的 X GraphQL 响应；当响应没有可用推文时，再从已渲染的公开 `cellInnerDiv`/`article` 卡片回退提取。当前页面可能不再提供旧版推文 `data-testid` 或 Schema.org 标记，但正文容器与规范 `/status/<id>` 链接仍需同时可读取；评估器继续要求正文和数字状态 ID，避免把导航或登录区域写入快照。
 
 `config/x_sources.json` 是受控账号白名单，账号按 `primary`、`research`、`media` 分层，并标记 `official`。自然人还可显式标记 `opinion_eligible=true`，该字段只授予署名观点候选资格，不改变来源权威等级。快照中的每条记录必须满足：

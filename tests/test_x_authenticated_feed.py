@@ -1,9 +1,11 @@
 import asyncio
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
+import scripts.x_authenticated_feed as authenticated_feed
 from scripts.x_authenticated_feed import collect_authenticated_feed, write_authenticated_feed
 
 
@@ -99,3 +101,38 @@ def test_atomic_writer_replaces_a_complete_snapshot_without_temp_file(tmp_path: 
 
     assert json.loads(target.read_text(encoding="utf-8"))["schema_version"] == "x-feed-v1"
     assert not list(target.parent.glob(".x-feed.json.*.tmp"))
+
+
+def test_build_client_installs_xclid_compat_before_constructing_api(monkeypatch):
+    calls = []
+
+    class FakeAPI:
+        def __init__(self, database, **kwargs):
+            calls.append(("api", database, kwargs))
+
+    twscrape = ModuleType("twscrape")
+    twscrape.API = FakeAPI
+    monkeypatch.setitem(sys.modules, "twscrape", twscrape)
+    monkeypatch.setenv("TWS_PROXY", "http://proxy:7890")
+    monkeypatch.setattr(
+        authenticated_feed,
+        "install_twscrape_xclid_compat",
+        lambda: calls.append(("install",)),
+    )
+
+    client = authenticated_feed._build_twscrape_client("/poc/accounts.db", 15)
+
+    assert isinstance(client, FakeAPI)
+    assert calls == [
+        ("install",),
+        (
+            "api",
+            "/poc/accounts.db",
+            {
+                "proxy": "http://proxy:7890",
+                "raise_when_no_account": True,
+                "wait_timeout": 15,
+                "wait_interval": 1,
+            },
+        ),
+    ]
