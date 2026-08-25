@@ -1,5 +1,6 @@
 import asyncio
 import json
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -136,3 +137,18 @@ def test_build_client_installs_xclid_compat_before_constructing_api(monkeypatch)
             },
         ),
     ]
+
+
+def test_direct_script_execution_keeps_cli_help_available():
+    project_root = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, "scripts/x_authenticated_feed.py", "--help"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Generate a temporary authenticated X snapshot" in result.stdout

@@ -27,6 +27,24 @@ def extract_direct_legacy_assets(html: str) -> list[str]:
     )
 
 
+async def load_trusted_asset(url: str, client: Any) -> str:
+    """Load one trusted bundle without following redirects to another origin."""
+    backend = str(getattr(client, "backend", ""))
+    if backend == "httpx":
+        response = await client.get(url, follow_redirects=False)
+    elif backend == "curl":
+        response = await client.get(url, allow_redirects=False)
+    else:
+        raise ValueError(f"Unsupported twscrape HTTP backend: {backend or 'unknown'}")
+
+    if 300 <= response.status_code < 400:
+        raise ValueError("XClId compatibility asset redirect refused")
+    response.raise_for_status()
+    if DIRECT_LEGACY_ASSET_RE.fullmatch(str(response.url)) is None:
+        raise ValueError("XClId compatibility asset resolved to an untrusted URL")
+    return str(response.text)
+
+
 def build_compatible_parser(
     original_parser: Parser,
     get_page_text: PageLoader,
@@ -72,7 +90,7 @@ def install_twscrape_xclid_compat() -> None:
 
     xclid.parse_anim_idx = build_compatible_parser(
         xclid.parse_anim_idx,
-        xclid.get_tw_page_text,
+        load_trusted_asset,
         xclid.INDICES_REGEX,
     )
     setattr(xclid, PATCH_MARKER, True)

@@ -3,10 +3,13 @@ import re
 import sys
 from types import ModuleType
 
+import pytest
+
 from scripts.twscrape_xclid_compat import (
     build_compatible_parser,
     extract_direct_legacy_assets,
     install_twscrape_xclid_compat,
+    load_trusted_asset,
 )
 
 
@@ -81,18 +84,68 @@ def test_compatible_parser_continues_after_one_asset_request_fails():
     assert asyncio.run(parser(AUTHENTICATED_HTML, object())) == [3]
 
 
+class FakeResponse:
+    def __init__(self, status_code, url, text=""):
+        self.status_code = status_code
+        self.url = url
+        self.text = text
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class FakeHttpClient:
+    def __init__(self, backend, response):
+        self.backend = backend
+        self.response = response
+        self.calls = []
+
+    async def get(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        return self.response
+
+
+@pytest.mark.parametrize(
+    ("backend", "expected_options"),
+    [
+        ("httpx", {"follow_redirects": False}),
+        ("curl", {"allow_redirects": False}),
+    ],
+)
+def test_trusted_asset_loader_refuses_redirects(backend, expected_options):
+    url = "https://abs.twimg.com/responsive-web/client-web/main.1234567890abcdef.js"
+    client = FakeHttpClient(backend, FakeResponse(302, url))
+
+    with pytest.raises(ValueError, match="redirect"):
+        asyncio.run(load_trusted_asset(url, client))
+
+    assert client.calls == [(url, expected_options)]
+
+
+def test_trusted_asset_loader_rejects_an_untrusted_final_url():
+    url = "https://abs.twimg.com/responsive-web/client-web/main.1234567890abcdef.js"
+    client = FakeHttpClient("httpx", FakeResponse(200, "https://assets.example.com/main.js"))
+
+    with pytest.raises(ValueError, match="untrusted"):
+        asyncio.run(load_trusted_asset(url, client))
+
+
+def test_trusted_asset_loader_returns_a_verified_response_body():
+    url = "https://abs.twimg.com/responsive-web/client-web/main.1234567890abcdef.js"
+    client = FakeHttpClient("httpx", FakeResponse(200, url, "index[4]"))
+
+    assert asyncio.run(load_trusted_asset(url, client)) == "index[4]"
+
+
 def test_installer_is_idempotent(monkeypatch):
     async def original_parser(_html, _client):
         return [1]
-
-    async def get_page_text(_url, _client):
-        return "index[2]"
 
     package = ModuleType("twscrape")
     package.__path__ = []
     xclid = ModuleType("twscrape.xclid")
     xclid.parse_anim_idx = original_parser
-    xclid.get_tw_page_text = get_page_text
     xclid.INDICES_REGEX = INDICES_REGEX
     package.xclid = xclid
     monkeypatch.setitem(sys.modules, "twscrape", package)
@@ -103,4 +156,12 @@ def test_installer_is_idempotent(monkeypatch):
     install_twscrape_xclid_compat()
 
     assert xclid.parse_anim_idx is installed
-    assert asyncio.run(installed(AUTHENTICATED_HTML, object())) == [2]
+    client = FakeHttpClient(
+        "httpx",
+        FakeResponse(
+            200,
+            "https://abs.twimg.com/responsive-web/client-web/main.3fc0640facfee243a.js",
+            "index[2]",
+        ),
+    )
+    assert asyncio.run(installed(AUTHENTICATED_HTML, client)) == [2]

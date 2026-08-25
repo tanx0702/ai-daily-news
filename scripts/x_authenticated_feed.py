@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence
 
-from scripts.twscrape_xclid_compat import install_twscrape_xclid_compat
+if __package__:
+    from scripts.twscrape_xclid_compat import install_twscrape_xclid_compat
+else:
+    from twscrape_xclid_compat import install_twscrape_xclid_compat
 
 
 LOGGER = logging.getLogger(__name__)
