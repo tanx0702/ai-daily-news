@@ -1,3 +1,4 @@
+from src.briefing import publishability
 from src.briefing.models import SourceEvidence
 from src.briefing.publishability import (
     claim_supported_by_quote,
@@ -49,6 +50,60 @@ def test_ai_update_accepts_concrete_result_without_release_action():
 
     assert result.accepted is True
     assert result.event_type == "ai_update"
+
+
+def test_content_source_publishability_dispatches_by_content_type():
+    dispatcher = getattr(
+        publishability,
+        "validate_content_source_publishability",
+        None,
+    )
+    assert callable(dispatcher)
+
+    fact = source(
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        content_type="fact_event",
+    )
+    update = source(
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        content_type="ai_update",
+    )
+    opinion = source(
+        "I think open models will win because they are easier to adapt",
+        content_type="attributed_opinion",
+        channel="x",
+        opinion_author="Andrej Karpathy",
+        opinion_eligible=True,
+        original_post=True,
+        context_complete=True,
+    )
+
+    assert dispatcher(fact).accepted is False
+    assert dispatcher(update).accepted is True
+    assert dispatcher(opinion).event_type == "attributed_opinion"
+
+    for field in (
+        "opinion_author",
+        "opinion_eligible",
+        "original_post",
+        "context_complete",
+    ):
+        invalid_value = "" if field == "opinion_author" else False
+        opinion_values = {
+            "opinion_author": opinion.opinion_author,
+            "opinion_eligible": opinion.opinion_eligible,
+            "original_post": opinion.original_post,
+            "context_complete": opinion.context_complete,
+        }
+        opinion_values[field] = invalid_value
+        invalid = source(
+            opinion.source_title,
+            content_type="attributed_opinion",
+            channel="x",
+            **opinion_values,
+        )
+
+        assert dispatcher(invalid).reason_codes == ("opinion_author_not_allowed",)
 
 
 def test_ai_update_rejects_vague_or_promotional_content():
@@ -232,6 +287,8 @@ def test_source_publishability_recognizes_common_factual_news_verbs():
         "Sainsbury's pauses AI cameras after shopper ousted",
         "ChatGPT's Computer History tracks your clicks and keystrokes",
         "Anthropic revenue jumps 14x to more than $11.5B in second quarter",
+        "Qwen3.8-Flash API is live on QwenCloud",
+        "OpenAI is releasing a technical report",
     )
 
     for title in titles:

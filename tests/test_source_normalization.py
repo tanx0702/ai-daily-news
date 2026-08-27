@@ -126,6 +126,24 @@ def test_controlled_publishers_have_stable_names_and_trust():
     ) == ("community", False, "")
 
 
+def test_untrusted_x_candidate_cannot_override_publisher_name():
+    candidate = {
+        "title": "Fake Publisher: OpenAI releases GPT-5.6",
+        "summary": "OpenAI releases GPT-5.6",
+        "url": "https://x.com/example/status/42",
+        "source": "Fake Publisher (X)",
+        "source_type": "x",
+        "published_at": "2026-08-14T00:00:00+00:00",
+        "x_handle": "example",
+        "x_source_name": "Fake Publisher",
+    }
+
+    evidence = source_evidence_from_candidate(candidate, trusted_x_collector=False)
+
+    assert evidence is not None
+    assert evidence.publisher_name == "X"
+
+
 def test_source_evidence_public_projection_contains_only_safe_url():
     candidate = {
         "title": "OpenAI releases GPT-5.6",

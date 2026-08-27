@@ -108,6 +108,34 @@ def test_x_collector_does_not_promote_non_opinion_benchmark_comment_to_update():
     assert comment["content_type"] == "fact_event"
 
 
+def test_x_collector_classifies_high_confidence_releases_and_ai_opinions():
+    api_live = _tweet_to_candidate(
+        _classification_tweet("Qwen3.8-Flash API is live on QwenCloud"),
+        {"karpathy": _official_source()},
+    )
+    report_release = _tweet_to_candidate(
+        _classification_tweet("OpenAI is releasing a technical report"),
+        {"karpathy": _official_source()},
+    )
+    ai_opinion = _tweet_to_candidate(
+        _classification_tweet(
+            "Not every AI task benefits from more compute, because workflow context matters."
+        ),
+        {"karpathy": _opinion_source()},
+    )
+    non_ai_opinion = _tweet_to_candidate(
+        _classification_tweet(
+            "I think the tennis final will be better than last year's match by far."
+        ),
+        {"karpathy": _opinion_source()},
+    )
+
+    assert api_live["content_type"] == "fact_event"
+    assert report_release["content_type"] == "fact_event"
+    assert ai_opinion["content_type"] == "attributed_opinion"
+    assert non_ai_opinion["content_type"] == "fact_event"
+
+
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
     now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(
@@ -152,6 +180,7 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             },
             "topic_key": "",
             "source_tier": "primary",
+            "x_source_name": "OpenAI",
             "x_official": True,
             "x_handle": "OpenAI",
             "x_official_source": "config/x_sources.json",
@@ -170,6 +199,9 @@ def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
             "opinion_reason_codes": ["opinion_author_not_allowed"],
         }
     ]
+    evidence = source_evidence_from_candidate(items[0], trusted_x_collector=True)
+    assert evidence is not None
+    assert evidence.publisher_name == "OpenAI"
 
 
 @pytest.mark.parametrize(

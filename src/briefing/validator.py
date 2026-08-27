@@ -26,10 +26,9 @@ from src.briefing.publishability import (
     asserted_action_types,
     claim_supported_by_quote,
     update_claim_supported_by_quote,
+    validate_content_source_publishability,
     validate_display_publishability,
-    validate_source_publishability,
     validate_update_display_publishability,
-    validate_update_source_publishability,
 )
 from src.llm_config import LLMConfig
 
@@ -355,6 +354,17 @@ class BriefValidator:
                 "rules_only",
             )
 
+        source_editorial = validate_content_source_publishability(
+            event.canonical_evidence
+        )
+        if not source_editorial.accepted:
+            return ValidationResult(
+                "reject",
+                source_editorial.reason_codes,
+                "rules_only",
+                audited_draft=draft,
+            )
+
         if event.canonical_evidence.content_type == "attributed_opinion":
             opinion_reasons = self._opinion_contract_reasons(event, draft)
             if opinion_reasons:
@@ -363,19 +373,6 @@ class BriefValidator:
                     opinion_reasons,
                     generation_attempt,
                     validation_mode="rules_only",
-                    audited_draft=draft,
-                )
-        else:
-            source_editorial = (
-                validate_update_source_publishability(event.canonical_evidence)
-                if event.canonical_evidence.content_type == "ai_update"
-                else validate_source_publishability(event.canonical_evidence)
-            )
-            if not source_editorial.accepted:
-                return ValidationResult(
-                    "reject",
-                    source_editorial.reason_codes,
-                    "rules_only",
                     audited_draft=draft,
                 )
 

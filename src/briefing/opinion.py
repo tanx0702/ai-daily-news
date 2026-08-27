@@ -16,11 +16,22 @@ _COURSE_PROMOTION = re.compile(
     re.IGNORECASE,
 )
 _REPOST_PREFIX = re.compile(r"^\s*(?:rt\s+@|转发\s*[:：])", re.IGNORECASE)
+_AI_TOPIC = re.compile(
+    r"(?:\b(?:ai|artificial intelligence|machine learning|deep learning|llms?|"
+    r"models?|agents?|gpt|claude|gemini|llama|qwen|deepseek|mistral|openai|"
+    r"anthropic)\b|人工智能|机器学习|深度学习|大模型|模型|智能体)",
+    re.IGNORECASE,
+)
 _STANCE_MARKERS = {
     "prediction": ("will", "likely", "expect", "predict", "将会", "可能", "预计"),
-    "critique": ("wrong", "fail", "problem", "overrated", "质疑", "错误", "问题", "局限"),
+    "critique": (
+        "wrong", "fail", "problem", "overrated", "not every",
+        "质疑", "错误", "问题", "局限",
+    ),
     "comparison": ("better", "worse", "than", "versus", "更好", "不如", "相比"),
-    "opinion": ("i think", "i believe", "in my view", "认为", "我觉得", "我相信", "观点"),
+    "opinion": (
+        "i think", "i believe", "in my view", "认为", "我觉得", "我相信", "观点", "需要",
+    ),
 }
 
 
@@ -85,6 +96,13 @@ def evaluate_opinion_candidate(
         return OpinionEligibility(
             False,
             ("opinion_repost_only",),
+            context_complete=context_complete or not reply_to,
+            original_post=True,
+        )
+    if not _AI_TOPIC.search(text):
+        return OpinionEligibility(
+            False,
+            ("opinion_no_ai_topic",),
             context_complete=context_complete or not reply_to,
             original_post=True,
         )

@@ -379,6 +379,46 @@ def test_opinion_validator_requires_explicit_author_attribution():
     assert result.reason_codes == ("opinion_attribution_missing",)
 
 
+def test_opinion_source_requires_a_registered_author_before_display_checks():
+    item = event(
+        publisher_id="karpathy",
+        publisher_name="Andrej Karpathy",
+        channel="x",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        source_title="I think open models will win",
+        evidence_text="I think open models will win because they are easier to adapt.",
+        url="https://x.com/karpathy/status/42",
+        content_type="attributed_opinion",
+        opinion_author="",
+        opinion_eligible=True,
+        original_post=True,
+        context_complete=True,
+        stance_type="opinion",
+    )
+    title = "Andrej Karpathy 称开放模型将赢得竞争"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                item.canonical_evidence.source_title,
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="attributed_opinion",
+        opinion_author="Andrej Karpathy",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.action == "reject"
+    assert result.reason_codes == ("opinion_author_not_allowed",)
+
+
 def test_validator_accepts_deterministic_cross_language_source_fallback():
     item = event(
         publisher_id="reuters-com",

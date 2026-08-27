@@ -35,7 +35,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 
 - 外部 RSS、X、GitHub、HF、arXiv、LLM、图片和微信 API 失败必须记录并降级，不能让单条故障无日志地中断整期日报。
 - LLM 只能翻译和摘要原始证据，不能新增事实；GitHub 活跃度不能写成正式发布证据。
-- 候选池截断前必须复用确定性来源发布性规则，让可发布事件优先填充并记录拒绝原因；预检只调整尝试顺序，不能替代或放宽最终事实门禁。GitHub 只有具备项目说明和 release notes 的正式 release 可作为候选；社区 GitHub release 在最终尝试队列中只能排在非 GitHub 事件之后作为候补，不能仅凭新鲜度或 stars 抢占新闻名额。HF 的 likes/downloads/lastModified 只能标记为模型活跃度，arXiv 超时、429 和 5xx 最多有界重试一次后降级。
+- 候选池截断前必须复用按 `content_type` 分派的确定性来源发布性规则，并与最终 Validator 共用同一分派入口，让可发布事件优先填充并记录拒绝原因；预检只调整尝试顺序，不能替代或放宽最终事实门禁。GitHub 只有具备项目说明和 release notes 的正式 release 可作为候选；社区 GitHub release 在最终尝试队列中只能排在非 GitHub 事件之后作为候补，不能仅凭新鲜度或 stars 抢占新闻名额。HF 的 likes/downloads/lastModified 只能标记为模型活跃度，arXiv 超时、429 和 5xx 最多有界重试一次后降级。
 - 生产日报只能展示 5-20 条唯一内容，至少 3 条 `fact_event`；内容分为 `fact_event`、`ai_update` 和 `attributed_opinion`。动态/观点目标只控制尝试顺序，上限是硬配额；跨语言、跨来源的同一事件只能占一个名额。候选先做确定性聚类，对少量疑似重复使用有预算的只读质量 LLM 复核，歧义重复和跨事件桥接冲突按来源强度隔离弱项且不得回填，每个显示声明都必须绑定显示的规范来源证据。
 - 语义去重失败、超时、无效、熔断、预算耗尽或返回 `uncertain` 时，保守保留官方/研究/专业媒体/非 X 等更强来源，移除或隔离较弱疑似重复，不得转人工复核；强人物锚点只接受逐行提取的已确认完整姓名，未登记但带人物语境的名称只触发复核且不得由 LLM 升级为强主体，未知 Title Case 短语和单句职位/代词语境不得升级为强人物；发布前去重后继续消费候选回填，最终不足 5 条仍然 `block`。
 - 事实简报分为 `brief_mode=title_only|expanded`：标题型快讯允许 `brief=""` 并正常计入 5-20 条；扩展型快讯只保留一至两句由原始标题之外证据支持的摘要。摘要句全部引用只落在规范来源原始标题范围内时删除并记录 `brief_restates_title`；无证据或新增事实仍重建一次后移除，不能靠清空摘要绕过门禁。
@@ -53,7 +53,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 - 首次部署只复制 `.env.example`；高级覆盖从 `.env.advanced.example` 逐项复制。
 - `SOURCE_STATE_DB_PATH` 默认 `runtime/source-state.db`，只保存 RSS 来源健康状态；Compose 必须持久化挂载 `runtime/`，数据库文件不得提交。
 - `QUALITY_LLM_*` 未设置时继承 `LLM_*`，用于可选的事实核验和语义去重增强；语义去重默认 48 小时窗口、单期共享最多 20 次 LLM 调用，新增配置仍以 `.env.advanced.example` 为参考。
-- 默认简报配置为 `DAILY_TOP_N=20`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_TARGET_UPDATE_ITEMS=5`、`DAILY_MAX_UPDATE_ITEMS=8`、`DAILY_TARGET_OPINION_ITEMS=5`、`DAILY_MAX_OPINION_ITEMS=8`、`DAILY_CANDIDATE_POOL_N=60`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true` 的自然人原帖，同一作者每期最多一条。
+- 默认简报配置为 `DAILY_TOP_N=20`、`DAILY_MIN_ITEMS=5`、`DAILY_MIN_FACT_ITEMS=3`、`DAILY_TARGET_UPDATE_ITEMS=5`、`DAILY_MAX_UPDATE_ITEMS=8`、`DAILY_TARGET_OPINION_ITEMS=5`、`DAILY_MAX_OPINION_ITEMS=8`、`DAILY_CANDIDATE_POOL_N=60`、`DAILY_X_TARGET_ITEMS=5`、`DAILY_X_MAX_ITEMS=8`、`X_FEED_MAX_AGE_HOURS=6`。X 快照每四小时生成，最多六小时有效；软目标只控制尝试顺序，不能绕过质检或硬凑；署名观点仅接受 `opinion_eligible=true`、命中确定性 AI 主题和实质立场的自然人原帖，同一作者每期最多一条。
 - 修改 `.env` 后执行 `docker compose up -d --force-recreate`。
 - 不提交 `.env`、API key、微信密钥/token、Basic Auth 密码、日志、媒体缓存、`docs/` 生成物或完整外部 API 响应。
 - 不提交订阅 URL、单节点 `vless://` 链接、生成的 sing-box 配置或服务器私有二进制；它们只可保存在 `/root/ai-news-proxy/` 等 root 受限目录。

@@ -191,6 +191,7 @@ def _tweet_to_candidate(
         tags=["x", "official"] if official else ["x"],
     )
     candidate["source_tier"] = source_tier
+    candidate["x_source_name"] = source_name if registry_source else ""
     candidate["x_official"] = official
     candidate["x_handle"] = source_handle
     candidate["x_official_source"] = official_source

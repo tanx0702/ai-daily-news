@@ -15,7 +15,8 @@ EVENT_ACTION_MARKERS = {
     "release": (
         "发布", "推出", "介绍", "上线", "公开", "开放使用", "release", "released", "releases",
         "launch", "launched", "launches", "available", "receiving access", "introduce",
-        "introduced", "introduces", "introducing", "roll out", "rollout",
+        "introduced", "introduces", "introducing", "releasing", "is live",
+        "goes live", "went live", "roll out", "rollout",
     ),
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
@@ -730,6 +731,24 @@ def validate_source_publishability(source: SourceEvidence) -> PublishabilityResu
         tuple(sorted(frame.subjects)),
         "complete",
     )
+
+
+def validate_content_source_publishability(
+    source: SourceEvidence,
+) -> PublishabilityResult:
+    """Dispatch source sufficiency by the immutable content type."""
+    if source.content_type == "ai_update":
+        return validate_update_source_publishability(source)
+    if source.content_type == "attributed_opinion":
+        if not (
+            source.opinion_eligible
+            and source.original_post
+            and source.context_complete
+            and source.opinion_author.strip()
+        ):
+            return PublishabilityResult(False, ("opinion_author_not_allowed",))
+        return PublishabilityResult(True, (), "attributed_opinion")
+    return validate_source_publishability(source)
 
 
 def validate_display_publishability(

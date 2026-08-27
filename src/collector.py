@@ -1609,7 +1609,7 @@ def collect_candidates(
         filtered.append(item)
 
     from src.briefing.evidence import source_evidence_from_candidate
-    from src.briefing.publishability import validate_source_publishability
+    from src.briefing.publishability import validate_content_source_publishability
 
     publishable: list[dict] = []
     preflight_rejected: list[dict] = []
@@ -1634,7 +1634,7 @@ def collect_candidates(
             }
             invalid_evidence.append(item)
             continue
-        preflight = validate_source_publishability(source_evidence)
+        preflight = validate_content_source_publishability(source_evidence)
         item["_publishability_preflight"] = {
             "accepted": preflight.accepted,
             "reason_codes": list(preflight.reason_codes),

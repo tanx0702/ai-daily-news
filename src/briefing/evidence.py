@@ -87,6 +87,9 @@ def source_evidence_from_candidate(
     is_official = False
 
     if channel == "x":
+        trusted_source_name = str(candidate.get("x_source_name") or "").strip()
+        if trusted_x_collector and trusted_source_name:
+            source_name = trusted_source_name
         handle = str(candidate.get("x_handle") or "").strip().lstrip("@")
         controlled_accounts = {
             str(key).strip().lower().lstrip("@"): str(value).strip()

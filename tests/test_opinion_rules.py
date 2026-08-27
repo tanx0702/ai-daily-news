@@ -52,6 +52,49 @@ def test_original_eligible_person_with_substantive_claim_is_opinion():
     assert result.stance_type in {"opinion", "prediction", "critique", "comparison"}
 
 
+def test_high_confidence_ai_stances_are_opinions():
+    cases = (
+        "Not every AI task benefits from more compute, because workflow context matters.",
+        "人类对 AI Agents 的监督能力需要跟上智能体自主执行任务的发展速度。",
+    )
+
+    for summary in cases:
+        result = evaluate_opinion_candidate(
+            _candidate(summary=summary),
+            _eligible_source(),
+        )
+
+        assert result.eligible is True, summary
+
+
+def test_whitelisted_non_ai_stances_are_rejected():
+    cases = (
+        "I think the tennis final will be better than last year's match by far.",
+        "In my view this election policy will fail because voters expect better results.",
+    )
+
+    for summary in cases:
+        result = evaluate_opinion_candidate(
+            _candidate(summary=summary),
+            _eligible_source(),
+        )
+
+        assert result.eligible is False, summary
+        assert result.reason_codes == ("opinion_no_ai_topic",)
+
+
+def test_ai_live_announcement_without_stance_is_not_an_opinion():
+    result = evaluate_opinion_candidate(
+        _candidate(
+            summary="Live on CNN tonight to discuss AI policy and recent model developments."
+        ),
+        _eligible_source(),
+    )
+
+    assert result.eligible is False
+    assert result.reason_codes == ("opinion_no_substantive_claim",)
+
+
 def test_repost_and_missing_reply_context_are_rejected():
     repost = evaluate_opinion_candidate(_candidate(x_is_repost=True), _eligible_source())
     missing_context = evaluate_opinion_candidate(

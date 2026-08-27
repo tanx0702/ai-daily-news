@@ -437,6 +437,65 @@ class CollectorTests(unittest.TestCase):
             {"non_news_content": 1},
         )
 
+    def test_collect_candidates_preflight_dispatches_updates_and_opinions(self):
+        now = datetime.now(timezone.utc)
+        update = {
+            "id": "x-42",
+            "title": "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+            "url": "https://x.com/qwen/status/42",
+            "source": "Qwen Researcher (X)",
+            "source_type": "x",
+            "source_tier": "research",
+            "published_at": now,
+            "summary": "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark.",
+            "metrics": {},
+            "scores": {},
+            "x_source_name": "Qwen Researcher",
+            "x_handle": "qwen",
+            "x_tweet_id": "42",
+            "content_type": "ai_update",
+        }
+        opinion = {
+            "id": "x-43",
+            "title": "Andrej Karpathy: I think open models will win",
+            "url": "https://x.com/karpathy/status/43",
+            "source": "Andrej Karpathy (X)",
+            "source_type": "x",
+            "source_tier": "research",
+            "published_at": now,
+            "summary": "I think open models will win because they are easier to adapt.",
+            "metrics": {},
+            "scores": {},
+            "x_source_name": "Andrej Karpathy",
+            "x_handle": "karpathy",
+            "x_tweet_id": "43",
+            "content_type": "attributed_opinion",
+            "opinion_author": "Andrej Karpathy",
+            "opinion_eligible": True,
+            "opinion_original_post": True,
+            "opinion_context_complete": True,
+        }
+        diagnostics = {}
+
+        with patch.object(
+            collector,
+            "_fetch_raw_candidates",
+            return_value=[update, opinion],
+        ), patch.object(collector, "_score_item", return_value=10.0):
+            items = collector.collect_candidates(
+                limit=2,
+                hours=36,
+                diagnostics=diagnostics,
+                now=now,
+            )
+
+        self.assertEqual(len(items), 2)
+        self.assertTrue(
+            all(item["_publishability_preflight"]["accepted"] for item in items)
+        )
+        self.assertEqual(diagnostics["publishability_preflight_passed"], 2)
+        self.assertEqual(diagnostics["publishability_preflight_rejected"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
