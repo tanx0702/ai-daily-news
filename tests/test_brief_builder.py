@@ -1,6 +1,6 @@
 import json
 
-from src.briefing.builder import BriefBuilder
+from src.briefing.builder import BriefBuilder, _source_quotes
 from src.briefing.config import BriefingConfig
 from src.briefing.models import MergedEvent, SourceEvidence
 from src.llm_config import LLMConfig
@@ -38,7 +38,7 @@ def event(
     )
 
 
-def generated_item(index: int, event_key: str, source_url: str) -> dict:
+def generated_item(index: int, event_key: str, _source_url: str) -> dict:
     return {
         "index": index,
         "event_key": event_key,
@@ -47,16 +47,130 @@ def generated_item(index: int, event_key: str, source_url: str) -> dict:
         "evidence_targets": [
             {
                 "target": "title",
-                "source_quote": f"Example releases Model {index}",
-                "source_url": source_url,
+                "source_quote_id": "q1",
             },
             {
                 "target": "brief_1",
-                "source_quote": f"Example releases Model {index}",
-                "source_url": source_url,
+                "source_quote_id": "q1",
             },
         ],
     }
+
+
+def test_source_quotes_are_stable_verbatim_segments():
+    evidence = "Model 4.5 scores 10.2 points. Next result!\nNext result!"
+
+    quotes = _source_quotes(evidence)
+
+    assert quotes == (
+        ("q1", "Model 4.5 scores 10.2 points."),
+        ("q2", "Next result!"),
+    )
+    assert all(quote in evidence for _quote_id, quote in quotes)
+
+
+def test_builder_sends_verbatim_quote_candidates_and_requests_ids():
+    item = event(1)
+    builder, client = builder_with_responses(
+        [{"items": [generated_item(1, item.event_key, item.canonical_evidence.url)]}]
+    )
+
+    builder.build_batch([item], attempts={})
+
+    call = client.chat.completions.calls[0]
+    request_event = json.loads(call["messages"][1]["content"])["events"][0]
+    assert request_event["source_quotes"] == [
+        {"quote_id": "q1", "text": "Example releases Model 1."},
+        {"quote_id": "q2", "text": "The model adds a text API."},
+    ]
+    prompt = call["messages"][0]["content"]
+    assert "source_quote_id" in prompt
+    assert "返回 target/source_quote/source_url" not in prompt
+
+
+def test_builder_resolves_quote_ids_to_verbatim_quotes_and_canonical_url():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"] = [
+        {"target": "title", "source_quote_id": "q1"},
+        {"target": "title", "source_quote_id": "q2"},
+        {"target": "brief_1", "source_quote_id": "q1"},
+    ]
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert [binding.source_quote for binding in result.draft.evidence_bindings] == [
+        "Example releases Model 1.",
+        "The model adds a text API.",
+        "Example releases Model 1.",
+    ]
+    assert all(
+        binding.source_url == item.canonical_evidence.url
+        for binding in result.draft.evidence_bindings
+    )
+
+
+def test_builder_rejects_unknown_title_quote_id():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"][0]["source_quote_id"] = "q999"
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
+
+
+def test_builder_drops_brief_when_any_summary_quote_id_is_unknown():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"][1]["source_quote_id"] = "q999"
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert result.draft.brief_reason == "brief_quote_unresolved"
+    assert [binding.claim for binding in result.draft.evidence_bindings] == [
+        result.draft.chinese_title
+    ]
+
+
+def test_builder_drops_all_summary_bindings_when_claim_matches_title():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"].extend(
+        [
+            {"target": "brief_1", "source_quote_id": "q2"},
+            {"target": "brief_1", "source_quote_id": "q999"},
+        ]
+    )
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft.brief_mode == "title_only"
+    assert len(result.draft.evidence_bindings) == 1
+    assert result.draft.evidence_bindings[0].claim == result.draft.chinese_title
+
+
+def test_builder_rejects_legacy_copied_quote_response():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"][0] = {
+        "target": "title",
+        "source_quote": item.canonical_evidence.source_title,
+        "source_url": item.canonical_evidence.url,
+    }
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_malformed"
 
 
 class FakeResponse:
@@ -427,23 +541,19 @@ def test_builder_maps_targets_to_complete_display_claims_and_keeps_multiple_quot
     payload["evidence_targets"] = [
         {
             "target": "title",
-            "source_quote": "Example releases Model 1",
-            "source_url": item.canonical_evidence.url,
+            "source_quote_id": "q1",
         },
         {
             "target": "title",
-            "source_quote": "Model 1",
-            "source_url": item.canonical_evidence.url,
+            "source_quote_id": "q2",
         },
         {
             "target": "brief_1",
-            "source_quote": "The model adds a text API.",
-            "source_url": item.canonical_evidence.url,
+            "source_quote_id": "q2",
         },
         {
             "target": "brief_2",
-            "source_quote": "Model 1",
-            "source_url": item.canonical_evidence.url,
+            "source_quote_id": "q1",
         },
     ]
     builder, _ = builder_with_responses([{"items": [payload]}])
@@ -469,8 +579,7 @@ def test_builder_rejects_unknown_missing_and_unexpected_targets():
     unexpected["evidence_targets"].append(
         {
             "target": "brief_2",
-            "source_quote": "Model 3",
-            "source_url": items[2].canonical_evidence.url,
+            "source_quote_id": "q1",
         }
     )
     builder, _ = builder_with_responses([{"items": [unknown, missing, unexpected]}])
@@ -479,9 +588,11 @@ def test_builder_rejects_unknown_missing_and_unexpected_targets():
 
     assert [result.reason_code for result in results] == [
         "builder_item_malformed",
-        "builder_item_malformed",
+        None,
         "builder_item_malformed",
     ]
+    assert results[1].draft.brief_mode == "title_only"
+    assert results[1].draft.brief_reason == "brief_quote_unresolved"
 
 
 def test_missing_duplicate_and_unindexed_results_fail_only_affected_items():
@@ -738,8 +849,7 @@ def test_single_rebuild_item_normalizes_two_sentence_brief_list():
     generated["evidence_targets"].append(
         {
             "target": "brief_2",
-            "source_quote": "Example releases Model 1",
-            "source_url": item.canonical_evidence.url,
+            "source_quote_id": "q1",
         }
     )
     builder, _ = builder_with_responses([{"items": [generated]}])
