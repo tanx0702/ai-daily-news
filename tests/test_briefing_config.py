@@ -15,7 +15,7 @@ def test_briefing_config_uses_approved_defaults():
     assert config.max_x_items == 8
     assert config.target_x_items == 5
     assert config.x_feed_max_age_hours == 6
-    assert config.builder_batch_size == 5
+    assert config.builder_batch_size == 1
     assert config.news_hours == 36
     assert config.semantic_dedup_window_hours == 48
     assert config.semantic_dedup_max_llm_calls == 20

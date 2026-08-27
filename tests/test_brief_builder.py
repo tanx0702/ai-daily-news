@@ -1,3 +1,4 @@
+from dataclasses import replace
 import json
 
 from src.briefing.builder import BriefBuilder, _source_quotes
@@ -198,39 +199,50 @@ class FakeClient:
         self.chat.completions = FakeCompletions(responses)
 
 
-def builder_with_responses(responses, *, api_key="key"):
+def builder_with_responses(
+    responses,
+    *,
+    api_key="key",
+    builder_batch_size=None,
+):
     client = FakeClient(responses)
+    config = BriefingConfig.from_env({})
+    if builder_batch_size is not None:
+        config = replace(config, builder_batch_size=builder_batch_size)
     builder = BriefBuilder(
-        BriefingConfig.from_env({}),
+        config,
         LLMConfig(api_key=api_key, model="model", base_url="https://llm.example/v1"),
         client_factory=lambda **_kwargs: client,
     )
     return builder, client
 
 
-def test_builder_splits_requests_into_batches_of_at_most_five():
+def test_builder_sends_one_event_per_request():
     events = [event(index) for index in range(1, 7)]
-    first = {
-        "items": [
-            generated_item(index, item.event_key, item.canonical_evidence.url)
-            for index, item in enumerate(events[:5], 1)
-        ]
-    }
-    second = {
-        "items": [generated_item(1, events[5].event_key, events[5].canonical_evidence.url)]
-    }
-    builder, client = builder_with_responses([first, second])
+    responses = [
+        {
+            "items": [
+                generated_item(
+                    1,
+                    item.event_key,
+                    item.canonical_evidence.url,
+                )
+            ]
+        }
+        for item in events
+    ]
+    builder, client = builder_with_responses(responses)
 
     results = builder.build_batch(events, attempts={})
 
     assert len(results) == 6
     assert all(result.draft is not None for result in results)
-    assert len(client.chat.completions.calls) == 2
+    assert len(client.chat.completions.calls) == 6
     request_sizes = [
         len(json.loads(call["messages"][1]["content"])["events"])
         for call in client.chat.completions.calls
     ]
-    assert request_sizes == [5, 1]
+    assert request_sizes == [1, 1, 1, 1, 1, 1]
 
 
 def test_builder_disables_sdk_retries_to_keep_timeout_budget_bounded():
@@ -525,7 +537,7 @@ def test_builder_accepts_valid_indexed_schema_and_preserves_event_mapping():
             generated_item(1, events[0].event_key, events[0].canonical_evidence.url),
         ]
     }
-    builder, _ = builder_with_responses([payload])
+    builder, _ = builder_with_responses([payload], builder_batch_size=2)
 
     results = builder.build_batch(events, attempts={})
 
@@ -582,7 +594,10 @@ def test_builder_rejects_unknown_missing_and_unexpected_targets():
             "source_quote_id": "q1",
         }
     )
-    builder, _ = builder_with_responses([{"items": [unknown, missing, unexpected]}])
+    builder, _ = builder_with_responses(
+        [{"items": [unknown, missing, unexpected]}],
+        builder_batch_size=3,
+    )
 
     results = builder.build_batch(items, attempts={})
 
@@ -603,7 +618,8 @@ def test_missing_duplicate_and_unindexed_results_fail_only_affected_items():
     unindexed = generated_item(3, "event-3", events[2].canonical_evidence.url)
     del unindexed["index"]
     builder, _ = builder_with_responses(
-        [{"items": [item_one, item_two_a, item_two_b, unindexed]}]
+        [{"items": [item_one, item_two_a, item_two_b, unindexed]}],
+        builder_batch_size=3,
     )
 
     results = builder.build_batch(events, attempts={})
@@ -620,7 +636,10 @@ def test_builder_rejects_wrong_types_and_event_key_mismatch():
     wrong_type = generated_item(1, "event-1", events[0].canonical_evidence.url)
     wrong_type["brief"] = ["not", "a", "string"]
     wrong_event = generated_item(2, "other-event", events[1].canonical_evidence.url)
-    builder, _ = builder_with_responses([{"items": [wrong_type, wrong_event]}])
+    builder, _ = builder_with_responses(
+        [{"items": [wrong_type, wrong_event]}],
+        builder_batch_size=2,
+    )
 
     results = builder.build_batch(events, attempts={})
 

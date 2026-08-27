@@ -851,8 +851,8 @@ def test_pipeline_attempts_lower_ranked_x_candidates_until_soft_target():
         Validator(),
     )
 
-    first_batch_keys = builder.calls[0][0]
-    assert first_batch_keys[:3] == ["event-16", "event-17", "event-18"]
+    first_three_call_keys = [keys for keys, _attempts in builder.calls[:3]]
+    assert first_three_call_keys == [["event-16"], ["event-17"], ["event-18"]]
     assert result.decision.x_count == 3
     assert len(result.accepted_items) == 15
 
@@ -939,7 +939,7 @@ def test_pipeline_rebuilds_failed_x_candidates_one_at_a_time_with_reasons():
         (keys, reasons)
         for keys, reasons in builder.reason_calls
         if any(key in {"event-1", "event-2"} for key in keys)
-        and reasons
+        and any(key in reasons for key in keys)
     ]
     assert [keys for keys, _reasons in rebuild_calls] == [
         ["event-1"],

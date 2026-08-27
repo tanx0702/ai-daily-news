@@ -51,7 +51,7 @@ class BriefingConfig:
     target_x_items: int = 5
     x_feed_max_age_hours: int = 6
     news_hours: int = 36
-    builder_batch_size: int = 5
+    builder_batch_size: int = 1
     max_items_per_source: int = 2
     max_items_per_topic: int = 2
     min_primary_or_research: int = 2
@@ -91,7 +91,7 @@ class BriefingConfig:
             ),
             x_feed_max_age_hours=_integer(values, "X_FEED_MAX_AGE_HOURS", 6),
             news_hours=_integer(values, "DAILY_NEWS_HOURS", 36),
-            builder_batch_size=5,
+            builder_batch_size=1,
             max_items_per_source=_integer(values, "DAILY_MAX_ITEMS_PER_SOURCE", 2),
             max_items_per_topic=_integer(values, "DAILY_MAX_ITEMS_PER_TOPIC", 2),
             min_primary_or_research=_integer(
