@@ -35,11 +35,12 @@
 2. 生成与核验事实简报
    -> LLM 只翻译/摘要规范来源证据，不增加新闻事实；完整标题必须有明确主体、可断言动作和具体对象/结果，且在同一规范来源事实框架中可机械核验
    -> `ai_update` 不要求正式发布等硬新闻动作，但每个标题/摘要声明必须在同一绑定 quote 内同时匹配谓词前主体、命名对象/指标及指标维度与方向；来源前缀、比较对象和泛技术词不能充当主体或具体细节，泛标题、推广、虚构结果、确定性行业结论和类型篡改均拒绝，`fact_event` 的硬新闻门禁不变
-   -> 内容 LLM 返回 title 和零至两个 brief 展示目标；没有标题外事实时允许空 brief，Python 生成完整 claim 绑定
+   -> Python 先从规范 evidence_text 生成带稳定编号的逐字引用片段；内容 LLM 返回 title、零至两个 brief 展示目标及对应 quote ID，builder 再确定性恢复原文 quote、规范 URL 和完整 claim 绑定，LLM 不复制 quote 或 URL
    -> X 首次生成失败后的重建使用单条请求，并携带失败原因以及 @handle、名称和数字保护锚点
    -> 内容 LLM 超时、不可用、无效 JSON/schema、响应缺项、条目畸形、重复 index 与有效结构下的未翻译输出分别记录，不能统一压缩为 translation_failed
    -> 中文标题可保留产品名、模型名、缩写、仓库路径、版本号和单位；残留普通英文语法、动作或叙述词时按 translation_failed 重建一次，不能仅凭标题含有汉字放行
    -> 供应商可返回空字符串 brief；一至两项非空字符串列表只机械拼接后重新校验，三项以上或其它结构仍拒绝
+   -> title quote ID 缺失、未知或结构错误时按畸形条目重建；title 绑定有效但任一 brief quote ID 缺失或未知时删除全部摘要绑定，记录 `brief_quote_unresolved` 并降级为 `title_only`，不得模糊匹配或绑定整篇 evidence_text
    -> 第二次失败若使用完整中文原文回退，独立记录 source_fallback_used，并保留触发回退的原始原因码；若第二次重建仍为 title_claim_not_source_bound 或 title_missing_event_action，且英文源标题可机械抽取已登记实体或可原样保留的完整源标题主体、动作和另一原文细节锚点时，允许生成只含这些锚点的 title_only 回退，不翻译对象或补写摘要
    -> 确定性规则核验展示目标、来源 URL、逐字证据引文、名称/数字/动作和唯一事件；发布性、绑定和跨语言 rules_only 校验共享同一动作词表，不能各自维护漂移版本
    -> 摘要句引用仅落在原始标题范围时逐句删除；全部删除后转为 title_only，有增量句时保持 expanded

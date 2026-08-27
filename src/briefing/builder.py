@@ -20,6 +20,24 @@ from src.llm_config import LLMConfig
 logger = logging.getLogger(__name__)
 
 
+_SOURCE_QUOTE_PATTERN = re.compile(
+    r".+?(?:[。！？!?；;]+|[A-Za-z0-9]\.(?=\s|$)|\r?\n+|$)",
+    re.DOTALL,
+)
+
+
+def _source_quotes(value: str) -> tuple[tuple[str, str], ...]:
+    quotes: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for match in _SOURCE_QUOTE_PATTERN.finditer(value):
+        quote = match.group(0).strip()
+        if not quote or quote in seen:
+            continue
+        seen.add(quote)
+        quotes.append((f"q{len(quotes) + 1}", quote))
+    return tuple(quotes)
+
+
 @dataclass(frozen=True, slots=True)
 class BuildResult:
     event_key: str
@@ -231,31 +249,55 @@ def _strict_item(
     if not isinstance(raw_bindings, list) or not raw_bindings:
         return None
 
+    quote_by_id = dict(_source_quotes(event.canonical_evidence.evidence_text))
     bindings: list[EvidenceBinding] = []
+    bindings_by_target: dict[str, list[EvidenceBinding]] = {
+        target: [] for target in target_claims
+    }
+    provided_targets: set[str] = set()
+    unresolved_brief = False
     for binding in raw_bindings:
         if not isinstance(binding, dict) or set(binding) != {
             "target",
-            "source_quote",
-            "source_url",
+            "source_quote_id",
         }:
             return None
-        if not all(
-            isinstance(binding[field], str) and binding[field].strip()
-            for field in ("target", "source_quote", "source_url")
-        ):
+        if not isinstance(binding["target"], str) or not binding["target"].strip():
             return None
         target = binding["target"].strip()
         if target not in target_claims:
             return None
-        bindings.append(
-            EvidenceBinding(
-                claim=target_claims[target],
-                source_quote=binding["source_quote"].strip(),
-                source_url=binding["source_url"].strip(),
-            )
+        provided_targets.add(target)
+        if (
+            not isinstance(binding["source_quote_id"], str)
+            or not binding["source_quote_id"].strip()
+        ):
+            return None
+        quote = quote_by_id.get(binding["source_quote_id"].strip())
+        if quote is None:
+            if target == "title":
+                return None
+            unresolved_brief = True
+            continue
+        resolved = EvidenceBinding(
+            claim=target_claims[target],
+            source_quote=quote,
+            source_url=event.canonical_evidence.url,
         )
-    if {binding["target"].strip() for binding in raw_bindings} != set(target_claims):
+        bindings.append(resolved)
+        bindings_by_target[target].append(resolved)
+    title_bindings = bindings_by_target["title"]
+    if "title" not in provided_targets or not title_bindings:
         return None
+    brief_targets = set(target_claims) - {"title"}
+    if brief_targets - provided_targets:
+        unresolved_brief = True
+    if unresolved_brief:
+        brief = ""
+        bindings = title_bindings
+        brief_reason = "brief_quote_unresolved"
+    else:
+        brief_reason = "" if brief else "brief_empty"
 
     return BuiltBrief(
         event_key=event.event_key,
@@ -265,7 +307,7 @@ def _strict_item(
         evidence_bindings=tuple(bindings),
         content_origin="llm",
         brief_mode="expanded" if brief else "title_only",
-        brief_reason="" if brief else "brief_empty",
+        brief_reason=brief_reason,
         content_type=event.canonical_evidence.content_type,
         opinion_author=event.canonical_evidence.opinion_author,
     )
@@ -354,6 +396,12 @@ class BriefBuilder:
                     "event_key": event.event_key,
                     "source_title": event.canonical_evidence.source_title,
                     "evidence_text": event.canonical_evidence.evidence_text,
+                    "source_quotes": [
+                        {"quote_id": quote_id, "text": quote}
+                        for quote_id, quote in _source_quotes(
+                            event.canonical_evidence.evidence_text
+                        )
+                    ],
                     "source_url": event.canonical_evidence.url,
                     "publisher": event.canonical_evidence.publisher_name,
                     "channel": event.canonical_evidence.channel,
@@ -377,9 +425,10 @@ class BriefBuilder:
                         "content": (
                             "你是 AI 圈新闻与观点编辑。只根据每条 canonical source 证据生成中文标题和"
                             "零至两句事实摘要，不写评论、趋势、影响分析或输入外事实。摘要必须提取"
-                            "标题之外的原始证据；没有可安全提取的标题外事实时，允许 brief 为空字符串。为标题和摘要中的"
-                            "每个完整展示目标返回 target/source_quote/source_url；target 只能是 title、"
-                            "brief_1 或 brief_2，同一 target 可有多条引用；quote 必须逐字来自 evidence_text，"
+                            "标题之外的原始证据；没有可安全提取的标题外事实时，允许 brief 为空字符串。"
+                            "为标题和摘要中的每个完整展示目标返回 target/source_quote_id；target 只能是 "
+                            "title、brief_1 或 brief_2，同一 target 可返回多条记录；source_quote_id 必须逐字选择"
+                            "该事件 source_quotes 中存在的 quote_id，不得返回、改写或拼接原文 quote，也不得返回 URL；"
                             "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"
                             "跨语言标题只能翻译动作和语法词；非实体、非数字细节必须删去或保留原文锚点，"
                             "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
