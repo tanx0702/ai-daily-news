@@ -143,7 +143,7 @@ def source_evidence_from_candidate(
         "thread_id": "",
         "reply_to_item_id": "",
         "quoted_item_id": "",
-        "content_type": "fact_event",
+        "content_type": str(candidate.get("content_type") or "fact_event"),
         "opinion_author": "",
         "opinion_eligible": False,
         "original_post": False,

@@ -3,6 +3,7 @@ from types import MappingProxyType
 
 import pytest
 
+from src.briefing.evidence import source_evidence_from_candidate
 from src.briefing.models import (
     BriefItem,
     BuiltBrief,
@@ -103,6 +104,22 @@ def test_ai_update_contract_round_trips():
     restored = SourceEvidence.from_dict(source.to_dict())
 
     assert restored.content_type == "ai_update"
+
+
+def test_non_x_candidate_preserves_classified_ai_update_type():
+    source = source_evidence_from_candidate({
+        "title": "H3 Max generates high-quality video",
+        "summary": "H3 Max generates high-quality video.",
+        "url": "https://example.test/h3-max",
+        "source": "Example Media",
+        "source_type": "rss",
+        "source_tier": "media",
+        "published_at": "2026-08-28T00:00:00+00:00",
+        "content_type": "ai_update",
+    })
+
+    assert source is not None
+    assert source.content_type == "ai_update"
 
 
 def test_source_evidence_rejects_naive_or_invalid_timestamp():
