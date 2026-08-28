@@ -30,7 +30,7 @@ from src.briefing.publishability import (
     validate_display_publishability,
     validate_update_display_publishability,
 )
-from src.llm_config import LLMConfig
+from src.llm_config import LLMConfig, structured_llm_request_options
 
 
 logger = logging.getLogger(__name__)
@@ -829,6 +829,7 @@ class BriefValidator:
             temperature=0,
             max_tokens=700,
             response_format={"type": "json_object"},
+            **structured_llm_request_options(self.quality_llm_config),
         )
         try:
             payload = json.loads(_response_content(response))

@@ -203,6 +203,7 @@ def builder_with_responses(
     responses,
     *,
     api_key="key",
+    model="model",
     builder_batch_size=None,
 ):
     client = FakeClient(responses)
@@ -211,7 +212,7 @@ def builder_with_responses(
         config = replace(config, builder_batch_size=builder_batch_size)
     builder = BriefBuilder(
         config,
-        LLMConfig(api_key=api_key, model="model", base_url="https://llm.example/v1"),
+        LLMConfig(api_key=api_key, model=model, base_url="https://llm.example/v1"),
         client_factory=lambda **_kwargs: client,
     )
     return builder, client
@@ -275,6 +276,32 @@ def test_builder_requests_5000_output_tokens():
     assert results[0].draft is not None
     assert client.chat.completions.calls[0]["max_tokens"] == 5000
     assert builder.diagnostics["content_llm_success_count"] == 1
+
+
+def test_builder_uses_low_reasoning_effort_for_glm_5_3_flash():
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload], model="glm-5.3-flash")
+
+    builder.build_batch([item], attempts={})
+
+    assert client.chat.completions.calls[0]["extra_body"] == {
+        "reasoning_effort": "low"
+    }
+
+
+def test_builder_does_not_send_glm_options_to_other_models():
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload], model="deepseek-chat")
+
+    builder.build_batch([item], attempts={})
+
+    assert "extra_body" not in client.chat.completions.calls[0]
 
 
 def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():

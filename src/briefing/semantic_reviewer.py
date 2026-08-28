@@ -14,7 +14,7 @@ from src.briefing.semantic import (
     EventDocument,
     shared_strong_subjects,
 )
-from src.llm_config import LLMConfig
+from src.llm_config import LLMConfig, structured_llm_request_options
 
 
 logger = logging.getLogger(__name__)
@@ -181,6 +181,7 @@ class SemanticDuplicateReviewer:
             temperature=0,
             max_tokens=250,
             response_format={"type": "json_object"},
+            **structured_llm_request_options(self.quality_llm_config),
         )
         try:
             return json.loads(_response_content(response))

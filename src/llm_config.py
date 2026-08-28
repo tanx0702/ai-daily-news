@@ -23,6 +23,12 @@ class LLMConfig:
     base_url: str
 
 
+def structured_llm_request_options(config: LLMConfig) -> dict[str, object]:
+    if config.model.strip().casefold() == "glm-5.3-flash":
+        return {"extra_body": {"reasoning_effort": "low"}}
+    return {}
+
+
 def _clean(value: Optional[str]) -> str:
     return str(value).strip() if value is not None else ""
 

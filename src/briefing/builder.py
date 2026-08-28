@@ -14,7 +14,7 @@ from src.briefing.config import BriefingConfig
 from src.briefing.display_targets import display_targets, summary_sentences
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent
 from src.briefing.publishability import source_anchored_title
-from src.llm_config import LLMConfig
+from src.llm_config import LLMConfig, structured_llm_request_options
 
 
 logger = logging.getLogger(__name__)
@@ -453,6 +453,7 @@ class BriefBuilder:
                 temperature=0.1,
                 max_tokens=5000,
                 response_format={"type": "json_object"},
+                **structured_llm_request_options(self.llm_config),
             )
             decoded = json.loads(_response_content(response))
             self._consecutive_timeouts = 0

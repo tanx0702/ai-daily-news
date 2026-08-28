@@ -60,10 +60,10 @@ RIGHT = document(
 )
 
 
-def reviewer(responses, *, max_calls=20):
+def reviewer(responses, *, max_calls=20, model="quality-model"):
     client = FakeClient(responses)
     instance = SemanticDuplicateReviewer(
-        LLMConfig("quality-key", "quality-model", "https://quality.example/v1"),
+        LLMConfig("quality-key", model, "https://quality.example/v1"),
         client_factory=lambda **_kwargs: client,
         timeout=12,
         max_calls=max_calls,
@@ -92,6 +92,14 @@ def test_reviewer_accepts_strict_same_event_response():
     assert instance.diagnostics["semantic_llm_success_count"] == 1
     assert client.calls[0]["response_format"] == {"type": "json_object"}
     assert client.calls[0]["max_tokens"] <= 300
+
+
+def test_semantic_reviewer_uses_low_reasoning_effort_for_glm_5_3_flash():
+    instance, client = reviewer([response()], model="glm-5.3-flash")
+
+    instance.review(LEFT, RIGHT)
+
+    assert client.calls[0]["extra_body"] == {"reasoning_effort": "low"}
 
 
 def test_reviewer_accepts_distinct_and_uncertain_enum_values():

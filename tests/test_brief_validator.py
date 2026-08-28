@@ -1483,12 +1483,12 @@ class FakeClient:
         return FakeResponse(self.response)
 
 
-def quality_validator(response):
+def quality_validator(response, *, model="quality-model"):
     client = FakeClient(response)
     instance = validator(
         quality_config=LLMConfig(
             api_key="quality-key",
-            model="quality-model",
+            model=model,
             base_url="https://quality.example/v1",
         ),
         client_factory=lambda **_kwargs: client,
@@ -1535,6 +1535,17 @@ def test_valid_quality_review_marks_rules_and_llm_without_changing_content():
     assert result.validation_mode == "rules_and_llm"
     assert result.validated_item.chinese_title == original.chinese_title
     assert result.validated_item.brief == "该模型提供文本 API。"
+
+
+def test_quality_validator_uses_low_reasoning_effort_for_glm_5_3_flash():
+    instance, client = quality_validator(
+        {"items": [review_item()]},
+        model="glm-5.3-flash",
+    )
+
+    instance.validate(event(), draft(), generation_attempt=1, now=NOW)
+
+    assert client.calls[0]["extra_body"] == {"reasoning_effort": "low"}
 
 
 def test_quality_review_request_explicitly_mentions_json_for_json_object_mode():
