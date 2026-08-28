@@ -903,19 +903,62 @@ def test_sdk_timeout_message_reports_transport_failure():
 
     assert result.draft is None
     assert result.reason_code == "content_llm_timeout"
+    assert result.circuit_open is False
     assert builder.diagnostics["content_llm_timeout_count"] == 1
 
 
-def test_timeout_opens_circuit_and_skips_later_batches():
-    events = [event(index, chinese=True) for index in range(1, 7)]
-    builder, client = builder_with_responses([TimeoutError("Request timed out.")])
+def test_three_consecutive_timeouts_open_circuit_and_skip_next_batch():
+    events = [event(index, chinese=True) for index in range(1, 5)]
+    builder, client = builder_with_responses(
+        [TimeoutError("Request timed out.") for _event in events[:3]]
+    )
 
     results = builder.build_batch(events, attempts={})
 
-    assert len(client.chat.completions.calls) == 1
-    assert all(result.circuit_open is True for result in results)
-    assert all(result.draft is not None for result in results[5:])
-    assert all(result.reason_code == "content_llm_unavailable" for result in results[5:])
+    assert len(client.chat.completions.calls) == 3
+    assert [result.circuit_open for result in results] == [False, False, True, True]
+    assert [result.reason_code for result in results] == [
+        "content_llm_timeout",
+        "content_llm_timeout",
+        "content_llm_timeout",
+        "content_llm_unavailable",
+    ]
+    assert builder.diagnostics["content_llm_timeout_count"] == 3
+    assert builder.diagnostics["content_llm_circuit_open_count"] == 1
+
+
+def test_successful_decoded_response_resets_consecutive_timeout_count():
+    events = [event(index, chinese=True) for index in range(1, 6)]
+    successful_item = generated_item(
+        1,
+        events[2].event_key,
+        events[2].canonical_evidence.url,
+    )
+    successful_item["chinese_title"] = "示例公司发布模型 3"
+    successful_item["brief"] = "示例公司发布模型 3。"
+    builder, client = builder_with_responses(
+        [
+            TimeoutError("Request timed out."),
+            TimeoutError("Request timed out."),
+            {"items": [successful_item]},
+            TimeoutError("Request timed out."),
+            TimeoutError("Request timed out."),
+        ]
+    )
+
+    results = builder.build_batch(events, attempts={})
+
+    assert len(client.chat.completions.calls) == 5
+    assert all(result.circuit_open is False for result in results)
+    assert results[2].reason_code is None
+    assert [result.reason_code for result in results[:2] + results[3:]] == [
+        "content_llm_timeout",
+        "content_llm_timeout",
+        "content_llm_timeout",
+        "content_llm_timeout",
+    ]
+    assert builder.diagnostics["content_llm_timeout_count"] == 4
+    assert builder.diagnostics["content_llm_success_count"] == 1
 
 
 def test_payment_required_opens_circuit_and_skips_later_batches():

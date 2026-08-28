@@ -20,6 +20,9 @@ from src.llm_config import LLMConfig
 logger = logging.getLogger(__name__)
 
 
+_CONSECUTIVE_TIMEOUT_CIRCUIT_THRESHOLD = 3
+
+
 _SOURCE_QUOTE_PATTERN = re.compile(
     r".+?(?:[。！？!?；;]+|[A-Za-z0-9]\.(?=\s|$)|\r?\n+|$)",
     re.DOTALL,
@@ -330,6 +333,7 @@ class BriefBuilder:
         self.timeout = timeout
         self._client: object | None = None
         self._circuit_open = False
+        self._consecutive_timeouts = 0
         self.diagnostics: Counter[str] = Counter(
             content_llm_success_count=0,
             content_llm_timeout_count=0,
@@ -451,6 +455,7 @@ class BriefBuilder:
                 response_format={"type": "json_object"},
             )
             decoded = json.loads(_response_content(response))
+            self._consecutive_timeouts = 0
             raw_items = decoded.get("items") if isinstance(decoded, dict) else None
             if not isinstance(raw_items, list):
                 self.diagnostics["content_llm_invalid_response_count"] += 1
@@ -473,7 +478,12 @@ class BriefBuilder:
                     for index, event in enumerate(events, 1)
                 ]
             if _is_timeout(exc):
-                self._circuit_open = True
+                self._consecutive_timeouts += 1
+                if (
+                    self._consecutive_timeouts
+                    >= _CONSECUTIVE_TIMEOUT_CIRCUIT_THRESHOLD
+                ):
+                    self._circuit_open = True
                 self.diagnostics["content_llm_timeout_count"] += 1
                 request_failure_reason = "content_llm_timeout"
             elif isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
