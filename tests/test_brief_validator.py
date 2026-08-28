@@ -142,6 +142,106 @@ def test_validator_accepts_bound_ai_update_but_rejects_invented_result():
     }
 
 
+def test_validator_accepts_source_bound_non_numeric_ai_update():
+    item = event(
+        publisher_id="h3",
+        publisher_name="H3",
+        content_type="ai_update",
+        source_title="H3 Max generates video",
+        evidence_text="H3 Max generates video.",
+    )
+    title = "H3 Max 生成视频"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                "H3 Max generates video.",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(
+        item,
+        generated,
+        generation_attempt=1,
+        now=NOW,
+    )
+
+    assert result.action == "accept"
+
+
+def test_validator_rejects_swapped_non_numeric_capability():
+    item = event(
+        publisher_id="h3",
+        publisher_name="H3",
+        content_type="ai_update",
+        source_title="H3 Max generates video",
+        evidence_text="H3 Max generates video.",
+    )
+    title = "H3 Max 生成音频"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                "H3 Max generates video.",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(
+        item,
+        generated,
+        generation_attempt=1,
+        now=NOW,
+    )
+
+    assert result.action == "rebuild"
+    assert "update_claim_not_source_bound" in result.reason_codes
+
+
+def test_validator_rejects_demo_rewritten_as_formal_release():
+    item = event(
+        publisher_id="h3",
+        publisher_name="H3",
+        content_type="ai_update",
+        source_title="H3 Max demonstrates video generation",
+        evidence_text="H3 Max demonstrates video generation.",
+    )
+    title = "H3 Max 正式发布视频模型"
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                "H3 Max demonstrates video generation.",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type="ai_update",
+    )
+
+    result = validator().validate(
+        item,
+        generated,
+        generation_attempt=1,
+        now=NOW,
+    )
+
+    assert result.action == "rebuild"
+
+
 def test_validator_rejects_draft_content_type_override():
     item = event(
         publisher_id="anthropic",

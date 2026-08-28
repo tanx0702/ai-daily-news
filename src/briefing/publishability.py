@@ -244,7 +244,7 @@ _UPDATE_CAPABILITY_PATTERNS = (
 )
 _UPDATE_KNOWN_SUBJECT = re.compile(
     r"\b(?:gpt|chatgpt|claude(?:\s+code)?|gemini|llama|qwen|deepseek|mistral)"
-    r"[\w.+/-]*(?:\s+[A-Z][\w.+/-]*)?\b",
+    r"[\w.+/-]*(?:\s+(?-i:[A-Z])[\w.+/-]*)?\b",
     re.I,
 )
 

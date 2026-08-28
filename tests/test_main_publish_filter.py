@@ -115,6 +115,47 @@ def test_five_valid_items_create_a_dry_run_and_write_schema_v2(tmp_path):
     assert debug_payload["candidate_audit"][0]["event"]["canonical_evidence"]["evidence_text"]
 
 
+def test_collection_classification_audit_stays_private(tmp_path):
+    candidates = [_candidate(index) for index in range(1, 6)]
+
+    def collect_with_audit(*_args, **kwargs):
+        kwargs["candidate_audit"].append({
+            "candidate_type": "content_classification",
+            "candidate_id": "candidate-rejected",
+            "content_type": None,
+            "content_llm_skipped": True,
+            "attempts": [],
+            "final_state": "rejected",
+            "final_reason_codes": ["non_news_content"],
+        })
+        return candidates
+
+    with (
+        patch.dict("os.environ", _env(), clear=True),
+        patch("src.collector.collect_candidates", side_effect=collect_with_audit),
+        patch(
+            "src.cover.generate_cover_from_news",
+            return_value=str(tmp_path / "cover.jpg"),
+        ),
+        patch("src.services.production_snapshot.save_production_snapshot"),
+    ):
+        daily_main._run_pipeline(docs_dir=str(tmp_path), now=NOW)
+
+    latest = json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    debug = json.loads(
+        (tmp_path / "debug" / "2026-08-07-briefing.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert "candidate_audit" not in latest
+    assert debug["candidate_audit"][0]["candidate_type"] == "content_classification"
+    assert any(
+        row["candidate_type"] == "merged_event"
+        for row in debug["candidate_audit"]
+    )
+
+
 def test_pipeline_passes_90_second_default_timeout_to_brief_builder(tmp_path):
     env = _env()
     with (

@@ -347,6 +347,8 @@ def test_builder_preserves_ai_update_type_and_forbids_release_rewrite():
     assert result.draft.content_type == "ai_update"
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "content_type=ai_update" in system_prompt
+    assert "能力演示、实测观察、工作流或工具进展" in system_prompt
+    assert "数字和榜单不是必需" in system_prompt
     assert "不得改写成正式发布" in system_prompt
     assert "不得改写成确定性行业结论" in system_prompt
 

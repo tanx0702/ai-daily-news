@@ -100,6 +100,7 @@ def _run_pipeline(
     logger.info("AI fact brief pipeline started for %s", date_str)
 
     collection_diagnostics: dict[str, Any] = {}
+    collection_candidate_audit: list[dict[str, object]] = []
     try:
         from src.collector import collect_candidates
 
@@ -108,6 +109,7 @@ def _run_pipeline(
             limit=config.candidate_pool_size,
             rss_timeout=int(os.environ.get("DAILY_RSS_TIMEOUT", "30")),
             diagnostics=collection_diagnostics,
+            candidate_audit=collection_candidate_audit,
             now=started_at,
         )
     except Exception as exc:
@@ -226,7 +228,10 @@ def _run_pipeline(
             diagnostics=diagnostics,
             decision=decision.to_dict(),
             execution=execution.to_dict(),
-            candidate_audit=briefing.audit_entries,
+            candidate_audit=(
+                *collection_candidate_audit,
+                *briefing.audit_entries,
+            ),
         )
         return _result(items, decision, execution)
 
@@ -292,7 +297,10 @@ def _run_pipeline(
         diagnostics=diagnostics,
         decision=decision.to_dict(),
         execution=execution.to_dict(),
-        candidate_audit=briefing.audit_entries,
+        candidate_audit=(
+            *collection_candidate_audit,
+            *briefing.audit_entries,
+        ),
     )
     logger.info(
         "Fact brief finished: action=%s status=%s selected=%d",
