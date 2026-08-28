@@ -4,7 +4,7 @@
 
 **Goal:** 将候选统一分类为事实、AI 圈动态或署名观点，放宽有明确主体和具体进展的非数字动态，同时在内容 LLM 前终止确定性不合格候选。
 
-**Architecture:** 在 `src/briefing/classification.py` 建立只读确定性分类器，复用 `publishability.py` 的事实和动态来源门禁；采集层先规范化证据、冻结类型并执行同类型预检，只把通过项交给聚类和内容 LLM。非数字动态使用受控的行为和能力词汇建立主体、细节、关系三元组，最终显示仍逐条绑定同一 quote。
+**Architecture:** 在 `src/briefing/classification.py` 建立只读确定性分类器，复用 `publishability.py` 的事实和动态来源门禁；采集层先规范化证据、冻结类型并执行同类型预检，明确分类拒绝和无效证据终止，普通预检失败项降序候补。非数字动态使用受控的行为和能力词汇建立主体、细节、关系三元组，最终显示仍逐条绑定同一 quote。
 
 **Tech Stack:** Python 3.12、dataclasses、正则表达式、现有 `SourceEvidence`/`PublishabilityResult`/`BriefPipeline`、pytest、Docker Compose。
 
@@ -16,14 +16,14 @@
 - Create: `tests/test_content_classification.py` — 分类优先级和跨来源分类测试。
 - Modify: `src/briefing/publishability.py` — 非数字动态的主体、能力细节和行为关系绑定。
 - Modify: `src/briefing/evidence.py` — 为所有来源保留冻结后的 `content_type`。
-- Modify: `src/collector.py` — 分类、确定性预检终止、聚合诊断和分类审计。
+- Modify: `src/collector.py` — 分类、明确拒绝终止、普通预检降序、聚合诊断和分类审计。
 - Modify: `src/main.py` — 将分类审计仅写入私有 briefing 调试文件。
 - Modify: `src/briefing/builder.py` — 提示词覆盖演示、实测、工作流和工具进展。
 - Modify: `src/briefing/validator.py` — `rules_only` 跨语言动态允许受控行为和能力词。
 - Modify: `tests/test_ai_update_rules.py` — X 初步动态识别兼容非数字具体进展。
 - Modify: `tests/test_publishability.py` — 非数字动态来源与 claim/quote 门禁。
 - Modify: `tests/test_brief_validator.py` — 非数字动态最终验证和事实动作防升级。
-- Modify: `tests/test_collector.py` — 所有来源分类、预检终止和 LLM 跳过诊断。
+- Modify: `tests/test_collector.py` — 所有来源分类、明确拒绝终止、普通预检降序和 LLM 跳过诊断。
 - Modify: `tests/test_main_publish_filter.py` — 私有分类审计持久化。
 - Modify: `AGENTS.md`、`project_docs/pipeline.md`、`project_docs/sources.md`、`project_docs/backend.md` — 同步生产约束。
 
@@ -366,7 +366,7 @@ git add src/briefing/classification.py src/briefing/evidence.py tests/test_conte
 git commit -m "feat(briefing): 统一分类 AI 圈快讯候选"
 ```
 
-### Task 3: 在采集预检终止确定性不合格候选
+### Task 3: 在采集层终止明确分类拒绝并降低普通预检失败项顺序
 
 **Files:**
 - Modify: `src/collector.py`
@@ -438,8 +438,8 @@ def collect_candidates(
 2. 调用 `classify_source_content()`；
 3. 分类失败时写入 `content_classification` 审计，标记 `content_llm_skipped=True`，不加入返回池；
 4. 分类成功时把 `item["content_type"]` 冻结为分类结果，重新构造证据并调用 `validate_content_source_publishability()`；
-5. 预检失败同样终止，不再把 `preflight_rejected` 或 `invalid_evidence` 回填到返回池；
-6. 只有 `publishable` 按现有分数排序并应用 `limit`。
+5. 无效证据和分类失败终止；其它预检失败项写入审计并排在通过项之后作为候补；
+6. `publishable` 与 `preflight_rejected` 分组按现有分数排序后应用 `limit`。
 
 分类审计记录使用有限结构：
 
@@ -473,7 +473,7 @@ python -m pytest -q tests/test_collector.py
 
 Expected: 所有 collector 测试通过，确定性拒绝候选不再出现在返回池。
 
-- [ ] **Step 5: 提交预检终止**
+- [ ] **Step 5: 提交分类拒绝与预检降序**
 
 ```powershell
 git add src/collector.py tests/test_collector.py
@@ -589,7 +589,7 @@ git commit -m "feat(briefing): 接入分类型快讯流水线"
 
 - 所有来源在内容 LLM 前统一冻结类型；
 - `ai_update` 允许无数字但有明确主体、具体行为/能力和同 quote 证据的动态；
-- 分类或预检确定性拒绝的候选不进入 LLM；预检通过不能替代最终门禁；
+- 分类明确拒绝或证据无效的候选不进入 LLM；普通预检失败只降低顺序，预检通过也不能替代最终门禁；
 - `fact_event`、观点、逐条 quote、反传闻和 GitHub release 边界不变；
 - 分类细节只进入私有 briefing 审计，公开产物只保留聚合诊断。
 
@@ -630,4 +630,4 @@ ssh root@tankex.xyz "cd /opt/ai-news && git pull --ff-only origin master && dock
 ssh root@tankex.xyz "cd /opt/ai-news && docker compose exec -e SKIP_WECHAT_DRAFT=1 -T web python -m src.main"
 ```
 
-Expected: 服务器任务不创建真实微信草稿；容器健康；审计显示预检终止候选未调用内容 LLM，并报告事实、动态、观点和 X 的实际入选数量。外部候选不足时如实报告，不以放宽证据规则硬凑。
+Expected: 服务器任务不创建真实微信草稿；容器健康；审计显示分类明确拒绝和无效证据候选未调用内容 LLM，普通预检失败项仅在通过项之后候补，并报告事实、动态、观点和 X 的实际入选数量。外部候选不足时如实报告，不以放宽证据规则硬凑。
