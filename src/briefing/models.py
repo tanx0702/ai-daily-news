@@ -409,7 +409,7 @@ class DraftDecision:
     x_count: int
     max_x_items: int
     fact_count: int = 0
-    min_fact_items: int = 3
+    min_fact_items: int = 2
     opinion_count: int = 0
     max_opinion_items: int = 3
     update_count: int = 0
@@ -462,7 +462,7 @@ class DraftDecision:
             x_count=int(data["x_count"]),
             max_x_items=int(data["max_x_items"]),
             fact_count=int(data.get("fact_count", data.get("selected_count", 0))),
-            min_fact_items=int(data.get("min_fact_items", 3)),
+            min_fact_items=int(data.get("min_fact_items", 2)),
             opinion_count=int(data.get("opinion_count", 0)),
             max_opinion_items=int(data.get("max_opinion_items", 3)),
             update_count=int(data.get("update_count", 0)),

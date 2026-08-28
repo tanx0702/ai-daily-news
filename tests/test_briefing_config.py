@@ -9,7 +9,7 @@ def test_briefing_config_uses_approved_defaults():
     assert config.min_items == 5
     assert config.max_items == 20
     assert config.candidate_pool_size == 60
-    assert config.min_fact_items == 3
+    assert config.min_fact_items == 2
     assert (config.target_update_items, config.max_update_items) == (5, 8)
     assert (config.target_opinion_items, config.max_opinion_items) == (5, 8)
     assert config.max_x_items == 8
@@ -65,7 +65,7 @@ def test_briefing_config_accepts_all_hard_boundaries():
         {"DAILY_X_MAX_ITEMS": "9"},
         {"DAILY_X_TARGET_ITEMS": "-1"},
         {"DAILY_X_MAX_ITEMS": "2", "DAILY_X_TARGET_ITEMS": "3"},
-        {"DAILY_MIN_FACT_ITEMS": "2"},
+        {"DAILY_MIN_FACT_ITEMS": "1"},
         {"DAILY_MIN_FACT_ITEMS": "6", "DAILY_MIN_ITEMS": "5"},
         {"DAILY_MAX_OPINION_ITEMS": "-1"},
         {"DAILY_MAX_OPINION_ITEMS": "9"},

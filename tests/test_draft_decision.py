@@ -164,7 +164,7 @@ def test_too_few_items_blocks_only_for_insufficient_items():
     assert decision.reasons == ("insufficient_items",)
 
 
-def test_decision_requires_three_facts_and_limits_opinions_and_authors():
+def test_decision_accepts_two_facts_with_valid_attributed_opinions():
     two_facts = [item(1), item(2)]
     opinions = [
         item(
@@ -177,8 +177,20 @@ def test_decision_requires_three_facts_and_limits_opinions_and_authors():
     ]
 
     decision = decide_draft([*two_facts, *opinions[:3]], config())
-    assert decision.action == "block"
-    assert "insufficient_fact_items" in decision.reasons
+    assert decision.action == "create"
+    assert decision.fact_count == 2
+
+
+def test_decision_limits_opinions_and_authors():
+    opinions = [
+        item(
+            index,
+            channel="x",
+            content_type="attributed_opinion",
+            opinion_author=f"Author {index}",
+        )
+        for index in range(4, 8)
+    ]
 
     decision = decide_draft(
         [item(1), item(2), item(3), *opinions],

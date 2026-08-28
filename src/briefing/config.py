@@ -41,7 +41,7 @@ class BriefingConfig:
 
     min_items: int = 5
     max_items: int = 20
-    min_fact_items: int = 3
+    min_fact_items: int = 2
     max_opinion_items: int = 8
     target_opinion_items: int = 5
     max_update_items: int = 8
@@ -69,7 +69,7 @@ class BriefingConfig:
         config = cls(
             min_items=_integer(values, "DAILY_MIN_ITEMS", 5),
             max_items=_integer(values, "DAILY_TOP_N", 20),
-            min_fact_items=_integer(values, "DAILY_MIN_FACT_ITEMS", 3),
+            min_fact_items=_integer(values, "DAILY_MIN_FACT_ITEMS", 2),
             max_opinion_items=max_opinion_items,
             target_opinion_items=_integer(
                 values,
@@ -128,9 +128,9 @@ class BriefingConfig:
             raise InvalidBriefingConfiguration(
                 "DAILY_CANDIDATE_POOL_N must be at least DAILY_TOP_N"
             )
-        if not 3 <= self.min_fact_items <= self.min_items:
+        if not 2 <= self.min_fact_items <= self.min_items:
             raise InvalidBriefingConfiguration(
-                "DAILY_MIN_FACT_ITEMS must be between 3 and DAILY_MIN_ITEMS"
+                "DAILY_MIN_FACT_ITEMS must be between 2 and DAILY_MIN_ITEMS"
             )
         if not 0 <= self.target_update_items <= self.max_update_items <= 8:
             raise InvalidBriefingConfiguration(
