@@ -1562,6 +1562,7 @@ def collect_candidates(
     limit: int | None = 45,
     rss_timeout: int = 30,
     diagnostics: dict | None = None,
+    candidate_audit: list[dict[str, object]] | None = None,
     now: datetime | None = None,
 ) -> list[dict]:
     """Return a scored candidate pool before event clustering or final quotas."""
@@ -1608,32 +1609,157 @@ def collect_candidates(
         preserve_source_evidence(item)
         filtered.append(item)
 
+    from src.briefing.classification import classify_source_content
     from src.briefing.evidence import source_evidence_from_candidate
     from src.briefing.publishability import validate_content_source_publishability
 
     publishable: list[dict] = []
     preflight_rejected: list[dict] = []
+    classification_rejected_items: list[dict] = []
     invalid_evidence: list[dict] = []
     preflight_reason_counts: dict[str, int] = {}
-    for item in filtered:
+    classification_counts: dict[str, int] = {}
+    classification_rejected = 0
+
+    def record_classification(
+        item: dict,
+        position: int,
+        *,
+        source_evidence,
+        original_content_type: str,
+        content_type: str | None,
+        classification_reason_codes: tuple[str, ...],
+        subject_anchors: tuple[str, ...] = (),
+        detail_anchors: tuple[str, ...] = (),
+        preflight_accepted: bool,
+        final_reason_codes: tuple[str, ...],
+        content_llm_skipped: bool | None = None,
+    ) -> None:
+        if candidate_audit is None:
+            return
+        source_record = (
+            source_evidence.to_dict()
+            if source_evidence is not None
+            else {
+                "source_title": str(item.get("source_title") or item.get("title") or ""),
+                "evidence_text": str(item.get("source_summary") or item.get("summary") or ""),
+                "url": str(item.get("source_url") or item.get("url") or ""),
+            }
+        )
+        skipped = (
+            not preflight_accepted
+            if content_llm_skipped is None
+            else content_llm_skipped
+        )
+        candidate_audit.append({
+            "candidate_type": "content_classification",
+            "candidate_id": str(item.get("id") or item.get("url") or position),
+            "source_evidence": source_record,
+            "original_content_type": original_content_type,
+            "content_type": content_type,
+            "classification_reason_codes": list(classification_reason_codes),
+            "classification_subject_anchors": list(subject_anchors),
+            "classification_detail_anchors": list(detail_anchors),
+            "preflight_accepted": preflight_accepted,
+            "content_llm_skipped": skipped,
+            "attempts": [],
+            "final_state": (
+                "eligible" if preflight_accepted
+                else "rejected" if skipped
+                else "deferred"
+            ),
+            "final_reason_codes": list(final_reason_codes),
+        })
+
+    for position, item in enumerate(filtered, 1):
         item["_score"] = _score_item(
             item,
             filtered,
             include_publish_risk=False,
         )
+        original_content_type = str(item.get("content_type") or "fact_event")
+        trusted_x_collector = (
+            str(item.get("source_type") or "").strip().lower() == "x"
+        )
         source_evidence = source_evidence_from_candidate(
             item,
-            trusted_x_collector=(
-                str(item.get("source_type") or "").strip().lower() == "x"
-            ),
+            trusted_x_collector=trusted_x_collector,
         )
         if source_evidence is None:
+            reasons = ("invalid_source_evidence",)
             item["_publishability_preflight"] = {
                 "accepted": False,
-                "reason_codes": ["invalid_source_evidence"],
+                "reason_codes": list(reasons),
             }
             invalid_evidence.append(item)
+            record_classification(
+                item,
+                position,
+                source_evidence=None,
+                original_content_type=original_content_type,
+                content_type=None,
+                classification_reason_codes=reasons,
+                preflight_accepted=False,
+                final_reason_codes=reasons,
+            )
             continue
+
+        classification = classify_source_content(source_evidence)
+        if classification.content_type is None:
+            classification_rejected += 1
+            reasons = classification.reason_codes or ("non_news_content",)
+            item["_publishability_preflight"] = {
+                "accepted": False,
+                "reason_codes": list(reasons),
+            }
+            classification_rejected_items.append(item)
+            for reason in reasons:
+                preflight_reason_counts[reason] = (
+                    preflight_reason_counts.get(reason, 0) + 1
+                )
+            record_classification(
+                item,
+                position,
+                source_evidence=source_evidence,
+                original_content_type=original_content_type,
+                content_type=None,
+                classification_reason_codes=classification.reason_codes,
+                subject_anchors=classification.subject_anchors,
+                detail_anchors=classification.detail_anchors,
+                preflight_accepted=False,
+                final_reason_codes=reasons,
+            )
+            continue
+
+        item["content_type"] = classification.content_type
+        classification_counts[classification.content_type] = (
+            classification_counts.get(classification.content_type, 0) + 1
+        )
+        source_evidence = source_evidence_from_candidate(
+            item,
+            trusted_x_collector=trusted_x_collector,
+        )
+        if source_evidence is None:
+            reasons = ("invalid_source_evidence",)
+            item["_publishability_preflight"] = {
+                "accepted": False,
+                "reason_codes": list(reasons),
+            }
+            invalid_evidence.append(item)
+            record_classification(
+                item,
+                position,
+                source_evidence=None,
+                original_content_type=original_content_type,
+                content_type=classification.content_type,
+                classification_reason_codes=classification.reason_codes,
+                subject_anchors=classification.subject_anchors,
+                detail_anchors=classification.detail_anchors,
+                preflight_accepted=False,
+                final_reason_codes=reasons,
+            )
+            continue
+
         preflight = validate_content_source_publishability(source_evidence)
         item["_publishability_preflight"] = {
             "accepted": preflight.accepted,
@@ -1641,10 +1767,35 @@ def collect_candidates(
         }
         if preflight.accepted:
             publishable.append(item)
+            record_classification(
+                item,
+                position,
+                source_evidence=source_evidence,
+                original_content_type=original_content_type,
+                content_type=classification.content_type,
+                classification_reason_codes=classification.reason_codes,
+                subject_anchors=classification.subject_anchors,
+                detail_anchors=classification.detail_anchors,
+                preflight_accepted=True,
+                final_reason_codes=(),
+            )
             continue
         preflight_rejected.append(item)
         for reason in preflight.reason_codes:
             preflight_reason_counts[reason] = preflight_reason_counts.get(reason, 0) + 1
+        record_classification(
+            item,
+            position,
+            source_evidence=source_evidence,
+            original_content_type=original_content_type,
+            content_type=classification.content_type,
+            classification_reason_codes=classification.reason_codes,
+            subject_anchors=classification.subject_anchors,
+            detail_anchors=classification.detail_anchors,
+            preflight_accepted=False,
+            final_reason_codes=preflight.reason_codes,
+            content_llm_skipped=False,
+        )
 
     def preflight_sort_key(item: dict) -> tuple:
         return (
@@ -1655,8 +1806,7 @@ def collect_candidates(
 
     publishable.sort(key=preflight_sort_key, reverse=True)
     preflight_rejected.sort(key=preflight_sort_key, reverse=True)
-    invalid_evidence.sort(key=preflight_sort_key, reverse=True)
-    prioritized = [*publishable, *preflight_rejected, *invalid_evidence]
+    prioritized = [*publishable, *preflight_rejected]
     result = prioritized if limit is None else prioritized[:max(int(limit), 0)]
     if diagnostics is not None:
         diagnostics.update(
@@ -1666,10 +1816,19 @@ def collect_candidates(
                 "returned_candidate_count": len(result),
                 "publishability_preflight_total": len(filtered),
                 "publishability_preflight_passed": len(publishable),
-                "publishability_preflight_rejected": len(preflight_rejected),
+                "publishability_preflight_rejected": (
+                    len(preflight_rejected) + len(classification_rejected_items)
+                ),
                 "publishability_preflight_invalid_evidence": len(invalid_evidence),
                 "publishability_preflight_reason_counts": dict(
                     sorted(preflight_reason_counts.items())
+                ),
+                "content_classification_counts": dict(
+                    sorted(classification_counts.items())
+                ),
+                "content_classification_rejected": classification_rejected,
+                "content_llm_skipped_count": (
+                    len(classification_rejected_items) + len(invalid_evidence)
                 ),
                 "source_merge_removed": 0,
                 "topic_cluster_removed": 0,

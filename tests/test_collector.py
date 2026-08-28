@@ -387,7 +387,7 @@ class CollectorTests(unittest.TestCase):
 
         self.assertEqual(diagnostics["source_health"], {})
 
-    def test_collect_candidates_publishability_preflight_refills_before_limit(self):
+    def test_collect_candidates_publishability_preflight_stops_rejected_candidates(self):
         now = datetime.now(timezone.utc)
         tutorial = {
             "title": "How OpenAI works: a practical AI guide",
@@ -422,7 +422,7 @@ class CollectorTests(unittest.TestCase):
             return_value=[tutorial, release],
         ), patch.object(collector, "_score_item", side_effect=score):
             items = collector.collect_candidates(
-                limit=1,
+                limit=2,
                 hours=36,
                 diagnostics=diagnostics,
                 now=now,
@@ -435,6 +435,76 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(
             diagnostics["publishability_preflight_reason_counts"],
             {"non_news_content": 1},
+        )
+
+    def test_collect_candidates_classifies_all_sources_and_audits_skips(self):
+        now = datetime.now(timezone.utc)
+        release = {
+            "id": "release",
+            "title": "OpenAI releases Model 5 for AI developers",
+            "url": "https://openai.com/news/model-5",
+            "source": "OpenAI Blog",
+            "source_type": "rss",
+            "source_tier": "primary",
+            "published_at": now,
+            "summary": "OpenAI releases Model 5 for AI developers.",
+            "metrics": {},
+            "scores": {},
+        }
+        update = {
+            "id": "update",
+            "title": "H3 Max AI model generates high-quality video",
+            "url": "https://example.com/h3-max-demo",
+            "source": "Example Media",
+            "source_type": "rss",
+            "source_tier": "media",
+            "published_at": now,
+            "summary": "H3 Max AI model generates high-quality video.",
+            "metrics": {},
+            "scores": {},
+        }
+        tutorial = {
+            "id": "tutorial",
+            "title": "How OpenAI works: a practical AI guide",
+            "url": "https://example.com/openai-guide",
+            "source": "Example Media",
+            "source_type": "rss",
+            "source_tier": "media",
+            "published_at": now,
+            "summary": "A tutorial explaining how OpenAI systems work.",
+            "metrics": {},
+            "scores": {},
+        }
+        diagnostics = {}
+        classification_audit = []
+
+        with patch.object(
+            collector,
+            "_fetch_raw_candidates",
+            return_value=[release, update, tutorial],
+        ), patch.object(collector, "_score_item", return_value=10.0):
+            items = collector.collect_candidates(
+                limit=10,
+                hours=36,
+                diagnostics=diagnostics,
+                candidate_audit=classification_audit,
+                now=now,
+            )
+
+        assert {item["content_type"] for item in items} == {
+            "fact_event",
+            "ai_update",
+        }
+        assert all(item["_publishability_preflight"]["accepted"] for item in items)
+        assert diagnostics["content_classification_counts"] == {
+            "ai_update": 1,
+            "fact_event": 1,
+        }
+        assert diagnostics["content_classification_rejected"] == 1
+        assert diagnostics["content_llm_skipped_count"] == 1
+        assert any(
+            row["content_llm_skipped"] and row["final_state"] == "rejected"
+            for row in classification_audit
         )
 
     def test_collect_candidates_preflight_dispatches_updates_and_opinions(self):

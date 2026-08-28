@@ -77,7 +77,18 @@ def classify_source_content(source: SourceEvidence) -> ContentClassification:
             update.detail_anchors,
         )
 
+    if fact.accepted:
+        return ContentClassification(
+            "fact_event",
+            ("classified_fact_event_fallback",),
+            fact.subject_anchors,
+        )
+
     return ContentClassification(
         None,
-        update.reason_codes or fact.reason_codes or ("non_news_content",),
+        (
+            fact.reason_codes
+            if "non_news_content" in fact.reason_codes
+            else update.reason_codes or fact.reason_codes or ("non_news_content",)
+        ),
     )
