@@ -353,6 +353,24 @@ def test_builder_preserves_ai_update_type_and_forbids_release_rewrite():
     assert "不得改写成确定性行业结论" in system_prompt
 
 
+def test_builder_forces_attributed_opinion_to_title_only():
+    item = event(1, content_type="attributed_opinion")
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    builder, client = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief == ""
+    assert result.draft.brief_mode == "title_only"
+    assert result.draft.brief_reason == "opinion_title_only"
+    assert {binding.claim for binding in result.draft.evidence_bindings} == {
+        result.draft.chinese_title
+    }
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    assert "content_type=attributed_opinion 时 brief 必须为空字符串" in system_prompt
+
+
 def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
     original = event(1)
     source = original.canonical_evidence

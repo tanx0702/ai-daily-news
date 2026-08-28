@@ -299,6 +299,10 @@ def _strict_item(
         brief = ""
         bindings = title_bindings
         brief_reason = "brief_quote_unresolved"
+    elif event.canonical_evidence.content_type == "attributed_opinion":
+        brief = ""
+        bindings = title_bindings
+        brief_reason = "opinion_title_only"
     else:
         brief_reason = "" if brief else "brief_empty"
 
@@ -437,8 +441,8 @@ class BriefBuilder:
                             "跨语言标题只能翻译动作和语法词；非实体、非数字细节必须删去或保留原文锚点，"
                             "标题或摘要使用 protected_anchors 中的 @handle、模型/产品名称和数字时，"
                             "必须原样保留，不得翻译、改写或补造；重建时逐项修正 rebuild_reasons，"
-                            "content_type=attributed_opinion 时必须保留 opinion_author 的明确归因，"
-                            "只能压缩作者原意，不得改写成无主语的客观事实或机构公告；"
+                            "content_type=attributed_opinion 时 brief 必须为空字符串，标题必须保留 "
+                            "opinion_author 的明确归因，只能压缩作者原意，不得改写成无主语的客观事实或机构公告；"
                             "content_type=ai_update 时只能概括原始项目、模型的能力演示、实测观察、"
                             "工作流或工具进展，以及实验或榜单的具体进展；数字和榜单不是必需，"
                             "但必须保留来源中的明确主体、具体行为和能力对象，不得改写成正式发布，"
