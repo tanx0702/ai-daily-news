@@ -52,6 +52,36 @@ def test_ai_update_accepts_concrete_result_without_release_action():
     assert result.event_type == "ai_update"
 
 
+def test_ai_update_accepts_bound_capability_demo_without_metric():
+    evidence = source(
+        "H3 Max generates high-quality video faster than it can be watched",
+        "H3 Max generates high-quality video faster than it can be watched.",
+        content_type="ai_update",
+    )
+
+    assert validate_update_source_publishability(evidence).accepted is True
+    assert validate_update_display_publishability(
+        "H3 Max 生成高质量视频的速度快于观看速度",
+        "",
+        evidence,
+    ).accepted is True
+
+
+def test_ai_update_rejects_swapped_capability_in_bound_quote():
+    evidence = source(
+        "H3 Max generates high-quality video",
+        content_type="ai_update",
+    )
+
+    result = validate_update_display_publishability(
+        "H3 Max 生成高质量音频",
+        "",
+        evidence,
+    )
+
+    assert result.reason_codes == ("update_claim_not_source_bound",)
+
+
 def test_content_source_publishability_dispatches_by_content_type():
     dispatcher = getattr(
         publishability,

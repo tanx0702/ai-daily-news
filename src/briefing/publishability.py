@@ -219,6 +219,34 @@ _UPDATE_METRIC_STOPWORDS = {
     "a", "an", "and", "by", "for", "higher", "lower", "more", "on",
     "than", "the", "to", "with", "benchmark", "evaluation", "result",
 }
+_UPDATE_BEHAVIOR_PATTERNS = (
+    (
+        "demo",
+        re.compile(r"\b(?:demonstrates?|shows?|tests?|tested)\b|展示|演示|测试", re.I),
+    ),
+    (
+        "support",
+        re.compile(r"\b(?:supports?|enables?|allows?)\b|支持|允许|可用于", re.I),
+    ),
+    ("generate", re.compile(r"\b(?:generates?|creates?)\b|生成|创建", re.I)),
+    ("run", re.compile(r"\b(?:runs?|executes?)\b|运行|执行", re.I)),
+    ("handle", re.compile(r"\b(?:handles?|processes?)\b|处理", re.I)),
+)
+_UPDATE_CAPABILITY_PATTERNS = (
+    ("video", re.compile(r"\bvideos?\b|视频", re.I)),
+    ("image", re.compile(r"\bimages?\b|图像|图片", re.I)),
+    ("audio", re.compile(r"\baudio\b|音频", re.I)),
+    ("code", re.compile(r"\bcode\b|代码", re.I)),
+    ("agent", re.compile(r"\bagents?\b|智能体", re.I)),
+    ("workflow", re.compile(r"\bworkflows?\b|工作流", re.I)),
+    ("browser", re.compile(r"\bbrowsers?\b|浏览器", re.I)),
+    ("document", re.compile(r"\b(?:documents?|files?)\b|文档|文件", re.I)),
+)
+_UPDATE_KNOWN_SUBJECT = re.compile(
+    r"\b(?:gpt|chatgpt|claude(?:\s+code)?|gemini|llama|qwen|deepseek|mistral)"
+    r"[\w.+/-]*(?:\s+[A-Z][\w.+/-]*)?\b",
+    re.I,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +256,7 @@ class PublishabilityResult:
     event_type: str = ""
     subject_anchors: tuple[str, ...] = ()
     title_completeness: str = "incomplete"
+    detail_anchors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -490,10 +519,23 @@ def _is_promotional_or_vague(title: str, evidence_text: str) -> bool:
     )
 
 
+def _first_update_relation(value: str) -> tuple[int, int, str]:
+    normalized = _normalize(value)
+    matches: list[tuple[int, int, str]] = []
+    metric = _UPDATE_RESULT_RELATION.search(normalized)
+    if metric:
+        matches.append((metric.start(), metric.end(), "metric"))
+    for relation, pattern in _UPDATE_BEHAVIOR_PATTERNS:
+        match = pattern.search(normalized)
+        if match:
+            matches.append((match.start(), match.end(), f"behavior:{relation}"))
+    return min(matches, default=(-1, -1, ""), key=lambda item: item[0])
+
+
 def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]:
     normalized = _normalize(value)
-    relation = _UPDATE_RESULT_RELATION.search(normalized)
-    subject_text = normalized[:relation.start()] if relation else ""
+    relation_start, _relation_end, _relation_type = _first_update_relation(normalized)
+    subject_text = normalized[:relation_start] if relation_start >= 0 else ""
     # In comparison headlines, anchors after `vs`/`than` are comparison
     # objects, not alternate subjects for the displayed claim.
     if re.search(
@@ -510,6 +552,10 @@ def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]
             flags=re.I,
         )
     anchors = _organization_anchors(subject_text) | _model_anchors(subject_text)
+    anchors.update(
+        f"entity:{re.sub(r'\s+', '-', match.group(0).casefold())}"
+        for match in _UPDATE_KNOWN_SUBJECT.finditer(subject_text)
+    )
     if anchors:
         return anchors
     for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", subject_text):
@@ -525,8 +571,8 @@ def _update_subject_anchors(value: str, *, publisher_name: str = "") -> set[str]
 
 def _update_named_detail_anchors(value: str) -> set[str]:
     normalized = _normalize(value)
-    relation = _UPDATE_RESULT_RELATION.search(normalized)
-    detail_text = normalized[relation.end():] if relation else ""
+    _relation_start, relation_end, _relation_type = _first_update_relation(normalized)
+    detail_text = normalized[relation_end:] if relation_end >= 0 else ""
     anchors: set[str] = set()
     for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9.+/-]*", detail_text):
         stripped = token.rstrip(".,;:!?")
@@ -552,10 +598,10 @@ def _update_named_detail_anchors(value: str) -> set[str]:
 
 def _update_metric_anchors(value: str) -> set[str]:
     normalized = _normalize(value)
-    relation = _UPDATE_RESULT_RELATION.search(normalized)
-    if not relation:
+    _relation_start, relation_end, relation_type = _first_update_relation(normalized)
+    if relation_type != "metric":
         return set()
-    detail_text = normalized[relation.end():]
+    detail_text = normalized[relation_end:]
     return {
         f"metric:{token.casefold()}"
         for token in re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9-]*", detail_text)
@@ -565,19 +611,32 @@ def _update_metric_anchors(value: str) -> set[str]:
 
 def _update_detail_anchors(value: str) -> set[str]:
     normalized = _normalize(value)
+    _relation_start, _relation_end, relation_type = _first_update_relation(normalized)
+    if not relation_type:
+        return set()
     named = _update_named_detail_anchors(normalized)
     metrics = _update_metric_anchors(normalized)
-    if not _UPDATE_RESULT_RELATION.search(normalized) or not (
-        _UPDATE_MECHANICAL_PROGRESS.search(normalized) or named or metrics
-    ):
-        return set()
-    anchors = _numeric_anchors(normalized)
-    anchors.update(named | metrics)
-    return anchors
+    capabilities = {
+        f"capability:{capability}"
+        for capability, pattern in _UPDATE_CAPABILITY_PATTERNS
+        if pattern.search(normalized)
+    }
+    if relation_type == "metric":
+        if not (_UPDATE_MECHANICAL_PROGRESS.search(normalized) or named or metrics):
+            return set()
+        anchors = _numeric_anchors(normalized)
+        anchors.update(named | metrics)
+        return anchors
+    return named | capabilities
 
 
 def _update_relation_types(value: str) -> set[str]:
     normalized = _normalize(value)
+    _relation_start, _relation_end, relation_type = _first_update_relation(normalized)
+    if relation_type.startswith("behavior:"):
+        return {relation_type}
+    if relation_type != "metric":
+        return set()
     dimensions = {
         dimension
         for dimension, pattern in _UPDATE_DIMENSION_PATTERNS
@@ -662,6 +721,7 @@ def validate_update_source_publishability(
         "ai_update",
         tuple(sorted(subjects)),
         "complete",
+        tuple(sorted(details)),
     )
 
 

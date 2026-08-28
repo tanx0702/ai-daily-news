@@ -28,6 +28,23 @@ def test_chinese_model_version_with_benchmark_rank_is_ai_update():
     assert result.eligible is True
 
 
+def test_named_model_demo_without_metric_is_ai_update():
+    result = evaluate_ai_update_candidate({
+        "title": "H3 Max generates high-quality video faster than it can be watched",
+        "summary": "H3 Max generates high-quality video faster than it can be watched.",
+    })
+
+    assert result.eligible is True
+
+
+def test_named_tool_workflow_without_metric_is_ai_update():
+    result = evaluate_ai_update_candidate({
+        "title": "Claude Code supports background agents across a project workflow",
+    })
+
+    assert result.eligible is True
+
+
 def test_title_only_promotional_post_is_not_ai_update():
     result = evaluate_ai_update_candidate({
         "title": "Register for our AI workshop to learn Model 2.0 benchmark techniques today",

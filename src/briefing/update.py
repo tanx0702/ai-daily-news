@@ -35,6 +35,23 @@ _RESULT_RELATION = re.compile(
     r"outperforms?|beats?|achieves?|achieved)\b|达到|提升|降低|加快|减少|超过",
     re.IGNORECASE,
 )
+_NAMED_UPDATE_SUBJECT = re.compile(
+    r"\b(?:gpt|chatgpt|claude(?:\s+code)?|gemini|llama|qwen|deepseek|mistral|"
+    r"h\d|model\s*v?\d)[\w.+/-]*(?:\s+[A-Z][\w.+/-]*)?\b|"
+    r"\b[A-Za-z][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\b",
+    re.IGNORECASE,
+)
+_CONCRETE_BEHAVIOR = re.compile(
+    r"\b(?:demonstrates?|shows?|tests?|tested|supports?|enables?|allows?|"
+    r"generates?|creates?|runs?|executes?|handles?|processes?)\b|"
+    r"展示|演示|测试|支持|允许|生成|创建|运行|执行|处理",
+    re.IGNORECASE,
+)
+_CONCRETE_CAPABILITY = re.compile(
+    r"\b(?:videos?|images?|audio|code|agents?|workflows?|browsers?|"
+    r"documents?|files?)\b|视频|图像|图片|音频|代码|智能体|工作流|浏览器|文档|文件",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +81,13 @@ def _has_update_anchor(text: str) -> bool:
     technical_object = bool(_TECHNICAL_OBJECT.search(text))
     mechanical_progress = bool(_MECHANICAL_PROGRESS.search(text))
     benchmark_result = bool(_BENCHMARK_RESULT.search(text))
-    return result_relation and (
+    numeric_result = result_relation and (
         (model_version and (mechanical_progress or benchmark_result))
         or (technical_object and mechanical_progress)
     )
+    capability_update = bool(
+        _NAMED_UPDATE_SUBJECT.search(text)
+        and _CONCRETE_BEHAVIOR.search(text)
+        and _CONCRETE_CAPABILITY.search(text)
+    )
+    return numeric_result or capability_update
