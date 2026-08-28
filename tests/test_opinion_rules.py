@@ -95,6 +95,21 @@ def test_ai_live_announcement_without_stance_is_not_an_opinion():
     assert result.reason_codes == ("opinion_no_substantive_claim",)
 
 
+def test_model_release_party_announcement_is_promotional_not_opinion():
+    result = evaluate_opinion_candidate(
+        _candidate(
+            summary=(
+                "I think we should do another party for our next model release, "
+                "because the last party was a lot of fun."
+            )
+        ),
+        _eligible_source(),
+    )
+
+    assert result.eligible is False
+    assert result.reason_codes == ("opinion_promotional_content",)
+
+
 def test_repost_and_missing_reply_context_are_rejected():
     repost = evaluate_opinion_candidate(_candidate(x_is_repost=True), _eligible_source())
     missing_context = evaluate_opinion_candidate(

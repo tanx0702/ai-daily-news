@@ -136,6 +136,18 @@ def test_x_collector_classifies_high_confidence_releases_and_ai_opinions():
     assert non_ai_opinion["content_type"] == "fact_event"
 
 
+def test_x_collector_drops_model_release_party_announcement():
+    candidate = _tweet_to_candidate(
+        _classification_tweet(
+            "I think we should do another party for our next model release, "
+            "because the last party was a lot of fun."
+        ),
+        {"karpathy": _opinion_source()},
+    )
+
+    assert candidate is None
+
+
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):
     now = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(

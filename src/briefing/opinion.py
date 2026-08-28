@@ -15,6 +15,10 @@ _COURSE_PROMOTION = re.compile(
     r"\b(?:(?:our|this|new|ai)\s+course|course\s+(?:registration|enrollment))\b",
     re.IGNORECASE,
 )
+_MODEL_RELEASE_PARTY = re.compile(
+    r"\bparty\s+for\s+(?:our\s+)?(?:next|new)\s+model\s+release\b",
+    re.IGNORECASE,
+)
 _REPOST_PREFIX = re.compile(r"^\s*(?:rt\s+@|转发\s*[:：])", re.IGNORECASE)
 _AI_TOPIC = re.compile(
     r"(?:\b(?:ai|artificial intelligence|machine learning|deep learning|llms?|"
@@ -44,6 +48,15 @@ class OpinionEligibility:
     original_post: bool = False
 
 
+def _is_promotional(text: str) -> bool:
+    lower = text.lower()
+    return bool(
+        any(marker in lower for marker in _PROMOTIONAL)
+        or _COURSE_PROMOTION.search(text)
+        or _MODEL_RELEASE_PARTY.search(text)
+    )
+
+
 def x_content_rejection_reason(candidate: Mapping[str, object]) -> str:
     """Reject reposts and promotional posts before they can become X facts."""
     text = str(candidate.get("summary") or candidate.get("text") or "").strip()
@@ -52,8 +65,7 @@ def x_content_rejection_reason(candidate: Mapping[str, object]) -> str:
         or _REPOST_PREFIX.match(text)
     ):
         return "x_repost"
-    lower = text.lower()
-    if any(marker in lower for marker in _PROMOTIONAL) or _COURSE_PROMOTION.search(text):
+    if _is_promotional(text):
         return "x_promotional_content"
     return ""
 
@@ -83,7 +95,7 @@ def evaluate_opinion_candidate(
             original_post=True,
         )
     lower = text.lower()
-    if any(marker in lower for marker in _PROMOTIONAL) or _COURSE_PROMOTION.search(text):
+    if _is_promotional(text):
         return OpinionEligibility(
             False,
             ("opinion_promotional_content",),
