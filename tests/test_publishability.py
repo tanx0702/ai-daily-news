@@ -435,6 +435,20 @@ def test_source_anchored_title_supports_live_api_on_qwencloud():
     assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
 
 
+def test_display_publishability_accepts_available_translated_as_ke_yong():
+    supported = source(
+        "Qwen3.8-Flash is now available in OpenCode Go 125B/6B · 1M context · multimodal"
+    )
+
+    result = validate_display_publishability(
+        "Qwen3.8-Flash 现已在 OpenCode Go 中可用",
+        "",
+        supported,
+    )
+
+    assert result.accepted is True
+
+
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
     quote = "Mistral office research. OpenAI releases GPT-5.6."
 

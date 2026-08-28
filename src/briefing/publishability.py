@@ -13,7 +13,7 @@ from src.briefing.opinion import x_content_rejection_reason
 
 EVENT_ACTION_MARKERS = {
     "release": (
-        "发布", "推出", "介绍", "上线", "公开", "开放使用", "release", "released", "releases",
+        "发布", "推出", "介绍", "上线", "可用", "公开", "开放使用", "release", "released", "releases",
         "launch", "launched", "launches", "available", "receiving access", "introduce",
         "introduced", "introduces", "introducing", "releasing", "is live",
         "goes live", "went live", "roll out", "rollout",
@@ -125,6 +125,7 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "launch": "发布",
     "launched": "发布",
     "launches": "发布",
+    "available": "可用",
     "is live": "上线",
     "update": "更新",
     "updated": "更新",
@@ -452,6 +453,13 @@ def _claim_frame(value: str) -> _ClaimFrame | None:
     if literal and not subjects:
         subjects.add(literal)
     details = _detail_anchors(after)
+    if action == "release":
+        availability_detail = re.search(
+            r"在\s*([A-Za-z][A-Za-z0-9.+/-]*(?:\s+[A-Za-z][A-Za-z0-9.+/-]*)*)\s*(?:中|上)?\s*可用",
+            normalized,
+        )
+        if availability_detail:
+            details.update(_detail_anchors(availability_detail.group(1)))
     return _ClaimFrame(frozenset({action}), frozenset(subjects), frozenset(details))
 
 
