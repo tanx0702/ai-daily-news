@@ -426,6 +426,15 @@ def test_source_anchored_title_recognizes_hugging_face_as_organization():
     assert source_anchored_title(report) == "OpenAI 发布 Hugging Face"
 
 
+def test_source_anchored_title_supports_live_api_on_qwencloud():
+    supported = source(
+        "Qwen: Qwen3.8-Flash API is live on QwenCloud. "
+        "262K native context, extensible to 1M."
+    )
+
+    assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
+
+
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
     quote = "Mistral office research. OpenAI releases GPT-5.6."
 
