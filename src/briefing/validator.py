@@ -25,6 +25,7 @@ from src.briefing.publishability import (
     EVENT_ACTION_MARKERS,
     asserted_action_types,
     claim_supported_by_quote,
+    source_anchored_title,
     update_claim_supported_by_quote,
     validate_content_source_publishability,
     validate_display_publishability,
@@ -488,6 +489,12 @@ class BriefValidator:
         if (
             draft.content_origin == "llm"
             and _has_untranslated_title_prose(draft.chinese_title)
+        ):
+            return ("translation_failed",)
+        if (
+            draft.content_origin == "source"
+            and not _contains_chinese(source.source_title)
+            and draft.chinese_title != source_anchored_title(source)
         ):
             return ("translation_failed",)
         if any(pattern in display for pattern in _COMMENTARY_PATTERNS):

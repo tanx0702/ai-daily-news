@@ -392,7 +392,7 @@ def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
     assert result.draft.brief == ""
 
 
-def test_second_missing_action_rebuild_uses_safe_source_fallback():
+def test_second_missing_action_rebuild_does_not_use_unsafe_source_fallback():
     original = event(1)
     source = original.canonical_evidence
     sainsburys_event = MergedEvent(
@@ -419,10 +419,10 @@ def test_second_missing_action_rebuild_uses_safe_source_fallback():
         rebuild_reasons={sainsburys_event.event_key: ("title_missing_event_action",)},
     )[0]
 
-    assert result.source_fallback_used is True
-    assert result.reason_code == "title_missing_event_action"
+    assert result.source_fallback_used is False
+    assert result.reason_code is None
     assert result.draft is not None
-    assert result.draft.chinese_title == "Sainsbury's 暂停 cameras"
+    assert result.draft.content_origin == "llm"
 
 
 def test_builder_accepts_title_only_response_without_summary_target():

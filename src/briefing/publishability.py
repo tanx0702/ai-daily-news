@@ -79,6 +79,7 @@ _ORGANIZATION_ALIASES = {
     "microsoft": "microsoft",
     "meta": "meta",
     "nvidia": "nvidia",
+    "hugging face": "hugging face",
     "xai": "xai",
     "x.ai": "xai",
     "cohere": "cohere",
@@ -160,12 +161,6 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "joined": "加入",
     "hire": "入职",
     "hired": "入职",
-}
-_SOURCE_LITERAL_DETAIL_STOPWORDS = {
-    "a", "an", "and", "at", "before", "by", "can", "for", "from", "in", "it",
-    "its", "may", "model", "models", "more", "new", "of", "on", "our", "over",
-    "product", "products", "service", "services", "that", "the", "their", "this",
-    "to", "with", "will", "your",
 }
 _UPDATE_RESULT_RELATION = re.compile(
     r"\b(?:scores?|reaches?|rank(?:s|ed)?|places?|improves?|improved|"
@@ -364,15 +359,6 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
 
-def _literal_detail_matches(value: str) -> tuple[str, ...]:
-    return tuple(
-        match.group(0)
-        for match in re.finditer(r"(?<![a-z0-9])[a-z][a-z0-9.+-]*(?![a-z0-9])", value, re.I)
-        if len(match.group(0)) >= 3
-        and match.group(0).casefold() not in _SOURCE_LITERAL_DETAIL_STOPWORDS
-    )
-
-
 def source_anchored_title(source: SourceEvidence) -> str | None:
     """Build a minimal cross-language title solely from known source anchors."""
     title = _normalize(source.source_title)
@@ -403,7 +389,13 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         None,
     )
     if detail is None:
-        detail = next(iter(_literal_detail_matches(title[end:])), None)
+        safe_detail = re.search(
+            r"@[A-Za-z0-9_]+|(?<![A-Za-z0-9])v\d+(?:\.\d+)+(?![A-Za-z0-9])|"
+            r"(?:\$\s*)?\d+(?:[.,]\d+)?\s*(?:%|x|ms|s|tok/s|tokens/s|billion|million)\b",
+            title[end:],
+            flags=re.I,
+        )
+        detail = safe_detail.group(0) if safe_detail else None
     return f"{subject} {action} {detail}" if detail else None
 
 

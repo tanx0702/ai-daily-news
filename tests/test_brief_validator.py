@@ -552,7 +552,7 @@ def test_validator_accepts_deterministic_cross_language_source_fallback():
     assert result.validated_item.brief_mode == "title_only"
 
 
-def test_validator_accepts_source_fallback_with_literal_detail_anchor():
+def test_validator_rejects_source_fallback_with_generic_english_detail():
     item = event(
         publisher_id="theverge-com",
         publisher_name="The Verge",
@@ -562,7 +562,7 @@ def test_validator_accepts_source_fallback_with_literal_detail_anchor():
         source_title="ChatGPT’s Computer History tracks your clicks and keystrokes",
         evidence_text="ChatGPT’s Computer History tracks your clicks and keystrokes",
     )
-    title = source_anchored_title(item.canonical_evidence)
+    title = "ChatGPT 追踪 clicks"
     generated = draft(
         item,
         chinese_title=title,
@@ -575,12 +575,11 @@ def test_validator_accepts_source_fallback_with_literal_detail_anchor():
 
     result = validator().validate(item, generated, generation_attempt=2, now=NOW)
 
-    assert result.action == "accept"
-    assert result.validation_mode == "rules_only"
-    assert result.validated_item.chinese_title == "ChatGPT 追踪 clicks"
+    assert result.action == "reject"
+    assert result.reason_codes == ("translation_failed",)
 
 
-def test_validator_accepts_source_fallback_with_literal_subject_anchor():
+def test_validator_rejects_source_fallback_with_generic_english_object():
     item = event(
         publisher_id="bbc-co-uk",
         publisher_name="BBC",
@@ -590,7 +589,7 @@ def test_validator_accepts_source_fallback_with_literal_subject_anchor():
         source_title="Sainsbury's pauses AI cameras after shopper ousted",
         evidence_text="Sainsbury's pauses AI cameras after shopper ousted",
     )
-    title = source_anchored_title(item.canonical_evidence)
+    title = "Sainsbury's 暂停 cameras"
     generated = draft(
         item,
         chinese_title=title,
@@ -603,9 +602,8 @@ def test_validator_accepts_source_fallback_with_literal_subject_anchor():
 
     result = validator().validate(item, generated, generation_attempt=2, now=NOW)
 
-    assert result.action == "accept"
-    assert result.validation_mode == "rules_only"
-    assert result.validated_item.chinese_title == "Sainsbury's 暂停 cameras"
+    assert result.action == "reject"
+    assert result.reason_codes == ("translation_failed",)
 
 
 def test_validator_rebuilds_vague_title_once_then_rejects():

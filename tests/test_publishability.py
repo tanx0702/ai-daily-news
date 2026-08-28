@@ -398,22 +398,32 @@ def test_source_anchored_title_requires_subject_and_detail_anchor():
     assert source_anchored_title(source("Nvidia reduces it")) is None
 
 
-def test_source_anchored_title_keeps_literal_detail_anchor_after_action():
-    supported = source(
-        "ChatGPT’s Computer History tracks your clicks and keystrokes"
+def test_source_anchored_title_rejects_generic_english_detail_words():
+    assert source_anchored_title(
+        source("ChatGPT’s Computer History tracks your clicks and keystrokes")
+    ) is None
+    assert source_anchored_title(
+        source("Sainsbury's pauses AI cameras after shopper ousted")
+    ) is None
+
+
+def test_source_anchored_title_uses_x_handle_as_detail_anchor():
+    supported = source("Google AI: Upgrades coming to @FlowbyGoogle")
+
+    title = source_anchored_title(supported)
+
+    assert title == "Google 升级 @FlowbyGoogle"
+    assert validate_display_publishability(title, "", supported).accepted is True
+
+
+def test_source_anchored_title_recognizes_hugging_face_as_organization():
+    acquired = source(
+        "Report: Nvidia to acquire AI model repository Hugging Face for $13 billion"
     )
-    title = source_anchored_title(supported)
+    report = source("OpenAI releases its official report on the Hugging Face breach")
 
-    assert title == "ChatGPT 追踪 clicks"
-    assert validate_display_publishability(title, "", supported).accepted is True
-
-
-def test_source_anchored_title_preserves_publishable_literal_subject():
-    supported = source("Sainsbury's pauses AI cameras after shopper ousted")
-    title = source_anchored_title(supported)
-
-    assert title == "Sainsbury's 暂停 cameras"
-    assert validate_display_publishability(title, "", supported).accepted is True
+    assert source_anchored_title(acquired) == "Nvidia 收购 Hugging Face"
+    assert source_anchored_title(report) == "OpenAI 发布 Hugging Face"
 
 
 def test_claim_cannot_compose_subject_action_and_object_across_sentences():
