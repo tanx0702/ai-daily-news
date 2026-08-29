@@ -463,6 +463,17 @@ def test_source_anchored_title_supports_concrete_ai_news_actions():
         assert source_anchored_title(source(source_title)) == expected
 
 
+def test_model_anchor_handles_long_source_titles_without_backtracking():
+    source_title = (
+        "Google DeepMind: We're rolling out Gemini Omni 1.1 Flash "
+        + "for production video generation. " * 200
+    )
+
+    assert source_anchored_title(source(source_title)) == (
+        "Google DeepMind 上线 Gemini Omni 1.1 Flash"
+    )
+
+
 def test_display_publishability_accepts_available_translated_as_ke_yong():
     supported = source(
         "Qwen3.8-Flash is now available in OpenCode Go 125B/6B · 1M context · multimodal"

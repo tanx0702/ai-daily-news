@@ -352,7 +352,7 @@ def _organization_anchors(value: str) -> set[str]:
 def _model_anchors(value: str) -> set[str]:
     pattern = re.compile(
         r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"(?:[- ]?[a-z]+)*[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
         re.I,
     )
     return {
@@ -384,7 +384,7 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
             matches.append((match.start(), match.group(0)))
     model_pattern = re.compile(
         r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"(?:[- ]?[a-z]+)*[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
         re.I,
     )
     matches.extend((match.start(), match.group(0)) for match in model_pattern.finditer(normalized))
