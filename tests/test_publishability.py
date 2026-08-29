@@ -435,6 +435,34 @@ def test_source_anchored_title_supports_live_api_on_qwencloud():
     assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
 
 
+def test_source_anchored_title_supports_concrete_ai_news_actions():
+    cases = (
+        (
+            "Anthropic gets its first court win over the Pentagon's supply-chain risk label",
+            "Anthropic 法院裁决 Pentagon",
+        ),
+        (
+            "Meta executive leaves for OpenAI as the social media giant faces scrutiny",
+            "Meta 离职 OpenAI",
+        ),
+        (
+            "Qwen: Qwen3.8-Flash is now available in OpenCode Go 125B/6B",
+            "Qwen3.8-Flash 可用 OpenCode Go",
+        ),
+        (
+            "Anthropic releases Claude automated evaluator",
+            "Anthropic 发布 Claude",
+        ),
+        (
+            "Google DeepMind: We're rolling out Gemini Omni 1.1 Flash for video generation",
+            "Google DeepMind 上线 Gemini Omni 1.1 Flash",
+        ),
+    )
+
+    for source_title, expected in cases:
+        assert source_anchored_title(source(source_title)) == expected
+
+
 def test_display_publishability_accepts_available_translated_as_ke_yong():
     supported = source(
         "Qwen3.8-Flash is now available in OpenCode Go 125B/6B · 1M context · multimodal"

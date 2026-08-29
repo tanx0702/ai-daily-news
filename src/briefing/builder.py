@@ -543,7 +543,14 @@ class BriefBuilder:
                 (
                     reason
                     for reason in rebuild_reasons.get(event.event_key, ())
-                    if reason in {"title_claim_not_source_bound", "title_missing_event_action"}
+                    if reason in {
+                        "title_claim_not_source_bound",
+                        "title_missing_event_action",
+                        "title_action_not_source_bound",
+                        "builder_item_malformed",
+                        "builder_item_missing",
+                        "builder_item_duplicate",
+                    }
                 ),
                 None,
             )
@@ -554,6 +561,7 @@ class BriefBuilder:
                     allow_anchored_english_title=True,
                 )
                 if attempt >= 2
+                and event.canonical_evidence.content_type != "attributed_opinion"
                 and fallback_reason is not None
                 else None
             )

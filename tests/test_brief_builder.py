@@ -410,6 +410,39 @@ def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
     assert result.draft.brief == ""
 
 
+def test_second_malformed_rebuild_uses_safe_source_fallback_for_english_release():
+    original = event(1)
+    source = original.canonical_evidence
+    release_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="github-com",
+            publisher_name="Github",
+            channel="github",
+            authority="community",
+            is_official=False,
+            official_identity_source="",
+            source_title="vm0-ai/vm0 releases runner-rs-v0.178.5",
+            evidence_text="vm0-ai/vm0 releases runner-rs-v0.178.5 with release notes.",
+            url=source.url,
+            published_at=source.published_at,
+            content_type="fact_event",
+        ),
+    )
+    builder, _ = builder_with_responses([{"items": []}])
+
+    result = builder.build_batch(
+        [release_event],
+        attempts={release_event.event_key: 1},
+        rebuild_reasons={release_event.event_key: ("builder_item_malformed",)},
+    )[0]
+
+    assert result.source_fallback_used is True
+    assert result.reason_code == "builder_item_malformed"
+    assert result.draft is not None
+    assert result.draft.chinese_title == "vm0-ai/vm0 发布 v0.178.5"
+
+
 def test_second_missing_action_rebuild_does_not_use_unsafe_source_fallback():
     original = event(1)
     source = original.canonical_evidence

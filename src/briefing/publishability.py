@@ -16,7 +16,7 @@ EVENT_ACTION_MARKERS = {
         "发布", "推出", "介绍", "上线", "可用", "公开", "开放使用", "release", "released", "releases",
         "launch", "launched", "launches", "available", "receiving access", "introduce",
         "introduced", "introduces", "introducing", "releasing", "is live",
-        "goes live", "went live", "roll out", "rollout",
+        "goes live", "went live", "roll out", "rolling out", "rollout",
     ),
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
@@ -91,6 +91,11 @@ _ORGANIZATION_ALIASES = {
     "微软": "microsoft",
     "英伟达": "nvidia",
 }
+_KNOWN_SURFACE_ENTITIES = (
+    "claude",
+    "opencode go",
+    "pentagon",
+)
 _GENERIC_SUBJECTS = {
     "a company", "an ai company", "company", "the company", "this company",
     "team", "the team", "organization", "某公司", "一家公司", "多家公司",
@@ -129,6 +134,15 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "launches": "发布",
     "available": "可用",
     "is live": "上线",
+    "releasing": "发布",
+    "rolling out": "上线",
+    "leaves": "离职",
+    "left": "离职",
+    "departs": "离职",
+    "departed": "离职",
+    "court rules": "法院裁定",
+    "court win": "法院裁决",
+    "in court": "法院裁决",
     "update": "更新",
     "updated": "更新",
     "updates": "更新",
@@ -338,7 +352,7 @@ def _organization_anchors(value: str) -> set[str]:
 def _model_anchors(value: str) -> set[str]:
     pattern = re.compile(
         r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"[- ]?[a-z]*\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        r"(?:[- ]?[a-z]+)*[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
         re.I,
     )
     return {
@@ -352,6 +366,14 @@ def _model_anchors(value: str) -> set[str]:
 def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     normalized = _normalize(value)
     matches: list[tuple[int, str]] = []
+    for alias in _KNOWN_SURFACE_ENTITIES:
+        match = re.search(
+            rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])",
+            normalized,
+            flags=re.I,
+        )
+        if match:
+            matches.append((match.start(), match.group(0)))
     for alias in sorted(_ORGANIZATION_ALIASES, key=len, reverse=True):
         match = re.search(
             rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])",
@@ -362,7 +384,7 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
             matches.append((match.start(), match.group(0)))
     model_pattern = re.compile(
         r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"[- ]?[a-z]*\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
+        r"(?:[- ]?[a-z]+)*[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
         re.I,
     )
     matches.extend((match.start(), match.group(0)) for match in model_pattern.finditer(normalized))
