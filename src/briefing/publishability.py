@@ -55,7 +55,8 @@ EVENT_ACTION_MARKERS = {
     "layoff": ("裁员", "layoffs", "laid off", "cuts jobs"),
     "policy": (
         "颁布禁令", "出台禁令", "发布禁令", "监管裁决", "bans", "banned",
-        "prohibits", "regulated", "issues a ban",
+        "prohibits", "regulated", "issues a ban", "court rules", "court win",
+        "call for action", "联合呼吁",
     ),
     "infrastructure": (
         "建设", "部署", "扩建", "扩大", "builds", "built", "deploys", "deployed",
@@ -65,6 +66,7 @@ EVENT_ACTION_MARKERS = {
         "披露漏洞", "发现漏洞", "修复漏洞", "discloses", "disclosed",
         "discovers", "discovered", "fixes", "fixed",
     ),
+    "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
     "open_source": ("开源", "open source", "open-source", "open-sources"),
 }
 
@@ -164,6 +166,10 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "joined": "加入",
     "hire": "入职",
     "hired": "入职",
+    "court rules": "法院裁定",
+    "court win": "法院裁决",
+    "call for action": "联合呼吁",
+    "is now at": "加入",
 }
 _UPDATE_RESULT_RELATION = re.compile(
     r"\b(?:scores?|reaches?|rank(?:s|ed)?|places?|improves?|improved|"
@@ -224,7 +230,7 @@ _UPDATE_BEHAVIOR_PATTERNS = (
     ),
     (
         "support",
-        re.compile(r"\b(?:supports?|enables?|allows?)\b|支持|允许|可用于", re.I),
+        re.compile(r"\b(?:supports?|enables?|allows?|lets?)\b|支持|允许|可用于", re.I),
     ),
     ("generate", re.compile(r"\b(?:generates?|creates?)\b|生成|创建", re.I)),
     ("run", re.compile(r"\b(?:runs?|executes?)\b|运行|执行", re.I)),
@@ -238,6 +244,7 @@ _UPDATE_CAPABILITY_PATTERNS = (
     ("agent", re.compile(r"\bagents?\b|智能体", re.I)),
     ("workflow", re.compile(r"\bworkflows?\b|工作流", re.I)),
     ("browser", re.compile(r"\bbrowsers?\b|浏览器", re.I)),
+    ("control", re.compile(r"\bcontrol\b|控制", re.I)),
     ("document", re.compile(r"\b(?:documents?|files?)\b|文档|文件", re.I)),
 )
 _UPDATE_KNOWN_SUBJECT = re.compile(

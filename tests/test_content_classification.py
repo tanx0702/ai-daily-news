@@ -1,5 +1,7 @@
 from dataclasses import replace
 
+import pytest
+
 from src.briefing.classification import classify_source_content
 from src.briefing.models import SourceEvidence
 
@@ -29,6 +31,22 @@ def test_formal_release_stays_fact_event():
 
     assert result.content_type == "fact_event"
     assert result.reason_codes == ("classified_fact_event",)
+
+
+@pytest.mark.parametrize(
+    "title, expected_type",
+    [
+        ("Anthropic gets its first court win over the Pentagon supply-chain label", "fact_event"),
+        ("Barret Zoph is now at Google", "fact_event"),
+        ("Gemini Omni 1.1 Flash lets you build with more control", "ai_update"),
+        ("OpenAI, Anthropic and Google call for action against rogue AI", "fact_event"),
+        ("Anthropic's new hardware standard lets AI agents control the physical world", "ai_update"),
+    ],
+)
+def test_concrete_ai_news_actions_are_not_classified_as_non_news(title, expected_type):
+    result = classify_source_content(source_evidence(source_title=title, evidence_text=title))
+
+    assert result.content_type == expected_type
 
 
 def test_professional_media_demo_becomes_ai_update():
