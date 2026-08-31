@@ -398,6 +398,42 @@ def test_source_anchored_title_requires_subject_and_detail_anchor():
     assert source_anchored_title(source("Nvidia reduces it")) is None
 
 
+def test_source_anchored_title_keeps_single_protected_product_token():
+    cases = (
+        ("Cursor launches Origin code hosting platform", "Cursor 发布 Origin"),
+        ("OpenAI acquires Mac Minis, Mac Studios for AI training", "OpenAI 收购 Mac"),
+    )
+
+    for source_title, expected in cases:
+        supported = source(source_title)
+        title = source_anchored_title(supported)
+
+        assert title == expected
+        assert validate_display_publishability(title, "", supported).accepted is True
+
+
+def test_source_anchored_title_keeps_explicit_ai_agent_and_duration():
+    supported = source(
+        "AI Accelerator Designed, Verified, and Deployed from Scratch in 2 Weeks by AI"
+    )
+
+    title = source_anchored_title(supported)
+
+    assert title == "AI 在 2 周内完成部署"
+    assert validate_display_publishability(title, "", supported).accepted is True
+
+
+def test_source_anchored_title_keeps_developer_llm_use_and_departure():
+    supported = source(
+        "Debian developer resigns after corporate LLM use without disclosure wins vote"
+    )
+
+    title = source_anchored_title(supported)
+
+    assert title == "Debian 开发者在 LLM 使用后辞职"
+    assert validate_display_publishability(title, "", supported).accepted is True
+
+
 def test_source_anchored_title_rejects_generic_english_detail_words():
     assert source_anchored_title(
         source("ChatGPT’s Computer History tracks your clicks and keystrokes")

@@ -22,6 +22,26 @@ _DEGRADATION_REASONS = {
     "quality_llm_invalid_response",
     "rules_only_used",
 }
+_SOURCE_QUALITY_REASONS = {
+    "github_activity_only",
+    "metadata_only_evidence",
+    "missing_evidence",
+    "missing_source_url",
+    "non_news_content",
+    "opinion_author_not_allowed",
+    "source_missing_event_detail",
+    "source_missing_subject",
+    "stale_item",
+    "update_missing_concrete_detail",
+    "update_missing_subject",
+}
+_PIPELINE_LOSS_REASONS = {
+    "builder_item_duplicate",
+    "builder_item_malformed",
+    "builder_item_missing",
+    "invalid_builder_response",
+    "translation_failed",
+}
 
 
 class BriefBuilderProtocol(Protocol):
@@ -233,6 +253,8 @@ def run_brief_pipeline(
     diagnostics: Counter[str] = Counter(
         reserve_fill_count=0,
         source_fallback_count=0,
+        source_quality_reject_count=0,
+        pipeline_loss_reject_count=0,
         rules_only_count=0,
         rules_and_llm_count=0,
         build_attempt_count=0,
@@ -582,6 +604,13 @@ def run_brief_pipeline(
     for audit_entry in audit_entries:
         if audit_entry["final_state"] == "not_evaluated":
             _finalize_audit(audit_entry, "not_selected", ("target_reached",))
+    rejection_classes = Counter(
+        str(entry["reject_class"])
+        for entry in audit_entries
+        if entry.get("final_state") == "rejected" and "reject_class" in entry
+    )
+    diagnostics["source_quality_reject_count"] = rejection_classes["source_quality"]
+    diagnostics["pipeline_loss_reject_count"] = rejection_classes["pipeline_loss"]
     diagnostics["rules_only_count"] = sum(
         item.validation_mode == "rules_only" for item in selector.accepted_items
     )
@@ -650,6 +679,20 @@ def _finalize_audit(
 ) -> None:
     entry["final_state"] = state
     entry["final_reason_codes"] = list(reason_codes)
+    reject_class = _reject_class(reason_codes) if state == "rejected" else None
+    if reject_class is None:
+        entry.pop("reject_class", None)
+    else:
+        entry["reject_class"] = reject_class
+
+
+def _reject_class(reason_codes: Sequence[str]) -> str | None:
+    reasons = set(reason_codes)
+    if reasons & _SOURCE_QUALITY_REASONS:
+        return "source_quality"
+    if reasons & _PIPELINE_LOSS_REASONS:
+        return "pipeline_loss"
+    return None
 
 
 def _record_audit_attempt(

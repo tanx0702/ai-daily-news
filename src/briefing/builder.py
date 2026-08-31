@@ -546,6 +546,7 @@ class BriefBuilder:
                     if reason in {
                         "title_claim_not_source_bound",
                         "title_missing_event_action",
+                        "title_missing_event_detail",
                         "title_action_not_source_bound",
                         "builder_item_malformed",
                         "builder_item_missing",

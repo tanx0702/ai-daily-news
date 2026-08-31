@@ -548,6 +548,50 @@ def test_pipeline_keeps_per_event_audit_for_rebuilt_and_rejected_candidates():
     assert rebuilt["final_state"] == "accepted"
 
 
+def test_pipeline_classifies_determinate_source_and_builder_rejections():
+    class MixedBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            results = []
+            for value in events:
+                attempt = attempts.get(value.event_key, 0) + 1
+                if value.event_key == "event-1":
+                    results.append(
+                        BuildResult(
+                            value.event_key,
+                            attempt,
+                            None,
+                            "builder_item_malformed",
+                        )
+                    )
+                else:
+                    results.append(
+                        BuildResult(value.event_key, attempt, draft(value), None)
+                    )
+            return tuple(results)
+
+    class SourceQualityValidator:
+        def validate(self, value, built, *, generation_attempt):
+            return ValidationResult(
+                "reject",
+                ("source_missing_event_detail",),
+                "rules_only",
+            )
+
+    result = run_brief_pipeline(
+        [event(1), event(2)],
+        (),
+        config(candidate_pool_size=2),
+        MixedBuilder(),
+        SourceQualityValidator(),
+    )
+
+    audit = {entry["event"]["event_key"]: entry for entry in result.audit_entries}
+    assert audit["event-1"]["reject_class"] == "pipeline_loss"
+    assert audit["event-2"]["reject_class"] == "source_quality"
+    assert result.diagnostics["pipeline_loss_reject_count"] == 1
+    assert result.diagnostics["source_quality_reject_count"] == 1
+
+
 def test_pipeline_counts_title_only_items_and_audits_removed_summary_sentences():
     class DistinctDeduplicator:
         diagnostics = {}

@@ -185,6 +185,20 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "call for action": "联合呼吁",
     "is now at": "加入",
 }
+_GENERIC_PRODUCT_TOKENS = {
+    "a", "an", "ai", "api", "app", "code", "model", "new", "platform",
+    "product", "service", "system", "the", "tool",
+}
+_AI_AGENT_DEPLOYMENT = re.compile(
+    r"\bdeployed\b.*?\bin\s+(?P<duration>\d+)\s+weeks?\s+by\s+"
+    r"(?P<agent>[A-Za-z][A-Za-z0-9.+-]*)\b",
+    re.IGNORECASE,
+)
+_DEVELOPER_LLM_DEPARTURE = re.compile(
+    r"^(?P<subject>[A-Za-z][A-Za-z0-9.+-]*)\s+developer\s+resigns\s+after\s+"
+    r".*?\bLLM\s+use\b",
+    re.IGNORECASE,
+)
 _UPDATE_RESULT_RELATION = re.compile(
     r"\b(?:scores?|reaches?|rank(?:s|ed)?|places?|improves?|improved|"
     r"increases?|increased|decreases?|decreased|higher|lower|faster|slower|"
@@ -391,11 +405,29 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
 
+def _single_protected_product_token(value: str) -> str | None:
+    """Return one source-declared product token, never generic English prose."""
+    for match in re.finditer(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9.+-]{2,}", value):
+        token = match.group(0)
+        if token.casefold() not in _GENERIC_PRODUCT_TOKENS:
+            return token
+    return None
+
+
 def source_anchored_title(source: SourceEvidence) -> str | None:
     """Build a minimal cross-language title solely from known source anchors."""
     title = _normalize(source.source_title)
     if not title or any("\u4e00" <= char <= "\u9fff" for char in title):
         return None
+    developer_departure = _DEVELOPER_LLM_DEPARTURE.match(title)
+    if developer_departure:
+        return f"{developer_departure.group('subject')} 开发者在 LLM 使用后辞职"
+    agent_deployment = _AI_AGENT_DEPLOYMENT.search(title)
+    if agent_deployment:
+        return (
+            f"{agent_deployment.group('agent')} 在 "
+            f"{agent_deployment.group('duration')} 周内完成部署"
+        )
     action_matches = [
         (match.start(), match.end(), translation)
         for marker, translation in _SOURCE_ACTION_TRANSLATIONS.items()
@@ -428,6 +460,8 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
             flags=re.I,
         )
         detail = safe_detail.group(0) if safe_detail else None
+    if detail is None:
+        detail = _single_protected_product_token(title[end:])
     return f"{subject} {action} {detail}" if detail else None
 
 
@@ -459,6 +493,9 @@ def _literal_subject_surface(value: str) -> str:
 def _detail_anchors(value: str) -> set[str]:
     anchors = _organization_anchors(value) | _model_anchors(value) | _numeric_anchors(value)
     residual = _normalize(value).casefold()
+    if re.search(r"\bllm\s*使用", residual, flags=re.IGNORECASE):
+        anchors.update({"literal:llm", "literal:use"})
+        residual = re.sub(r"\bllm\s*使用", " ", residual, flags=re.IGNORECASE)
     for markers in EVENT_ACTION_MARKERS.values():
         for marker in markers:
             residual = re.sub(re.escape(marker.casefold()), " ", residual)
@@ -477,11 +514,40 @@ def _claim_frame(value: str) -> _ClaimFrame | None:
         return None
     before = normalized[:start]
     after = normalized[end:]
-    subjects = _organization_anchors(before) | _model_anchors(before)
-    literal = _literal_subject(before)
+    timed_deployment = re.fullmatch(
+        r"(?P<subject>[A-Za-z][A-Za-z0-9.+-]*)\s*在\s*\d+\s*周内完成?",
+        before,
+    )
+    developer_departure = re.fullmatch(
+        r"(?P<subject>[A-Za-z][A-Za-z0-9.+-]*)\s*开发者在\s*"
+        r"(?P<detail>LLM\s*使用)后",
+        before,
+        flags=re.IGNORECASE,
+    )
+    if timed_deployment:
+        subject_text = timed_deployment.group("subject")
+    elif developer_departure:
+        subject_text = f"{developer_departure.group('subject')} developer"
+    else:
+        subject_text = before
+    subjects = _organization_anchors(subject_text) | _model_anchors(subject_text)
+    literal = _literal_subject(subject_text)
     if literal and not subjects:
         subjects.add(literal)
+    agent_match = re.search(
+        r"\bby\s+([A-Za-z][A-Za-z0-9.+-]*)\b",
+        after,
+        flags=re.IGNORECASE,
+    )
+    if agent_match:
+        agent = _literal_subject(agent_match.group(1))
+        if agent:
+            subjects.add(agent)
     details = _detail_anchors(after)
+    if timed_deployment:
+        details.update(_numeric_anchors(before))
+    if developer_departure:
+        details.update(_detail_anchors(developer_departure.group("detail")))
     if action == "release":
         availability_detail = re.search(
             r"在\s*([A-Za-z][A-Za-z0-9.+/-]*(?:\s+[A-Za-z][A-Za-z0-9.+/-]*)*)\s*(?:中|上)?\s*可用",

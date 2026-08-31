@@ -410,6 +410,75 @@ def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
     assert result.draft.brief == ""
 
 
+def test_second_unbound_rebuild_uses_single_protected_product_fallback():
+    original = event(1)
+    source = original.canonical_evidence
+    cursor_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="venturebeat-com",
+            publisher_name="VentureBeat",
+            channel="rss",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title="Cursor launches Origin code hosting platform",
+            evidence_text="Cursor launches Origin code hosting platform",
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    payload = {"items": [generated_item(1, cursor_event.event_key, source.url)]}
+    builder, _ = builder_with_responses([payload])
+
+    result = builder.build_batch(
+        [cursor_event],
+        attempts={cursor_event.event_key: 1},
+        rebuild_reasons={cursor_event.event_key: ("title_claim_not_source_bound",)},
+    )[0]
+
+    assert result.source_fallback_used is True
+    assert result.draft is not None
+    assert result.draft.chinese_title == "Cursor 发布 Origin"
+
+
+def test_second_missing_detail_rebuild_uses_safe_developer_llm_fallback():
+    original = event(1)
+    source = original.canonical_evidence
+    debian_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="lists-debian-org",
+            publisher_name="Debian",
+            channel="hacker_news",
+            authority="community",
+            is_official=False,
+            official_identity_source="",
+            source_title=(
+                "Debian developer resigns after corporate LLM use without disclosure wins vote"
+            ),
+            evidence_text=(
+                "Debian developer resigns after corporate LLM use without disclosure wins vote"
+            ),
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    payload = {"items": [generated_item(1, debian_event.event_key, source.url)]}
+    builder, _ = builder_with_responses([payload])
+
+    result = builder.build_batch(
+        [debian_event],
+        attempts={debian_event.event_key: 1},
+        rebuild_reasons={debian_event.event_key: ("title_missing_event_detail",)},
+    )[0]
+
+    assert result.source_fallback_used is True
+    assert result.reason_code == "title_missing_event_detail"
+    assert result.draft is not None
+    assert result.draft.chinese_title == "Debian 开发者在 LLM 使用后辞职"
+
+
 def test_second_malformed_rebuild_uses_safe_source_fallback_for_english_release():
     original = event(1)
     source = original.canonical_evidence

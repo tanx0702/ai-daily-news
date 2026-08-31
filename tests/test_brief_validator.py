@@ -552,6 +552,69 @@ def test_validator_accepts_deterministic_cross_language_source_fallback():
     assert result.validated_item.brief_mode == "title_only"
 
 
+def test_validator_accepts_explicit_ai_agent_deployment_fallback():
+    item = event(
+        publisher_id="arxiv-org",
+        publisher_name="arXiv",
+        authority="research",
+        is_official=False,
+        official_identity_source="",
+        source_title=(
+            "AI Accelerator Designed, Verified, and Deployed from Scratch in 2 Weeks by AI"
+        ),
+        evidence_text=(
+            "AI Accelerator Designed, Verified, and Deployed from Scratch in 2 Weeks by AI"
+        ),
+    )
+    title = source_anchored_title(item.canonical_evidence)
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(title, item.canonical_evidence.source_title, item.canonical_evidence.url),
+        ),
+        content_origin="source",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=2, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validated_item.chinese_title == "AI 在 2 周内完成部署"
+
+
+def test_validator_accepts_developer_llm_departure_fallback():
+    item = event(
+        publisher_id="lists-debian-org",
+        publisher_name="Debian",
+        channel="hacker_news",
+        authority="community",
+        is_official=False,
+        official_identity_source="",
+        source_title=(
+            "Debian developer resigns after corporate LLM use without disclosure wins vote"
+        ),
+        evidence_text=(
+            "Debian developer resigns after corporate LLM use without disclosure wins vote"
+        ),
+    )
+    title = source_anchored_title(item.canonical_evidence)
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(title, item.canonical_evidence.source_title, item.canonical_evidence.url),
+        ),
+        content_origin="source",
+    )
+
+    result = validator().validate(item, generated, generation_attempt=2, now=NOW)
+
+    assert result.action == "accept"
+    assert result.validated_item.chinese_title == "Debian 开发者在 LLM 使用后辞职"
+
+
 def test_validator_rejects_source_fallback_with_generic_english_detail():
     item = event(
         publisher_id="theverge-com",
