@@ -82,16 +82,6 @@
             "tier": "media"
         },
         {
-            "name": "36氪 AI",
-            "url": "https://36kr.com/feed",
-            "region": "china"
-        },
-        {
-            "name": "机器之心",
-            "url": "https://www.jiqizhixin.com/rss",
-            "region": "china"
-        },
-        {
             "name": "量子位",
             "url": "https://www.qbitai.com/feed",
             "region": "china"

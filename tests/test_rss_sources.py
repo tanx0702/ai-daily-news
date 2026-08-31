@@ -60,3 +60,5 @@ def test_rss_sources_include_verified_fact_plane_feeds():
         "region": "overseas",
         "tier": "media",
     }
+    assert "36氪 AI" not in by_name
+    assert "机器之心" not in by_name

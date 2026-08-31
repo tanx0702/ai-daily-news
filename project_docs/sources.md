@@ -22,7 +22,7 @@
 3. 在 `tests/test_rss_sources.py` 或对应采集测试中覆盖配置结构。
 4. 同步本文件和 `project_docs/architecture.md`，必要时同步环境变量说明。
 
-RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间窗口过滤和中文 bigram/英文 Jaccard 标题去重。采集器失败不会阻断其它 RSS 源。当前在原有官方与媒体源之外，补充了 `Hugging Face Blog`、`MIT Technology Review AI` 和 `Ars Technica AI` 三个已验证的专题 feed，用来增加非 X 的官方技术信息和专业媒体事实供给；它们仍须通过统一发布时间、发布性和事实门禁。
+RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间窗口过滤和中文 bigram/英文 Jaccard 标题去重。采集器失败不会阻断其它 RSS 源。当前在原有官方与媒体源之外，补充了 `Hugging Face Blog`、`MIT Technology Review AI` 和 `Ars Technica AI` 三个已验证的专题 feed，用来增加非 X 的官方技术信息和专业媒体事实供给；它们仍须通过统一发布时间、发布性和事实门禁。`36氪 AI` 和 `机器之心` 已从配置移除：其公开 URL 持续返回 HTML 而非 RSS，旧的通用 RSSHub 路径回退持续返回 403，且来源健康账本从未记录成功，不能作为稳定来源。
 
 每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。
 
