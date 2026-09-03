@@ -42,7 +42,7 @@
    -> 中文标题可保留产品名、模型名、缩写、仓库路径、版本号和单位；残留普通英文语法、动作或叙述词时按 translation_failed 重建一次，不能仅凭标题含有汉字放行
    -> 供应商可返回空字符串 brief；一至两项非空字符串列表只机械拼接后重新校验，三项以上或其它结构仍拒绝
    -> title quote ID 缺失、未知或结构错误时按畸形条目重建；title 绑定有效但任一 brief quote ID 缺失或未知时删除全部摘要绑定，记录 `brief_quote_unresolved` 并降级为 `title_only`，不得模糊匹配或绑定整篇 evidence_text
-   -> 第二次失败若使用完整中文原文回退，独立记录 source_fallback_used，并保留触发回退的原始原因码；对英文来源的标题绑定、动作不匹配、条目缺失/畸形或重复等可重建错误，第二次仍失败时只允许用已登记机构、模型或产品，或动作后的单个显式产品式 Title Case token、完整原文主体、确定性动作，以及 `@handle`、数字/版本等受控细节锚点生成 title_only 回退；明确的 `deployed … in <number> weeks by <agent>` 只可保留该 agent、时长和部署动作，`<project> developer resigns after … LLM use` 只可保留项目、developer、LLM、使用后与辞职。禁止用 coming、repository、official 等普通英文名词补足标题，也不补写摘要
+   -> 第二次失败若使用完整中文原文回退，独立记录 source_fallback_used，并保留触发回退的原始原因码；对英文来源的标题绑定、动作不匹配、条目缺失/畸形或重复等可重建错误，第二次仍失败时只允许用已登记机构、模型或产品，或动作后的单个显式产品式 Title Case token、完整原文主体、确定性动作，以及 `@handle`、数字/版本等受控细节锚点生成 title_only 回退；明确的 `deployed … in <number> weeks by <agent>` 只可保留该 agent、时长和部署动作，`<project> developer resigns after … LLM use` 只可保留项目、developer、LLM、使用后与辞职。禁止用 coming、repository、official、AI-powered 等普通英文名词或描述性形容词补足标题，也不补写摘要
    -> 确定性规则核验展示目标、来源 URL、逐字证据引文、名称/数字/动作和唯一事件；候选预检与最终 Validator 共用按 `content_type` 的来源发布性分派，发布性、绑定和跨语言 rules_only 校验共享同一动作词表，包括法律裁决、人事加入、联合呼吁和产品能力动作，不能各自维护漂移版本；英语 `available` 可译为“可用”，且仅允许“在原文产品名中/上可用”的受控中文语序，产品名必须逐字保留
    -> 摘要句引用仅落在原始标题范围时逐句删除；全部删除后转为 title_only，有增量句时保持 expanded
    -> 质量 LLM 只做只读语义增强；缺失、超时或无效响应时，硬规则通过的条目自动使用 rules_only，不请求人工复核

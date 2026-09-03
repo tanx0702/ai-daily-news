@@ -186,7 +186,7 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "is now at": "加入",
 }
 _GENERIC_PRODUCT_TOKENS = {
-    "a", "an", "ai", "api", "app", "code", "model", "new", "platform",
+    "a", "an", "ai", "ai-powered", "api", "app", "code", "model", "new", "platform",
     "product", "service", "system", "the", "tool",
 }
 _AI_AGENT_DEPLOYMENT = re.compile(

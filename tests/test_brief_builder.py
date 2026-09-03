@@ -545,6 +545,37 @@ def test_second_missing_action_rebuild_does_not_use_unsafe_source_fallback():
     assert result.draft.content_origin == "llm"
 
 
+def test_second_rebuild_rejects_adjectival_english_source_fallback():
+    original = event(1)
+    source = original.canonical_evidence
+    unsafe_event = MergedEvent(
+        event_key=original.event_key,
+        canonical_evidence=SourceEvidence(
+            publisher_id="neowin-net",
+            publisher_name="Neowin",
+            channel="hacker_news",
+            authority="community",
+            is_official=False,
+            official_identity_source="",
+            source_title="Vim Classic launches its first AI-powered repository",
+            evidence_text="Vim Classic launches its first AI-powered repository",
+            url=source.url,
+            published_at=source.published_at,
+        ),
+    )
+    builder, _ = builder_with_responses([{"items": []}])
+
+    result = builder.build_batch(
+        [unsafe_event],
+        attempts={unsafe_event.event_key: 1},
+        rebuild_reasons={unsafe_event.event_key: ("builder_item_malformed",)},
+    )[0]
+
+    assert result.draft is None
+    assert result.reason_code == "builder_item_missing"
+    assert result.source_fallback_used is False
+
+
 def test_builder_accepts_title_only_response_without_summary_target():
     item = event(1)
     payload = generated_item(1, item.event_key, item.canonical_evidence.url)

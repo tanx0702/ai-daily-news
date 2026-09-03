@@ -441,6 +441,9 @@ def test_source_anchored_title_rejects_generic_english_detail_words():
     assert source_anchored_title(
         source("Sainsbury's pauses AI cameras after shopper ousted")
     ) is None
+    assert source_anchored_title(
+        source("Vim Classic launches its first AI-powered repository")
+    ) is None
 
 
 def test_source_anchored_title_uses_x_handle_as_detail_anchor():
