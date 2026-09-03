@@ -179,7 +179,7 @@ class SemanticDuplicateReviewer:
                 },
             ],
             temperature=0,
-            max_tokens=250,
+            max_tokens=3000,
             response_format={"type": "json_object"},
             **structured_llm_request_options(self.quality_llm_config),
         )

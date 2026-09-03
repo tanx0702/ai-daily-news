@@ -91,7 +91,7 @@ def test_reviewer_accepts_strict_same_event_response():
     assert result.reason_code is None
     assert instance.diagnostics["semantic_llm_success_count"] == 1
     assert client.calls[0]["response_format"] == {"type": "json_object"}
-    assert client.calls[0]["max_tokens"] <= 300
+    assert client.calls[0]["max_tokens"] == 3000
 
 
 def test_semantic_reviewer_uses_low_reasoning_effort_for_glm_5_3_flash():
