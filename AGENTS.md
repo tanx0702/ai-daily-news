@@ -25,7 +25,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 ```
 
 - `src/main.py` 是生产日报主入口；`app.py` 是 Flask 服务入口。
-- 采集层包含 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照。RSS 请求状态写入 `runtime/source-state.db` 的本地 SQLite 账本，但账本只用于诊断且不能作为事实证据；X 通过 GitHub Runner 生成的 `x-feed.json` 接入，不是生产任务直接调用 X API。
+- 采集层包含 RSS、Hacker News、GitHub、Hugging Face、arXiv 和 X 快照。RSS 请求状态写入 `runtime/source-state.db` 的本地 SQLite 账本，但账本只用于诊断且不能作为事实证据；X 默认读取 GitHub Runner 生成的 `x-feed.json`。配置 `X_FEED_LOCAL_PATH` 时优先读取符合 schema 和时效要求的本机快照，仅在本机快照缺失、损坏或失效时回退远程快照；有效空快照不触发回退。认证采集由独立 runner 执行，日报生产任务不直接调用 X API。
 - `src/agents`、`src/domain`、`src/services`、`src/workflows` 支持 v2/shadow/editorial 诊断和反馈闭环；它们不能改变已经接受的事实简报或 `DraftDecision`。
 - `src/tencent_scf/` 是历史兼容代码，当前 Docker 主流程不依赖它。
 - `docs/` 是 nginx 公开/运行时产物目录，不是维护文档目录；长期说明放在 `project_docs/`。
