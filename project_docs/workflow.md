@@ -38,6 +38,8 @@ python -m pytest -q tests\test_app.py tests\test_deployment_config.py
 python -m pytest -q
 ```
 
+根目录 `pytest.ini` 以 `testpaths = tests` 限定默认收集范围，避免仓库其它位置的散落 `test_*.py`（`tmp/`、`logs/`、残留产物目录等）被误收集；显式传入路径仍优先于 `testpaths`。
+
 所有文档/代码变更都运行：
 
 ```powershell
