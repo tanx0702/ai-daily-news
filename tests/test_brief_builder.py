@@ -1203,3 +1203,69 @@ def test_missing_llm_configuration_uses_source_or_translation_failure_without_ca
     assert english.draft is None
     assert english.reason_code == "content_llm_unavailable"
     assert client.chat.completions.calls == []
+
+
+# --- Task 4: bounded private structural diagnostics for malformed items -----
+
+
+def test_malformed_detail_distinguishes_structural_failure_classes():
+    cases = (
+        ("unexpected_extra_field", lambda p: p.update({"extra": 1}), "unexpected_fields:extra"),
+        ("index_mismatch", lambda p: p.update({"index": 99}), "index_mismatch"),
+        ("event_key_mismatch", lambda p: p.update({"event_key": "event-other"}), "event_key_mismatch"),
+        ("title_empty", lambda p: p.update({"chinese_title": "   "}), "title_empty"),
+        ("title_quote_unresolved", lambda p: p["evidence_targets"][0].update({"source_quote_id": "q999"}), "title_quote_id_unresolved"),
+        ("binding_fields_invalid", lambda p: p["evidence_targets"][0].update({"source_quote": "x"}), "binding_fields_invalid"),
+        ("display_target_invalid", lambda p: p.update({"brief": []}), "brief_type_invalid"),
+    )
+
+    for label, mutate, expected in cases:
+        item = event(1)
+        payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+        mutate(payload)
+        builder, _ = builder_with_responses([{"items": [payload]}])
+
+        result = builder.build_batch([item], attempts={})[0]
+
+        assert result.draft is None, label
+        assert result.reason_code == "builder_item_malformed", label
+        assert result.malformed_detail == expected, f"{label}: {result.malformed_detail!r}"
+
+
+def test_malformed_detail_is_empty_for_successful_builds():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.malformed_detail == ""
+
+
+def test_malformed_detail_never_carries_raw_response_or_source_text():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["extra_source_text"] = item.canonical_evidence.source_title
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.reason_code == "builder_item_malformed"
+    assert item.canonical_evidence.source_title not in result.malformed_detail
+    assert "https://" not in result.malformed_detail
+    assert len(result.malformed_detail) <= 120
+
+
+def test_title_only_downgrade_survives_when_brief_quote_is_unresolved():
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    payload["evidence_targets"][1]["source_quote_id"] = "q999"
+    builder, _ = builder_with_responses([{"items": [payload]}])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is not None
+    assert result.draft.brief_mode == "title_only"
+    assert result.draft.brief_reason == "brief_quote_unresolved"
+    assert result.malformed_detail == ""

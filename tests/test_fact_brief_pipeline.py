@@ -1,3 +1,5 @@
+import json
+
 from src.briefing.builder import BuildResult
 from src.briefing.config import BriefingConfig
 from src.briefing.clusterer import ClusteredDuplicate
@@ -1446,3 +1448,52 @@ def test_pipeline_merges_builder_and_validator_service_diagnostics():
     assert result.diagnostics["content_llm_timeout_count"] == 1
     assert result.diagnostics["quality_llm_success_count"] == 3
     assert result.diagnostics["quality_llm_circuit_open_count"] == 2
+
+
+def test_pipeline_records_malformed_detail_in_private_audit():
+    """The structural detail must reach the private audit and nothing public."""
+
+    class DetailBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return tuple(
+                BuildResult(
+                    value.event_key,
+                    attempts.get(value.event_key, 0) + 1,
+                    None,
+                    "builder_item_malformed",
+                    malformed_detail="binding_fields_invalid",
+                )
+                for value in events
+            )
+
+    class NeverValidator:
+        def validate(self, value, built, *, generation_attempt):
+            raise AssertionError("malformed items must not reach the validator")
+
+    result = run_brief_pipeline(
+        [event(1)],
+        (),
+        config(candidate_pool_size=1),
+        DetailBuilder(),
+        NeverValidator(),
+    )
+
+    audit = result.audit_entries[0]
+    assert audit["final_reason_codes"] == ["builder_item_malformed"]
+    details = [
+        attempt["build"].get("malformed_detail")
+        for attempt in audit["attempts"]
+    ]
+    assert "binding_fields_invalid" in details
+
+    payload = json.dumps(
+        {
+            "accepted_items": [item.to_dict() for item in result.accepted_items],
+            "decision": result.decision.to_dict(),
+            "diagnostics": dict(result.diagnostics),
+            "exclusions": dict(result.exclusions),
+        },
+        ensure_ascii=False,
+        default=str,
+    )
+    assert "malformed_detail" not in payload

@@ -26,6 +26,13 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。
 
+账本按 `(source_name, source_url)` 记账，因此从 `config/rss_sources.json` 移除的来源会留下不再更新的历史行；判断当前来源健康时必须先与配置交叉对照，不能只看连续失败次数。已移除来源的历史行不构成现行采集失败。
+
+两个仍在配置中的来源存在已知限流/上游问题，属外部供给议题，不通过放宽门禁或增加抓取预算解决：
+
+- `VentureBeat AI`：默认 `python-requests` UA 会被上游按 429 拒绝，只有浏览器 UA 才返回 `text/xml` RSS。采集器当前使用 `Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)`，仍会被 429；后续如需恢复，属于来源请求标识调整，须单独评估并保持有界降级。
+- `Hacker News AI`（`hnrss.org`）：上游持续返回 502 Bad Gateway，与本项目请求头无关，只能等待上游恢复或更换等价来源。
+
 ## 社区和研究来源
 
 ### Hacker News

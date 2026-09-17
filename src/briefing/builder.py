@@ -49,6 +49,7 @@ class BuildResult:
     reason_code: str | None
     circuit_open: bool = False
     source_fallback_used: bool = False
+    malformed_detail: str = ""
 
 
 def _default_client_factory(**kwargs):
@@ -224,9 +225,16 @@ def _strict_item(
     *,
     event: MergedEvent,
     input_index: int,
-) -> BuiltBrief | None:
+) -> tuple[BuiltBrief | None, str]:
+    """Parse one strict builder item.
+
+    Returns ``(draft, malformed_detail)``. When the item is malformed the draft is
+    ``None`` and ``malformed_detail`` is a stable, bounded structural category so
+    private audits can distinguish failure classes without exposing the raw model
+    response or source text.
+    """
     if not isinstance(raw, dict):
-        return None
+        return None, "item_not_object"
     required = {
         "index",
         "event_key",
@@ -235,22 +243,28 @@ def _strict_item(
         "evidence_targets",
     }
     if set(raw) != required:
-        return None
+        missing = sorted(required - set(raw))
+        extra = sorted(set(raw) - required)
+        if missing:
+            return None, f"missing_fields:{','.join(missing)}"
+        return None, f"unexpected_fields:{','.join(extra)}"
     if isinstance(raw["index"], bool) or not isinstance(raw["index"], int):
-        return None
-    if raw["index"] != input_index or raw["event_key"] != event.event_key:
-        return None
+        return None, "index_not_int"
+    if raw["index"] != input_index:
+        return None, "index_mismatch"
+    if raw["event_key"] != event.event_key:
+        return None, "event_key_mismatch"
     if not isinstance(raw["chinese_title"], str) or not raw["chinese_title"].strip():
-        return None
+        return None, "title_empty"
     brief = _normalize_brief_value(raw["brief"])
     if brief is None:
-        return None
+        return None, "brief_type_invalid"
     target_claims = display_targets(raw["chinese_title"], brief)
     if not 0 <= len(target_claims) - 1 <= 2:
-        return None
+        return None, "display_target_count_invalid"
     raw_bindings = raw["evidence_targets"]
     if not isinstance(raw_bindings, list) or not raw_bindings:
-        return None
+        return None, "evidence_targets_invalid"
 
     quote_by_id = dict(_source_quotes(event.canonical_evidence.evidence_text))
     bindings: list[EvidenceBinding] = []
@@ -264,22 +278,22 @@ def _strict_item(
             "target",
             "source_quote_id",
         }:
-            return None
+            return None, "binding_fields_invalid"
         if not isinstance(binding["target"], str) or not binding["target"].strip():
-            return None
+            return None, "binding_target_empty"
         target = binding["target"].strip()
         if target not in target_claims:
-            return None
+            return None, "binding_target_unknown"
         provided_targets.add(target)
         if (
             not isinstance(binding["source_quote_id"], str)
             or not binding["source_quote_id"].strip()
         ):
-            return None
+            return None, "binding_quote_id_empty"
         quote = quote_by_id.get(binding["source_quote_id"].strip())
         if quote is None:
             if target == "title":
-                return None
+                return None, "title_quote_id_unresolved"
             unresolved_brief = True
             continue
         resolved = EvidenceBinding(
@@ -291,7 +305,7 @@ def _strict_item(
         bindings_by_target[target].append(resolved)
     title_bindings = bindings_by_target["title"]
     if "title" not in provided_targets or not title_bindings:
-        return None
+        return None, "title_binding_missing"
     brief_targets = set(target_claims) - {"title"}
     if brief_targets - provided_targets:
         unresolved_brief = True
@@ -306,17 +320,20 @@ def _strict_item(
     else:
         brief_reason = "" if brief else "brief_empty"
 
-    return BuiltBrief(
-        event_key=event.event_key,
-        input_index=input_index,
-        chinese_title=raw["chinese_title"].strip(),
-        brief=brief,
-        evidence_bindings=tuple(bindings),
-        content_origin="llm",
-        brief_mode="expanded" if brief else "title_only",
-        brief_reason=brief_reason,
-        content_type=event.canonical_evidence.content_type,
-        opinion_author=event.canonical_evidence.opinion_author,
+    return (
+        BuiltBrief(
+            event_key=event.event_key,
+            input_index=input_index,
+            chinese_title=raw["chinese_title"].strip(),
+            brief=brief,
+            evidence_bindings=tuple(bindings),
+            content_origin="llm",
+            brief_mode="expanded" if brief else "title_only",
+            brief_reason=brief_reason,
+            content_type=event.canonical_evidence.content_type,
+            opinion_author=event.canonical_evidence.opinion_author,
+        ),
+        "",
     )
 
 
@@ -534,11 +551,13 @@ class BriefBuilder:
         for index, event in enumerate(events, 1):
             attempt = current_attempts[event.event_key]
             candidates = by_index.get(index, [])
-            draft = (
-                _strict_item(candidates[0], event=event, input_index=index)
-                if len(candidates) == 1
-                else None
-            )
+            malformed_detail = ""
+            if len(candidates) == 1:
+                draft, malformed_detail = _strict_item(
+                    candidates[0], event=event, input_index=index
+                )
+            else:
+                draft = None
             fallback_reason = next(
                 (
                     reason
@@ -616,6 +635,7 @@ class BriefBuilder:
                             index,
                             attempt,
                             failure_reason=reason_code,
+                            malformed_detail=malformed_detail,
                         )
                     )
                 else:
@@ -626,6 +646,11 @@ class BriefBuilder:
                             None,
                             reason_code,
                             self._circuit_open,
+                            malformed_detail=(
+                                malformed_detail
+                                if reason_code == "builder_item_malformed"
+                                else ""
+                            ),
                         )
                     )
         return results
@@ -647,6 +672,7 @@ class BriefBuilder:
         attempt: int,
         *,
         failure_reason: str = "translation_failed",
+        malformed_detail: str = "",
     ) -> BuildResult:
         draft = _source_fallback(event, input_index)
         if draft is not None:
@@ -664,4 +690,7 @@ class BriefBuilder:
             None,
             failure_reason,
             self._circuit_open,
+            malformed_detail=(
+                malformed_detail if failure_reason == "builder_item_malformed" else ""
+            ),
         )

@@ -436,6 +436,7 @@ def run_brief_pipeline(
                     draft=None,
                     validation=None,
                     source_fallback_used=result.source_fallback_used,
+                    malformed_detail=result.malformed_detail,
                 )
                 if result.generation_attempt < 2:
                     rebuild_reasons[event.event_key] = (reason_code,)
@@ -704,6 +705,7 @@ def _record_audit_attempt(
     validation: object | None,
     build_responses: Sequence[BuildResult] = (),
     source_fallback_used: bool = False,
+    malformed_detail: str = "",
 ) -> None:
     attempts = entry["attempts"]
     assert isinstance(attempts, list)
@@ -712,6 +714,10 @@ def _record_audit_attempt(
         "source_fallback_used": source_fallback_used,
         "draft": draft.to_dict() if draft is not None else None,
     }
+    # Bounded structural category for malformed builder items. This stays in the
+    # private briefing audit only and never carries raw model text or source text.
+    if malformed_detail and reason_code == "builder_item_malformed":
+        build["malformed_detail"] = malformed_detail
     if build_responses:
         build["responses"] = [
             _build_response_to_dict(response)

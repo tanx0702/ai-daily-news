@@ -38,7 +38,7 @@
    -> Python 先从规范 evidence_text 生成带稳定编号的逐字引用片段；内容 LLM 返回 title、零至两个 brief 展示目标及对应 quote ID，builder 再确定性恢复原文 quote、规范 URL 和完整 claim 绑定，LLM 不复制 quote 或 URL
    -> 内容 LLM 的初次生成和重建都使用单条请求，每个请求只包含一个候选；不新增并发或批大小环境变量
    -> X 首次生成失败后的重建还须携带失败原因以及 @handle、名称和数字保护锚点
-   -> 内容 LLM 超时、不可用、无效 JSON/schema、响应缺项、条目畸形、重复 index 与有效结构下的未翻译输出分别记录，不能统一压缩为 translation_failed
+   -> 内容 LLM 超时、不可用、无效 JSON/schema、响应缺项、条目畸形、重复 index 与有效结构下的未翻译输出分别记录，不能统一压缩为 translation_failed；顶层原因码保持 `builder_item_malformed` 不变，私有审计另记有界结构分类（`malformed_detail`：额外/缺失字段、index 或 event_key 不匹配、标题为空、brief 类型错误、展示目标数量错误、绑定字段非法、绑定目标未知、quote ID 无法解析等），只写稳定类别，不写原始模型响应或来源文本
    -> 中文标题可保留产品名、模型名、缩写、仓库路径、版本号和单位；残留普通英文语法、动作或叙述词时按 translation_failed 重建一次，不能仅凭标题含有汉字放行
    -> 供应商可返回空字符串 brief；一至两项非空字符串列表只机械拼接后重新校验，三项以上或其它结构仍拒绝
    -> title quote ID 缺失、未知或结构错误时按畸形条目重建；title 绑定有效但任一 brief quote ID 缺失或未知时删除全部摘要绑定，记录 `brief_quote_unresolved` 并降级为 `title_only`，不得模糊匹配或绑定整篇 evidence_text
