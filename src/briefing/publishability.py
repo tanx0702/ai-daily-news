@@ -51,12 +51,18 @@ EVENT_ACTION_MARKERS = {
         "headed out the door", "steps down", "resigns", "resigned",
     ),
     "organizational_change": ("解散", "disband", "disbanded", "disbands"),
-    "joining": ("入职", "加入", "joins", "joined", "hired"),
     "layoff": ("裁员", "layoffs", "laid off", "cuts jobs"),
     "policy": (
         "颁布禁令", "出台禁令", "发布禁令", "监管裁决", "bans", "banned",
         "prohibits", "regulated", "issues a ban", "court rules", "court win",
         "call for action", "联合呼吁",
+    ),
+    "litigation": (
+        "起诉", "提起诉讼", "提告", "状告", "被起诉", "指控",
+        "sue", "sues", "sued", "suing", "lawsuit", "lawsuits", "files suit",
+        "file suit", "filed suit", "files a lawsuit", "filed a lawsuit",
+        "take to court", "takes to court", "took to court", "taken to court",
+        "takes openai to court", "legal action", "alleging",
     ),
     "infrastructure": (
         "建设", "部署", "扩建", "扩大", "builds", "built", "deploys", "deployed",
@@ -125,6 +131,13 @@ _METADATA_PATTERNS = (
     re.compile(r"\bComments:\s*\d+", re.I),
 )
 _NEGATION = re.compile(r"\b(?:not|never|without|would not)\b|未|没有|并未|不会")
+# Planned/conditional framing: `may sue` / `considering suing` are not asserted actions.
+_PLANNED_ACTION = re.compile(
+    r"\b(?:may|might|could|would|should|considering|consider|plans?\s+to|planning\s+to|"
+    r"intends?\s+to|expected\s+to|set\s+to|threatens?\s+to|threatened\s+to|"
+    r"weighing|mulls?|mulling|poised\s+to|about\s+to|likely\s+to|rumou?red\s+to)\b"
+    r"|可能|或将|拟|计划|打算|考虑|预计将|有望"
+)
 _SOURCE_ACTION_TRANSLATIONS = {
     "release": "发布",
     "released": "发布",
@@ -325,6 +338,8 @@ def _contains_marker(value: str, marker: str) -> bool:
 def asserted_action_types(value: str) -> frozenset[str]:
     normalized = _normalize(value).casefold()
     if _NEGATION.search(normalized):
+        return frozenset()
+    if _PLANNED_ACTION.search(normalized):
         return frozenset()
     return frozenset(
         action

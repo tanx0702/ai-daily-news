@@ -557,3 +557,48 @@ def test_ai_update_rejects_unregistered_metric_dimension_swap():
         "",
         source_evidence,
     ).accepted is False
+
+
+# --- Task 1: explicit sue/lawsuit action recognition -------------------------
+
+_SUE_TITLES = (
+    "Seattle Times and Newsday are the latest publications to sue OpenAI and Microsoft",
+    "Two more news organizations are suing OpenAI and Microsoft over the supposed use of their journalism to train AI.",
+    "Seattle Times and Newsday sue OpenAI and Microsoft for infringement",
+    "The Seattle Times and Newsday are just the latest plaintiffs to take OpenAI to court, alleging copyright infringement.",
+)
+
+
+def test_explicit_sue_action_is_recognized():
+    for title in _SUE_TITLES:
+        actions = publishability.asserted_action_types(title)
+        assert actions, f"no action recognized for: {title}"
+        assert "litigation" in actions, f"{sorted(actions)} for: {title}"
+
+
+def test_sue_action_is_recognized_on_source_publishability():
+    for title in _SUE_TITLES:
+        result = validate_source_publishability(
+            source(title, publisher_name="Seattle Times", publisher_id="seattletimes-com")
+        )
+        assert result.accepted is True, f"{result.reason_codes} for: {title}"
+
+
+def test_planned_or_negated_sue_actions_are_not_asserted():
+    for title in (
+        "OpenAI may sue Microsoft over licensing",
+        "The company is considering suing its former partner",
+        "OpenAI did not sue Microsoft",
+        "OpenAI would not sue Microsoft",
+    ):
+        assert "litigation" not in publishability.asserted_action_types(title), title
+
+
+def test_sue_title_must_bind_action_and_subject_to_source_quote():
+    result = validate_display_publishability(
+        "OpenAI 起诉 Microsoft",
+        "",
+        source("OpenAI releases GPT-5.6", publisher_name="Seattle Times"),
+    )
+
+    assert result.accepted is False
