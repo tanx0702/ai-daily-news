@@ -602,3 +602,52 @@ def test_sue_title_must_bind_action_and_subject_to_source_quote():
     )
 
     assert result.accepted is False
+
+
+# --- Task 3: source fallback must not fabricate a subject from prose ---------
+
+_CONTAMINATED_X_TITLE = (
+    "Nando de Freitas: Today we're releasing data on models accelerating research "
+    "at OpenAI. Recursive self-improvement could be the most important contributor "
+    "to AI capabilities over the next few years,"
+)
+
+
+def test_source_fallback_rejects_prose_subject_contamination():
+    result = source_anchored_title(source(
+        _CONTAMINATED_X_TITLE,
+        publisher_name="Nando de Freitas",
+        publisher_id="nandodefreitas",
+        channel="x",
+        authority="research",
+    ))
+
+    assert result is None, result
+
+
+def test_source_fallback_never_emits_residual_english_prose():
+    contaminated = (
+        "Nando de Freitas: Today we're releasing data on models accelerating research at OpenAI.",
+        "The team said they are shipping a new model at Meta today.",
+        "In a thread about agents, the author describes releasing tools at Google.",
+    )
+
+    for title in contaminated:
+        result = source_anchored_title(source(title, publisher_name="Nando de Freitas"))
+        assert result is None, f"{title!r} -> {result!r}"
+        if result:
+            assert "Today" not in result
+            assert "we're" not in result
+
+
+def test_source_fallback_still_accepts_registered_anchors():
+    cases = (
+        "OpenAI releases GPT-5.6 Ultrafast",
+        "Anthropic launches Claude 4.5 Opus",
+        "NVIDIA releases CUDA 12.8",
+    )
+
+    for title in cases:
+        result = source_anchored_title(source(title, publisher_name="OpenAI"))
+        assert result, f"legitimate anchor lost for: {title}"
+        assert "发布" in result or "上线" in result

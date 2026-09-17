@@ -212,6 +212,15 @@ _DEVELOPER_LLM_DEPARTURE = re.compile(
     r".*?\bLLM\s+use\b",
     re.IGNORECASE,
 )
+# A source-fallback subject must be a bound surface, not a prose fragment. This
+# rejects `Nando de Freitas: Today we're` style residuals: attribution prefixes,
+# possessives/contractions, clause punctuation and ordinary English function words.
+_RESIDUAL_PROSE_SUBJECT = re.compile(
+    r"(?:[:\u2014]|--|\bwe['\u2019]?(?:re|ve|d|ll)\b|['\u2019]s\b|"
+    r"\b(?:today|yesterday|tomorrow|now|here|there|this|that|these|those|"
+    r"the|a|an|we|our|us|they|their|it|its|he|she|his|her|i|you|your)\b)",
+    re.IGNORECASE,
+)
 _UPDATE_RESULT_RELATION = re.compile(
     r"\b(?:scores?|reaches?|rank(?:s|ed)?|places?|improves?|improved|"
     r"increases?|increased|decreases?|decreased|higher|lower|faster|slower|"
@@ -502,7 +511,14 @@ def _literal_subject_surface(value: str) -> str:
     subject = _normalize(value).strip(" ,，:：-—")
     subject = re.sub(r"^(?:在|于|截至)\s*", "", subject)
     subject = re.sub(r"\b(?:has|have|had|is|are|was|were|will)\s*$", "", subject, flags=re.I)
-    return subject if _literal_subject(subject) else ""
+    if not _literal_subject(subject):
+        return ""
+    # A fallback subject must be a mechanically bound surface, never residual
+    # prose: reject source attribution prefixes, possessives, clause punctuation
+    # and ordinary English function words that signal a sentence fragment.
+    if _RESIDUAL_PROSE_SUBJECT.search(subject):
+        return ""
+    return subject
 
 
 def _detail_anchors(value: str) -> set[str]:
