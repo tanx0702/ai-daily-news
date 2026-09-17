@@ -158,3 +158,60 @@ def test_opinion_metadata_round_trips_in_source_evidence():
         _candidate(content_type="fact_event", opinion_original_post=False),
         trusted_x_collector=True,
     ).content_type == "fact_event"
+
+
+# --- Task 2: technical-process wording must not grant opinion eligibility ---
+
+
+def test_tutorial_technical_process_is_not_an_opinion_stance():
+    result = evaluate_opinion_candidate(
+        _candidate(
+            summary=(
+                "In this video I explain how LLMs generate text, including logits and "
+                "next-token predictions."
+            )
+        ),
+        _eligible_source(),
+    )
+
+    assert result.eligible is False, result.stance_type
+    assert result.stance_type == ""
+    assert "opinion_no_substantive_claim" in result.reason_codes
+
+
+def test_technical_nouns_do_not_impersonate_stance_markers():
+    # `predictions`/`models` are technical nouns, not the author's prediction stance.
+    cases = (
+        "This overview covers how models are trained and what predictions they emit.",
+        "The talk walks through token sampling and the predictions produced by the model.",
+    )
+
+    for summary in cases:
+        result = evaluate_opinion_candidate(_candidate(summary=summary), _eligible_source())
+        assert result.eligible is False, f"{summary} -> {result.stance_type}"
+
+
+def test_real_author_prediction_stance_is_still_eligible():
+    cases = (
+        "I predict AI agents will replace most routine office workflows within two years.",
+        "I think the next generation of open models will likely beat closed ones soon.",
+    )
+
+    for summary in cases:
+        result = evaluate_opinion_candidate(_candidate(summary=summary), _eligible_source())
+        assert result.eligible is True, f"{summary} -> {result.reason_codes}"
+        assert result.stance_type
+
+
+def test_technical_context_describing_software_guides_is_not_a_stance():
+    result = evaluate_opinion_candidate(
+        _candidate(
+            summary=(
+                "This guide shows how the AI agent framework expects tool calls and "
+                "compares token limits across models."
+            )
+        ),
+        _eligible_source(),
+    )
+
+    assert result.eligible is False, result.stance_type

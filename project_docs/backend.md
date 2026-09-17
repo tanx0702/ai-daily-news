@@ -55,6 +55,7 @@ Flask 路由       HTTP/XML 解析、签名/认证、响应映射、调用服务
 - `DraftDecision.action` 是微信草稿创建的唯一前置决策；旧的 `publication.ready`、`quality_state`、来源占比阻断、9 分目标和人工复核不是生产控制。
 - `DraftExecution` 仅报告 `draft_created`、`dry_run`、`blocked` 或 `failed`；`SKIP_WECHAT_DRAFT=1` 是唯一安全干跑边界，被 block 或失败的运行必须返回非零。
 - 微信发布适配必须接收媒体解析后的展示项，先上传封面和可信新闻配图，再使用返回的微信 URL 调用确定性渲染器生成最终正文；封面文件缺失、上传结果缺少 `media_id`/CDN URL，或最终正文首图不是该 URL 时，不得调用 draft/add。`draft/add` 超时、断连、无效响应等模糊结果统一记为 `draft_create_uncertain` 并停止，不能盲目重试；只有明确拒绝才允许有界重试。
+- 观点资格（`src/briefing/opinion.py`）必须先通过 `opinion_eligible`、原帖、AI 主题和长度检查；立场检测按词边界匹配而非子串，且要求作者本人的实质立场：技术过程名词（`predictions`、`predicted`、`expected`、`compared` 等）不得冒充预测或比较立场，教程和说明性表述（`in this video I explain how …`、`this guide shows …`、`教程`）不构成可署名立场，显式第一人称立场（`I think`/`I predict`/`我认为`）正常通过。纯教程/技术说明必须被拒绝为 `opinion_no_substantive_claim`，不得因该资格修复而绕道成为事实或动态，也不得靠增加 LLM 调用补救确定性资格错误。
 - 发布性动作词表（`EVENT_ACTION_MARKERS`）是分类、来源预检、逐字绑定和跨语言 rules_only 的共享入口，禁止各自维护漂移版本。`litigation` 只识别已发生的起诉动作；计划或条件表述与否定表述返回空动作集合，`起诉` 不得被翻译升级为胜诉或裁决。
 - 语义事件审计应记录 `duplicate_of`、`relationship`、`comparison_mode`、`semantic_duplicate`、`semantic_duplicate_unresolved` 以及 reviewer 的成功、超时、无效、不可用、熔断和预算耗尽计数；聚类时并入 related evidence 的每个来源还要生成独立的 `candidate_type=clustered_duplicate` 记录，不得记录完整模型响应。
 - `.env`、API key、微信凭证、日志、`docs/` 生成物和真实外部响应不得提交。

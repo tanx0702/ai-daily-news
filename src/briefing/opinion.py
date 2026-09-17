@@ -37,6 +37,28 @@ _STANCE_MARKERS = {
         "i think", "i believe", "in my view", "认为", "我觉得", "我相信", "观点", "需要",
     ),
 }
+# Technical-process nouns that contain a stance marker as a substring but never
+# express the author's own stance (e.g. "predictions" inside "predict").
+_TECHNICAL_NOUNS = re.compile(
+    r"\b(?:predictions?|predicted|predictors?|expectations?|expected|"
+    r"comparisons?|compared|comparison|versus|models?|modeling)\b",
+    re.IGNORECASE,
+)
+# Instructional/courseware framing: explaining how something works is not a stance.
+_INSTRUCTIONAL = re.compile(
+    r"(?:\b(?:in\s+this\s+(?:video|talk|post|thread|guide|article)|"
+    r"i\s+explain\s+how|this\s+(?:guide|tutorial|overview|walkthrough|video)\s+"
+    r"(?:shows?|covers?|explains?|walks)|"
+    r"how\s+to\s+build|walks?\s+through)\b|教程|讲解|本文介绍|本文将介绍|如何实现)",
+    re.IGNORECASE,
+)
+# An explicit first-person stance verb: the author asserting their own view.
+_FIRST_PERSON_STANCE = re.compile(
+    r"\b(?:i\s+(?:think|believe|predict|expect|argue|suspect|bet)|"
+    r"my\s+(?:view|take|prediction)|in\s+my\s+view)\b"
+    r"|我认为|我觉得|我相信|我预计|我的看法",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,14 +140,7 @@ def evaluate_opinion_candidate(
             context_complete=context_complete or not reply_to,
             original_post=True,
         )
-    stance_type = next(
-        (
-            stance
-            for stance, markers in _STANCE_MARKERS.items()
-            if any(marker in lower for marker in markers)
-        ),
-        "",
-    )
+    stance_type = _detect_stance(text)
     if len(words) < 10 or not stance_type:
         return OpinionEligibility(
             False,
@@ -140,3 +155,43 @@ def evaluate_opinion_candidate(
         context_complete=context_complete or not reply_to,
         original_post=True,
     )
+
+
+def _marker_in_text(text: str, marker: str) -> bool:
+    """Match a stance marker on word boundaries for Latin text, substring for CJK."""
+    if any("\u4e00" <= char <= "\u9fff" for char in marker):
+        return marker in text
+    return bool(re.search(rf"(?<![a-z0-9]){re.escape(marker)}(?![a-z0-9])", text, re.I))
+
+
+def _detect_stance(text: str) -> str:
+    """Return the author's stance type, or '' when there is no substantive stance.
+
+    Technical-process wording must not impersonate a stance: ``predictions`` is a
+    technical noun, not the author predicting something. Instructional framing
+    that merely explains how something works carries no attributable stance.
+    """
+    lowered = text.lower()
+    markers_hit = {
+        stance: tuple(
+            marker for marker in markers if _marker_in_text(lowered, marker)
+        )
+        for stance, markers in _STANCE_MARKERS.items()
+    }
+    if not any(markers_hit.values()):
+        return ""
+    first_person = bool(_FIRST_PERSON_STANCE.search(text))
+    # A first-person stance verb is decisive evidence of the author's own view.
+    if first_person:
+        for stance in ("opinion", "critique", "prediction", "comparison"):
+            if markers_hit.get(stance):
+                return stance
+        return "opinion"
+    # Without an explicit author stance, instructional or purely technical
+    # wording must not be upgraded into an opinion.
+    if _INSTRUCTIONAL.search(text) or _TECHNICAL_NOUNS.search(text):
+        return ""
+    for stance, markers in _STANCE_MARKERS.items():
+        if markers_hit[stance]:
+            return stance
+    return ""
