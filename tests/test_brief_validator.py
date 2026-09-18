@@ -1181,6 +1181,11 @@ def test_translated_cross_language_title_rejects_fabricated_entity():
             "Anthropic 表示 Claude 现在承担四分之一构建其下一代 AI 模型的工作",
             "Anthropic says Claude now leads a quarter of work building its next AI models",
         ),
+        (
+            # "研究所" is a synonym of "研究院"; the table must accept either.
+            "Google DeepMind 成立研究所以拓宽 AGI 辩论",
+            "Google DeepMind launches institute to widen the AGI debate",
+        ),
     ],
 )
 def test_translated_news_headlines_bind_cross_language(chinese_title, source_title):

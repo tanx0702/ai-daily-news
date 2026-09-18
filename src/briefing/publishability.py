@@ -235,6 +235,8 @@ _SOURCE_ACTION_TRANSLATIONS = {
 # deterministic fallback title and the cross-language display binding.
 CROSS_LANGUAGE_NOUN_EQUIVALENTS = {
     "研究院": ("institute",),
+    "研究所": ("institute", "lab", "laboratory"),
+    "实验室": ("lab", "laboratory"),
     "研究中心": ("research center", "research centre"),
     "辩论": ("debate",),
     "合作伙伴关系": ("partnership",),
