@@ -566,6 +566,23 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(diagnostics["publishability_preflight_passed"], 2)
         self.assertEqual(diagnostics["publishability_preflight_rejected"], 0)
 
+    def test_rss_requests_use_a_browser_compatible_user_agent(self):
+        """VentureBeat rejects bot UAs with HTTP 429; a browser UA returns XML."""
+        captured = {}
+
+        def _fake_get(url, timeout=None, headers=None):
+            captured["headers"] = headers or {}
+            return _RssResponse()
+
+        with patch.object(collector.requests, "get", side_effect=_fake_get):
+            collector._fetch_single_outcome("VentureBeat AI", "https://vb.test/feed", 5)
+
+        ua = captured["headers"].get("User-Agent", "")
+        self.assertTrue(ua, "a User-Agent must be sent")
+        self.assertIn("Mozilla/5.0", ua)
+        # A bot-style token is what triggers the 429 upstream.
+        self.assertNotIn("AIDailyNewsBot", ua)
+
 
 if __name__ == "__main__":
     unittest.main()

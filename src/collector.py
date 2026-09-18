@@ -26,6 +26,18 @@ _TRUTHY = frozenset({"1", "true", "yes", "on"})
 _FALSY = frozenset({"0", "false", "no", "off"})
 DEFAULT_X_FEED_URL = "https://raw.githubusercontent.com/tanx0702/ai-daily-news/x-feed/x-feed.json"
 
+# RSS 请求标识。部分专业媒体（如 VentureBeat）会以 HTTP 429 拒绝含 bot 标识的
+# User-Agent，只在浏览器式 UA 下返回 XML；实测 `Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)`
+# 与带同样 bot token 的变体均被 429，故不携带 bot token。失败仍按既有有界降级处理，
+# 不引入 UA 轮换、代理或反爬规避。
+_RSS_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+}
+
 
 def _env_enabled(name: str, default: bool = True) -> bool:
     """
@@ -676,9 +688,7 @@ def _fetch_single_outcome(name: str, url: str, timeout: int) -> dict:
         "error": "",
     }
     try:
-        resp = requests.get(url, timeout=timeout, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)"
-        })
+        resp = requests.get(url, timeout=timeout, headers=_RSS_HEADERS)
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         logger.warning("Source %s timed out after %ds", name, timeout)

@@ -34,6 +34,7 @@ Flask app.py -> 读取 latest.json，处理微信回调和受保护的 shadow �
 ## 必须遵守
 
 - 外部 RSS、X、GitHub、HF、arXiv、LLM、图片和微信 API 失败必须记录并降级，不能让单条故障无日志地中断整期日报。
+- RSS 请求使用 `_RSS_HEADERS` 的浏览器式 User-Agent 与 XML `Accept`；部分专业媒体按 UA 限流（带 bot token 的 UA 被 429）。该请求标识不得携带 bot token，也不得演变为 UA 轮换、代理或反爬规避；只调整标识，不放宽任何门禁、超时、重试预算或候选池容量。
 - LLM 只能翻译和摘要原始证据，不能新增事实；GitHub 活跃度不能写成正式发布证据。
 - 发布性动作词表是分类、预检、绑定和跨语言 rules_only 的共享入口，不得各自维护漂移版本。`litigation` 只识别已发生的起诉动作（`sue` 系列、`lawsuit`、`files/filed suit`、`take/took/taken … to court`、`起诉`/`提起诉讼`），计划或条件表述（`may sue`、`considering suing`、`plans to sue`、`可能`/`或将`/`拟`）和否定表述都不构成已断言动作，`起诉` 不得被翻译升级为胜诉或裁决。分类拒绝的顶层原因码（如 `non_news_content`）是既有契约，不可区分的拒绝必须在私有审计给出有界子原因（当前 `instructional_content` 对应标题命中非新闻模式，`no_asserted_action` 对应标题缺少动作词），该子原因只写稳定类别，不进入公开产物、微信草稿或决策载荷。
 - 候选池截断前必须先用规范来源证据统一分类并冻结 `content_type`，再复用按类型分派的确定性来源发布性规则，并与最终 Validator 共用同一分派入口。无效证据和分类器明确拒绝的教程、推广、传闻等候选跳过内容 LLM；其它来源预检失败只降低尝试顺序，不能替代或放宽最终事实门禁。分类细节只写入私有 briefing 审计，公开产物仅保留聚合诊断。GitHub 只有具备项目说明和 release notes 的正式 release 可作为候选；社区 GitHub release 在最终尝试队列中只能排在非 GitHub 事件之后作为候补，不能仅凭新鲜度或 stars 抢占新闻名额。HF 的 likes/downloads/lastModified 只能标记为模型活跃度，arXiv 超时、429 和 5xx 最多有界重试一次后降级。

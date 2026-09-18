@@ -28,10 +28,10 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 账本按 `(source_name, source_url)` 记账，因此从 `config/rss_sources.json` 移除的来源会留下不再更新的历史行；判断当前来源健康时必须先与配置交叉对照，不能只看连续失败次数。已移除来源的历史行不构成现行采集失败。
 
-两个仍在配置中的来源存在已知限流/上游问题，属外部供给议题，不通过放宽门禁或增加抓取预算解决：
+仍有两个来源需要关注，都是上游供给议题，不通过放宽门禁或增加抓取预算解决：
 
-- `VentureBeat AI`：默认 `python-requests` UA 会被上游按 429 拒绝，只有浏览器 UA 才返回 `text/xml` RSS。采集器当前使用 `Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)`，仍会被 429；后续如需恢复，属于来源请求标识调整，须单独评估并保持有界降级。
-- `Hacker News AI`（`hnrss.org`）：上游持续返回 502 Bad Gateway，与本项目请求头无关，只能等待上游恢复或更换等价来源。
+- `VentureBeat AI`：上游按 User-Agent 限流——带 bot token 的 UA（含历史的 `Mozilla/5.0 (compatible; AIDailyNewsBot/1.0)` 及任何保留该 token 的变体）稳定返回 HTTP 429 与 `text/html`，浏览器式 UA 返回 200 与 `text/xml`。RSS 采集改用 `_RSS_HEADERS` 的浏览器式 UA 与 XML `Accept`；该改动只调整请求标识，不放宽任何发布性、证据或去重门禁，失败仍走既有有界降级，也不改变超时、重试预算或候选池容量。实证：同一时刻携带 bot token 的变体仍 429，纯浏览器 UA 稳定 200/text/xml，故不保留 bot token。
+- `Hacker News AI`（`hnrss.org`）：曾观察到 502 Bad Gateway，但复测以同一 UA 多次返回 200 与正常条目，属上游间歇性故障，与本项目请求标识无关，当前不需要代码改动；`_RSS_HEADERS` 的 UA 变更对它无影响。
 
 ## 社区和研究来源
 
