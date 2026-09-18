@@ -17,6 +17,9 @@ EVENT_ACTION_MARKERS = {
         "launch", "launched", "launches", "available", "receiving access", "introduce",
         "introduced", "introduces", "introducing", "releasing", "is live",
         "goes live", "went live", "roll out", "rolling out", "rollout",
+        # Relaunch/reissue and Chinese "major rewrite / opened free" product news are
+        # asserted releases; they were previously dropped as no_asserted_action.
+        "relaunch", "relaunches", "relaunched", "大重构", "免费开放", "开放下载",
     ),
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
@@ -28,6 +31,8 @@ EVENT_ACTION_MARKERS = {
         "达到", "提升", "降低", "减少", "超过", "增长", "achieve", "achieved", "improve",
         "improved", "reduce", "reduced", "reduces", "exceed", "exceeded",
         "jump", "jumps",
+        # Measured/superlative outcomes that assert an event ("beats X", "now leads").
+        "beats", "beat", "leads", "lead",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
@@ -56,6 +61,9 @@ EVENT_ACTION_MARKERS = {
         "颁布禁令", "出台禁令", "发布禁令", "监管裁决", "bans", "banned",
         "prohibits", "regulated", "issues a ban", "court rules", "court win",
         "call for action", "联合呼吁",
+        # Rulings, disclosures and platform suspensions are asserted actions.
+        "lose fight", "loses fight", "lost fight", "lose bid", "suspends", "suspended",
+        "reveal", "reveals", "revealed", "unveils", "unveiled",
     ),
     "litigation": (
         "起诉", "提起诉讼", "提告", "状告", "被起诉", "指控",
@@ -71,6 +79,9 @@ EVENT_ACTION_MARKERS = {
     "security": (
         "披露漏洞", "发现漏洞", "修复漏洞", "discloses", "disclosed",
         "discovers", "discovered", "fixes", "fixed",
+        # Breach/incident reporting is an asserted security event.
+        "hacked", "hacks", "breached", "breach", "break into", "broke into",
+        "breaks into", "details", "detailed",
     ),
     "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
     "open_source": ("开源", "open source", "open-source", "open-sources"),
@@ -532,6 +543,14 @@ def _literal_subject(value: str) -> str:
     subject = _normalize(value).strip(" ,，:：-—")
     subject = re.sub(r"^(?:在|于|截至)\s*", "", subject)
     subject = re.sub(r"\b(?:has|have|had|is|are|was|were|will)\s*$", "", subject, flags=re.I)
+    # Drop trailing time adverbs that would otherwise survive as a prose fragment
+    # subject ("Artificial intelligence now beats ..." -> "Artificial intelligence").
+    subject = re.sub(
+        r"\s+\b(?:now|today|yesterday|tomorrow|currently|recently|already)\b\s*$",
+        "",
+        subject,
+        flags=re.I,
+    ).strip(" ,，:：-—")
     if not subject or subject.casefold() in _GENERIC_SUBJECTS:
         return ""
     if re.fullmatch(r"\d+(?:[.,]\d+)?", subject):
@@ -543,6 +562,12 @@ def _literal_subject_surface(value: str) -> str:
     subject = _normalize(value).strip(" ,，:：-—")
     subject = re.sub(r"^(?:在|于|截至)\s*", "", subject)
     subject = re.sub(r"\b(?:has|have|had|is|are|was|were|will)\s*$", "", subject, flags=re.I)
+    subject = re.sub(
+        r"\s+\b(?:now|today|yesterday|tomorrow|currently|recently|already)\b\s*$",
+        "",
+        subject,
+        flags=re.I,
+    ).strip(" ,，:：-—")
     if not _literal_subject(subject):
         return ""
     # A fallback subject must be a mechanically bound surface, never residual

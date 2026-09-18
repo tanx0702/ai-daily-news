@@ -694,6 +694,59 @@ def test_non_news_rejection_distinguishes_instructional_from_no_action():
     assert instructional_result.rejection_detail != no_action_result.rejection_detail
 
 
+def test_newly_asserted_news_actions_are_recognized():
+    """Real news actions previously dropped as no_asserted_action."""
+    cases = (
+        ("Hackers Used Anthropic's Claude to Break into OpenAI", "security"),
+        ("Microsoft, OpenAI lose fight to hide internal docs admitting scraping is theft", "policy"),
+        ("Claude Code relaunches Projects to manage multiple AI agents in the cloud", "release"),
+        ('Covert uploads and megalomania: OpenAI details new "misaligned" agent incidents', "security"),
+        ("Anthropic says Claude now leads a quarter of work building its next AI models", "result"),
+        ("Resy suspends VC for using AI agents to book reservations", "policy"),
+        ("Docs in AI copyright suit reveal startling admission by Microsoft exec", "policy"),
+    )
+
+    for title, expected_action in cases:
+        result = validate_source_publishability(source(title))
+
+        assert result.accepted is True, f"{title!r} -> {result.reason_codes}"
+        assert result.event_type == expected_action, title
+
+
+def test_chinese_product_rewrite_is_an_asserted_release():
+    result = validate_source_publishability(
+        source("刚刚，Claude Code大重构！内部3万Agent管理技术免费开放")
+    )
+
+    assert result.accepted is True
+    assert result.event_type == "release"
+
+
+def test_partnership_and_opinion_titles_stay_rejected():
+    """Widening the action vocabulary must not admit prose or non-events."""
+    for title in (
+        "PrismML hopes its tiny LLM will change how we all use AI",
+        "Is the AI safety debate about safety or control?",
+        "Helping older adults use AI in everyday life",
+        "How to Write with an LLM",
+        "AI safety is mostly a sex cult",
+        "Your Agent Aced the Task. Will It Do It Again?",
+        "Mistral AI strategy",
+    ):
+        result = validate_source_publishability(source(title))
+        assert result.accepted is False, f"{title!r} unexpectedly accepted"
+
+
+def test_literal_subject_drops_trailing_time_adverb():
+    """A fallback subject must not keep a trailing adverb as a prose fragment."""
+    result = validate_source_publishability(
+        source("Artificial intelligence now beats some of the best human forecasters")
+    )
+
+    assert result.accepted is True
+    assert all("now" not in anchor for anchor in result.subject_anchors)
+
+
 def test_non_news_sub_reason_is_empty_for_accepted_and_other_rejections():
     accepted = validate_source_publishability(
         source("OpenAI releases GPT-5.6 Ultrafast")
