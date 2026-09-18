@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from src.briefing.config import BriefingConfig
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent, SourceEvidence
 from src.briefing.publishability import source_anchored_title
@@ -1060,6 +1062,151 @@ def test_cross_language_anchors_ignore_terminal_punctuation():
 
     assert claim <= quote
     assert "office." not in quote
+
+
+# --- Cross-language binding: translated news nouns with a source anchor -------
+
+
+def test_translated_cross_language_title_binds_when_source_has_counterpart():
+    """A correctly translated title must pass when each Chinese noun has a
+    counterpart in the source quote and the Latin anchors come from the source.
+
+    Regression: "Google DeepMind成立研究院以拓宽AGI辩论" was rejected only because
+    the residual check could not recognise 研究院/辩论 as translations of
+    institute/debate.
+    """
+    item = event(
+        publisher_id="techcrunch",
+        publisher_name="TechCrunch",
+        is_official=False,
+        official_identity_source="",
+        source_title="Google DeepMind launches institute to widen the AGI debate",
+        evidence_text="Google DeepMind launches institute to widen the AGI debate.",
+    )
+    translated = draft(
+        item,
+        chinese_title="Google DeepMind 成立研究院以拓宽 AGI 辩论",
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "Google DeepMind 成立研究院以拓宽 AGI 辩论",
+                "Google DeepMind launches institute to widen the AGI debate",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept", result.reason_codes
+
+
+def test_translated_cross_language_title_rejects_unsupported_chinese_noun():
+    """The counterpart requirement is the anti-fabrication guard: a Chinese noun
+    whose English counterpart is absent from the quote must still be rejected."""
+    item = event(
+        publisher_id="techcrunch",
+        publisher_name="TechCrunch",
+        is_official=False,
+        official_identity_source="",
+        source_title="OpenAI releases GPT-5.6",
+        evidence_text="OpenAI releases GPT-5.6.",
+    )
+    translated = draft(
+        item,
+        chinese_title="OpenAI 发布 GPT-5.6 并成立研究院",
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "OpenAI 发布 GPT-5.6 并成立研究院",
+                "OpenAI releases GPT-5.6",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action != "accept"
+
+
+def test_translated_cross_language_title_rejects_fabricated_entity():
+    """A fabricated Chinese entity with no source counterpart must be rejected."""
+    item = event(
+        publisher_id="techcrunch",
+        publisher_name="TechCrunch",
+        is_official=False,
+        official_identity_source="",
+        source_title="OpenAI releases GPT-5.6",
+        evidence_text="OpenAI releases GPT-5.6.",
+    )
+    translated = draft(
+        item,
+        chinese_title="OpenAI 发布 GPT-5.6 并收购英伟达",
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "OpenAI 发布 GPT-5.6 并收购英伟达",
+                "OpenAI releases GPT-5.6",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action != "accept"
+
+
+@pytest.mark.parametrize(
+    "chinese_title, source_title",
+    [
+        (
+            "Google DeepMind 成立研究院以拓宽 AGI 辩论",
+            "Google DeepMind launches institute to widen the AGI debate",
+        ),
+        (
+            "OpenAI 发现其模型给后续模型留纸条以隐藏不良行为",
+            "OpenAI caught its models leaving notes to successors to hide bad behavior",
+        ),
+        (
+            "Base Labs 启动与 Hugging Face 和 Goodfire 的开放权重 AI 安全合作伙伴关系",
+            "Base Labs launches an open-weight AI safety partnership "
+            "with Hugging Face and Goodfire",
+        ),
+        (
+            "Anthropic 表示 Claude 现在承担四分之一构建其下一代 AI 模型的工作",
+            "Anthropic says Claude now leads a quarter of work building its next AI models",
+        ),
+    ],
+)
+def test_translated_news_headlines_bind_cross_language(chinese_title, source_title):
+    """Real translated headlines from a dry run must bind when each Chinese term
+    has a source counterpart (regression for the cross-language equivalence table)."""
+    item = event(
+        publisher_id="techcrunch",
+        publisher_name="TechCrunch",
+        is_official=False,
+        official_identity_source="",
+        source_title=source_title,
+        evidence_text=source_title,
+    )
+    translated = draft(
+        item,
+        chinese_title=chinese_title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(chinese_title, source_title, item.canonical_evidence.url),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept", result.reason_codes
 
 
 def test_validator_accepts_cross_language_claim_when_quality_review_times_out():

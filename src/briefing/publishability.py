@@ -20,6 +20,11 @@ EVENT_ACTION_MARKERS = {
         # Relaunch/reissue and Chinese "major rewrite / opened free" product news are
         # asserted releases; they were previously dropped as no_asserted_action.
         "relaunch", "relaunches", "relaunched", "大重构", "免费开放", "开放下载",
+        # Establishing an institute/initiative is rendered as 成立/设立 and maps to
+        # the same launch action the English source uses ("launches institute").
+        "成立", "设立", "创建",
+        # Chinese renderings of relaunch/launch actions that the content LLM emits.
+        "重新推出", "重启", "启动", "上线了",
     ),
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
@@ -33,6 +38,8 @@ EVENT_ACTION_MARKERS = {
         "jump", "jumps",
         # Measured/superlative outcomes that assert an event ("beats X", "now leads").
         "beats", "beat", "leads", "lead",
+        # Chinese renderings of measured outcomes.
+        "承担", "领先", "反超",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
@@ -55,7 +62,11 @@ EVENT_ACTION_MARKERS = {
         "宣布离职", "宣布辞职", "announces departure", "announced departure", "departs", "departed", "离职", "辞职", "离开", "卸任", "leaving", "leaves", "left", "takes off",
         "headed out the door", "steps down", "resigns", "resigned",
     ),
-    "organizational_change": ("解散", "disband", "disbanded", "disbands"),
+    "organizational_change": (
+        "解散", "disband", "disbanded", "disbands",
+        # Establishing a new org/institute is an asserted organizational action.
+        "establishes", "established", "founds", "founded", "sets up", "expands into",
+    ),
     "layoff": ("裁员", "layoffs", "laid off", "cuts jobs"),
     "policy": (
         "颁布禁令", "出台禁令", "发布禁令", "监管裁决", "bans", "banned",
@@ -79,9 +90,11 @@ EVENT_ACTION_MARKERS = {
     "security": (
         "披露漏洞", "发现漏洞", "修复漏洞", "discloses", "disclosed",
         "discovers", "discovered", "fixes", "fixed",
-        # Breach/incident reporting is an asserted security event.
+        # Breach/incident reporting is an asserted security event. "发现"/"caught"
+        # is the disclosure sense (caught/found), rendered by the content LLM.
         "hacked", "hacks", "breached", "breach", "break into", "broke into",
-        "breaks into", "details", "detailed",
+        "breaks into", "details", "detailed", "发现", "披露", "泄露",
+        "caught", "catches", "found", "finds",
     ),
     "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
     "open_source": ("开源", "open source", "open-source", "open-sources"),
@@ -208,7 +221,152 @@ _SOURCE_ACTION_TRANSLATIONS = {
     "court win": "法院裁决",
     "call for action": "联合呼吁",
     "is now at": "加入",
+    "establishes": "成立",
+    "established": "成立",
+    "founds": "成立",
+    "founded": "成立",
 }
+# Cross-language news nouns that are ordinary translations, not fabrications.
+# A Chinese term is only accepted when at least one of its English counterparts
+# actually occurs in the bound source quote; that keeps the anti-fabrication
+# guarantee (a noun the source never mentions still fails). Entities, people,
+# model names and numbers must never be listed here: they must keep bindable
+# Latin anchors instead. This is the single shared table for both the
+# deterministic fallback title and the cross-language display binding.
+CROSS_LANGUAGE_NOUN_EQUIVALENTS = {
+    "研究院": ("institute",),
+    "研究中心": ("research center", "research centre"),
+    "辩论": ("debate",),
+    "合作伙伴关系": ("partnership",),
+    "合作伙伴": ("partner", "partners"),
+    "合作": ("partnership", "partner", "partners", "collaboration", "collaborates"),
+    "代理": ("agent", "agents"),
+    "智能体": ("agent", "agents"),
+    "功能": ("feature", "features", "functionality"),
+    "能力": ("capability", "capabilities", "ability"),
+    "云端": ("cloud",),
+    "管理": ("manage", "manages", "management", "managing"),
+    "模型": ("model", "models"),
+    "行为": ("behavior", "behaviour", "behaviors"),
+    "不良行为": ("bad behavior", "bad behaviour", "misbehavior", "misbehaviour"),
+    "安全": ("safety", "security"),
+    "开放权重": ("open-weight", "open weight"),
+    "权重": ("weight", "weights"),
+    "成立": ("launches", "launch", "establishes", "founds", "sets up", "forms"),
+    "设立": ("establishes", "founds", "sets up", "forms"),
+    "重新推出": ("relaunches", "relaunch"),
+    "重启": ("relaunch", "relaunches", "restarts", "restart"),
+    "拓宽": ("widen", "broaden", "broadens"),
+    "成本": ("cost", "costs"),
+    "价格": ("price", "prices", "pricing"),
+    "训练": ("training", "train", "trains", "trained"),
+    "推理": ("inference", "reasoning"),
+    "性能": ("performance",),
+    "速度": ("speed", "latency", "throughput"),
+    "数据": ("data", "dataset", "datasets"),
+    "用户": ("user", "users"),
+    "企业": ("enterprise", "enterprises", "company", "companies"),
+    "团队": ("team", "teams"),
+    "研究": ("research",),
+    "研究团队": ("research team",),
+    "项目": ("project", "projects"),
+    "平台": ("platform", "platforms"),
+    "工具": ("tool", "tools"),
+    "插件": ("plugin", "plugins"),
+    "服务": ("service", "services"),
+    "芯片": ("chip", "chips", "gpu", "gpus"),
+    "基础设施": ("infrastructure",),
+    "事件": ("incident", "incidents", "event", "events"),
+    "事故": ("incident", "incidents"),
+    "系统": ("system", "systems"),
+    "报告": ("report", "reports"),
+    "调查": ("investigation", "probe", "inquiry"),
+    "诉讼": ("lawsuit", "litigation", "suit"),
+    "监管": ("regulator", "regulation", "regulatory"),
+    "禁令": ("ban", "bans"),
+    "发布": ("release", "releases", "launch", "launches", "launched"),
+    "推出": ("release", "releases", "launch", "launches", "rolls out", "roll out"),
+    "上线": ("available", "live", "launches", "releases"),
+    "更新": ("update", "updates", "updated"),
+    "升级": ("upgrade", "upgrades", "upgraded"),
+    "收购": ("acquire", "acquires", "acquisition", "buys"),
+    "融资": ("raise", "raises", "funding", "funded"),
+    "投资": ("invest", "invests", "investment", "funding"),
+    "裁员": ("layoff", "layoffs", "laid off", "cuts jobs"),
+    "离职": ("leaves", "left", "departs", "departed", "resigns", "resigned"),
+    "辞职": ("resigns", "resigned", "steps down"),
+    "加入": ("joins", "joined", "hired"),
+    "起诉": ("sue", "sues", "sued", "suing", "lawsuit", "files suit", "filed suit"),
+    "指控": ("alleging", "alleges", "accuses", "accused"),
+    "裁定": ("court rules", "ruling", "rules"),
+    "裁决": ("court win", "ruling", "verdict"),
+    "入侵": ("break into", "broke into", "breached", "hack", "hacked"),
+    "攻击": ("attack", "attacks", "hacked"),
+    "漏洞": ("vulnerability", "vulnerabilities", "flaw", "flaws"),
+    "泄露": ("leak", "leaked", "leaks", "breach"),
+    "披露": ("discloses", "disclosed", "reveals", "revealed", "details", "detailed"),
+    "开源": ("open source", "open-source", "open-sources"),
+    "部署": ("deploys", "deployed", "deployment"),
+    "效率": ("efficiency", "efficient"),
+    "论文": ("paper", "papers"),
+    "研究论文": ("research paper",),
+    "基准": ("benchmark", "benchmarks"),
+    "榜单": ("leaderboard", "ranking", "rankings"),
+    "排名": ("rank", "ranks", "ranked", "ranking"),
+    # Remaining common renderings observed from the content LLM.
+    "隐藏": ("hide", "hides", "hidden", "conceal", "conceals"),
+    "留纸条": ("leaving notes", "leaves notes", "left notes"),
+    "纸条": ("note", "notes"),
+    "后续": ("successors", "successor", "next"),
+    "承担": ("leads", "lead", "takes on", "undertakes"),
+    "四分之一": ("quarter",),
+    "构建": ("building", "builds", "build", "developing"),
+    "下一代": ("next-generation", "next generation", "next"),
+    "工作": ("work", "works", "working"),
+    "少部分": ("fraction",),
+    "这部分": ("portion",),
+    "多数": ("majority",),
+    "现在": ("now", "currently"),
+}
+_ATTRIBUTION_MARKERS = (
+    "称",
+    "分享",
+    "表示",
+    "帖子",
+    "发文",
+    "透露",
+    "据",
+    "研究者",
+    "开发者",
+    "媒体",
+)
+# Controlled Chinese markers allowed in a cross-language display claim. Derived
+# here, next to EVENT_ACTION_MARKERS, so the vocabulary has a single source of
+# truth and cannot drift between classification, binding and validation.
+CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
+    sorted(
+        {
+            *(
+                marker
+                for markers in EVENT_ACTION_MARKERS.values()
+                for marker in markers
+                if any("\u4e00" <= char <= "\u9fff" for char in marker)
+            ),
+            *_ATTRIBUTION_MARKERS,
+            "公司", "厂商", "平台", "实验室", "团队", "机构", "模型", "产品",
+            "工具", "系统", "服务", "项目", "版本", "该", "其", "一个", "一款",
+            "于", "年", "并", "与", "和", "的", "了", "已", "已经", "将", "在",
+            "为", "向", "由", "新", "正式", "完成", "周", "内", "开发者", "使用", "后",
+            # Grammatical connectives that carry no factual claim of their own.
+            "以", "及", "等", "中", "上", "对", "从", "到", "会", "可", "能", "正",
+            "被", "把", "让", "使", "又", "也", "都", "还", "很", "更", "最", "多",
+            "个", "次", "项", "条", "款", "种", "类", "时", "日", "月", "前", "后",
+            "给", "于", "自", "用", "着", "过", "并", "且", "而", "则", "即", "如",
+        },
+        key=len,
+        reverse=True,
+    )
+)
 _GENERIC_PRODUCT_TOKENS = {
     "a", "an", "ai", "ai-powered", "api", "app", "code", "model", "new", "platform",
     "product", "service", "system", "the", "tool",
@@ -1004,6 +1162,86 @@ def validate_content_source_publishability(
     return validate_source_publishability(source)
 
 
+def cross_language_counterpart_present(noun: str, quote_lower: str) -> bool:
+    """Whether a Chinese news noun has a literal English counterpart in the quote."""
+    return any(
+        counterpart in quote_lower
+        for counterpart in CROSS_LANGUAGE_NOUN_EQUIVALENTS.get(noun, ())
+    )
+
+
+def cross_language_unmatched_residual(
+    claim: str,
+    quote: str,
+    allowed_markers: tuple[str, ...],
+) -> str:
+    """Return Chinese residual not covered by an allowed marker or a bound noun.
+
+    Unlike a plain ``str.replace`` sweep, this walks the claim longest-match-first
+    so a multi-character noun (「合作伙伴关系」) wins over a shorter one and is never
+    split into fragments. A noun is consumed only when its English counterpart
+    occurs in the quote; otherwise it stays residual, so fabricated nouns fail.
+    """
+    quote_lower = quote.lower()
+    vocabulary = tuple(
+        sorted(
+            {*allowed_markers, *CROSS_LANGUAGE_NOUN_EQUIVALENTS},
+            key=len,
+            reverse=True,
+        )
+    )
+    residual: list[str] = []
+    index = 0
+    while index < len(claim):
+        char = claim[index]
+        if not ("\u4e00" <= char <= "\u9fff"):
+            index += 1
+            continue
+        matched = next(
+            (word for word in vocabulary if claim.startswith(word, index)), None
+        )
+        if matched is None:
+            residual.append(char)
+            index += 1
+            continue
+        if matched in CROSS_LANGUAGE_NOUN_EQUIVALENTS and not (
+            cross_language_counterpart_present(matched, quote_lower)
+        ):
+            residual.append(matched)
+        index += len(matched)
+    return "".join(residual)
+
+
+def _cross_language_display_bound(claim: str, evidence_text: str) -> bool:
+    """Whether a Chinese claim binds to one English source sentence.
+
+    Used only as a fallback when the same-language literal subset rule cannot
+    apply. Requires: Chinese display with English evidence, all Latin anchors
+    drawn from that one sentence, and every remaining Chinese term either a
+    controlled marker or a noun whose English counterpart occurs in the same
+    sentence.
+    """
+    if not any("\u4e00" <= char <= "\u9fff" for char in claim):
+        return False
+    if any("\u4e00" <= char <= "\u9fff" for char in evidence_text):
+        return False
+    from src.briefing.validator import (  # noqa: PLC0415 (circular import)
+        _cross_language_anchors,
+    )
+
+    claim_anchors = _cross_language_anchors(claim)
+    return any(
+        claim_anchors <= _cross_language_anchors(sentence)
+        and not cross_language_unmatched_residual(
+            claim,
+            sentence,
+            CROSS_LANGUAGE_RULE_ONLY_MARKERS,
+        )
+        for sentence in _sentences(evidence_text)
+        if _cross_language_anchors(sentence)
+    )
+
+
 def validate_display_publishability(
     title: str,
     brief: str,
@@ -1018,6 +1256,21 @@ def validate_display_publishability(
     if not frame.details:
         return PublishabilityResult(False, ("title_missing_event_detail",))
     if not claim_supported_by_quote(normalized, source.evidence_text, source=source):
+        # Fall back to the cross-language equivalence path before rejecting. The
+        # same-language literal detail-subset rule cannot apply when the display
+        # is Chinese and the source is English, so bind via the shared
+        # noun-equivalence table instead. Latin anchors must still come from the
+        # source, any Chinese noun without a source counterpart stays residual
+        # and is rejected, and every check runs per sentence so a claim cannot be
+        # assembled from anchors that live in different source sentences.
+        if _cross_language_display_bound(normalized, source.evidence_text):
+            return PublishabilityResult(
+                True,
+                (),
+                next(iter(frame.actions)),
+                tuple(sorted(frame.subjects)),
+                "complete",
+            )
         source_actions = asserted_action_types(source.evidence_text)
         reason = (
             "title_action_not_source_bound"

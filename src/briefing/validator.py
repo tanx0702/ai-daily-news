@@ -22,9 +22,12 @@ from src.briefing.models import (
     ValidationResult,
 )
 from src.briefing.publishability import (
+    CROSS_LANGUAGE_RULE_ONLY_MARKERS as _CROSS_LANGUAGE_RULE_ONLY_MARKERS,
     EVENT_ACTION_MARKERS,
+    _ATTRIBUTION_MARKERS,
     asserted_action_types,
     claim_supported_by_quote,
+    cross_language_unmatched_residual as _cross_language_unmatched_residual,
     source_anchored_title,
     update_claim_supported_by_quote,
     validate_content_source_publishability,
@@ -54,18 +57,6 @@ _UNTRANSLATED_TITLE_WORDS = {
     "setting", "solver", "source", "startup", "style", "than", "that", "the",
     "their", "this", "to", "tried", "up", "was", "were", "will", "with",
 }
-_ATTRIBUTION_MARKERS = (
-    "称",
-    "分享",
-    "表示",
-    "帖子",
-    "发文",
-    "透露",
-    "据",
-    "研究者",
-    "开发者",
-    "媒体",
-)
 _ACTION_GROUPS = EVENT_ACTION_MARKERS
 _CROSS_LANGUAGE_ANCHOR_STOPWORDS = {
     "acquire", "acquisition", "agentic", "and", "company", "for", "from",
@@ -75,25 +66,6 @@ _CROSS_LANGUAGE_ANCHOR_STOPWORDS = {
     "source", "system", "systems", "technology", "the", "to", "tool", "tools",
     "valuation", "vendor", "with", "work", "workflow", "workflows",
 }
-_CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
-    sorted(
-        {
-            *(
-                marker
-                for markers in _ACTION_GROUPS.values()
-                for marker in markers
-                if any("\u4e00" <= char <= "\u9fff" for char in marker)
-            ),
-            *_ATTRIBUTION_MARKERS,
-            "公司", "厂商", "平台", "实验室", "团队", "机构", "模型", "产品",
-            "工具", "系统", "服务", "项目", "版本", "该", "其", "一个", "一款",
-            "于", "年", "并", "与", "和", "的", "了", "已", "已经", "将", "在",
-            "为", "向", "由", "新", "正式", "完成", "周", "内", "开发者", "使用", "后",
-        },
-        key=len,
-        reverse=True,
-    )
-)
 _UPDATE_CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
     sorted(
         {
@@ -231,10 +203,7 @@ def _cross_language_rule_only_verifiable_with_markers(
     claim_anchors = _cross_language_anchors(claim)
     if not claim_anchors or not claim_anchors <= _cross_language_anchors(quote):
         return False
-    residual = "".join(re.findall(r"[\u4e00-\u9fff]", claim))
-    for marker in allowed_markers:
-        residual = residual.replace(marker, "")
-    return not residual
+    return not _cross_language_unmatched_residual(claim, quote, allowed_markers)
 
 
 def _claim_related_to_quote(claim: str, quote: str) -> bool:
@@ -585,9 +554,14 @@ class BriefValidator:
             )
             if _unsupported_action(display_claim, combined_quotes):
                 return ("action_not_supported",)
+            claim_source_cross_language = (
+                _contains_chinese(display_claim)
+                and not _contains_chinese(source.source_title)
+            )
             if (
                 display_claim == draft.chinese_title
                 and asserted_action_types(display_claim)
+                and not claim_source_cross_language
                 and not claim_supported_by_quote(
                     display_claim,
                     source.source_title,
