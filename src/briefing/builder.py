@@ -454,6 +454,8 @@ class BriefBuilder:
                             "为标题和摘要中的每个完整展示目标返回 target/source_quote_id；target 只能是 "
                             "title、brief_1 或 brief_2，同一 target 可返回多条记录；source_quote_id 必须逐字选择"
                             "该事件 source_quotes 中存在的 quote_id，不得返回、改写或拼接原文 quote，也不得返回 URL；"
+                            "evidence_targets 中每个元素必须且只能包含 target 和 source_quote_id 两个字段，"
+                            "不得附加 url、text、claim 或其它字段；每个 title、brief_1、brief_2 目标都必须有对应绑定；"
                             "跨语言目标的引用必须包含该目标中的产品、模型或机构名称作为核验锚点；"
                             "跨语言标题只能翻译动作和语法词；非实体、非数字细节必须删去或保留原文锚点，"
                             "跨语言标题的具体细节必须逐字保留原文的英文关键词，不得改写成中文名词"
@@ -467,8 +469,9 @@ class BriefBuilder:
                             "工作流或工具进展，以及实验或榜单的具体进展；数字和榜单不是必需，"
                             "但必须保留来源中的明确主体、具体行为和能力对象，不得改写成正式发布，"
                             "不得改写成确定性行业结论；"
-                            "url 必须等于该条 source_url。严格返回 JSON 对象 {\"items\":[...]}，每条必须"
-                            "包含且只包含 index、event_key、chinese_title、brief、evidence_targets；brief 必须是字符串。"
+                            "严格返回 JSON 对象 {\"items\":[...]}，每条必须"
+                            "包含且只包含 index、event_key、chinese_title、brief、evidence_targets；brief 必须是字符串，"
+                            "不得返回 url 或任何其它字段。"
                         ),
                     },
                     {

@@ -334,6 +334,30 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     assert "保留原文锚点" in system_prompt
 
 
+def test_builder_prompt_forbids_extra_item_and_binding_fields():
+    """The strict parser rejects any extra field.
+
+    ``url`` at item level raised unexpected_fields:url and extra binding keys
+    raised binding_fields_invalid, dropping otherwise usable events. The prompt
+    must not invite a url field and must pin the binding shape.
+    """
+    item = event(1)
+    payload = {
+        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+    }
+    builder, client = builder_with_responses([payload])
+
+    builder.build_batch([item], attempts={})
+
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    # Must not instruct the model to emit a url field.
+    assert "url 必须等于该条 source_url" not in system_prompt
+    assert "不得返回 url 或任何其它字段" in system_prompt
+    # Binding shape must be pinned to exactly two fields.
+    assert "只能包含 target 和 source_quote_id 两个字段" in system_prompt
+    assert "不得附加 url、text、claim 或其它字段" in system_prompt
+
+
 def test_builder_forbids_translating_cross_language_details_into_chinese_nouns():
     """Cross-language titles must keep source keywords verbatim.
 
