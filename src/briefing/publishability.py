@@ -201,6 +201,11 @@ _SOURCE_ACTION_TRANSLATIONS = {
 _GENERIC_PRODUCT_TOKENS = {
     "a", "an", "ai", "ai-powered", "api", "app", "code", "model", "new", "platform",
     "product", "service", "system", "the", "tool",
+    # Generic AI concepts/acronyms, never a source-declared product token. Without
+    # these, ``_single_protected_product_token`` mistakes ``AGI``/``LLM`` etc. in
+    # phrases like "launches institute to widen the AGI debate" for a released
+    # product and fabricates "发布 AGI".
+    "agi", "asi", "llm", "gpu", "tpu", "cpu", "ml", "rl",
 }
 _AI_AGENT_DEPLOYMENT = re.compile(
     r"\bdeployed\b.*?\bin\s+(?P<duration>\d+)\s+weeks?\s+by\s+"
@@ -472,25 +477,47 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
     if not action_matches:
         return None
     start, end, action = min(action_matches, key=lambda item: item[0])
+    after = title[end:]
     subjects = _surface_anchor_matches(title[:start])
-    details = _surface_anchor_matches(title[end:])
+    details = _surface_anchor_matches(after)
     subject = subjects[0] if subjects else _literal_subject_surface(title[:start])
     if not subject:
         return None
-    detail = next(
-        (anchor for anchor in details if anchor.casefold() != subject.casefold()),
-        None,
-    )
+    # A detail anchor must be the verb's object, not a partnership/list companion.
+    # "Base Labs launches ... partnership with Hugging Face and Goodfire" must not
+    # become "Base Labs 发布 Hugging Face": the org is introduced by "with"/"and",
+    # not released. Reject any anchor preceded by a coordinating/prepositional
+    # connector that marks it as a companion rather than the object.
+    detail = None
+    for anchor in details:
+        if anchor.casefold() == subject.casefold():
+            continue
+        anchor_start = after.casefold().find(anchor.casefold())
+        if anchor_start >= 0 and re.search(
+            r"\b(?:with|and)\b\s*$", after[:anchor_start], flags=re.I
+        ):
+            continue
+        detail = anchor
+        break
     if detail is None:
         safe_detail = re.search(
             r"@[A-Za-z0-9_]+|(?<![A-Za-z0-9])v\d+(?:\.\d+)+(?![A-Za-z0-9])|"
             r"(?:\$\s*)?\d+(?:[.,]\d+)?\s*(?:%|x|ms|s|tok/s|tokens/s|billion|million)\b",
-            title[end:],
+            after,
             flags=re.I,
         )
         detail = safe_detail.group(0) if safe_detail else None
     if detail is None:
-        detail = _single_protected_product_token(title[end:])
+        # Fall back to a single protected product token only when it is the verb's
+        # object, not a partnership/list companion. "launches ... partnership with
+        # Hugging Face and Goodfire" must not yield "发布 Hugging".
+        token = _single_protected_product_token(after)
+        if token is not None:
+            token_start = after.casefold().find(token.casefold())
+            if token_start < 0 or not re.search(
+                r"\b(?:with|and)\b\s*$", after[:token_start], flags=re.I
+            ):
+                detail = token
     return f"{subject} {action} {detail}" if detail else None
 
 

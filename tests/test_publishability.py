@@ -446,6 +446,24 @@ def test_source_anchored_title_rejects_generic_english_detail_words():
     ) is None
 
 
+def test_source_anchored_title_rejects_generic_concept_acronym_as_product():
+    # "AGI" here is a general concept inside "the AGI debate", not a released
+    # product; the verb's object is the common noun "institute".
+    assert source_anchored_title(
+        source("Google DeepMind launches institute to widen the AGI debate")
+    ) is None
+
+
+def test_source_anchored_title_rejects_partnership_companion_as_object():
+    # "Hugging Face" is introduced by "with" as a partner, not a released product.
+    assert source_anchored_title(
+        source(
+            "Base Labs launches an open-weight AI safety partnership "
+            "with Hugging Face and Goodfire"
+        )
+    ) is None
+
+
 def test_source_anchored_title_uses_x_handle_as_detail_anchor():
     supported = source("Google AI: Upgrades coming to @FlowbyGoogle")
 
