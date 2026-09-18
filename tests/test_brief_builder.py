@@ -321,6 +321,11 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
 
 
 def test_builder_limits_cross_language_titles_to_verifiable_anchors():
+    """The prompt must give a concrete, checkable rule for bilingual titles.
+
+    Abstract guidance ("keep original anchors") did not change model behaviour;
+    the prompt now states the exact check and a worked correct/incorrect pair.
+    """
     item = event(1)
     payload = {
         "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
@@ -330,8 +335,12 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     builder.build_batch([item], attempts={})
 
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "非实体、非数字细节" in system_prompt
-    assert "保留原文锚点" in system_prompt
+    assert "其余具体细节必须逐字照抄原文的英文单词" in system_prompt
+    assert "都必须能在同一条原文句子里找到" in system_prompt
+    assert "宁可标题中英夹杂" in system_prompt
+    # The worked example pins both the accepted and rejected shape.
+    assert "成立 institute 以拓宽 AGI debate" in system_prompt
+    assert "研究院、辩论在原文中没有对应英文词" in system_prompt
 
 
 def test_builder_prompt_forbids_extra_item_and_binding_fields():
@@ -356,27 +365,6 @@ def test_builder_prompt_forbids_extra_item_and_binding_fields():
     # Binding shape must be pinned to exactly two fields.
     assert "只能包含 target 和 source_quote_id 两个字段" in system_prompt
     assert "不得附加 url、text、claim 或其它字段" in system_prompt
-
-
-def test_builder_forbids_translating_cross_language_details_into_chinese_nouns():
-    """Cross-language titles must keep source keywords verbatim.
-
-    The deterministic validator binds a cross-language claim only when its Latin
-    anchors are a subset of the source quote. A fully translated headline such as
-    "OpenAI 披露模型异常行为事件" therefore fails binding; the prompt must tell the
-    model to keep the source keywords (misaligned/agent/incidents) instead.
-    """
-    item = event(1)
-    payload = {
-        "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
-    }
-    builder, client = builder_with_responses([payload])
-
-    builder.build_batch([item], attempts={})
-
-    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "逐字保留原文的英文关键词" in system_prompt
-    assert "不得改写成中文名词" in system_prompt
 
 
 def test_builder_preserves_ai_update_type_and_forbids_release_rewrite():
