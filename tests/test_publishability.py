@@ -651,3 +651,85 @@ def test_source_fallback_still_accepts_registered_anchors():
         result = source_anchored_title(source(title, publisher_name="OpenAI"))
         assert result, f"legitimate anchor lost for: {title}"
         assert "发布" in result or "上线" in result
+
+# --- A: non_news_content must expose a discriminating private sub-reason ----
+
+
+def test_non_news_rejection_distinguishes_instructional_from_no_action():
+    """The two non_news_content exits must be distinguishable downstream."""
+    instructional = source(
+        "How AI text watermarking works",
+        discovered_via="hacker_news",
+        evidence_quality="title_only",
+    )
+    no_action = source("Mistral AI strategy")
+
+    instructional_result = validate_source_publishability(instructional)
+    no_action_result = validate_source_publishability(no_action)
+
+    # Top-level contract must not change.
+    assert instructional_result.reason_codes == ("non_news_content",)
+    assert no_action_result.reason_codes == ("non_news_content",)
+    # But the two must be tellable apart.
+    assert instructional_result.rejection_detail == "instructional_content"
+    assert no_action_result.rejection_detail == "no_asserted_action"
+    assert instructional_result.rejection_detail != no_action_result.rejection_detail
+
+
+def test_non_news_sub_reason_is_empty_for_accepted_and_other_rejections():
+    accepted = validate_source_publishability(
+        source("OpenAI releases GPT-5.6 Ultrafast")
+    )
+    assert accepted.accepted is True
+    assert accepted.rejection_detail == ""
+
+    # A non-``non_news_content`` rejection must not carry the sub-reason.
+    other = validate_source_publishability(
+        source(
+            "AI text watermarking",
+            "AI text watermarking\nPoints: 6\n# Comments: 2",
+            discovered_via="hacker_news",
+        )
+    )
+    assert other.accepted is False
+    assert other.reason_codes == ("metadata_only_evidence",)
+    assert other.rejection_detail == ""
+
+
+def test_instructional_sub_reason_covers_every_non_news_pattern_class():
+    """Each documented non-news pattern class maps to the instructional detail."""
+    cases = (
+        "How AI text watermarking works",
+        "A guide to prompt engineering",
+        "An AI agents tutorial",
+        "OpenAI mentions GPT-5.6 Flash",
+        "AI 工作原理",
+        "模型使用指南",
+        "部署教程",
+        "AI 提及 GPT",
+        "Mistral AI 战略",
+        "AI 趋势",
+    )
+
+    for title in cases:
+        result = validate_source_publishability(source(title))
+
+        assert result.accepted is False, title
+        assert result.reason_codes == ("non_news_content",), title
+        assert result.rejection_detail == "instructional_content", title
+
+
+def test_no_action_sub_reason_covers_topic_style_headlines():
+    """Topic/announcement-style headlines have no asserted action."""
+    cases = (
+        "Anthropic merges Claude chat and Cowork in one interface",
+        "Claude comes for Gemini with its own take on Docs and Slides",
+        "Nvidia's Jensen Huang says AI regulation is unnecessary",
+        "AI is the next problem for the internet",
+    )
+
+    for title in cases:
+        result = validate_source_publishability(source(title))
+
+        assert result.accepted is False, title
+        assert result.rejection_detail == "no_asserted_action", title

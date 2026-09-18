@@ -1631,6 +1631,7 @@ def collect_candidates(
         classification_reason_codes: tuple[str, ...],
         subject_anchors: tuple[str, ...] = (),
         detail_anchors: tuple[str, ...] = (),
+        rejection_detail: str = "",
         preflight_accepted: bool,
         final_reason_codes: tuple[str, ...],
         content_llm_skipped: bool | None = None,
@@ -1660,6 +1661,7 @@ def collect_candidates(
             "classification_reason_codes": list(classification_reason_codes),
             "classification_subject_anchors": list(subject_anchors),
             "classification_detail_anchors": list(detail_anchors),
+            "classification_rejection_detail": rejection_detail,
             "preflight_accepted": preflight_accepted,
             "content_llm_skipped": skipped,
             "attempts": [],
@@ -1726,6 +1728,7 @@ def collect_candidates(
                 classification_reason_codes=classification.reason_codes,
                 subject_anchors=classification.subject_anchors,
                 detail_anchors=classification.detail_anchors,
+                rejection_detail=classification.rejection_detail,
                 preflight_accepted=False,
                 final_reason_codes=reasons,
             )

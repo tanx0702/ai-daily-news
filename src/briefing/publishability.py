@@ -312,6 +312,11 @@ class PublishabilityResult:
     subject_anchors: tuple[str, ...] = ()
     title_completeness: str = "incomplete"
     detail_anchors: tuple[str, ...] = ()
+    # Bounded private sub-reason for otherwise-indistinguishable rejections.
+    # Never a public contract: it disambiguates ``non_news_content`` into
+    # ``instructional_content`` (a non-news title pattern matched) versus
+    # ``no_asserted_action`` (no asserted event action could be framed).
+    rejection_detail: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -904,10 +909,18 @@ def validate_source_publishability(source: SourceEvidence) -> PublishabilityResu
     ):
         return PublishabilityResult(False, ("metadata_only_evidence",))
     if any(re.search(pattern, title, flags=re.I) for pattern in _NON_NEWS_PATTERNS):
-        return PublishabilityResult(False, ("non_news_content",))
+        return PublishabilityResult(
+            False,
+            ("non_news_content",),
+            rejection_detail="instructional_content",
+        )
     frame = _claim_frame(title)
     if frame is None:
-        return PublishabilityResult(False, ("non_news_content",))
+        return PublishabilityResult(
+            False,
+            ("non_news_content",),
+            rejection_detail="no_asserted_action",
+        )
     if not frame.subjects:
         return PublishabilityResult(False, ("source_missing_subject",))
     if not frame.details:

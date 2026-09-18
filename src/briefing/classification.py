@@ -42,6 +42,9 @@ class ContentClassification:
     reason_codes: tuple[str, ...]
     subject_anchors: tuple[str, ...] = ()
     detail_anchors: tuple[str, ...] = ()
+    # Bounded private sub-reason disambiguating an otherwise opaque rejection.
+    # Currently only set for ``non_news_content``; never a public contract.
+    rejection_detail: str = ""
 
 
 def classify_source_content(source: SourceEvidence) -> ContentClassification:
@@ -84,11 +87,13 @@ def classify_source_content(source: SourceEvidence) -> ContentClassification:
             fact.subject_anchors,
         )
 
+    if "non_news_content" in fact.reason_codes:
+        return ContentClassification(
+            None,
+            fact.reason_codes,
+            rejection_detail=fact.rejection_detail,
+        )
     return ContentClassification(
         None,
-        (
-            fact.reason_codes
-            if "non_news_content" in fact.reason_codes
-            else update.reason_codes or fact.reason_codes or ("non_news_content",)
-        ),
+        update.reason_codes or fact.reason_codes or ("non_news_content",),
     )

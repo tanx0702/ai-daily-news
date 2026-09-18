@@ -1497,3 +1497,33 @@ def test_pipeline_records_malformed_detail_in_private_audit():
         default=str,
     )
     assert "malformed_detail" not in payload
+
+def test_non_news_sub_reason_stays_out_of_public_decision_payload():
+    """The sub-reason is private audit data and must not leak into decisions."""
+    from src.briefing.config import BriefingConfig
+    from src.briefing.models import SourceEvidence
+    from src.briefing.pipeline import run_brief_pipeline
+
+    class _EmptyBuilder:
+        def build_batch(self, events, attempts, rebuild_reasons=None):
+            return ()
+
+    class _NeverValidator:
+        def validate(self, value, built, *, generation_attempt):
+            raise AssertionError("no event should reach the validator")
+
+    result = run_brief_pipeline(
+        (),
+        (),
+        BriefingConfig(),
+        _EmptyBuilder(),
+        _NeverValidator(),
+    )
+
+    payload = (
+        str(result.decision.to_dict())
+        + str(dict(result.diagnostics))
+        + str(dict(result.exclusions))
+    )
+    assert "rejection_detail" not in payload
+    assert "non_news_content" not in payload

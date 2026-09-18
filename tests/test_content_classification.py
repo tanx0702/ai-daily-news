@@ -100,3 +100,36 @@ def test_unverified_rumor_is_rejected_before_formal_action_classification():
 
     assert result.content_type is None
     assert result.reason_codes == ("unverified_rumor",)
+
+def test_classification_audit_exposes_non_news_sub_reason():
+    """A rejected candidate must record which non_news_content exit fired."""
+    from src.briefing.classification import classify_source_content
+    from src.briefing.models import SourceEvidence
+
+    def _src(title):
+        return SourceEvidence(
+            publisher_id="p",
+            publisher_name="P",
+            channel="rss",
+            authority="official",
+            is_official=True,
+            official_identity_source="rss_source_config",
+            source_title=title,
+            evidence_text=title,
+            url="https://example.test/a",
+            published_at="2026-08-14T00:00:00+00:00",
+        )
+
+    instructional = classify_source_content(_src("How AI text watermarking works"))
+    no_action = classify_source_content(
+        _src("Anthropic merges Claude chat and Cowork in one interface")
+    )
+
+    assert instructional.content_type is None
+    assert no_action.content_type is None
+    # Same public reason code...
+    assert instructional.reason_codes == ("non_news_content",)
+    assert no_action.reason_codes == ("non_news_content",)
+    # ...but distinguishable in the private audit.
+    assert instructional.rejection_detail == "instructional_content"
+    assert no_action.rejection_detail == "no_asserted_action"
