@@ -7,7 +7,11 @@ import pytest
 from src.briefing.config import BriefingConfig
 from src.briefing.models import BuiltBrief, EvidenceBinding, MergedEvent, SourceEvidence
 from src.briefing.publishability import source_anchored_title
-from src.briefing.validator import BriefValidator, _cross_language_anchors
+from src.briefing.validator import (
+    BriefValidator,
+    _cross_language_anchors,
+    _has_untranslated_title_prose,
+)
 from src.llm_config import LLMConfig
 
 
@@ -1459,6 +1463,117 @@ def test_validator_rebuilds_titles_with_untranslated_english_prose():
         result = validator().validate(item, generated, generation_attempt=1, now=NOW)
 
         assert result.action == "rebuild", title
+        assert result.reason_codes == ("translation_failed",), title
+
+
+def test_validator_allows_source_anchored_english_terms_in_chinese_title():
+    """Bilingual titles must keep source proper nouns verbatim.
+
+    Regression: "Cohere ... 推出 AI for Empowerment" was rejected as
+    translation_failed because the prose detector matched the bare function word
+    "for" inside a product name. Source-anchored terms must be exempt.
+    """
+    cases = (
+        (
+            "Cohere 在 Berlin Art Week 推出 AI for Empowerment",
+            "Cohere launches AI for Empowerment at Berlin Art Week",
+        ),
+        (
+            "xAI 的 Grok Imagine Image 2.0 在 Text to Image Leaderboard 上排名第 4",
+            "xAI's Grok Imagine Image 2.0 takes #4 on the Text to Image Leaderboard",
+        ),
+        (
+            "Qwen 构建 Money Agent，由 Alibaba Qwen 3.8 27B on Cerebras 驱动",
+            "Qwen built Money Agent, powered by Alibaba Qwen 3.8 27B on Cerebras",
+        ),
+    )
+
+    for title, source_title in cases:
+        item = event(
+            publisher_id="example-media",
+            publisher_name="Example Media",
+            authority="professional_media",
+            is_official=False,
+            official_identity_source="",
+            source_title=source_title,
+            evidence_text=source_title,
+        )
+        generated = draft(
+            item,
+            chinese_title=title,
+            brief="",
+            evidence_bindings=(
+                EvidenceBinding(title, source_title, item.canonical_evidence.url),
+            ),
+        )
+
+        result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+        assert "translation_failed" not in result.reason_codes, title
+
+
+def test_prose_detector_ignores_sentences_with_one_capitalised_word():
+    """An anchored span must be name-like, not a whole sentence.
+
+    Regression: the n-gram extractor treated "Trump appoints AI czar amid
+    concerns over the rapidly developing tech" as one anchored proper-noun
+    phrase because it contains "Trump"/"AI", which whitelisted real prose.
+    """
+    assert _has_untranslated_title_prose(
+        "Trump 任命 AI czar amid concerns over the rapidly developing tech",
+        source_title="Trump appoints AI czar amid concerns over the rapidly developing tech",
+        evidence_text="Trump appoints AI czar amid concerns over the rapidly developing tech",
+    )
+
+
+def test_prose_detector_keeps_name_like_spans_only():
+    """Only connector-joined capitalised spans count as anchored names."""
+    from src.briefing.validator import _source_anchor_phrases
+
+    phrases = _source_anchor_phrases(
+        "Cohere launches AI for Empowerment at Berlin Art Week",
+        "Cohere launches AI for Empowerment at Berlin Art Week",
+    )
+
+    assert "AI for Empowerment" in phrases
+    assert "Berlin Art Week" in phrases
+    # A full sentence must never be treated as a single anchored name.
+    assert not any(
+        phrase.startswith("Cohere launches") and phrase.endswith("Week")
+        for phrase in phrases
+    )
+
+
+def test_validator_still_rejects_genuinely_untranslated_prose():
+    """Source anchoring must not excuse real untranslated English prose."""
+    item = event(
+        publisher_id="example-media",
+        publisher_name="Example Media",
+        authority="professional_media",
+        is_official=False,
+        official_identity_source="",
+        source_title="Example releases an AI update",
+        evidence_text="Example releases an AI update",
+    )
+    for title in (
+        "Trump 任命 AI czar amid concerns over the rapidly developing tech",
+        "AI investment, govt borrowing 推动 global cost of capital 上升：Goldman Sachs",
+    ):
+        generated = draft(
+            item,
+            chinese_title=title,
+            brief="",
+            evidence_bindings=(
+                EvidenceBinding(
+                    title,
+                    item.canonical_evidence.source_title,
+                    item.canonical_evidence.url,
+                ),
+            ),
+        )
+
+        result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
         assert result.reason_codes == ("translation_failed",), title
 
 

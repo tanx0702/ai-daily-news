@@ -125,7 +125,63 @@ def _contains_chinese(value: str) -> bool:
     return any("\u4e00" <= char <= "\u9fff" for char in value)
 
 
-def _has_untranslated_title_prose(value: str) -> bool:
+# Connectors allowed inside a proper-noun phrase ("AI for Empowerment",
+# "Text to Image"). Anything else means the span is prose, not a name.
+_ANCHOR_CONNECTORS = {
+    "for", "to", "of", "the", "and", "on", "in", "at", "with", "by", "a", "an",
+}
+
+
+def _is_anchor_span(span: list[str]) -> bool:
+    """Whether a word span looks like a proper-noun phrase rather than prose.
+
+    Every word must be a capitalised/numeric name token or a short connector;
+    otherwise the span is a sentence that merely contains a capital letter and
+    must not be treated as an anchored name.
+    """
+    if len(span) < 2:
+        return False
+    if not any(
+        any(char.isupper() for char in word) or any(char.isdigit() for char in word)
+        for word in span
+    ):
+        return False
+    return all(
+        any(char.isupper() for char in word)
+        or any(char.isdigit() for char in word)
+        or word.lower() in _ANCHOR_CONNECTORS
+        for word in span
+    )
+
+
+def _source_anchor_phrases(source_title: str, evidence_text: str) -> tuple[str, ...]:
+    """English phrases in the source that a display title may keep verbatim.
+
+    Product/model/benchmark names are legitimately left in English per the
+    bilingual-title policy, so they must not be read as untranslated prose. Only
+    name-like spans qualify, which yields "AI for Empowerment", "Berlin Art Week"
+    and "Text to Image Leaderboard" while rejecting a full English sentence that
+    happens to contain a capitalised word.
+    """
+    text = source_title if source_title.strip() else evidence_text
+    text = re.sub(r"https?://\S+", " ", text, flags=re.I)
+    anchored: set[str] = set()
+    for segment in re.split(r"[^A-Za-z0-9 ]+", text):
+        words = [word for word in segment.split(" ") if word]
+        for start in range(len(words)):
+            for end in range(start + 2, len(words) + 1):
+                span = words[start:end]
+                if _is_anchor_span(span):
+                    anchored.add(" ".join(span))
+    return tuple(sorted(anchored, key=len, reverse=True))
+
+
+def _has_untranslated_title_prose(
+    value: str,
+    *,
+    source_title: str = "",
+    evidence_text: str = "",
+) -> bool:
     protected = re.sub(r"https?://\S+", " ", value, flags=re.I)
     protected = re.sub(
         r"(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+",
@@ -133,6 +189,15 @@ def _has_untranslated_title_prose(value: str) -> bool:
         protected,
     )
     protected = re.sub(r'[`\"]([A-Za-z][^`\"]*)[`\"]', " ", protected)
+    # Remove source-anchored proper-noun phrases before prose detection so a
+    # kept product/benchmark name is not mistaken for untranslated English.
+    for phrase in _source_anchor_phrases(source_title, evidence_text):
+        protected = re.sub(
+            rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])",
+            " ",
+            protected,
+            flags=re.I,
+        )
     words = re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z-]*(?![A-Za-z0-9])", protected)
     return any(word == word.lower() and word in _UNTRANSLATED_TITLE_WORDS for word in words)
 
@@ -457,7 +522,11 @@ class BriefValidator:
             return ("invalid_builder_response",)
         if (
             draft.content_origin == "llm"
-            and _has_untranslated_title_prose(draft.chinese_title)
+            and _has_untranslated_title_prose(
+                draft.chinese_title,
+                source_title=source.source_title,
+                evidence_text=source.evidence_text,
+            )
         ):
             return ("translation_failed",)
         if (
