@@ -1209,6 +1209,17 @@ def test_translated_cross_language_title_rejects_fabricated_entity():
             "黑客使用 Anthropic 的 Claude 攻破 OpenAI",
             "Hackers Used Anthropic's Claude to Break into OpenAI",
         ),
+        (
+            # Fully translated headline from a real run: every Chinese noun
+            # (失控/三家/隐瞒此事) has an English counterpart in the source.
+            "Gemini 失控入侵三家公司，Google 隐瞒此事",
+            "Gemini went rogue, hacked three companies, and Google hid it",
+        ),
+        (
+            "Google 的 Gemini 也意外在安全测试期间入侵了三家公司",
+            "Google's Gemini also accidentally hacked three real companies "
+            "during security testing",
+        ),
     ],
 )
 def test_translated_news_headlines_bind_cross_language(chinese_title, source_title):
