@@ -1577,6 +1577,38 @@ def test_validator_still_rejects_genuinely_untranslated_prose():
         assert result.reason_codes == ("translation_failed",), title
 
 
+def test_validator_does_not_reject_frozen_content_type_mismatch_as_malformed():
+    """A draft carrying the source's frozen type must never be a contract reject.
+
+    ``_source_contract_reason`` treats a ``content_type`` mismatch as a permanent
+    ``invalid_builder_response`` reject (no rebuild). This pins that a draft which
+    correctly echoes the frozen type does not trip that branch — the reject is
+    reserved for a genuine builder bug, not for normal items.
+    """
+    item = event(
+        source_title="Qwen3.8 improves accuracy by 10%",
+        evidence_text="Qwen3.8 improves accuracy by 10%.",
+        content_type="ai_update",
+    )
+    generated = draft(
+        item,
+        chinese_title="Qwen3.8 准确率提升 10%",
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "Qwen3.8 准确率提升 10%",
+                "Qwen3.8 improves accuracy by 10%",
+                item.canonical_evidence.url,
+            ),
+        ),
+        content_type=item.canonical_evidence.content_type,
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    assert result.reason_codes != ("invalid_builder_response",)
+
+
 def test_validator_allows_product_names_models_and_units_in_chinese_title():
     title = "PyTorch 内置 GELU 将 LLM 训练速度提升至 25,000 tokens/second"
     item = event(

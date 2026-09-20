@@ -83,3 +83,4 @@ git status --short
 
 - 每个事实简报候选必须在 `docs/debug/<date>-briefing.json` 留下结构化原始证据、构建/验证轨迹和最终原因码；摘要轨迹还记录 `original_brief`、`removed_brief_sentences`、`final_brief`、`brief_mode` 和 `brief_reason`。聚类阶段被合并的每个来源也必须留下独立的 `clustered_duplicate` 记录。该审计不进入公开产物、微信草稿或 Git。
 - 畸形构建条目的顶层原因码保持 `builder_item_malformed`，私有审计的 `build.malformed_detail` 另记有界结构分类（额外/缺失字段、index 或 event_key 不匹配、标题为空、brief 类型错误、展示目标数量错误、绑定字段非法、绑定目标未知、title quote ID 无法解析），用于区分结构环节；该字段只写稳定类别，不得写入原始模型响应或来源文本，也不进入公开产物。
+- `merged_event` 审计条目必须同时提供嵌套的 `event.canonical_evidence` 和扁平的顶层 `source_evidence`（与 collector 层候选审计同键），否则被拒条目无法回溯真实来源标题与引文，也就无法复核绑定失败原因；`final_reason_codes` 只记最后一次尝试的原因，重建场景下不等于首轮真实拒绝原因，排查时必须同时读 `attempts[].validation.reason_codes`。

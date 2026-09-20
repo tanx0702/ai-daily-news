@@ -343,6 +343,27 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     assert "研究院、辩论在原文中没有对应英文词" in system_prompt
 
 
+def test_builder_always_carries_the_frozen_content_type():
+    """The builder owns the type: it must echo the source's frozen value.
+
+    The classifier freezes ``content_type`` and the validator compares the
+    draft against it, so a draft that echoed the LLM's own type would be
+    permanently rejected as ``invalid_builder_response``. This pins that the
+    builder never trusts the model for the type.
+    """
+    for content_type in ("ai_update", "fact_event", "attributed_opinion"):
+        item = event(1, content_type=content_type)
+        payload = {
+            "items": [generated_item(1, item.event_key, item.canonical_evidence.url)]
+        }
+        builder, _ = builder_with_responses([payload])
+
+        result = builder.build_batch([item], attempts={})[0]
+
+        assert result.draft is not None, content_type
+        assert result.draft.content_type == content_type
+
+
 def test_builder_prompt_forbids_extra_item_and_binding_fields():
     """The strict parser rejects any extra field.
 

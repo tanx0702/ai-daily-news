@@ -191,6 +191,10 @@ def run_brief_pipeline(
             "candidate_type": "merged_event",
             "candidate_id": f"merged:{position}",
             "event": event.to_dict(),
+            # Flat canonical evidence so a rejected item can be traced back to the
+            # exact source title/quote without walking the nested event payload.
+            # Collector-level entries already expose this same key.
+            "source_evidence": event.canonical_evidence.to_dict(),
             "attempts": [],
             "final_state": "not_evaluated",
             "final_reason_codes": [],

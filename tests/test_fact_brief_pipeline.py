@@ -741,6 +741,34 @@ def test_pipeline_audits_invalid_builder_responses_before_rejecting():
     assert all(entry["validation"] is None for entry in audit["attempts"])
 
 
+def test_pipeline_audit_exposes_canonical_source_evidence_at_top_level():
+    """Every merged_event audit entry must carry a top-level source_evidence.
+
+    Regression: rejected items only nested the evidence under
+    ``event.canonical_evidence``, while collector-level entries use a flat
+    ``source_evidence`` key. Debugging why a title failed binding therefore had
+    no way to read the actual source title, so the real reason could not be
+    reconstructed from the audit.
+    """
+    result = run_brief_pipeline(
+        (event(1),),
+        (),
+        config(),
+        Builder(),
+        Validator(),
+    )
+
+    entry = result.audit_entries[0]
+    assert entry["candidate_type"] == "merged_event"
+    evidence = entry["source_evidence"]
+    assert evidence["source_title"] == event(1).canonical_evidence.source_title
+    assert evidence["evidence_text"] == event(1).canonical_evidence.evidence_text
+    assert evidence["url"] == event(1).canonical_evidence.url
+    assert evidence["content_type"] == "fact_event"
+    # The nested form must stay for existing consumers.
+    assert entry["event"]["canonical_evidence"]["url"] == evidence["url"]
+
+
 def test_pipeline_keeps_all_drafts_from_ambiguous_builder_response():
     class DuplicateBuilder:
         def build_batch(self, events, attempts, rebuild_reasons=None):
