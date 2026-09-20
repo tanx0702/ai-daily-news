@@ -483,6 +483,36 @@ def test_source_anchored_title_recognizes_hugging_face_as_organization():
     assert source_anchored_title(report) == "OpenAI 发布 Hugging Face"
 
 
+def test_progressive_action_forms_are_recognized():
+    """-ing forms were missing, so official X announcements using them were dropped.
+
+    "We're partnering with Accenture" framed no action and was rejected as
+    non_news_content; the progressive form must be an asserted action.
+    """
+    cases = {
+        "Anthropic: We're partnering with Accenture on independent evaluation": "partnership",
+        "OpenAI: We're collaborating with Broad Institute on genomics": "partnership",
+        "OpenAI: We're rolling out new agent capabilities to enterprises": "release",
+        "Meta: We're deploying new data center capacity in Texas": "infrastructure",
+        "OpenAI: We're hiring for the safety team": "joining",
+    }
+
+    for title, expected in cases.items():
+        actions = publishability.asserted_action_types(title)
+        assert expected in actions, f"{title!r} -> {sorted(actions)}"
+
+
+def test_progressive_forms_do_not_admit_x_noise():
+    """Widening to -ing forms must not admit promotional or conversational posts."""
+    for title in (
+        "Cohere: All out for ALL-IN @AstonMartinF1 and @MagnusCarlsen were in",
+        "Nathan Benaich: those nscale numbers",
+        "Cohere: Well, he's not wrong @aidangomez",
+    ):
+        result = validate_source_publishability(source(title))
+        assert result.accepted is False, f"{title!r} unexpectedly accepted"
+
+
 def test_source_anchored_title_supports_live_api_on_qwencloud():
     supported = source(
         "Qwen: Qwen3.8-Flash API is live on QwenCloud. "

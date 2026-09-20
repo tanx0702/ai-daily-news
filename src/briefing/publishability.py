@@ -17,9 +17,11 @@ EVENT_ACTION_MARKERS = {
         "launch", "launched", "launches", "available", "receiving access", "introduce",
         "introduced", "introduces", "introducing", "releasing", "is live",
         "goes live", "went live", "roll out", "rolling out", "rollout",
+        "launching", "releasing",
         # Relaunch/reissue and Chinese "major rewrite / opened free" product news are
         # asserted releases; they were previously dropped as no_asserted_action.
-        "relaunch", "relaunches", "relaunched", "大重构", "免费开放", "开放下载",
+        "relaunch", "relaunches", "relaunched", "relaunching",
+        "大重构", "免费开放", "开放下载",
         # Establishing an institute/initiative is rendered as 成立/设立 and maps to
         # the same launch action the English source uses ("launches institute").
         "成立", "设立", "创建",
@@ -28,14 +30,15 @@ EVENT_ACTION_MARKERS = {
     ),
     "update": (
         "更新", "升级", "新增", "下线", "update", "updated", "updates",
-        "upgrade", "upgraded", "upgrades", "add", "added", "adds",
-        "deprecate", "deprecated", "暂停", "追踪", "跟踪", "pause", "paused", "pauses",
-        "tracks",
+        "updating", "upgrade", "upgraded", "upgrades", "upgrading",
+        "add", "added", "adds", "adding",
+        "deprecate", "deprecated", "deprecating", "暂停", "追踪", "跟踪",
+        "pause", "paused", "pauses", "pausing", "tracks", "tracking",
     ),
     "result": (
         "达到", "提升", "降低", "减少", "超过", "增长", "achieve", "achieved", "improve",
-        "improved", "reduce", "reduced", "reduces", "exceed", "exceeded",
-        "jump", "jumps",
+        "improved", "improving", "reduce", "reduced", "reduces", "reducing",
+        "exceed", "exceeded", "exceeding", "jump", "jumps",
         # Measured/superlative outcomes that assert an event ("beats X", "now leads").
         "beats", "beat", "leads", "lead",
         # Chinese renderings of measured outcomes.
@@ -44,20 +47,24 @@ EVENT_ACTION_MARKERS = {
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
         "study finds", "paper proposes", "publishes a paper", "published a paper",
-        "publishes", "published",
+        "publishes", "published", "publishing",
     ),
     "funding": (
         "完成融资", "获得融资", "获得投资", "融资完成", "raise", "raises",
-        "raised", "funded",
+        "raised", "funded", "raising",
     ),
     "acquisition": (
-        "收购", "完成合并", "acquire", "acquired", "acquires", "merges with",
+        "收购", "完成合并", "acquire", "acquired", "acquires", "acquiring",
+        "merges with", "merging with",
     ),
     "partnership": (
         "达成合作", "宣布合作", "签署合作", "partners with", "partnered with",
-        "collaborates with", "collaborated with",
+        "partnering with", "collaborates with", "collaborated with",
+        "collaborating with",
     ),
-    "appointment": ("任命", "晋升", "appoint", "appointed", "appoints", "promoted"),
+    "appointment": (
+        "任命", "晋升", "appoint", "appointed", "appoints", "appointing", "promoted",
+    ),
     "departure": (
         "宣布离职", "宣布辞职", "announces departure", "announced departure", "departs", "departed", "离职", "辞职", "离开", "卸任", "leaving", "leaves", "left", "takes off",
         "headed out the door", "steps down", "resigns", "resigned",
@@ -74,7 +81,8 @@ EVENT_ACTION_MARKERS = {
         "call for action", "联合呼吁",
         # Rulings, disclosures and platform suspensions are asserted actions.
         "lose fight", "loses fight", "lost fight", "lose bid", "suspends", "suspended",
-        "reveal", "reveals", "revealed", "unveils", "unveiled",
+        "suspending", "reveal", "reveals", "revealed", "revealing",
+        "unveils", "unveiled", "unveiling",
     ),
     "litigation": (
         "起诉", "提起诉讼", "提告", "状告", "被起诉", "指控",
@@ -85,11 +93,13 @@ EVENT_ACTION_MARKERS = {
     ),
     "infrastructure": (
         "建设", "部署", "扩建", "扩大", "builds", "built", "deploys", "deployed",
-        "expands",
+        "deploying", "expands", "expanding", "building", "integrating",
+        "opening", "rolling out",
     ),
     "security": (
         "披露漏洞", "发现漏洞", "修复漏洞", "discloses", "disclosed",
-        "discovers", "discovered", "fixes", "fixed",
+        "disclosing", "discovers", "discovered", "discovering",
+        "fixes", "fixed", "fixing",
         # Breach/incident reporting is an asserted security event. "发现"/"caught"
         # is the disclosure sense (caught/found), rendered by the content LLM.
         "hacked", "hacks", "breached", "breach", "break into", "broke into",
@@ -100,8 +110,12 @@ EVENT_ACTION_MARKERS = {
         # "黑客使用 X 入侵 Y" frame with no subject before the action.
         "入侵", "攻击", "攻破", "侵入", "黑入",
     ),
-    "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
-    "open_source": ("开源", "open source", "open-source", "open-sources"),
+    "joining": (
+        "入职", "加入", "joins", "joined", "joining", "hired", "hiring", "is now at",
+    ),
+    "open_source": (
+        "开源", "open source", "open-source", "open-sources", "open-sourcing",
+    ),
 }
 
 _ORGANIZATION_ALIASES = {
