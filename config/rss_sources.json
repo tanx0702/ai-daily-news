@@ -7,6 +7,35 @@
             "tier": "community"
         },
         {
+            "name": "Hacker News Newest AI",
+            "url": "https://hnrss.org/newest?q=AI+OR+LLM+OR+GPT+OR+Claude",
+            "region": "overseas",
+            "tier": "community"
+        },
+        {
+            "name": "TechCrunch",
+            "url": "https://techcrunch.com/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "The Decoder",
+            "url": "https://the-decoder.com/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "MarkTechPost",
+            "url": "https://www.marktechpost.com/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "APPSO",
+            "url": "https://www.ifanr.com/feed",
+            "region": "china"
+        },
+        {
             "name": "TechCrunch AI",
             "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
             "region": "overseas"

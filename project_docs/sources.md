@@ -24,6 +24,10 @@
 
 RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间窗口过滤和中文 bigram/英文 Jaccard 标题去重。采集器失败不会阻断其它 RSS 源。当前在原有官方与媒体源之外，补充了 `Hugging Face Blog`、`MIT Technology Review AI` 和 `Ars Technica AI` 三个已验证的专题 feed，用来增加非 X 的官方技术信息和专业媒体事实供给；它们仍须通过统一发布时间、发布性和事实门禁。`36氪 AI` 和 `机器之心` 已从配置移除：其公开 URL 持续返回 HTML 而非 RSS，旧的通用 RSSHub 路径回退持续返回 403，且来源健康账本从未记录成功，不能作为稳定来源。
 
+生产实测表明供给瓶颈不是源数量，而是**高频新内容的产出速率**：官方博客（`OpenAI Blog`、`Hugging Face Blog`、`Google DeepMind`）虽能返回上千条历史条目，但 36 小时窗口内通常为 0 条。因此补充来源必须按 36 小时新鲜度筛选，而不是按总条目数。当前按此标准加入 `Hacker News Newest AI`、`TechCrunch`（全站 feed）、`The Decoder`、`MarkTechPost` 和 `APPSO` 五个实测 feed：两次探测均返回稳定的 36 小时新条目，覆盖英文聚合、专业 AI 媒体和中文来源，用于把候选池分母做大。
+
+以下实测源被拒绝，不得加入配置：`Anthropic News`、`Meta AI Blog`、`Mistral AI`、`Cohere Blog`、`Stability AI`、`Groq Blog`、`Perplexity Blog` 返回 404/400/403/307 且无有效 feed；`新智元` 返回 302 且无条目；`Reddit LocalLLaMA` 首次 200、复测 429，上游限流不稳定；`Reddit MachineLearning` 直接 429。`Hacker News Newest AI` 与既有 `Hacker News AI` 并存：前者按最新条目取数、后者按 frontpage 取数，两者都计入 `hnrss.org` 来源健康账本。
+
 每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。
 
 账本按 `(source_name, source_url)` 记账，因此从 `config/rss_sources.json` 移除的来源会留下不再更新的历史行；判断当前来源健康时必须先与配置交叉对照，不能只看连续失败次数。已移除来源的历史行不构成现行采集失败。
