@@ -39,7 +39,7 @@ EVENT_ACTION_MARKERS = {
         # Measured/superlative outcomes that assert an event ("beats X", "now leads").
         "beats", "beat", "leads", "lead",
         # Chinese renderings of measured outcomes.
-        "承担", "领先", "反超",
+        "承担", "领先", "反超", "领导",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
@@ -96,7 +96,9 @@ EVENT_ACTION_MARKERS = {
         "breaks into", "details", "detailed", "发现", "披露", "泄露",
         "caught", "catches", "found", "finds",
         # Chinese breach verbs the content LLM emits for security incidents.
-        "入侵", "攻击", "黑客", "遭黑客", "被黑",
+        # "黑客" is a subject descriptor, not an action: listing it here would make
+        # "黑客使用 X 入侵 Y" frame with no subject before the action.
+        "入侵", "攻击", "攻破", "侵入", "黑入",
     ),
     "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
     "open_source": ("开源", "open source", "open-source", "open-sources"),
@@ -305,6 +307,8 @@ CROSS_LANGUAGE_NOUN_EQUIVALENTS = {
     "裁定": ("court rules", "ruling", "rules"),
     "裁决": ("court win", "ruling", "verdict"),
     "入侵": ("break into", "broke into", "breached", "hack", "hacked"),
+    "攻破": ("break into", "broke into", "breached"),
+    "黑客": ("hacker", "hackers"),
     "攻击": ("attack", "attacks", "hacked"),
     "漏洞": ("vulnerability", "vulnerabilities", "flaw", "flaws"),
     "泄露": ("leak", "leaked", "leaks", "breach"),
@@ -320,6 +324,7 @@ CROSS_LANGUAGE_NOUN_EQUIVALENTS = {
     # Remaining common renderings observed from the content LLM.
     "隐藏": ("hide", "hides", "hidden", "conceal", "conceals"),
     "留纸条": ("leaving notes", "leaves notes", "left notes"),
+    "留下": ("leaving", "leaves", "left"),
     "纸条": ("note", "notes"),
     "后续": ("successors", "successor", "next"),
     "承担": ("leads", "lead", "takes on", "undertakes"),

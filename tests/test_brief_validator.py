@@ -1186,6 +1186,25 @@ def test_translated_cross_language_title_rejects_fabricated_entity():
             "Google DeepMind 成立研究所以拓宽 AGI 辩论",
             "Google DeepMind launches institute to widen the AGI debate",
         ),
+        (
+            # Bilingual shape produced by the strengthened prompt: source keywords
+            # are kept verbatim and only action/grammar words are translated.
+            "Google DeepMind 成立 institute 以拓宽 AGI debate",
+            "Google DeepMind launches institute to widen the AGI debate",
+        ),
+        (
+            "Claude Code 重新推出 Projects 以管理云端多个 AI agents",
+            "Claude Code relaunches Projects to manage multiple AI agents in the cloud",
+        ),
+        (
+            "Anthropic 表示 Claude 现在领导其下一代 AI 模型构建工作的四分之一",
+            "Anthropic says Claude now leads a quarter of work building its next AI models",
+        ),
+        (
+            # The subject precedes the breach verb; "黑客" must not be an action.
+            "黑客使用 Anthropic 的 Claude 攻破 OpenAI",
+            "Hackers Used Anthropic's Claude to Break into OpenAI",
+        ),
     ],
 )
 def test_translated_news_headlines_bind_cross_language(chinese_title, source_title):
