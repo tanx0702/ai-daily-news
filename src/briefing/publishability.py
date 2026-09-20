@@ -95,6 +95,8 @@ EVENT_ACTION_MARKERS = {
         "hacked", "hacks", "breached", "breach", "break into", "broke into",
         "breaks into", "details", "detailed", "发现", "披露", "泄露",
         "caught", "catches", "found", "finds",
+        # Chinese breach verbs the content LLM emits for security incidents.
+        "入侵", "攻击", "黑客", "遭黑客", "被黑",
     ),
     "joining": ("入职", "加入", "joins", "joined", "hired", "is now at"),
     "open_source": ("开源", "open source", "open-source", "open-sources"),
