@@ -522,6 +522,25 @@ def test_source_anchored_title_supports_live_api_on_qwencloud():
     assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
 
 
+def test_chinese_decided_win_verbs_align_with_beats():
+    """Chinese outright-win verbs must frame the same result action as `beats`.
+
+    Regression: "Bull Beats Out HPE for Next-Gen Lumi AI Supercomputer" translated
+    to「Bull 击败 HPE…」, but 击败 was not in the vocabulary, so the title framed
+    no action and the item was rejected as title_missing_event_action.
+    """
+    for title in (
+        "Bull 击败 HPE 为 Next-Gen Lumi AI Supercomputer",
+        "Bull 战胜 HPE 赢得 AI 超算订单",
+        "DeepSeek 击败 GPT-5 登顶榜单",
+    ):
+        assert "result" in publishability.asserted_action_types(title), title
+
+    # Planned or conditional framing stays blocked.
+    for planned in ("或将击败竞争对手", "可能击败 GPT-5"):
+        assert "result" not in publishability.asserted_action_types(planned), planned
+
+
 def test_chinese_partnership_pair_pattern_is_recognized():
     """`X 与 Y 合作` asserts a partnership; the bare noun 合作 does not.
 

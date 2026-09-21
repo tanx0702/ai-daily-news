@@ -43,6 +43,10 @@ EVENT_ACTION_MARKERS = {
         "beats", "beat", "leads", "lead",
         # Chinese renderings of measured outcomes.
         "承担", "领先", "反超", "领导",
+        # Chinese renderings of "beats"/an outright decided win, aligning with the
+        # English beats/beat group. Planned or conditional framing ("或将击败",
+        # "可能击败") is already blocked by _PLANNED_ACTION before this table.
+        "击败", "战胜", "胜过", "赢得", "夺得", "登顶", "斩获",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",
