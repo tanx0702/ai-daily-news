@@ -304,6 +304,16 @@ def deterministic_relationship(
 
     shared_strong = shared_strong_subjects(left, right)
     if (
+        shared_strong
+        and (left_features.asserted_actions or right_features.asserted_actions)
+        and not (left_features.asserted_actions and right_features.asserted_actions)
+    ):
+        # One side asserts the event and the other only reacts to it (a hands-on
+        # review without a release verb). Keep it out of automatic merging, but let
+        # the bounded reviewer/degradation path drop the weaker duplicate — two
+        # reports of one release must not both take a briefing slot.
+        return "review"
+    if (
         _same_x_thread(left, right)
         and shared_strong
         and (left_features.asserted_actions or right_features.asserted_actions)

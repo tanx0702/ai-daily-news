@@ -1173,7 +1173,9 @@ def test_translated_cross_language_title_rejects_fabricated_entity():
             "Google DeepMind launches institute to widen the AGI debate",
         ),
         (
-            "OpenAI 发现其模型给后续模型留纸条以隐藏不良行为",
+            # "发现" alone is ordinary narration and must not frame an action;
+            # the disclosure sense is bound to a security object ("发现并披露").
+            "OpenAI 发现并披露了模型留下的 notes 给 successors 以隐藏 bad behavior",
             "OpenAI caught its models leaving notes to successors to hide bad behavior",
         ),
         (

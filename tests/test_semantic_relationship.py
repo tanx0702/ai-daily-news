@@ -823,6 +823,59 @@ def test_same_publisher_series_about_one_named_event_is_the_same_event():
     assert deterministic_relationship(first, second, window_hours=48) == "same_event"
 
 
+def test_review_of_one_model_release_goes_to_review_not_a_second_slot():
+    """One side asserts the release, the other only reviews it.
+
+    Regression: a hands-on review without a release verb shared only the model
+    with the release report, so the pair fell through to "distinct" and both
+    occupied a briefing slot. It must go to the bounded reviewer instead.
+    """
+    release = EventDocument.from_evidence(
+        evidence(
+            publisher_id="leiphone-com",
+            publisher_name="Leiphone",
+            source_title="阶跃新旗舰 Step 5 Preview 发布，跻身 AA 榜单全球开源前三",
+            evidence_text="阶跃新旗舰 Step 5 Preview 发布，跻身 AA 榜单全球开源前三",
+            url="https://www.leiphone.com/a.html",
+        )
+    )
+    review = EventDocument.from_evidence(
+        evidence(
+            publisher_id="ifanr-com",
+            publisher_name="Ifanr",
+            source_title="体验完 Step 5 Preview，我发现阶跃重新坐上国产大模型主桌",
+            evidence_text="体验完 Step 5 Preview，我发现阶跃重新坐上国产大模型主桌",
+            url="https://www.ifanr.com/1680881",
+        )
+    )
+
+    assert deterministic_relationship(release, review, window_hours=48) == "review"
+
+
+def test_two_unrelated_brand_models_stay_distinct():
+    """Sharing only a publisher and an action must not merge different models."""
+    left = EventDocument.from_evidence(
+        evidence(
+            publisher_id="leiphone-com",
+            publisher_name="Leiphone",
+            source_title="Grok 4 released by xAI",
+            evidence_text="Grok 4 released by xAI",
+            url="https://www.leiphone.com/grok.html",
+        )
+    )
+    right = EventDocument.from_evidence(
+        evidence(
+            publisher_id="leiphone-com",
+            publisher_name="Leiphone",
+            source_title="GLM-5 released by Zhipu",
+            evidence_text="GLM-5 released by Zhipu",
+            url="https://www.leiphone.com/glm.html",
+        )
+    )
+
+    assert deterministic_relationship(left, right, window_hours=48) == "distinct"
+
+
 def test_same_publisher_different_named_events_stay_distinct():
     """Sharing a publisher and a generic action must not merge distinct events."""
     first = EventDocument.from_evidence(

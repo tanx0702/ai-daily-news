@@ -100,11 +100,16 @@ EVENT_ACTION_MARKERS = {
         "披露漏洞", "发现漏洞", "修复漏洞", "discloses", "disclosed",
         "disclosing", "discovers", "discovered", "discovering",
         "fixes", "fixed", "fixing",
-        # Breach/incident reporting is an asserted security event. "发现"/"caught"
-        # is the disclosure sense (caught/found), rendered by the content LLM.
+        # Breach/incident reporting is an asserted security event.
         "hacked", "hacks", "breached", "breach", "break into", "broke into",
-        "breaks into", "details", "detailed", "发现", "披露", "泄露",
+        "breaks into", "details", "detailed", "披露", "泄露",
         "caught", "catches", "found", "finds",
+        # "发现" only asserts a security event when bound to a security object;
+        # a bare 发现 is ordinary narration ("我发现…") and must not frame an
+        # action, or unrelated posts would look like security incidents during
+        # duplicate detection.
+        "发现并修复", "发现并披露", "发现安全", "发现攻击", "发现入侵",
+        "发现异常", "发现问题", "被发现", "遭发现",
         # Chinese breach verbs the content LLM emits for security incidents.
         # "黑客" is a subject descriptor, not an action: listing it here would make
         # "黑客使用 X 入侵 Y" frame with no subject before the action.

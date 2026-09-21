@@ -522,6 +522,28 @@ def test_source_anchored_title_supports_live_api_on_qwencloud():
     assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
 
 
+def test_bare_discovery_verb_is_not_a_security_action():
+    """"发现" must only frame a security event when bound to a security object.
+
+    Regression: listing bare 发现 in the security group made ordinary narration
+    ("体验完 Step 5 Preview，我发现阶跃…") frame a security action, which broke
+    duplicate detection: two reports of one release then had no shared action and
+    stayed "distinct", each taking a briefing slot.
+    """
+    for narration in (
+        "体验完 Step 5 Preview，我发现阶跃重新坐上国产大模型主桌",
+        "我发现这个功能很好用",
+    ):
+        assert "security" not in publishability.asserted_action_types(narration), narration
+
+    # The disclosure sense stays recognised when bound to a security object.
+    for disclosure in (
+        "研究员发现漏洞，影响百万设备",
+        "某公司发现并修复了严重漏洞",
+    ):
+        assert "security" in publishability.asserted_action_types(disclosure), disclosure
+
+
 def test_source_anchored_title_supports_concrete_ai_news_actions():
     cases = (
         (
