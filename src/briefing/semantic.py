@@ -311,9 +311,54 @@ def deterministic_relationship(
     similarity = _text_similarity(left, right)
     if similarity >= 0.82 and shared_strong and shared_asserted_actions:
         return "same_event"
+    if _same_publisher_named_event(left, right, shared_actions):
+        return "same_event"
     if shared_actions and (shared_organizations or shared_person_candidates):
         return "review"
     return "distinct"
+
+
+def _same_publisher_named_event(
+    left: EventDocument,
+    right: EventDocument,
+    shared_actions: frozenset[str],
+) -> bool:
+    """Whether one publisher filed two reports about the same named event.
+
+    Chinese outlets often publish a series about one competition/conference
+    (announcement, shortlist, results). Those pairs share an action and a long
+    event-name token but no known organization or person, so without this rule
+    they would each consume a briefing slot and break the one-slot-per-event
+    contract. Requiring the same publisher and a distinctive shared name token
+    keeps the rule precise: two reports that merely share lowercase English
+    wording ("Mira Murati", "Blue Horizon leaves OpenAI") must not merge here,
+    which is why the signal is a long Chinese phrase or an uppercase acronym.
+    """
+    if not shared_actions:
+        return False
+    if not left.evidence.publisher_id or (
+        left.evidence.publisher_id != right.evidence.publisher_id
+    ):
+        return False
+    left_names = _named_event_tokens(left.text)
+    right_names = _named_event_tokens(right.text)
+    return bool(left_names & right_names)
+
+
+_NAMED_EVENT_MIN_CN_LEN = 6
+
+
+def _named_event_tokens(value: str) -> frozenset[str]:
+    """Distinctive event-name tokens for a same-publisher series.
+
+    Only long Chinese phrases qualify. Latin model/organization names are
+    deliberately excluded: sharing `GPT`/`OpenAI` must stay insufficient for a
+    merge, per the one-slot-per-event rules, and uppercase business acronyms
+    (`CEO`, `AI`) name roles or technologies rather than events.
+    """
+    return frozenset(
+        token for token in re.findall(r"[\u4e00-\u9fff]{6,}", value)
+    )
 
 
 def evidence_priority(

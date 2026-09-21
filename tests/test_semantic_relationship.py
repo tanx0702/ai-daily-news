@@ -731,3 +731,57 @@ def test_generated_brief_titles_do_not_override_distinct_source_evidence():
     )
 
     assert deterministic_relationship(first, second, window_hours=48) == "distinct"
+
+
+def test_same_publisher_series_about_one_named_event_is_the_same_event():
+    """One outlet reporting the same named event twice must not take two slots.
+
+    Regression: InfoQ published "70强会师杭州，世界人工智能开源大赛（GOAI）总决赛即将启幕"
+    and "世界人工智能开源大赛（GOAI）总决赛70强名单公布" — the same competition. Both share
+    the action and a long Chinese event name but no known organization/person, so
+    the pair fell through to "distinct" and occupied two briefing slots.
+    """
+    first = EventDocument.from_evidence(
+        evidence(
+            publisher_id="infoq-cn",
+            publisher_name="Infoq",
+            source_title="70强会师杭州，世界人工智能开源大赛（GOAI）总决赛即将启幕",
+            evidence_text="70强会师杭州，世界人工智能开源大赛（GOAI）总决赛即将启幕",
+            url="https://www.infoq.cn/article/MaOcETZFPCvAuFRQJps2",
+        )
+    )
+    second = EventDocument.from_evidence(
+        evidence(
+            publisher_id="infoq-cn",
+            publisher_name="Infoq",
+            source_title="世界人工智能开源大赛（GOAI）总决赛70强名单公布",
+            evidence_text="世界人工智能开源大赛（GOAI）总决赛70强名单公布",
+            url="https://www.infoq.cn/article/7zz2HLNXEl0guawQCyJj",
+        )
+    )
+
+    assert deterministic_relationship(first, second, window_hours=48) == "same_event"
+
+
+def test_same_publisher_different_named_events_stay_distinct():
+    """Sharing a publisher and a generic action must not merge distinct events."""
+    first = EventDocument.from_evidence(
+        evidence(
+            publisher_id="infoq-cn",
+            publisher_name="Infoq",
+            source_title="世界人工智能开源大赛（GOAI）总决赛即将启幕",
+            evidence_text="世界人工智能开源大赛（GOAI）总决赛即将启幕",
+            url="https://www.infoq.cn/article/aaaa",
+        )
+    )
+    second = EventDocument.from_evidence(
+        evidence(
+            publisher_id="infoq-cn",
+            publisher_name="Infoq",
+            source_title="国产大模型推理成本大幅下降",
+            evidence_text="国产大模型推理成本大幅下降",
+            url="https://www.infoq.cn/article/bbbb",
+        )
+    )
+
+    assert deterministic_relationship(first, second, window_hours=48) == "distinct"
