@@ -33,7 +33,9 @@ python app.py
 
 ## 事实简报与决策
 
-生产日报展示 5-15 条唯一 AI 事实简报；5-14 条是正常短版，少于 5 条时阻止创建草稿。候选池默认 45 条，先按事件聚类，再生成简报；歧义重复项进入隔离区，不能参与回填。每个展示声明都绑定到展示的规范来源证据；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
+生产日报展示 5-20 条唯一 AI 事实简报，其中至少 2 条必须是 `fact_event`；少于 5 条时阻止创建草稿。候选池默认 60 条，先按事件聚类，再生成简报；歧义重复项进入隔离区，不能参与回填。每个展示声明都绑定到展示的规范来源证据；例如 GitHub 的近期 `push` 只能写成项目活跃，不能写成正式发布。
+
+内容分为三类：`fact_event`（正式发布、融资、收购、法律裁决、人事变动等已断言事件）、`ai_update`（有明确主体和可核验进展/能力的动态）和 `attributed_opinion`（署名观点，统一为 `title_only`）。类别目标只影响尝试顺序，硬上限由选择器和 `DraftDecision` 执行。
 
 质量 LLM 只是可选增强。模型缺失、超时或响应无效时，流水线使用严格确定性的 `rules_only` 核验，不要求人工复核，也不接受 LLM 修正事实。`DraftDecision` 是唯一的 `create|block` 决策；`DraftExecution` 单独记录 `draft_created|dry_run|blocked|failed` 执行结果。
 
@@ -95,7 +97,7 @@ docker compose up -d --force-recreate
 高级变量按以下用途分组：
 
 - `QUALITY_LLM_*`：独立质量核验模型。未设置时会继承对应的 `LLM_*`；不可用或无效时严格退回 `rules_only`，大多数部署不需要填写。
-- 日报选择：5-15 条事实简报、默认 45 条候选池、事件聚类、排序偏好、新闻时效窗口、超时与任务锁。
+- 日报选择：5-20 条事实简报（`DAILY_MIN_ITEMS=5`、`DAILY_TOP_N=20`、至少 2 条 `fact_event`）、默认 60 条候选池（`DAILY_CANDIDATE_POOL_N=60`）、事件聚类、排序偏好、新闻时效窗口、超时与任务锁。
 - 采集源：Hacker News、GitHub、Hugging Face、arXiv 开关，以及可选的 `GITHUB_TOKEN` 和 `HF_TOKEN`。
 - 事实核验：质量模型超时和确定性 `rules_only` 降级。
 - 图片与封面：原文图抓取、AI 封面、安全封面、重试和超时。
