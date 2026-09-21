@@ -13,7 +13,7 @@
 1. 采集与统一候选
    -> RSS + HN + GitHub + Hugging Face + arXiv + X 快照
    -> 日期窗口、AI 相关性、来源级规则、URL/标题去重、热度和新鲜度评分
-   -> 在截取候选池前根据规范来源证据统一分类并冻结 `content_type`：无效证据和明确的教程、推广、传闻等分类拒绝项直接终止且不调用内容 LLM；事实、动态和观点再走同类型来源预检，通过项优先，普通预检失败项降序补尾且仍须通过最终门禁。分类拒绝的顶层原因码保持 `non_news_content` 等既有契约不变，私有审计另记有界子原因 `classification_rejection_detail`：标题命中非新闻模式（教程/指南/工作原理/提及/战略/趋势）记为 `instructional_content`，标题无法构成已断言事件框架（缺少动作词）记为 `no_asserted_action`；该字段只写稳定类别，不进入公开产物、微信草稿或决策载荷
+   -> 在截取候选池前根据规范来源证据统一分类并冻结 `content_type`：无效证据和明确的教程、推广、传闻等分类拒绝项直接终止且不调用内容 LLM；事实、动态和观点再走同类型来源预检，通过项优先，普通预检失败项降序补尾且仍须通过最终门禁。分类必须**先判定已冻结的 `attributed_opinion`**，再走事实/动态规则：观点措辞偶尔命中断言动作（如 `built` 命中基础设施）时，若先跑事实分类就会被冻结成 `fact_event`，随后因缺少硬新闻动作被 `title_missing_event_action` 拒绝，而观点本不需要断言动作。观点通过 `validate_content_source_publishability` 后即冻结为 `attributed_opinion`，不得被事实路径覆盖。分类拒绝的顶层原因码保持 `non_news_content` 等既有契约不变，私有审计另记有界子原因 `classification_rejection_detail`：标题命中非新闻模式（教程/指南/工作原理/提及/战略/趋势）记为 `instructional_content`，标题无法构成已断言事件框架（缺少动作词）记为 `no_asserted_action`；该字段只写稳定类别，不进入公开产物、微信草稿或决策载荷
 
 1.25 规范来源证据与事件聚类
    -> 保留规范来源 URL、原始证据文本、带时区发布时间和 X 线程关系

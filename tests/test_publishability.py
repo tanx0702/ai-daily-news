@@ -522,6 +522,25 @@ def test_source_anchored_title_supports_live_api_on_qwencloud():
     assert source_anchored_title(supported) == "Qwen3.8-Flash 上线 QwenCloud"
 
 
+def test_chinese_partnership_pair_pattern_is_recognized():
+    """`X 与 Y 合作` asserts a partnership; the bare noun 合作 does not.
+
+    Regression: "Flock 与使用 AI 动员公众支持的 Nonprofit 合作" framed no action
+    and was rejected as title_missing_event_action, losing a real partnership
+    report. A bare 合作 must stay non-asserting so "AI 合作模式" is not an event.
+    """
+    for title in (
+        "Flock 与使用 AI 动员公众支持的 Nonprofit 合作",
+        "某公司与某机构建立合作",
+        "某公司宣布与某机构开展合作",
+    ):
+        assert "partnership" in publishability.asserted_action_types(title), title
+
+    assert "partnership" not in publishability.asserted_action_types(
+        "AI 合作模式正在改变行业"
+    )
+
+
 def test_bare_discovery_verb_is_not_a_security_action():
     """"发现" must only frame a security event when bound to a security object.
 

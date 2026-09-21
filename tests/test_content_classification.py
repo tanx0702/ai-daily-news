@@ -83,6 +83,41 @@ def test_eligible_personal_stance_stays_attributed_opinion():
     assert result.content_type == "attributed_opinion"
 
 
+def test_frozen_opinion_is_not_reclassified_as_fact_event():
+    """A frozen opinion must stay attributed_opinion.
+
+    Regression: the fact-event check ran first, so an opinion post whose wording
+    happened to match a formal action (e.g. "built" framing an infrastructure
+    event) was frozen as ``fact_event``. It then had to satisfy hard-news action
+    and binding gates that opinions are exempt from, and was rejected as
+    ``title_missing_event_action``.
+    """
+    opinion = replace(
+        source_evidence(
+            publisher_id="rasbt",
+            publisher_name="Sebastian Raschka",
+            source_title=(
+                "Sebastian Raschka: poor guy claim to have built Jev a year ago "
+                "but no one cared, and now Jev got all the attention"
+            ),
+            evidence_text=(
+                "Sebastian Raschka: poor guy claim to have built Jev a year ago "
+                "but no one cared, and now Jev got all the attention"
+            ),
+            channel="x",
+        ),
+        content_type="attributed_opinion",
+        opinion_author="Sebastian Raschka",
+        opinion_eligible=True,
+        original_post=True,
+        context_complete=True,
+    )
+
+    result = classify_source_content(opinion)
+
+    assert result.content_type == "attributed_opinion", result.reason_codes
+
+
 def test_vague_or_promotional_candidate_is_rejected():
     result = classify_source_content(source_evidence(
         source_title="Join our amazing AI workshop",

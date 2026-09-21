@@ -61,6 +61,10 @@ EVENT_ACTION_MARKERS = {
         "达成合作", "宣布合作", "签署合作", "partners with", "partnered with",
         "partnering with", "collaborates with", "collaborated with",
         "collaborating with",
+        # Chinese partnership collocations. A bare "合作" is a noun that also
+        # appears in non-event wording ("AI 合作模式"), so only verbs that bind it
+        # assert a partnership. The "与…合作" pattern is handled separately.
+        "建立合作", "开展合作", "进行合作", "结为合作", "成为合作",
     ),
     "appointment": (
         "任命", "晋升", "appoint", "appointed", "appoints", "appointing", "promoted",
@@ -547,6 +551,16 @@ _UPDATE_KNOWN_SUBJECT = re.compile(
 )
 
 
+_ACTION_PAIR_PATTERNS = (
+    # "X 与 Y 合作" asserts a partnership; the bare noun "合作" alone does not
+    # ("AI 合作模式"), so the "与 … 合作" shape is matched as a pair.
+    (
+        "partnership",
+        re.compile(r"与[^，。；！？\n]{1,40}?合作|同[^，。；！？\n]{1,40}?合作"),
+    ),
+)
+
+
 @dataclass(frozen=True, slots=True)
 class PublishabilityResult:
     accepted: bool
@@ -598,11 +612,17 @@ def asserted_action_types(value: str) -> frozenset[str]:
         return frozenset()
     if _PLANNED_ACTION.search(normalized):
         return frozenset()
-    return frozenset(
+    actions = {
         action
         for action, markers in EVENT_ACTION_MARKERS.items()
         if any(_contains_marker(normalized, marker) for marker in markers)
+    }
+    actions.update(
+        action
+        for action, pattern in _ACTION_PAIR_PATTERNS
+        if pattern.search(value)
     )
+    return frozenset(actions)
 
 
 def _first_action(value: str) -> tuple[int, int, str]:
@@ -623,6 +643,13 @@ def _first_action(value: str) -> tuple[int, int, str]:
                 )
                 if match:
                     matches.append((match.start(), match.end(), action))
+    for action, pattern in _ACTION_PAIR_PATTERNS:
+        match = pattern.search(value)
+        if match:
+            marker = match.group(0)
+            index = lowered.find(_normalize(marker).casefold())
+            if index >= 0:
+                matches.append((index, index + len(_normalize(marker)), action))
     return min(matches, default=(-1, -1, ""), key=lambda item: item[0])
 
 

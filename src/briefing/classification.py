@@ -53,14 +53,10 @@ def classify_source_content(source: SourceEvidence) -> ContentClassification:
     if _UNVERIFIED_RUMOR.search(combined):
         return ContentClassification(None, ("unverified_rumor",))
 
-    fact = validate_source_publishability(replace(source, content_type="fact_event"))
-    if fact.accepted and fact.event_type in _FORMAL_EVENT_TYPES:
-        return ContentClassification(
-            "fact_event",
-            ("classified_fact_event",),
-            fact.subject_anchors,
-        )
-
+    # An opinion frozen by the collector stays an opinion. Checking it first keeps
+    # opinion wording that merely resembles a formal action ("built …") from being
+    # re-frozen as fact_event, which would then demand a hard-news action that an
+    # opinion never has.
     if source.content_type == "attributed_opinion":
         opinion = validate_content_source_publishability(source)
         if opinion.accepted:
@@ -68,6 +64,14 @@ def classify_source_content(source: SourceEvidence) -> ContentClassification:
                 "attributed_opinion",
                 ("classified_attributed_opinion",),
             )
+
+    fact = validate_source_publishability(replace(source, content_type="fact_event"))
+    if fact.accepted and fact.event_type in _FORMAL_EVENT_TYPES:
+        return ContentClassification(
+            "fact_event",
+            ("classified_fact_event",),
+            fact.subject_anchors,
+        )
 
     update = validate_update_source_publishability(
         replace(source, content_type="ai_update")
