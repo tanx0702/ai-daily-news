@@ -337,10 +337,12 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "其余具体细节必须逐字照抄原文的英文单词" in system_prompt
     assert "都必须能在同一条原文句子里找到" in system_prompt
-    assert "宁可标题中英夹杂" in system_prompt
+    assert "这些类型的标题宁可中英夹杂" in system_prompt
     # The worked example pins both the accepted and rejected shape.
     assert "成立 institute 以拓宽 AGI debate" in system_prompt
     assert "研究院、辩论在原文中没有对应英文词" in system_prompt
+    # The strict rule must be scoped so opinion titles are not left half-English.
+    assert "content_type 为 fact_event 和 ai_update 时" in system_prompt
 
 
 def test_builder_always_carries_the_frozen_content_type():
@@ -423,6 +425,29 @@ def test_builder_forces_attributed_opinion_to_title_only():
     }
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "content_type=attributed_opinion 时 brief 必须为空字符串" in system_prompt
+
+
+def test_builder_prompt_lets_opinion_titles_read_as_natural_chinese():
+    """Opinion titles are not anchor-bound, so they must not be left half-English.
+
+    Regression: the bilingual-anchor rule applied to every type, so an X opinion
+    came out as "马东锡: My best guess 是对于 scaled RL，大多数 top Chinese AI labs…".
+    The validator only requires author attribution for opinions, so the prompt
+    must tell the model to translate the opinion fully and keep only the author
+    name and product names in English.
+    """
+    item = event(1, content_type="attributed_opinion")
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    builder, client = builder_with_responses([{"items": [payload]}])
+
+    builder.build_batch([item], attempts={})
+
+    system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
+    assert "content_type=attributed_opinion" in system_prompt
+    assert "完整翻译成中文" in system_prompt
+    assert "只保留作者名和产品/模型名" in system_prompt
+    # The strict anchor rule must be scoped to fact/update types.
+    assert "fact_event 和 ai_update" in system_prompt
 
 
 def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
