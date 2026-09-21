@@ -26,6 +26,8 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 生产实测表明供给瓶颈不是源数量，而是**高频新内容的产出速率**：官方博客（`OpenAI Blog`、`Hugging Face Blog`、`Google DeepMind`）虽能返回上千条历史条目，但 36 小时窗口内通常为 0 条。因此补充来源必须按 36 小时新鲜度筛选，而不是按总条目数。当前按此标准加入 `Hacker News Newest AI`、`TechCrunch`（全站 feed）、`The Decoder`、`MarkTechPost` 和 `APPSO` 五个实测 feed：两次探测均返回稳定的 36 小时新条目，覆盖英文聚合、专业 AI 媒体和中文来源，用于把候选池分母做大。
 
+第二轮扩展按同一标准（两次探测稳定 + 36 小时新条目 + AI 相关）加入六个源，其中中文供给此前最薄弱，故以中文源为主：`InfoQ 中文 AI`（20 条/36h，14 条与 AI 相关）、`雷峰网`（10 条/36h，9 条 AI 相关）、`钛媒体`（18 条/36h，10 条 AI 相关）、`Simon Willison`（5 条/36h，4 条 AI 相关）、`Unite.AI`（3 条/36h）、`InfoQ AI`（2 条/36h）。第二轮同时拒绝两个**可达但不合格**的源：`Lobsters AI` 虽两次稳定返回条目，但 36 小时内容 AI 相关数为 0；`爱范儿` 全站 feed 与既有 `APPSO` 同一上游（`ifanr.com/feed`），AI 相关仅 2/7，重复且稀释，故不重复收录。
+
 以下实测源被拒绝，不得加入配置：`Anthropic News`、`Meta AI Blog`、`Mistral AI`、`Cohere Blog`、`Stability AI`、`Groq Blog`、`Perplexity Blog` 返回 404/400/403/307 且无有效 feed；`新智元` 返回 302 且无条目；`Reddit LocalLLaMA` 首次 200、复测 429，上游限流不稳定；`Reddit MachineLearning` 直接 429。`Hacker News Newest AI` 与既有 `Hacker News AI` 并存：前者按最新条目取数、后者按 frontpage 取数，两者都计入 `hnrss.org` 来源健康账本。
 
 每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。

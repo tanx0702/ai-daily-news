@@ -105,5 +105,31 @@ def test_rss_sources_exclude_probed_unreachable_feeds():
         "Perplexity Blog",
         "Reddit LocalLLaMA",
         "新智元",
+        # Round 3: stable feeds rejected for poor AI relevance.
+        "Lobsters AI",
+        "爱范儿",
     ):
         assert name not in by_name, name
+
+
+def test_rss_sources_include_round_three_chinese_and_media_feeds():
+    """Second expansion round: Chinese tech media carry high 36h AI volume.
+
+    Probed twice for stability; each returns AI-relevant items inside the
+    window. Chinese supply was the thinnest area, so most additions are there.
+    """
+    source_path = Path(__file__).resolve().parents[1] / "config" / "rss_sources.json"
+    sources = json.loads(source_path.read_text(encoding="utf-8"))["sources"]
+    by_name = {source["name"]: source for source in sources}
+
+    for name, url, region in (
+        ("InfoQ 中文 AI", "https://www.infoq.cn/feed/ai", "china"),
+        ("雷峰网", "https://www.leiphone.com/feed", "china"),
+        ("钛媒体", "https://www.tmtpost.com/rss.xml", "china"),
+        ("Simon Willison", "https://simonwillison.net/atom/everything/", "overseas"),
+        ("Unite.AI", "https://www.unite.ai/feed/", "overseas"),
+        ("InfoQ AI", "https://feed.infoq.com/ai-ml-data-eng/", "overseas"),
+    ):
+        assert name in by_name, name
+        assert by_name[name]["url"] == url, name
+        assert by_name[name]["region"] == region, name

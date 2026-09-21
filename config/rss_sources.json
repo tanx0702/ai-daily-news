@@ -36,6 +36,39 @@
             "region": "china"
         },
         {
+            "name": "InfoQ 中文 AI",
+            "url": "https://www.infoq.cn/feed/ai",
+            "region": "china"
+        },
+        {
+            "name": "雷峰网",
+            "url": "https://www.leiphone.com/feed",
+            "region": "china"
+        },
+        {
+            "name": "钛媒体",
+            "url": "https://www.tmtpost.com/rss.xml",
+            "region": "china"
+        },
+        {
+            "name": "Simon Willison",
+            "url": "https://simonwillison.net/atom/everything/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "Unite.AI",
+            "url": "https://www.unite.ai/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "InfoQ AI",
+            "url": "https://feed.infoq.com/ai-ml-data-eng/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
             "name": "TechCrunch AI",
             "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
             "region": "overseas"
