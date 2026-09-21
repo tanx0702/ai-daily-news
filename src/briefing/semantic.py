@@ -126,12 +126,25 @@ _MODEL_VARIANT_SUFFIXES = (
     "mini",
     "nano",
     "opus",
+    "preview",
     "pro",
     "scout",
     "sonnet",
     "thinking",
     "turbo",
     "ultra",
+)
+# Model families recognised as strong subjects for duplicate detection. Each
+# entry matches the capitalised form ("Step", "GLM") or the all-caps form, so
+# brand-shaped tokens bind while ordinary lowercase wording does not.
+_MODEL_BRAND_WORDS = (
+    "gpt", "claude", "gemini", "llama", "qwen", "deepseek", "model",
+    "step", "kimi", "glm", "ernie", "hunyuan", "doubao", "minimax",
+    "grok", "mistral",
+)
+_MODEL_BRANDS_PATTERN = "|".join(
+    f"{word[0].upper()}(?:{word[1:].upper()}|{word[1:]})"
+    for word in _MODEL_BRAND_WORDS
 )
 _JOB_TITLE_HEADS = {
     "chair",
@@ -425,11 +438,14 @@ def _extract_models(value: str) -> frozenset[str]:
         re.escape(suffix)
         for suffix in sorted(_MODEL_VARIANT_SUFFIXES, key=len, reverse=True)
     )
+    # The brand part is case-sensitive: a model family is written capitalised
+    # ("Step 5", "GLM-5"), which keeps ordinary wording ("the step 2 of our
+    # plan") from becoming a phantom subject that could merge unrelated events.
+    # The variant suffix stays case-insensitive so "Claude 4.5 Opus" keeps Opus.
     pattern = re.compile(
-        rf"\b(?P<base>(?:gpt|claude|gemini|llama|qwen|deepseek|model)"
+        rf"(?<![A-Za-z0-9])(?P<base>(?:{_MODEL_BRANDS_PATTERN})"
         rf"[- ]?[a-z]*\d[\w.+-]*)"
-        rf"(?:\s*(?:\(\s*)?(?P<suffix>{suffixes})\b(?:\s*\))?)?",
-        flags=re.IGNORECASE,
+        rf"(?:\s*(?:\(\s*)?(?P<suffix>(?i:{suffixes}))\b(?:\s*\))?)?",
     )
     models: set[str] = set()
     for match in pattern.finditer(model_text):

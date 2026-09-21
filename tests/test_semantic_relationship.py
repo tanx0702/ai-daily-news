@@ -58,6 +58,66 @@ def test_same_company_different_actions_are_distinct():
     assert deterministic_relationship(release, departure, window_hours=48) == "distinct"
 
 
+def test_new_brand_models_are_extracted_as_strong_subjects():
+    """Model families beyond GPT/Claude must be recognised.
+
+    `Step 5 Preview` (阶跃) was not extracted, so two reports of one release from
+    different outlets stayed "distinct" and both took a briefing slot.
+    """
+    for text, expected in (
+        ("阶跃新旗舰 Step 5 Preview 发布", "step-5-preview"),
+        ("GLM-5 scores higher on the benchmark", "glm-5"),
+        ("Grok 4 released by xAI", "grok-4"),
+        ("OpenAI releases GPT-5.6 Ultrafast", "gpt-5.6"),
+        ("Anthropic launches Claude 4.5 Opus", "claude-4.5-opus"),
+    ):
+        document = EventDocument.from_evidence(
+            evidence(source_title=text, evidence_text=text)
+        )
+        assert expected in document.features.models, (text, document.features.models)
+
+
+def test_lowercase_english_words_are_not_mistaken_for_models():
+    """Requiring a capitalised brand keeps ordinary wording out of models.
+
+    Without this, "The step 2 of our plan" would add a phantom `step-2` subject
+    and could merge unrelated events.
+    """
+    for text in (
+        "The step 2 of our plan is described below",
+        "our step 3 will be announced later",
+        "step 5 preview is a generic phrase",
+    ):
+        document = EventDocument.from_evidence(
+            evidence(source_title=text, evidence_text=text)
+        )
+        assert not document.features.models, (text, document.features.models)
+
+
+def test_cross_outlet_reports_of_one_model_release_are_the_same_event():
+    """Two outlets covering one release share the model as a strong subject."""
+    left = EventDocument.from_evidence(
+        evidence(
+            publisher_id="leiphone-com",
+            publisher_name="Leiphone",
+            source_title="阶跃新旗舰 Step 5 Preview 发布，跻身 AA 榜单全球开源前三",
+            evidence_text="阶跃新旗舰 Step 5 Preview 发布，跻身 AA 榜单全球开源前三",
+            url="https://www.leiphone.com/a.html",
+        )
+    )
+    right = EventDocument.from_evidence(
+        evidence(
+            publisher_id="ifanr-com",
+            publisher_name="Ifanr",
+            source_title="阶跃 Step 5 Preview 发布，国产大模型坐上主桌",
+            evidence_text="阶跃 Step 5 Preview 发布，国产大模型坐上主桌",
+            url="https://www.ifanr.com/1680881",
+        )
+    )
+
+    assert deterministic_relationship(left, right, window_hours=48) == "same_event"
+
+
 def test_same_action_different_people_are_distinct():
     brad = EventDocument.from_evidence(
         evidence(
