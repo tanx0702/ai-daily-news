@@ -11,7 +11,7 @@ from typing import Literal
 from urllib.parse import urlparse, urlunparse
 
 from src.briefing.models import BriefItem, SourceEvidence
-from src.briefing.publishability import asserted_action_types
+from src.briefing.publishability import EVENT_ACTION_MARKERS, asserted_action_types
 
 
 Relationship = Literal["same_event", "distinct", "review"]
@@ -45,7 +45,7 @@ _ORGANIZATION_ALIASES = {
     "阿里通义": "qwen",
     "通义千问": "qwen",
 }
-_ACTION_MARKERS = {
+_SEMANTIC_ONLY_ACTION_MARKERS = {
     "release": (
         "release", "released", "releases", "launch", "launched", "launches",
         "roll out", "rollout", "available", "receiving access", "发布", "推出",
@@ -66,6 +66,29 @@ _ACTION_MARKERS = {
     "layoff": ("layoff", "layoffs", "laid off", "cuts jobs", "裁员"),
     "office": ("office", "campus", "headquarters", "办公室", "总部"),
 }
+
+
+def _merged_action_markers() -> dict[str, tuple[str, ...]]:
+    """Union of the semantic wording and the shared publication vocabulary.
+
+    Duplicate detection and classification must agree on what counts as an
+    asserted action, otherwise one incident described in two languages shares no
+    action and takes two briefing slots. The shared table in ``publishability``
+    is the single source of truth; the local wording is kept as a union so older
+    variants keep matching.
+    """
+    merged: dict[str, list[str]] = {
+        action: list(markers) for action, markers in _SEMANTIC_ONLY_ACTION_MARKERS.items()
+    }
+    for action, markers in EVENT_ACTION_MARKERS.items():
+        bucket = merged.setdefault(action, [])
+        for marker in markers:
+            if marker not in bucket:
+                bucket.append(marker)
+    return {action: tuple(markers) for action, markers in merged.items()}
+
+
+_ACTION_MARKERS = _merged_action_markers()
 _PERSON_STOPWORDS = {
     "another openai",
     "openai coo",

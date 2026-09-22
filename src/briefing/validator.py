@@ -56,6 +56,20 @@ _UNTRANSLATED_TITLE_WORDS = {
     "or", "out", "output", "over", "parameters", "problem", "report", "rival",
     "setting", "solver", "source", "startup", "style", "than", "that", "the",
     "their", "this", "to", "tried", "up", "was", "were", "will", "with",
+    # Plain nouns, months and numerals that must be translated in a Chinese
+    # headline; keeping them English produced "Google 确认 Gemini models 在
+    # May 2026 入侵了 three companies".
+    "model", "models", "company", "companies", "firm", "firms",
+    "january", "february", "march", "april", "may", "june", "july",
+    "august", "september", "october", "november", "december",
+    "one", "two", "three", "four", "five", "six", "seven", "eight",
+    "nine", "ten", "first", "second", "third", "million", "billion",
+    "week", "weeks", "month", "months", "year", "years", "day", "days",
+    "launch", "launches", "launched", "release", "releases", "released",
+    "update", "updates", "updated", "users", "user", "research", "researchers",
+    "technology", "system", "systems", "platform", "platforms", "tool", "tools",
+    "data", "market", "markets", "industry", "safety", "security", "price",
+    "prices", "cost", "costs", "growth", "report", "reports", "study",
 }
 _ACTION_GROUPS = EVENT_ACTION_MARKERS
 _CROSS_LANGUAGE_ANCHOR_STOPWORDS = {

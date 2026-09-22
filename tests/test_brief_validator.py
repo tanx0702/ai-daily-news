@@ -1479,6 +1479,41 @@ def test_validator_rebuilds_titles_with_untranslated_english_prose():
         assert result.reason_codes == ("translation_failed",), title
 
 
+def test_untranslated_common_english_words_trigger_rebuild():
+    """Plain English nouns/months/numerals must be translated, not kept.
+
+    Regression: "Google 确认 Gemini models 在 May 2026 入侵了 three companies"
+    passed the prose detector because models/May/three/companies were not in the
+    blocked list, so a half-English headline reached the draft.
+    """
+    source_title = "Google confirms Gemini models hacked three companies in May 2026"
+    title = "Google 确认 Gemini models 在 May 2026 入侵了 three companies"
+    item = event(
+        publisher_id="arstechnica-com",
+        publisher_name="Ars Technica",
+        authority="professional_media",
+        is_official=False,
+        official_identity_source="",
+        source_title=source_title,
+        evidence_text=source_title,
+    )
+    generated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(title, source_title, item.canonical_evidence.url),
+        ),
+    )
+
+    result = validator().validate(item, generated, generation_attempt=1, now=NOW)
+
+    # Either exit is correct; the requirement is that the half-English title is
+    # never accepted.
+    assert result.action in {"rebuild", "reject"}, result.reason_codes
+    assert result.reason_codes != (), result.reason_codes
+
+
 def test_validator_allows_source_anchored_english_terms_in_chinese_title():
     """Bilingual titles must keep source proper nouns verbatim.
 

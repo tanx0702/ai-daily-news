@@ -464,6 +464,34 @@ def test_source_anchored_title_rejects_partnership_companion_as_object():
     ) is None
 
 
+def test_source_anchored_title_never_uses_a_comparison_object_as_the_release():
+    """A comparison object must not become the released product.
+
+    Regression: "xAI launches Grok 4.7 at bargain prices, but benchmarks reveal a
+    wide gap to Claude and GPT-6" produced "xAI 发布 Claude". The released product
+    is Grok 4.7; Claude appears only after "to" as a comparison target.
+    """
+    supported = source(
+        "xAI launches Grok 4.7 at bargain prices, but benchmarks reveal a wide "
+        "gap to Claude and GPT-6"
+    )
+
+    title = source_anchored_title(supported)
+
+    assert title != "xAI 发布 Claude"
+    if title is not None:
+        assert "Claude" not in title, title
+
+
+def test_known_model_family_with_number_is_a_surface_anchor():
+    """Model families like `Grok 4.7` must be recognised as anchors."""
+    supported = source("xAI launches Grok 4.7 at bargain prices")
+
+    title = source_anchored_title(supported)
+
+    assert title == "xAI 发布 Grok 4.7"
+
+
 def test_source_anchored_title_uses_x_handle_as_detail_anchor():
     supported = source("Google AI: Upgrades coming to @FlowbyGoogle")
 

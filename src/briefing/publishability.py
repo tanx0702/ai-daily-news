@@ -666,17 +666,22 @@ def _organization_anchors(value: str) -> set[str]:
     }
 
 
+_MODEL_PATTERN = re.compile(
+    r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|"
+    r"(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral|grok|kimi|glm|"
+    r"ernie|hunyuan|doubao|minimax|step|phi|command)"
+    r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)"
+    r"(?:\s+(?:flash|mini|pro|ultra|ultrafast|preview|turbo|max|nano|opus|haiku|sonnet))?",
+    re.I,
+)
+
+
 def _model_anchors(value: str) -> set[str]:
-    pattern = re.compile(
-        r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
-        re.I,
-    )
     return {
         "model:" + re.sub(
             r"\s+", "-", match.group(0).casefold().rstrip(".,;:!?，。；：！？")
         )
-        for match in pattern.finditer(_normalize(value))
+        for match in _MODEL_PATTERN.finditer(_normalize(value))
     }
 
 
@@ -699,12 +704,10 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
         )
         if match:
             matches.append((match.start(), match.group(0)))
-    model_pattern = re.compile(
-        r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral)"
-        r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)(?:\s+(?:flash|mini|pro|ultra|ultrafast))?",
-        re.I,
+    matches.extend(
+        (match.start(), match.group(0))
+        for match in _MODEL_PATTERN.finditer(normalized)
     )
-    matches.extend((match.start(), match.group(0)) for match in model_pattern.finditer(normalized))
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
 
@@ -764,6 +767,16 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         anchor_start = after.casefold().find(anchor.casefold())
         if anchor_start >= 0 and re.search(
             r"\b(?:with|and)\b\s*$", after[:anchor_start], flags=re.I
+        ):
+            continue
+        # A comparison/prepositional target is not the verb's object either.
+        # "xAI launches Grok 4.7 ..., but benchmarks reveal a wide gap to Claude"
+        # must not yield "xAI 发布 Claude": Claude is introduced by "to" as the
+        # thing being compared against, not released.
+        if anchor_start >= 0 and re.search(
+            r"\b(?:to|than|vs\.?|versus|over|against|compared\s+(?:to|with))\b\s*$",
+            after[:anchor_start],
+            flags=re.I,
         ):
             continue
         detail = anchor
@@ -836,8 +849,31 @@ def _literal_subject_surface(value: str) -> str:
     return subject
 
 
+_COMPARISON_TARGET = re.compile(
+    r"\b(?:to|than|vs\.?|versus|over|against|compared\s+(?:to|with))\s+"
+    r"(?P<target>[A-Za-z][\w.+-]*(?:\s+(?:and|or)\s+[A-Za-z][\w.+-]*)*)",
+    re.I,
+)
+
+
+def _comparison_target_tokens(value: str) -> set[str]:
+    """Tokens that a comparison preposition introduces, e.g. `gap to Claude`.
+
+    These name what the subject is measured against, never the released object,
+    so they must not satisfy a display claim's detail requirement.
+    """
+    tokens: set[str] = set()
+    for match in _COMPARISON_TARGET.finditer(_normalize(value)):
+        for token in re.split(r"\s+(?:and|or)\s+", match.group("target")):
+            cleaned = token.strip(".,;:!?，。；：！？").casefold()
+            if cleaned:
+                tokens.add(cleaned)
+    return tokens
+
+
 def _detail_anchors(value: str) -> set[str]:
     anchors = _organization_anchors(value) | _model_anchors(value) | _numeric_anchors(value)
+    comparison_targets = _comparison_target_tokens(value)
     residual = _normalize(value).casefold()
     if re.search(r"\bllm\s*使用", residual, flags=re.IGNORECASE):
         anchors.update({"literal:llm", "literal:use"})
@@ -850,7 +886,16 @@ def _detail_anchors(value: str) -> set[str]:
         token = raw_token.strip(".,;:!?，。；：！？")
         if token not in _GENERIC_DETAILS and len(token) >= 2:
             anchors.add(f"literal:{token}")
-    return anchors
+    # Drop anchors that are only present as comparison targets.
+    return {
+        anchor
+        for anchor in anchors
+        if anchor.removeprefix("literal:") not in comparison_targets
+        and not any(
+            anchor.casefold().endswith(target) or target in anchor.casefold().split("-")
+            for target in comparison_targets
+        )
+    }
 
 
 def _claim_frame(value: str) -> _ClaimFrame | None:
@@ -1337,9 +1382,58 @@ def _cross_language_display_bound(claim: str, evidence_text: str) -> bool:
             sentence,
             CROSS_LANGUAGE_RULE_ONLY_MARKERS,
         )
+        and not _anchors_are_comparison_targets_only(claim_anchors, sentence)
         for sentence in _sentences(evidence_text)
         if _cross_language_anchors(sentence)
     )
+
+
+def _anchors_are_comparison_targets_only(
+    claim_anchors: frozenset[str] | set[str],
+    sentence: str,
+) -> bool:
+    """Whether the claim's object anchor appears only as a comparison target.
+
+    "xAI launches Grok 4.7 …, but benchmarks reveal a wide gap to Claude and
+    GPT-6" must not bind "xAI 发布 Claude": `claude` is present in the sentence
+    only after "to", naming what Grok is compared against. The subject anchor
+    (`xai`) stays legitimate, so the check looks at the anchors that are *not*
+    already explained as the sentence subject.
+    """
+    if not claim_anchors:
+        return False
+    comparison_targets = _comparison_target_tokens(sentence)
+    if not comparison_targets:
+        return False
+    targeted = {
+        anchor
+        for anchor in claim_anchors
+        if anchor.casefold() in comparison_targets
+        or any(
+            anchor.casefold() == target
+            or anchor.casefold().startswith(f"{target}-")
+            or anchor.casefold().endswith(f"-{target}")
+            for target in comparison_targets
+        )
+    }
+    if not targeted:
+        return False
+    # Subject anchors (appearing before the action verb) are explained by the
+    # sentence frame, so only a non-subject, non-target anchor can stand in as
+    # the released object.
+    from src.briefing.validator import (  # noqa: PLC0415 (circular import)
+        _cross_language_anchors,
+    )
+
+    start, _end, _action = _first_action(sentence)
+    subject_anchors = {
+        anchor.casefold()
+        for anchor in _cross_language_anchors(sentence[:start] if start >= 0 else "")
+    }
+    object_anchors = {
+        anchor for anchor in claim_anchors if anchor.casefold() not in subject_anchors
+    }
+    return bool(object_anchors) and object_anchors <= targeted
 
 
 def validate_display_publishability(

@@ -793,6 +793,59 @@ def test_generated_brief_titles_do_not_override_distinct_source_evidence():
     assert deterministic_relationship(first, second, window_hours=48) == "distinct"
 
 
+def test_security_actions_are_shared_across_languages_for_one_incident():
+    """Dedup must see the same action on both language sides.
+
+    Regression: semantic kept its own narrow action table whose security group
+    was empty, while classification used the shared table. "Google confirms
+    Gemini models hacked three companies" and its Chinese counterpart
+    "Gemini 越狱入侵三家企业" therefore shared no action and stayed `distinct`,
+    so one incident took two briefing slots.
+    """
+    english = EventDocument.from_evidence(
+        evidence(
+            publisher_id="arstechnica-com",
+            publisher_name="Ars Technica",
+            source_title="Google confirms Gemini models hacked three companies in May 2026",
+            evidence_text="Google confirms Gemini models hacked three companies in May 2026",
+            url="https://arstechnica.com/google/2026/09/gemini-hacked",
+        )
+    )
+    chinese = EventDocument.from_evidence(
+        evidence(
+            publisher_id="tmtpost-com",
+            publisher_name="Tmtpost",
+            source_title='Gemini"越狱"入侵三家企业：谷歌压了两个月，四巨头栽在同一家35人公司手里',
+            evidence_text='Gemini"越狱"入侵三家企业：谷歌压了两个月，四巨头栽在同一家35人公司手里',
+            url="https://www.tmtpost.com/8147131.html",
+        )
+    )
+
+    assert "security" in english.features.actions
+    assert "security" in chinese.features.actions
+
+
+def test_departure_wording_variants_share_the_departure_action():
+    """Unifying the action table must keep the older wording working."""
+    a = EventDocument.from_evidence(
+        evidence(
+            source_title="Brad Lightcap leaves OpenAI",
+            evidence_text="Brad Lightcap leaves OpenAI",
+            url="https://media.example/leaves",
+        )
+    )
+    b = EventDocument.from_evidence(
+        evidence(
+            source_title="OpenAI COO Brad Lightcap announced his departure",
+            evidence_text="OpenAI COO Brad Lightcap announced his departure",
+            url="https://media.example/departure2",
+        )
+    )
+
+    assert "departure" in a.features.actions
+    assert "departure" in b.features.actions
+
+
 def test_same_publisher_series_about_one_named_event_is_the_same_event():
     """One outlet reporting the same named event twice must not take two slots.
 
