@@ -146,6 +146,51 @@ _ANCHOR_CONNECTORS = {
 }
 
 
+def _has_verifiable_detail(
+    sentence: str,
+    *,
+    source_title: str,
+    evidence_text: str,
+    title_claim: str,
+) -> bool:
+    """Whether a summary sentence carries a checkable detail of its own.
+
+    Publisher teaser lines sit in ``evidence_text`` next to the headline but add
+    no content ("最卷一夜！", "企业AI服务迎来平台化交付时代"). Such a sentence is
+    reproducible from the title alone and must not be published as a summary.
+    Detail means a number, a Latin entity token absent from the displayed title,
+    or a source-anchored proper-noun phrase; anything else is a slogan.
+    """
+    text = _normalized_text(sentence)
+    if not text:
+        return False
+    if re.search(r"\d", text):
+        return True
+    # A Latin token (model/product/repo name) the displayed title does not carry
+    # is a concrete detail the sentence contributes.
+    title_tokens = {
+        token.casefold()
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9.+-]*", _normalized_text(title_claim))
+    }
+    for token in re.findall(r"[A-Za-z][A-Za-z0-9.+-]{1,}", text):
+        cleaned = token.strip(".,;:!?)]}\"'’'“”").casefold()
+        if len(cleaned) >= 2 and cleaned not in title_tokens:
+            return True
+    # A source-declared name (organisation/model/benchmark) appearing in the
+    # sentence itself is checkable even without a digit. The phrase must occur in
+    # this sentence: merely existing somewhere in the source title would mark
+    # every sentence detailed and defeat the check.
+    return any(
+        phrase
+        and re.search(
+            rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])",
+            text,
+            flags=re.I,
+        )
+        for phrase in _source_anchor_phrases(source_title, evidence_text)
+    )
+
+
 def _is_anchor_span(span: list[str]) -> bool:
     """Whether a word span looks like a proper-noun phrase rather than prose.
 
@@ -720,6 +765,7 @@ class BriefValidator:
 
         source_title = _quote_match_text(event.canonical_evidence.source_title)
         title_claim = draft.chinese_title.strip()
+        evidence_text = event.canonical_evidence.evidence_text
         title_bindings = [
             binding
             for binding in draft.evidence_bindings
@@ -728,6 +774,7 @@ class BriefValidator:
         kept: list[str] = []
         kept_bindings = list(title_bindings)
         removed: list[str] = []
+        removed_without_detail = False
         for sentence in sentences:
             sentence_bindings = [
                 binding
@@ -744,6 +791,18 @@ class BriefValidator:
             if restates_generated_title or supported_only_by_source_title:
                 removed.append(sentence)
                 continue
+            # A bound sentence can still be a publisher teaser with no content of
+            # its own ("最卷一夜！"): it is faithfully quoted but says nothing
+            # beyond the title, so publishing it as a summary is misleading.
+            if not _has_verifiable_detail(
+                sentence,
+                source_title=source_title,
+                evidence_text=evidence_text,
+                title_claim=title_claim,
+            ):
+                removed.append(sentence)
+                removed_without_detail = True
+                continue
             kept.append(sentence)
             kept_bindings.extend(sentence_bindings)
 
@@ -755,7 +814,11 @@ class BriefValidator:
             brief=brief,
             evidence_bindings=tuple(kept_bindings),
             brief_mode="expanded" if kept else "title_only",
-            brief_reason="brief_restates_title",
+            brief_reason=(
+                "brief_without_verifiable_detail"
+                if removed_without_detail and not kept
+                else "brief_restates_title"
+            ),
         )
         return normalized, tuple(removed)
 
