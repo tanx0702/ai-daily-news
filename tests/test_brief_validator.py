@@ -1106,6 +1106,48 @@ def test_translated_cross_language_title_binds_when_source_has_counterpart():
     assert result.action == "accept", result.reason_codes
 
 
+def test_translated_cross_language_title_binds_audio_price_reduction():
+    """A Chinese noun for a common product dimension binds when the source names it.
+
+    Regression from the 2026-09-24 real draft: the correct title
+    "Alibaba 发布 Qwen Audio 3.1 并推出新模型，同时将 AI 音频价格降低最多 95%"
+    was rejected and fell back to "Alibaba 发布 Qwen Audio 3.1" because 音频 had
+    no entry in the shared noun-equivalence table, leaving an unmatched residual.
+    """
+    item = event(
+        publisher_id="the-decoder-com",
+        publisher_name="The Decoder",
+        is_official=False,
+        official_identity_source="",
+        source_title=(
+            "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+            "audio prices by up to 95 percent"
+        ),
+        evidence_text=(
+            "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+            "audio prices by up to 95 percent"
+        ),
+    )
+    translated = draft(
+        item,
+        chinese_title="Alibaba 发布 Qwen Audio 3.1 并推出新模型，同时将 AI 音频价格降低最多 95%",
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                "Alibaba 发布 Qwen Audio 3.1 并推出新模型，同时将 AI 音频价格降低最多 95%",
+                "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+                "audio prices by up to 95 percent",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept", result.reason_codes
+
+
 def test_translated_cross_language_title_rejects_unsupported_chinese_noun():
     """The counterpart requirement is the anti-fabrication guard: a Chinese noun
     whose English counterpart is absent from the quote must still be rejected."""

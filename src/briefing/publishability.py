@@ -38,6 +38,11 @@ EVENT_ACTION_MARKERS = {
     "result": (
         "达到", "提升", "降低", "减少", "超过", "增长", "achieve", "achieved", "improve",
         "improved", "improving", "reduce", "reduced", "reduces", "reducing",
+        # Price-cutting verbs. The Chinese 降低 was listed but the English
+        # "slashes prices" was not, so a correct translation asserting 降低 was
+        # rejected as action_not_supported while the source said "slashes ...
+        # prices by up to 95 percent".
+        "slash", "slashes", "slashed", "slashing",
         "exceed", "exceeded", "exceeding", "jump", "jumps",
         # Measured/superlative outcomes that assert an event ("beats X", "now leads").
         "beats", "beat", "leads", "lead",
@@ -292,6 +297,7 @@ CROSS_LANGUAGE_NOUN_EQUIVALENTS = {
     "拓宽": ("widen", "broaden", "broadens"),
     "成本": ("cost", "costs"),
     "价格": ("price", "prices", "pricing"),
+    "音频": ("audio",),
     "训练": ("training", "train", "trains", "trained"),
     "推理": ("inference", "reasoning"),
     "性能": ("performance",),
@@ -436,6 +442,10 @@ CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
             "被", "把", "让", "使", "又", "也", "都", "还", "很", "更", "最", "多",
             "个", "次", "项", "条", "款", "种", "类", "时", "日", "月", "前", "后",
             "给", "于", "自", "用", "着", "过", "并", "且", "而", "则", "即", "如",
+            # Temporal/coordinating connectives ("同时将", "并同时"). These carry no
+            # factual claim, but a missing 同 left "同时将" as an unmatched residual
+            # and rejected a correct translation ("... 同时将 AI 音频价格降低 ...").
+            "同时", "同",
             # Numerals/quantifiers that only restate a source number.
             "一", "二", "两", "三", "四", "五", "六", "七", "八", "九", "十",
             "百", "千", "万", "亿", "些", "名", "家", "位", "份", "组", "批",
