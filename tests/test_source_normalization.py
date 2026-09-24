@@ -159,3 +159,66 @@ def test_source_evidence_public_projection_contains_only_safe_url():
     payload = json.dumps(evidence.to_public_dict(), ensure_ascii=False)
     assert evidence.url == "https://openai.com/news/gpt-5-6"
     assert "utm_source" not in payload
+
+
+def test_publisher_promo_footer_is_not_part_of_evidence_text():
+    """Trailing 公众号 boilerplate must not reach ``evidence_text``.
+
+    Regression from the 2026-09-24 real draft: the ifanr teaser line "最卷一夜！"
+    was published as a summary because the source summary carried the article's
+    own teaser plus the publisher's promotional footer, and the brief selector
+    picked the teaser. Removing the footer leaves no fact-free sentence to bind.
+    """
+    candidate = {
+        "title": "Claude 5.5 发布，性能直逼 Fable，还要卷价格",
+        "source_summary": (
+            "最卷一夜！ #欢迎关注爱范儿官方微信公众号：爱范儿（微信号：ifanr），"
+            "更多精彩内容第一时间为您奉上。"
+        ),
+        "url": "https://www.ifanr.com/1681629",
+        "source": "APPSO",
+        "source_type": "rss",
+        "published_at": "2026-09-23T02:25:19+00:00",
+    }
+
+    normalized = normalize_candidate_source(candidate)
+
+    assert normalized.evidence_text == (
+        "Claude 5.5 发布，性能直逼 Fable，还要卷价格\n最卷一夜！"
+    )
+    assert "欢迎关注" not in normalized.evidence_text
+    assert "微信号" not in normalized.evidence_text
+
+
+def test_click_to_read_original_stub_is_removed():
+    candidate = {
+        "title": "OpenAI 推出分级处理框架及案例研究，用于报告模型失调问题",
+        "source_summary": "点击查看原文>",
+        "url": "https://www.infoq.cn/article/sFUUaaIQZH3ecXb14WVs",
+        "source": "InfoQ 中文",
+        "source_type": "rss",
+        "published_at": "2026-09-24T11:00:00+00:00",
+    }
+
+    normalized = normalize_candidate_source(candidate)
+
+    assert normalized.evidence_text == (
+        "OpenAI 推出分级处理框架及案例研究，用于报告模型失调问题"
+    )
+
+
+def test_promo_words_inside_prose_are_preserved():
+    """A footer marker inside ordinary prose must not be truncated."""
+    candidate = {
+        "title": "微信宣布公众号功能升级，新增留言管理能力",
+        "source_summary": "微信宣布公众号功能升级，新增留言管理能力",
+        "url": "https://example.test/wechat-article",
+        "source": "Example",
+        "source_type": "rss",
+        "published_at": "2026-09-23T00:00:00+00:00",
+    }
+
+    normalized = normalize_candidate_source(candidate)
+
+    assert "公众号功能升级" in normalized.evidence_text
+    assert normalized.evidence_text.endswith("新增留言管理能力")

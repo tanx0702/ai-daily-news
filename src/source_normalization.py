@@ -53,6 +53,17 @@ _HN_COMMENTS_URL = re.compile(r"Comments URL:\s*(https?://\S+)", re.I)
 _HN_METADATA = re.compile(
     r"(?:Points:\s*\d+|#\s*Comments:\s*\d+|Comments:\s*\d+)", re.I
 )
+# Trailing publisher boilerplate: WeChat/公众号 promotional footers and
+# "click to read the original" stubs. These carry no news content but used to
+# reach ``evidence_text``, where the brief selector picked the article's own
+# teaser line ("最卷一夜！") as a summary. Only a footer that starts a distinct
+# trailing segment is removed, so ordinary prose mentioning these words is kept.
+_PROMO_FOOTER = re.compile(
+    r"(?:#?\s*(?:欢迎)?关注[^。\n]{0,20}(?:公众号|微信号|微信))"
+    r"|(?:点击查看原文)"
+    r"|(?:更多精彩内容[^。\n]{0,20}奉上)",
+    re.I,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +178,29 @@ def _clean_text(value: object) -> str:
     except Exception:
         pass
     return re.sub(r"\s+", " ", raw).strip()
+
+
+def _strip_promo_footer(value: str) -> str:
+    """Remove trailing publisher promotional boilerplate from one text segment.
+
+    A footer is only recognised when the promo marker begins a new clause or
+    line, so prose that merely mentions ``公众号`` mid-sentence survives. Text
+    before the marker is kept, because the summary often precedes the footer.
+    """
+    if not value:
+        return value
+    match = _PROMO_FOOTER.search(value)
+    if match is None:
+        return value
+    # Require the marker to start a segment: start of string, or preceded by
+    # sentence punctuation, a ``#`` list separator and/or whitespace -- several
+    # RSS summaries join the body and the footer with a plain space.
+    prefix = value[: match.start()]
+    if prefix and not re.search(r"(?:[。！？；\n]\s*|#\s*|\s+)$", prefix):
+        return value
+    # Trim only structural noise (a dangling ``#`` and whitespace); real
+    # sentence punctuation belongs to the retained text.
+    return re.sub(r"[#\s]+$", "", prefix).strip()
 
 
 def _looks_like_ip_literal(hostname: str) -> bool:
@@ -379,6 +413,7 @@ def normalize_candidate_source(
         _clean_text(candidate.get("source_excerpt")),
         _clean_text(candidate.get("source_body")),
     )
+    evidence_parts = tuple(_strip_promo_footer(part) for part in evidence_parts)
     nonempty = tuple(dict.fromkeys(part for part in evidence_parts if part))
     return NormalizedSourceContent(
         source_title=title,
