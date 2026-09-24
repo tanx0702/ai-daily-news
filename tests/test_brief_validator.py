@@ -1240,6 +1240,50 @@ def test_translated_cross_language_title_binds_audio_price_reduction():
     assert result.action == "accept", result.reason_codes
 
 
+def test_translated_cross_language_title_binds_extent_adverb_phrasing():
+    """An extent adverb before a source number is not an unmatched residual.
+
+    Regression from dryrun #26: the model's own wording
+    "Alibaba 推出 Qwen Audio 3.1 并推出新模型，将 AI 音频价格降低高达 95%"
+    was rejected and degraded to "Alibaba 发布 Qwen Audio 3.1" because 高达 was
+    not a controlled marker. The number stays the detail anchor; only the
+    degree modifier is controlled.
+    """
+    item = event(
+        publisher_id="the-decoder-com",
+        publisher_name="The Decoder",
+        is_official=False,
+        official_identity_source="",
+        source_title=(
+            "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+            "audio prices by up to 95 percent"
+        ),
+        evidence_text=(
+            "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+            "audio prices by up to 95 percent"
+        ),
+    )
+    title = "Alibaba 推出 Qwen Audio 3.1 并推出新模型，将 AI 音频价格降低高达 95%"
+    translated = draft(
+        item,
+        chinese_title=title,
+        brief="",
+        evidence_bindings=(
+            EvidenceBinding(
+                title,
+                "Alibaba launches Qwen Audio 3.1 with new models and slashes AI "
+                "audio prices by up to 95 percent",
+                item.canonical_evidence.url,
+            ),
+        ),
+    )
+    instance, _ = quality_validator(TimeoutError("quality timeout"))
+
+    result = instance.validate(item, translated, generation_attempt=1, now=NOW)
+
+    assert result.action == "accept", result.reason_codes
+
+
 def test_translated_cross_language_title_rejects_unsupported_chinese_noun():
     """The counterpart requirement is the anti-fabrication guard: a Chinese noun
     whose English counterpart is absent from the quote must still be rejected."""

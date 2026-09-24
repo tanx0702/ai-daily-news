@@ -449,6 +449,12 @@ CROSS_LANGUAGE_RULE_ONLY_MARKERS = tuple(
             # Numerals/quantifiers that only restate a source number.
             "一", "二", "两", "三", "四", "五", "六", "七", "八", "九", "十",
             "百", "千", "万", "亿", "些", "名", "家", "位", "份", "组", "批",
+            # Degree/extent adverbs that modify the source number rather than
+            # adding a claim ("降低高达 95%" / "降低最多 95%"). The number itself
+            # stays a detail anchor; only the modifier is a controlled marker.
+            # A missing 高达 left the correct Alibaba title as an unmatched
+            # residual and forced a degraded fallback title.
+            "高达", "最多", "低至", "大幅",
         },
         key=len,
         reverse=True,
