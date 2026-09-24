@@ -483,6 +483,45 @@ def test_source_anchored_title_never_uses_a_comparison_object_as_the_release():
         assert "Claude" not in title, title
 
 
+def test_source_anchored_title_rejects_bare_place_name_as_released_object():
+    """A bare place name must never become the verb's object.
+
+    Regression from dryrun #24: "Cohere: Model Vault is now available in Canada"
+    produced "Cohere 可用 Canada", publishing an untranslated country name as if
+    it were the released product. The real product (Model Vault) sits *before*
+    the action word, so no post-verb detail is available and the title must be
+    refused rather than fall through to an unrelated later capitalised word.
+    """
+    assert source_anchored_title(
+        source(
+            'Cohere: Model Vault is now available in Canada For those in the '
+            '"true North", you can now take full control of your AI'
+        )
+    ) is None
+
+
+def test_source_anchored_title_prefers_version_tag_over_truncated_handle():
+    """A version tag glued to a name is a version, not an X handle.
+
+    Regression from dryrun #24:
+    "nexus-substrate/nexus-agents releases nexus-agents@8.101.0" produced
+    "nexus-substrate/nexus-agents 发布 @8": the loose `@\\w+` handle pattern fired
+    inside the version tag and truncated 8.101.0 to @8.
+    """
+    supported = source(
+        "nexus-substrate/nexus-agents releases nexus-agents@8.101.0",
+        publisher_id="github-com",
+        publisher_name="Github",
+        channel="github",
+        authority="community",
+    )
+
+    title = source_anchored_title(supported)
+
+    assert title == "nexus-substrate/nexus-agents 发布 8.101.0"
+    assert title is not None and "@8" not in title
+
+
 def test_known_model_family_with_number_is_a_surface_anchor():
     """Model families like `Grok 4.7` must be recognised as anchors."""
     supported = source("xAI launches Grok 4.7 at bargain prices")

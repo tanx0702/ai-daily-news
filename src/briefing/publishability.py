@@ -711,13 +711,48 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
 
+# Capitalised words that are never a source-declared product/model/org: bare
+# geography, nationalities and ordinary sentence nouns. Without this, the
+# deterministic English fallback turns any capitalised common noun after the
+# verb into a fabricated release object -- "Model Vault is now available in
+# Canada" must not become "Cohere 可用 Canada".
+_NON_PRODUCT_PROPER_NOUNS = {
+    "africa", "america", "asia", "australia", "australian", "austria",
+    "belgium", "brazil", "britain", "british", "california", "canada",
+    "canadian", "china", "chinese", "denmark", "europe", "european", "france",
+    "germany", "german", "india", "indian", "ireland", "israel", "italy",
+    "japan", "japanese", "korea", "london", "mexico", "netherlands",
+    "norway", "paris", "poland", "portugal", "russia",
+    "singapore", "spain", "sweden", "switzerland", "taiwan", "texas", "tokyo",
+    "uk", "usa", "york",
+    # Weekday/month and generic sentence nouns that survive capitalisation.
+    "january", "february", "march", "april", "june", "july", "august",
+    "september", "october", "november", "december", "monday", "tuesday",
+    "wednesday", "thursday", "friday", "saturday", "sunday",
+    "for", "from", "with", "and", "the", "this", "that", "those", "these",
+    "it", "its", "they", "their", "we", "our", "you", "your", "he", "she",
+    "his", "her", "now", "today", "tomorrow", "yesterday", "here", "there",
+    "more", "most", "some", "any", "all", "both", "each", "every", "other",
+}
+
+
 def _single_protected_product_token(value: str) -> str | None:
     """Return one source-declared product token, never generic English prose."""
-    for match in re.finditer(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9.+-]{2,}", value):
-        token = match.group(0)
-        if token.casefold() not in _GENERIC_PRODUCT_TOKENS:
-            return token
-    return None
+    match = re.search(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9.+-]{2,}", value)
+    if match is None:
+        return None
+    token = match.group(0)
+    folded = token.casefold()
+    if folded in _GENERIC_PRODUCT_TOKENS:
+        return None
+    # A bare place/demonym/time word is a sentence noun, not a released object;
+    # only registered orgs, models or explicit product-style tokens may serve as
+    # the fallback detail. Checking only the first capitalised token is
+    # deliberate: skipping past a rejected one would walk deeper into prose and
+    # fabricate a detail from an unrelated later name (e.g. `"true North"`).
+    if folded in _NON_PRODUCT_PROPER_NOUNS:
+        return None
+    return token
 
 
 def source_anchored_title(source: SourceEvidence) -> str | None:
@@ -782,8 +817,13 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         detail = anchor
         break
     if detail is None:
+        # Version tokens outrank ``@handle``: in ``nexus-agents@8.101.0`` the tag
+        # is a version, and the loose ``@\\w+`` handle pattern would otherwise
+        # truncate it to ``@8`` and publish "nexus-agents 发布 @8". A handle is
+        # only a handle when it stands alone, not when glued to a preceding word.
         safe_detail = re.search(
-            r"@[A-Za-z0-9_]+|(?<![A-Za-z0-9])v\d+(?:\.\d+)+(?![A-Za-z0-9])|"
+            r"(?<![A-Za-z0-9])v?\d+(?:\.\d+)+(?![A-Za-z0-9])|"
+            r"(?<![A-Za-z0-9_])@[A-Za-z0-9_]+|"
             r"(?:\$\s*)?\d+(?:[.,]\d+)?\s*(?:%|x|ms|s|tok/s|tokens/s|billion|million)\b",
             after,
             flags=re.I,
