@@ -6,7 +6,7 @@ import pytest
 
 from src import collector
 from src.briefing.evidence import source_evidence_from_candidate
-from src.collectors.x_feed import XFeedCollector, _tweet_to_candidate
+from src.collectors.x_feed import XFeedCollector, _snapshot_title, _tweet_to_candidate
 
 
 class FakeResponse:
@@ -146,6 +146,36 @@ def test_x_collector_drops_model_release_party_announcement():
     )
 
     assert candidate is None
+
+
+def test_x_snapshot_title_keeps_long_post_complete_without_mid_word_cut():
+    """A long tweet must not be cut into a fragment.
+
+    Regression from the 2026-09-24 real draft: a 302-character opinion was cut at
+    180 characters, so its title ended mid-word ("... and (the more o") and the
+    translation silently dropped the trailing clause.
+    """
+    text = (
+        "Stuff is happening quite fast. When asked in September 2025, the best "
+        "superforecasters put the chance of AI resolving a Millennium Problem by "
+        "September 2026 at 1.7% and (the more optimistic) industry expert put the "
+        "chance at 4.6% They also greatly underestimated AI Lab revenue. "
+        "https://t.co/9HCR0lvXJQ"
+    )
+
+    title = _snapshot_title("Ethan Mollick", text)
+
+    assert title.startswith("Ethan Mollick: ")
+    assert title.endswith("https://t.co/9HCR0lvXJQ")
+    # The clause the model dropped must be present for translation to see it.
+    assert "They also greatly underestimated AI Lab revenue." in title
+    assert not title.endswith("more o")
+
+
+def test_x_snapshot_title_handles_short_and_empty_text():
+    assert _snapshot_title("OpenAI", "发布新的 AI 模型") == "OpenAI: 发布新的 AI 模型"
+    assert _snapshot_title("OpenAI", "   ") == "OpenAI"
+    assert _snapshot_title("", "hello") == "hello"
 
 
 def test_x_feed_collector_normalizes_fresh_public_tweet(monkeypatch):

@@ -138,6 +138,20 @@ def _load_source_registry() -> dict[str, Mapping[str, object]]:
     }
 
 
+def _snapshot_title(source_name: str, text: str) -> str:
+    """Build a candidate title from tweet text without cutting a word in half.
+
+    The X snapshot used to cut the tweet at a fixed 180 characters, so a long
+    post ended in a fragment ("... and (the more o"). Downstream translation then
+    saw a broken headline and silently dropped its trailing clause. Keep the
+    whole text: a complete long title is more useful than a tidy fragment, and
+    the snapshot already bounds text length elsewhere (the summary is capped).
+    """
+    prefix = f"{source_name}: " if source_name else ""
+    collapsed = " ".join(text.split())
+    return f"{prefix}{collapsed}" if collapsed else prefix.rstrip(": ")
+
+
 def _tweet_to_candidate(
     tweet: object,
     source_registry: Mapping[str, Mapping[str, object]],
@@ -180,7 +194,7 @@ def _tweet_to_candidate(
     title_text = " ".join(text.split())
     candidate = BaseCollector.make_candidate(
         id_=f"x-{tweet_id}",
-        title=f"{source_name}: {title_text[:180]}"[:200],
+        title=_snapshot_title(source_name, title_text),
         url=url,
         source=f"{source_name} (X)",
         source_type="x",
