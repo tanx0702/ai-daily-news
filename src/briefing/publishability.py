@@ -1544,6 +1544,14 @@ def validate_display_publishability(
         return PublishabilityResult(False, ("title_missing_subject",))
     if not frame.details:
         return PublishabilityResult(False, ("title_missing_event_detail",))
+    # A fabricated composite is not a style problem: "Mistral 发布 GPT-5.6" stitches
+    # a subject from one source sentence to an object from another, and no
+    # per-sentence binding can justify it. This must be checked BEFORE the
+    # early-accept below, because ``claim_supported_by_quote`` resolves the
+    # subject from the publisher name and the object from anywhere in the
+    # evidence, so a cross-sentence composite still satisfies it.
+    if not _claim_anchors_within_one_sentence(normalized, source.evidence_text):
+        return PublishabilityResult(False, ("title_cross_sentence_composite",))
     if not claim_supported_by_quote(normalized, source.evidence_text, source=source):
         # Fall back to the cross-language equivalence path before rejecting. The
         # same-language literal detail-subset rule cannot apply when the display
@@ -1561,13 +1569,6 @@ def validate_display_publishability(
                 "complete",
             )
         source_actions = asserted_action_types(source.evidence_text)
-        # A fabricated composite is not a style problem: "Mistral 发布 GPT-5.6"
-        # stitches a subject from one source sentence to an object from another,
-        # which no per-sentence binding can justify. It gets its own code so the
-        # caller can keep blocking real fabrication while treating a headline
-        # that merely fails to match this vocabulary as advisory.
-        if not _claim_anchors_within_one_sentence(normalized, source.evidence_text):
-            return PublishabilityResult(False, ("title_cross_sentence_composite",))
         reason = (
             "title_action_not_source_bound"
             if not frame.actions <= source_actions
