@@ -749,7 +749,9 @@ def test_validator_rejects_claim_composed_from_separate_source_sentences():
     result = validator().validate(item, composed, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("title_claim_not_source_bound",)
+    # A claim stitched from two source sentences is a fabrication, not a style
+    # problem, so it reports the dedicated cross-sentence code.
+    assert result.reason_codes == ("title_cross_sentence_composite",)
 
 
 def test_validator_removes_all_title_restatement_sentences_without_rebuild():
@@ -1059,7 +1061,9 @@ def test_validator_does_not_degrade_claim_with_fabricated_latin_entity():
     result = instance.validate(item, fabricated, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("title_claim_not_source_bound",)
+    # Still rejected: "FakeCo" shares no source sentence with "Model-X", so the
+    # cross-sentence composite check catches the invented publisher.
+    assert result.reason_codes == ("title_cross_sentence_composite",)
     assert client.calls == []
 
 
@@ -1119,7 +1123,9 @@ def test_validator_rebuilds_cross_language_claim_with_only_action_and_year_when_
 
     assert result.action == "rebuild"
     assert result.validation_mode == "rules_only"
-    assert result.reason_codes == ("title_missing_subject",)
+    # Rebuild still requested; the quote-binding check now reports it because the
+    # vague "公司发布模型" title carries no anchor found in the source sentence.
+    assert result.reason_codes == ("claim_quote_mismatch",)
 
 
 def test_validator_accepts_anchored_cross_language_claim_when_quality_is_unavailable():
@@ -1907,7 +1913,9 @@ def test_validator_rejects_added_model_number_money_and_date():
     result = validator().validate(item, added, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("title_claim_not_source_bound",)
+    # Invented numbers/money/dates are still refused, now by the protected-token
+    # check rather than the advisory headline-shape gate.
+    assert result.reason_codes == ("protected_token_missing",)
 
 
 def test_validator_rejects_company_action_without_action_evidence():
@@ -1928,7 +1936,9 @@ def test_validator_rejects_company_action_without_action_evidence():
     result = validator().validate(item, acquisition, generation_attempt=2, now=NOW)
 
     assert result.action == "reject"
-    assert result.reason_codes == ("title_action_not_source_bound",)
+    # An action with no supporting evidence is still refused, now by the action
+    # check rather than the advisory headline-shape gate.
+    assert result.reason_codes == ("action_not_supported",)
 
 
 def test_validator_rejects_non_official_x_written_as_company_announcement():

@@ -1508,6 +1508,25 @@ def _anchors_are_comparison_targets_only(
     return bool(object_anchors) and object_anchors <= targeted
 
 
+def _claim_anchors_within_one_sentence(claim: str, evidence_text: str) -> bool:
+    """Whether the claim's Latin anchors all occur in one source sentence.
+
+    ``Mistral office research. OpenAI releases GPT-5.6.`` combined into
+    "Mistral 发布 GPT-5.6" borrows its subject from sentence one and its object
+    from sentence two. No per-sentence binding can justify that, so it must stay
+    blocked even when the headline-shape gates are treated as advisory.
+    """
+    from src.briefing.validator import _cross_language_anchors  # noqa: PLC0415
+
+    claim_anchors = _cross_language_anchors(claim)
+    if not claim_anchors:
+        return True
+    return any(
+        claim_anchors <= _cross_language_anchors(sentence)
+        for sentence in _sentences(evidence_text)
+    )
+
+
 def validate_display_publishability(
     title: str,
     brief: str,
@@ -1515,6 +1534,10 @@ def validate_display_publishability(
 ) -> PublishabilityResult:
     normalized = _normalize(title)
     frame = _claim_frame(normalized)
+    # ``frame is None`` means the headline carries no recognised action verb. That
+    # is a style signal rather than a fabrication risk ("Claude 发现噬菌体 DNA 中隐藏
+    # 的未知酶系统", "Meta AI：推出 Muse，一个由 Muse Spark 1.3 驱动的个人代理"),
+    # so it is reported under its own code and treated as advisory by the caller.
     if frame is None:
         return PublishabilityResult(False, ("title_missing_event_action",))
     if not frame.subjects:
@@ -1538,6 +1561,13 @@ def validate_display_publishability(
                 "complete",
             )
         source_actions = asserted_action_types(source.evidence_text)
+        # A fabricated composite is not a style problem: "Mistral 发布 GPT-5.6"
+        # stitches a subject from one source sentence to an object from another,
+        # which no per-sentence binding can justify. It gets its own code so the
+        # caller can keep blocking real fabrication while treating a headline
+        # that merely fails to match this vocabulary as advisory.
+        if not _claim_anchors_within_one_sentence(normalized, source.evidence_text):
+            return PublishabilityResult(False, ("title_cross_sentence_composite",))
         reason = (
             "title_action_not_source_bound"
             if not frame.actions <= source_actions

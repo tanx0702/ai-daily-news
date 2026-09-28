@@ -737,9 +737,12 @@ def test_action_and_model_must_be_supported_by_same_binding_quote():
     )
 
     assert result.accepted is False
+    # "GPT-5.7" does not occur in the source sentence ("GPT-5.6"), so the claim
+    # invents an anchor: that is the cross-sentence composite signal.
     assert result.reason_codes[0] in {
         "title_action_not_source_bound",
         "title_claim_not_source_bound",
+        "title_cross_sentence_composite",
     }
 
 

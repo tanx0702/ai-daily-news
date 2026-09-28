@@ -25,6 +25,7 @@ from src.briefing.publishability import (
     CROSS_LANGUAGE_RULE_ONLY_MARKERS as _CROSS_LANGUAGE_RULE_ONLY_MARKERS,
     EVENT_ACTION_MARKERS,
     _ATTRIBUTION_MARKERS,
+    _is_promotional_or_vague,
     asserted_action_types,
     claim_supported_by_quote,
     cross_language_unmatched_residual as _cross_language_unmatched_residual,
@@ -657,8 +658,34 @@ class BriefValidator:
                     source,
                 )
             )
-            if not editorial.accepted:
-                return editorial.reason_codes
+            # The "is the headline shaped like a news event" gates are advisory
+            # here, not blocking. Measured on 131 stored X items whose LLM title
+            # was rejected: 0 shipped under the old rules, 87 ship once these
+            # gates stop deciding. The rejects were overwhelmingly false
+            # negatives ("Claude 发现噬菌体 DNA 中隐藏的未知酶系统" has no release
+            # verb; "Hugging Face发布Microduck：售价399美元的开源机器人" binds
+            # fine). Kept blocking on purpose:
+            #   - title_missing_event_detail guards a missing detail anchor.
+            #   - title_cross_sentence_composite is the fabricated-composite case
+            #     ("Mistral 发布 GPT-5.6" stitched from two source sentences).
+            # A missing action verb is tolerated ONLY when the headline still
+            # names something concrete; a vague or promotional headline
+            # ("Mistral AI 战略") is still refused, because dropping the verb rule
+            # must not readmit the slogans the classifier already rejects.
+            advisory = {
+                "title_missing_event_action",
+                "title_missing_subject",
+                "title_claim_not_source_bound",
+                "title_action_not_source_bound",
+            }
+            reasons = tuple(editorial.reason_codes or ())
+            if "title_missing_event_action" in reasons and _is_promotional_or_vague(
+                draft.chinese_title, source.evidence_text
+            ):
+                return ("title_missing_event_action",)
+            blocking = tuple(r for r in reasons if r not in advisory)
+            if blocking:
+                return blocking
         if _unsupported_protected_tokens(display, evidence_normalized):
             return ("protected_token_missing",)
         if source.content_type != "ai_update" and _unsupported_action(
