@@ -412,6 +412,26 @@ def test_source_anchored_title_keeps_single_protected_product_token():
         assert validate_display_publishability(title, "", supported).accepted is True
 
 
+def test_source_anchored_title_rejects_prose_word_inside_later_phrase():
+    """A capitalised prose word inside a later phrase is not the released object.
+
+    Regression from dryrun #27: "MiniMax-M3.1 Flash Preview is now live on the
+    Token Plan ... now available under your existing Token Plan subscription"
+    produced "MiniMax-M3.1 Flash 可用 Token". ``Token`` starts a noun phrase after
+    ``under``, so it is prose, not a product; the fallback must return nothing.
+    """
+    supported = source(
+        "MiniMax: MiniMax-M3.1 Flash Preview is now live on the Token Plan! "
+        "Faster, lighter, and built for teams running high-volume, "
+        "latency-sensitive workloads, now available under your existing Token "
+        "Plan subscription, no extra setup required."
+    )
+
+    title = source_anchored_title(supported)
+
+    assert title is None
+
+
 def test_source_anchored_title_keeps_explicit_ai_agent_and_duration():
     supported = source(
         "AI Accelerator Designed, Verified, and Deployed from Scratch in 2 Weeks by AI"

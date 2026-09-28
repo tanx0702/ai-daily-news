@@ -753,22 +753,38 @@ _NON_PRODUCT_PROPER_NOUNS = {
 
 
 def _single_protected_product_token(value: str) -> str | None:
-    """Return one source-declared product token, never generic English prose."""
+    """Return one source-declared product token, never generic English prose.
+
+    The first capitalised word after the verb is only accepted when it is
+    demonstrably the verb's object rather than an ordinary sentence noun inside a
+    later prepositional phrase. A denylist alone is whack-a-mole:
+    ``MiniMax-M3.1 Flash Preview is now live ... available under your existing
+    Token Plan`` yielded "MiniMax-M3.1 Flash 可用 Token" because ``Token`` merely
+    starts a noun phrase after ``under``. So a bare capitalised word is accepted
+    only when it sits immediately after the verb (position 0 of ``value``) or is
+    otherwise a real name: registered org alias, recognised model family, or a
+    version/product-shaped token (``GPT-5.6``, ``M3.1``).
+    """
     match = re.search(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9.+-]{2,}", value)
     if match is None:
         return None
     token = match.group(0)
     folded = token.casefold()
-    if folded in _GENERIC_PRODUCT_TOKENS:
+    if folded in _GENERIC_PRODUCT_TOKENS or folded in _NON_PRODUCT_PROPER_NOUNS:
         return None
-    # A bare place/demonym/time word is a sentence noun, not a released object;
-    # only registered orgs, models or explicit product-style tokens may serve as
-    # the fallback detail. Checking only the first capitalised token is
-    # deliberate: skipping past a rejected one would walk deeper into prose and
-    # fabricate a detail from an unrelated later name (e.g. `"true North"`).
-    if folded in _NON_PRODUCT_PROPER_NOUNS:
-        return None
-    return token
+    # Registered org alias or recognised model family: a real name.
+    if folded in _ORGANIZATION_ALIASES or _MODEL_PATTERN.fullmatch(token):
+        return token
+    # Version/product-shaped: carries a digit or an internal separator, e.g.
+    # ``GPT-5.6``, ``M3.1``.
+    if any(char.isdigit() for char in token) or re.search(
+        r"[A-Za-z0-9][.+-]|[.+-][A-Za-z0-9]", token
+    ):
+        return token
+    # A bare capitalised English word is only the verb's object when it directly
+    # follows the verb; inside a later phrase (``under your existing Token
+    # Plan``) it is prose and must not become the released object.
+    return token if value[: match.start()].strip() == "" else None
 
 
 def source_anchored_title(source: SourceEvidence) -> str | None:
