@@ -746,6 +746,49 @@ def test_action_and_model_must_be_supported_by_same_binding_quote():
     }
 
 
+def test_cross_sentence_check_allows_attribution_framed_title():
+    """A subject taken from the source's own attribution is not a composite.
+
+    Regression from the human review: three titles were rejected as
+    ``title_cross_sentence_composite`` while the reviewer marked them as should
+    ship. They draw the subject from the attribution prefix and the body names
+    from following sentences, e.g. "OpenAI: Astra for Law: ... powered by GPT-6
+    Astra" -> "OpenAI推出Astra for Law：由GPT-6 Astra提供的前沿法律智能服务".
+    Genuine composites stitch a *third-party* subject to another sentence's
+    object and must stay blocked.
+    """
+    from src.briefing.publishability import _claim_anchors_within_one_sentence as within
+
+    legit = [
+        (
+            "OpenAI 暂停最新模型的强化学习（RL）训练",
+            "OpenAI: As models become more capable, the risks associated with "
+            "developing and testing them internally also grow. We temporarily "
+            "paused reinforcement learning (RL) training on our latest models.",
+        ),
+        (
+            "Nathan Benaich 推出开源工具 optstop：在估计已足够精确时提前停止 AI 评估",
+            "Nathan Benaich: Some frontier AI evaluations require hundreds of "
+            "millions of tokens, and every wasted trial has a real cost. We're "
+            "introducing optstop: our open-source tool.",
+        ),
+        (
+            "OpenAI推出Astra for Law：由GPT-6 Astra提供的前沿法律智能服务",
+            "OpenAI: Astra for Law: Frontier intelligence built for your practice. "
+            "A new offering powered by GPT-6 Astra with tools and settings.",
+        ),
+    ]
+    for title, evidence in legit:
+        assert within(title, evidence) is True, title
+
+    fabricated = [
+        ("Mistral 发布 GPT-5.6", "Mistral office research. OpenAI releases GPT-5.6."),
+        ("FakeCo 发布 Model-X", "Acme launches Model-X in 2026."),
+    ]
+    for title, evidence in fabricated:
+        assert within(title, evidence) is False, title
+
+
 def test_ai_update_rejects_unregistered_metric_dimension_swap():
     source_evidence = source(
         "Qwen3.8 improves accuracy by 10%",

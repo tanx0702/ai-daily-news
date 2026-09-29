@@ -1509,22 +1509,38 @@ def _anchors_are_comparison_targets_only(
 
 
 def _claim_anchors_within_one_sentence(claim: str, evidence_text: str) -> bool:
-    """Whether the claim's Latin anchors all occur in one source sentence.
+    """Whether the claim's Latin anchors are consistent with one source statement.
 
-    ``Mistral office research. OpenAI releases GPT-5.6.`` combined into
-    "Mistral 发布 GPT-5.6" borrows its subject from sentence one and its object
-    from sentence two. No per-sentence binding can justify that, so it must stay
-    blocked even when the headline-shape gates are treated as advisory.
+    A claim may legitimately draw its subject from the attribution prefix and its
+    remaining anchors from the following sentences: "OpenAI: Astra for Law ...
+    powered by GPT-6 Astra" yields "OpenAI 推出 Astra for Law：由GPT-6 Astra提供…",
+    where ``openai`` sits in the opening sentence and ``gpt-6`` in the next one.
+    That is ordinary news phrasing, not fabrication.
+
+    Fabrication looks different: the subject names a *different* entity that
+    appears only as an object elsewhere, as in ``Mistral office research. OpenAI
+    releases GPT-5.6.`` combined into "Mistral 发布 GPT-5.6". There the subject is
+    neither the attribution nor co-located with the object.
+
+    So the anchors are acceptable when either every anchor shares one sentence,
+    or the subject is the source's own attribution prefix (the claim is then
+    framed by the publisher, and its remaining names are drawn from the body).
     """
     from src.briefing.validator import _cross_language_anchors  # noqa: PLC0415
 
     claim_anchors = _cross_language_anchors(claim)
     if not claim_anchors:
         return True
-    return any(
-        claim_anchors <= _cross_language_anchors(sentence)
-        for sentence in _sentences(evidence_text)
-    )
+    sentences = _sentences(evidence_text)
+    if any(claim_anchors <= _cross_language_anchors(s) for s in sentences):
+        return True
+    # Attribution case: the claim's subject is the publisher/author that opens
+    # the source. Body names may then legitimately live in later sentences.
+    attribution = re.match(r"^\s*([A-Za-z][A-Za-z0-9 .'\-]{1,40}?):", evidence_text)
+    if attribution is None:
+        return False
+    subject_anchors = _cross_language_anchors(attribution.group(1))
+    return bool(subject_anchors) and subject_anchors <= claim_anchors
 
 
 def validate_display_publishability(
