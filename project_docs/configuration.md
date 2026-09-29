@@ -126,9 +126,18 @@ DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 | --- | --- | --- |
 | `COMPOSE_PROFILES` | 空 | 服务器设为 `egress-proxy`，确保常规 `docker compose up` 也启动 sidecar |
 | `AI_NEWS_HTTP_PROXY` / `AI_NEWS_HTTPS_PROXY` | 空 | 同时设为 `http://proxy:7890` 后，`web` 的外部 HTTP(S) 请求经 sidecar 转发 |
-| `AI_NEWS_NO_PROXY` | `localhost,127.0.0.1,web,nginx,proxy` | 不能经由 sidecar 的容器内地址 |
+| `AI_NEWS_NO_PROXY` | `localhost,127.0.0.1,web,nginx,proxy` | 不能经由 sidecar 的容器内地址。**切换到本地 LLM 路由（`http://9router:20128/v1`）时必须把 `9router` 加进来**，否则该请求会被送进 sidecar 并返回 502 |
 | `AI_NEWS_PROXY_BINARY_PATH` | 本地不可执行占位文件 | 宿主机私有 sing-box Linux 二进制路径；生产必须使用 root 可读的真实二进制 |
 | `AI_NEWS_PROXY_CONFIG_PATH` | 仓库中的阻断样例 | 宿主机私有 sing-box JSON 配置；必须由受限节点链接生成，不得作为 `.env` 值保存 |
+
+### 本地 LLM 路由（可选）
+
+服务器可自建 OpenAI 兼容路由（例如容器名 `9router`，监听容器内 `20128`，仅绑定宿主机 `127.0.0.1`）。把 `QUALITY_LLM_*` 指向它即可，例如 `QUALITY_LLM_API_BASE=http://9router:20128/v1`。两点前提缺一不可：
+
+1. `web` 必须与路由容器处在同一个 Compose 网络。`docker-compose.yml` 已让 `web` 加入 `public`，路由只需加入同一个 `ai-news_public`；否则容器内的容器名无法解析，所有核验调用都会静默降级为 `rules_only`。
+2. `AI_NEWS_NO_PROXY` 必须包含路由的容器名，否则请求会先被送进 egress sidecar 并得到 502。
+
+路由是否可用看审计里的 `validation_mode`：正常是 `rules_and_llm`，退回 `rules_only` 说明核验调用未成功（可用 `docs/latest.json` 与 `docs/debug/<date>-briefing.json` 的 `quality_llm_*` 诊断计数确认）。
 
 生成器 `python -m scripts.generate_sing_box_config` 仅接受单个 `VLESS WebSocket + TLS` 或 `VLESS TCP + Reality` 节点。Reality 节点必须提供 `sni`、`pbk` 和 `sid`，并使用 `headerType=none`。它拒绝跳过 TLS 证书验证、非 `none` 加密、无效端口和未支持的 TLS fingerprint。它只可在服务器写入 `/root/ai-news-proxy/config.json`；订阅 URL、节点 URL、生成配置和二进制均不是仓库资产。漏配私有配置时，仓库内阻断样例会使代理拒绝出网，不会静默直连。
 

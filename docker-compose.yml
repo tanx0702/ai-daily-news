@@ -31,6 +31,11 @@ services:
     networks:
       - app
       - egress
+      # ``public`` carries the optional LLM router sidecar (container name
+      # ``9router``). The quality LLM may point at it, so ``web`` must share the
+      # network to resolve that hostname; without it the name fails to resolve and
+      # every review call degrades to ``rules_only``.
+      - public
     env_file:
       - .env
     environment:

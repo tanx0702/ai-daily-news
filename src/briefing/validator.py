@@ -112,6 +112,10 @@ _ALLOWED_QUALITY_REASONS = {
     "protected_token_missing",
     "action_not_supported",
     "claim_quote_mismatch",
+    # The model occasionally stops a proper name at a token boundary ("Ethan Mol"
+    # for "Ethan Mollick"). The quality review flags it so the item is rebuilt
+    # rather than published with a misspelled attribution.
+    "title_truncated_name",
 }
 
 
@@ -532,6 +536,17 @@ class BriefValidator:
         self.diagnostics["quality_llm_success_count"] += 1
         if action == "accept":
             return self._accept(event, draft, "rules_and_llm", ())
+        # A truncated proper name is a spelling slip the model can fix on a retry,
+        # so it asks for a rebuild instead of discarding usable content. Every
+        # other non-accept verdict keeps the existing reject path.
+        if "title_truncated_name" in reasons:
+            return self._issue_result(
+                event.event_key,
+                ("title_truncated_name",),
+                generation_attempt,
+                validation_mode="rules_and_llm",
+                audited_draft=draft,
+            )
         return self._issue_result(
             event.event_key,
             ("semantic_review_rejected",),
@@ -963,6 +978,12 @@ class BriefValidator:
                         "不得返回或修改正文。严格返回 json 对象 {\"items\":[{\"index\":1,"
                         "\"event_key\":\"...\",\"action\":\"accept|rebuild|reject\","
                         "\"reason_codes\":[]}]}。"
+                        "专名必须逐字一致：把标题里的每个拉丁字母专名（人名、机构名、"
+                        "产品名、模型名）与 evidence 中的写法逐字比对，若某个专名是原文"
+                        "某个专名的前缀或残缺形式（原文 Ethan Mollick 而标题写成 Ethan Mol，"
+                        "原文 Claude Opus 5.5 而标题写成 Claude Opu 5.5），用 "
+                        "reason_codes=[\"title_truncated_name\"] 并返回 action=\"rebuild\"。"
+                        "专名完整但其余表述需要调整时用其它既有 reason_codes，不要编造新码。"
                     ),
                 },
                 {
