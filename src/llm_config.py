@@ -24,7 +24,17 @@ class LLMConfig:
 
 
 def structured_llm_request_options(config: LLMConfig) -> dict[str, object]:
-    if config.model.strip().casefold() == "glm-5.3-flash":
+    """Zhipu-specific structured-request options.
+
+    ``glm-5.3-flash`` is a reasoning model: without ``reasoning_effort=low`` it
+    spends the whole token budget on hidden reasoning and returns empty
+    ``content``, which the pipeline records as an unavailable content LLM. Match
+    on the final path segment so a router-namespaced id (``cbcn/glm-5.3-flash``)
+    still receives the flag; matching the bare name alone silently dropped it.
+    """
+    model = config.model.strip().casefold()
+    tail = model.rsplit("/", 1)[-1]
+    if tail == "glm-5.3-flash":
         return {"extra_body": {"reasoning_effort": "low"}}
     return {}
 
