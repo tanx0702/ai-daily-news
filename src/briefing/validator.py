@@ -404,6 +404,25 @@ def _parse_aware(value: str) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def _strip_code_fence(content: str) -> str:
+    """Remove a markdown code fence wrapping a JSON reply.
+
+    Some models ignore ``response_format=json_object`` and wrap the object in
+    ```json ... ```; the backticks then break ``json.loads`` and the review is
+    discarded as an invalid response.
+    """
+    text = content.strip()
+    if not text.startswith("```"):
+        return text
+    first_newline = text.find("\n")
+    if first_newline == -1:
+        return text
+    body = text[first_newline + 1:]
+    if body.rstrip().endswith("```"):
+        body = body.rstrip()[:-3]
+    return body.strip()
+
+
 def _response_content(response: object) -> str:
     try:
         content = response.choices[0].message.content
@@ -411,7 +430,7 @@ def _response_content(response: object) -> str:
         raise ValueError("quality LLM response has no content") from exc
     if not isinstance(content, str) or not content.strip():
         raise ValueError("quality LLM response is empty")
-    return content.strip()
+    return _strip_code_fence(content)
 
 
 class BriefValidator:

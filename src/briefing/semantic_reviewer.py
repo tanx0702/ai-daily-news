@@ -213,6 +213,24 @@ def _document_payload(document: EventDocument) -> dict[str, object]:
     }
 
 
+def _strip_code_fence(content: str) -> str:
+    """Remove a markdown code fence wrapping a JSON reply.
+
+    A fenced answer would otherwise fail JSON decoding and be treated as an
+    invalid semantic review.
+    """
+    text = content.strip()
+    if not text.startswith("```"):
+        return text
+    first_newline = text.find("\n")
+    if first_newline == -1:
+        return text
+    body = text[first_newline + 1:]
+    if body.rstrip().endswith("```"):
+        body = body.rstrip()[:-3]
+    return body.strip()
+
+
 def _response_content(response: object) -> str:
     try:
         content = response.choices[0].message.content
@@ -220,7 +238,7 @@ def _response_content(response: object) -> str:
         raise SemanticResponseError("semantic LLM response has no content") from exc
     if not isinstance(content, str) or not content.strip():
         raise SemanticResponseError("semantic LLM response is empty")
-    return content.strip()
+    return _strip_code_fence(content)
 
 
 def _validate_payload(

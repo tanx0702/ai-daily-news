@@ -58,6 +58,32 @@ def _default_client_factory(**kwargs):
     return OpenAI(**kwargs)
 
 
+def _strip_code_fence(content: str) -> str:
+    """Remove a markdown code fence wrapping a JSON reply.
+
+    Some models ignore ``response_format=json_object`` and answer with
+
+        ```json
+        {"items": [...]}
+        ```
+
+    ``json.loads`` then fails on the backticks and the whole batch is discarded
+    as ``invalid_builder_response`` (observed in 1 of 3 calls to
+    ``deepseek-v4.1-flash``). Unwrapping the fence is deterministic and cannot
+    turn a non-JSON answer into JSON, so it is a safe normalisation.
+    """
+    text = content.strip()
+    if not text.startswith("```"):
+        return text
+    first_newline = text.find("\n")
+    if first_newline == -1:
+        return text
+    body = text[first_newline + 1:]
+    if body.rstrip().endswith("```"):
+        body = body.rstrip()[:-3]
+    return body.strip()
+
+
 def _response_content(response: object) -> str:
     try:
         content = response.choices[0].message.content
@@ -65,7 +91,7 @@ def _response_content(response: object) -> str:
         raise ValueError("LLM response has no assistant content") from exc
     if not isinstance(content, str) or not content.strip():
         raise ValueError("LLM response content is empty")
-    return content.strip()
+    return _strip_code_fence(content)
 
 
 def _is_nonrecoverable(error: Exception) -> bool:
@@ -469,6 +495,16 @@ class BriefBuilder:
                             "（研究院、辩论在原文中没有对应英文词，会被拒绝）。"
                             "这些类型的标题宁可中英夹杂，也不要为了通顺把细节译成中文名词；"
                             "无法保留英文锚点时删去该细节，不要意译；"
+                            "特别注意**不得半译**：整句照搬英文、或英文短语原样留在中文句子里，都与"
+                            "上述规则同罪。这些写法都被拒绝："
+                            "「Anthropic: What do you want from AI? 我们正在推出新研究」"
+                            "（首句整句英文未译）、"
+                            "「open weights models 将很快产生 closed source models 已展示的 security threats」"
+                            "（多个英文短语堆叠，只剩动作词是中文）、"
+                            "「Anthropic 的 prospectus 披露 losses、growth，以及其 AI 可能终结 humanity 的 warning」"
+                            "（英文名词连缀成句）。正确做法是把整句压成「主体+动作+一个可核验锚点」的短标题，"
+                            "例如对应最后一条写成「Anthropic 招股书披露亏损与增长，并警告 AI 可能终结人类」；"
+                            "只有产品名、模型名、机构名、@handle、数字和版本号可以保留原文写法；"
                             "content_type=attributed_opinion 时不适用上述锚点规则：观点只要求保留作者归因，"
                             "标题必须完整翻译成中文、读起来是自然中文，只保留作者名和产品/模型名等专名的原文写法，"
                             "不得留下成串英文短语；"

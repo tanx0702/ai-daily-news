@@ -908,6 +908,37 @@ def test_builder_rejects_wrong_types_and_event_key_mismatch():
     ]
 
 
+def test_builder_accepts_json_wrapped_in_markdown_fence():
+    """A ```json fenced reply must be unwrapped, not discarded.
+
+    Regression from dryrun #33: deepseek-v4.1-flash ignored
+    ``response_format=json_object`` on 1 of 3 calls and wrapped the object in a
+    markdown fence, so ``json.loads`` failed and the batch was dropped as
+    ``invalid_builder_response`` (24 items in one edition).
+    """
+    item = event(1)
+    payload = generated_item(1, item.event_key, item.canonical_evidence.url)
+    fenced = "```json\n%s\n```" % json.dumps({"items": [payload]}, ensure_ascii=False)
+    builder, _ = builder_with_responses([fenced])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.reason_code is None, result.reason_code
+    assert result.draft is not None
+    assert result.draft.chinese_title == payload["chinese_title"]
+
+
+def test_builder_still_rejects_non_json_after_fence_stripping():
+    """Unwrapping a fence must not make arbitrary prose parseable."""
+    item = event(1)
+    builder, _ = builder_with_responses(["```json\nnot json at all\n```"])
+
+    result = builder.build_batch([item], attempts={})[0]
+
+    assert result.draft is None
+    assert result.reason_code == "invalid_builder_response"
+
+
 def test_second_invalid_attempt_uses_complete_chinese_source_fallback():
     item = event(1, chinese=True)
     builder, _ = builder_with_responses(["not-json"])
