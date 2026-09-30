@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sys
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -142,6 +143,11 @@ def _run_pipeline(
         if source is None:
             invalid_evidence_count += 1
             continue
+        if candidate.get("_scoring_only_rejection"):
+            # Route 1: the collector deferred this item to the LLM scorer. The
+            # evidence is rebuilt from the raw candidate here, so the deferral
+            # flag must be re-applied for the validator to honour it.
+            source = replace(source, scoring_deferred=True)
         evidence.append(source)
         scores_by_url[source.url] = max(
             scores_by_url.get(source.url, float("-inf")),
