@@ -190,6 +190,20 @@ _METADATA_PATTERNS = (
     re.compile(r"#\s*Comments:\s*\d+", re.I),
     re.compile(r"\bComments:\s*\d+", re.I),
 )
+# Roundup/aggregate posts (早报/日报/周报, multi-topic digests) are not a single
+# AI news event: one title bundles several unrelated stories, most of them
+# non-AI (phone repairs, car launches, satellite payloads). Publishing one as a
+# headline misrepresents the content, and picking a single topic out of it
+# detaches the claim from its context. Reject the whole item at the source.
+_ROUNDUP_TITLE = re.compile(
+    r"^\s*(?:[A-Za-z]{0,4}\s*)?(?:早报|日报|晚报|周报)\b"
+    r"|^\s*(?:早报|日报|晚报|周报)[｜|：:]"
+    r"|(?:今日|一周|本周|每日|科技|AI)[^。！？\n]{0,8}(?:要闻|速览|汇总|盘点|early\s+brief)",
+    re.I,
+)
+# A title with three or more slash/pipe-separated segments is a digest: no single
+# news headline lists that many topics.
+_ROUNDUP_SEPARATORS = re.compile(r"[/｜|、]")
 _NEGATION = re.compile(r"\b(?:not|never|without|would not)\b|未|没有|并未|不会")
 # Planned/conditional framing: `may sue` / `considering suing` are not asserted actions.
 _PLANNED_ACTION = re.compile(
@@ -591,8 +605,10 @@ class PublishabilityResult:
     detail_anchors: tuple[str, ...] = ()
     # Bounded private sub-reason for otherwise-indistinguishable rejections.
     # Never a public contract: it disambiguates ``non_news_content`` into
-    # ``instructional_content`` (a non-news title pattern matched) versus
-    # ``no_asserted_action`` (no asserted event action could be framed).
+    # ``instructional_content`` (a non-news title pattern matched),
+    # ``no_asserted_action`` (no asserted event action could be framed), and
+    # ``roundup_content`` (a 早报/日报 style multi-topic digest rather than one
+    # event).
     rejection_detail: str = ""
 
 
@@ -1320,9 +1336,31 @@ def validate_update_display_publishability(
     )
 
 
+def is_roundup_title(title: str) -> bool:
+    """Whether a title is a multi-topic digest rather than one news event.
+
+    Two signals, either sufficient: a 早报/日报/周报 style marker, or three or
+    more slash/pipe separated segments (a real headline does not enumerate that
+    many topics). Kept narrow on purpose — the separators alone need at least
+    three segments so an ordinary title containing one ``/`` still passes.
+    """
+    text = _normalize(title)
+    if not text:
+        return False
+    if _ROUNDUP_TITLE.search(text):
+        return True
+    return len(_ROUNDUP_SEPARATORS.findall(text)) >= 3
+
+
 def validate_source_publishability(source: SourceEvidence) -> PublishabilityResult:
     evidence = _normalize(source.evidence_text)
     title = _normalize(source.source_title)
+    if is_roundup_title(title):
+        return PublishabilityResult(
+            False,
+            ("non_news_content",),
+            rejection_detail="roundup_content",
+        )
     if source.channel == "github":
         lowered = evidence.casefold()
         activity_markers = ("star", "commit", "recent push", "近期活跃")

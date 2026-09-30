@@ -917,6 +917,45 @@ def test_non_news_rejection_distinguishes_instructional_from_no_action():
     assert instructional_result.rejection_detail != no_action_result.rejection_detail
 
 
+def test_roundup_digest_titles_are_rejected_as_non_news_content():
+    """A 早报/日报 digest is not one AI event and must not become a headline.
+
+    Regression from the real 2026-09-30 draft: an ifanr 早报 bundling an iPhone
+    repair, an AMD acquisition and a car launch was published as a single AI
+    item, and the same URL was published on two consecutive days. One title also
+    carried the publisher's WeChat promo footer into the brief.
+    """
+    digests = (
+        "早报｜苹果修复iPhone 18 Pro面容ID卡死重启/AMD收购李飞飞世界模型/"
+        "智界RX上市，余承东：鸿蒙智行「最好开的车」",
+        "早报｜曝iPhone Duo量产初期良率仅过六成/小米18 Pro加入硬件级防窥/"
+        "OpenAI新模型24天攻克百道数学未解难题",
+        "科技早报：今日要闻速览",
+        "一周AI要闻盘点",
+        "AI日报：模型、芯片与融资",
+    )
+    for title in digests:
+        result = validate_source_publishability(source(title))
+        assert result.accepted is False, title
+        # Top-level contract stays non_news_content; the sub-reason is private.
+        assert result.reason_codes == ("non_news_content",), title
+        assert result.rejection_detail == "roundup_content", title
+
+
+def test_ordinary_headlines_are_not_mistaken_for_roundups():
+    """A single-topic headline must still pass, including one with a slash."""
+    titles = (
+        "Anthropic 发布 Claude Sonnet 5.5，称生成速度提升逾三成",
+        "腾讯混元 Hy4 预览版发布：770B 参数、49B 激活、1M 上下文",
+        "Qualcomm/ARM 诉讼和解，双方撤回全部指控",
+        "OpenAI 试点 ChatGPT 广告：免费层与 Go 层用户将看到赞助内容",
+        "Claude 5.5 发布，性能直逼 Fable，还要卷价格",
+    )
+    for title in titles:
+        result = validate_source_publishability(source(title))
+        assert result.rejection_detail != "roundup_content", title
+
+
 def test_newly_asserted_news_actions_are_recognized():
     """Real news actions previously dropped as no_asserted_action."""
     cases = (
