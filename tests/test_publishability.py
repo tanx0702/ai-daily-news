@@ -956,6 +956,29 @@ def test_ordinary_headlines_are_not_mistaken_for_roundups():
         assert result.rejection_detail != "roundup_content", title
 
 
+def test_url_slashes_do_not_make_a_headline_a_roundup():
+    """Every X headline carries a t.co link; its slashes are not topic separators.
+
+    Regression from dryrun #37: ``OpenAI: This is Ultrafast. ... in the API.
+    https://t.co/...`` and ``Yann LeCun: Pope Leo criticises ... https://t.co/...``
+    were rejected as roundups because ``https://`` alone contributes three
+    slashes.
+    """
+    titles = (
+        "OpenAI: This is Ultrafast. Our premium speed tier, Ultrafast offers up to "
+        "8x faster token generation in Codex and up to 6x in the API. "
+        "https://t.co/ekyzT1vFan",
+        "Yann LeCun: Pope Leo criticises Nvidia's Jensen Huang over AI safety "
+        "https://t.co/V9j0UMH6Ba",
+        "Perplexity: Read more about Automations in Perplexity Computer: "
+        "https://t.co/XuNx97oJjb",
+    )
+    for title in titles:
+        assert validate_source_publishability(
+            source(title)
+        ).rejection_detail != "roundup_content", title
+
+
 def test_newly_asserted_news_actions_are_recognized():
     """Real news actions previously dropped as no_asserted_action."""
     cases = (

@@ -1341,15 +1341,20 @@ def is_roundup_title(title: str) -> bool:
 
     Two signals, either sufficient: a 早报/日报/周报 style marker, or three or
     more slash/pipe separated segments (a real headline does not enumerate that
-    many topics). Kept narrow on purpose — the separators alone need at least
-    three segments so an ordinary title containing one ``/`` still passes.
+    many topics). URL characters do not count — every X headline carries a
+    ``https://t.co/...`` link whose three slashes would otherwise flag it as a
+    digest. Separators also need at least three so an ordinary title containing
+    one ``/`` still passes.
     """
     text = _normalize(title)
     if not text:
         return False
     if _ROUNDUP_TITLE.search(text):
         return True
-    return len(_ROUNDUP_SEPARATORS.findall(text)) >= 3
+    # Strip URLs before counting separators: ``https://`` alone contributes three
+    # slashes and no headline is a digest because it links somewhere.
+    without_urls = re.sub(r"https?://\S+", " ", text, flags=re.I)
+    return len(_ROUNDUP_SEPARATORS.findall(without_urls)) >= 3
 
 
 def validate_source_publishability(source: SourceEvidence) -> PublishabilityResult:
