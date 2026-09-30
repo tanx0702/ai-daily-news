@@ -63,6 +63,11 @@ class SourceEvidence:
     context_complete: bool = False
     stance_type: str = ""
     affiliation_disclosure: bool = False
+    # Route 1: set when the deterministic relevance gates deferred this item to
+    # the LLM scorer instead of rejecting it. The validator treats it as "the
+    # scorer already vouched for relevance" and skips its own headline-shape
+    # gates, keeping only the quote-truth checks that prevent fabrication.
+    scoring_deferred: bool = False
 
     def __post_init__(self) -> None:
         if self.channel not in _CHANNELS:
@@ -98,6 +103,7 @@ class SourceEvidence:
             "context_complete": self.context_complete,
             "stance_type": self.stance_type,
             "affiliation_disclosure": self.affiliation_disclosure,
+            "scoring_deferred": self.scoring_deferred,
         }
 
     def to_public_dict(self) -> dict[str, Any]:

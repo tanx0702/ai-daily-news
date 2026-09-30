@@ -16,6 +16,7 @@ from typing import Optional
 
 import feedparser
 import requests
+from dataclasses import replace
 
 from src.text_utils import clean_display_text
 
@@ -1788,6 +1789,12 @@ def collect_candidates(
                 preflight_reason_counts[reason] = (
                     preflight_reason_counts.get(reason, 0) + 1
                 )
+            # Carry the deferral into the immutable evidence so the validator
+            # knows the scorer — not the rules — vouched for this item.
+            try:
+                source_evidence = replace(source_evidence, scoring_deferred=True)
+            except Exception:  # pragma: no cover - defensive
+                pass
             preflight_rejected.append(item)
             record_classification(
                 item,

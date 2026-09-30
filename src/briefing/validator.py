@@ -477,12 +477,23 @@ class BriefValidator:
         source_editorial = validate_content_source_publishability(
             event.canonical_evidence
         )
-        if not source_editorial.accepted:
+        if (
+            not source_editorial.accepted
+            and not event.canonical_evidence.scoring_deferred
+        ):
             return ValidationResult(
                 "reject",
                 source_editorial.reason_codes,
                 "rules_only",
                 audited_draft=draft,
+            )
+        if not source_editorial.accepted:
+            # Route 1: the scorer already accepted this source's relevance; the
+            # deterministic source gate must not double-jeopardy it.
+            logger.info(
+                "Scoring-deferred source %s bypasses source gate: %s",
+                event.event_key,
+                ",".join(source_editorial.reason_codes),
             )
 
         if event.canonical_evidence.content_type == "attributed_opinion":
@@ -497,12 +508,42 @@ class BriefValidator:
                 )
 
         issue_reasons = self._display_contract_reasons(event, draft)
-        if issue_reasons:
+        if issue_reasons and not event.canonical_evidence.scoring_deferred:
             return self._issue_result(
                 event.event_key,
                 issue_reasons,
                 generation_attempt,
                 validation_mode="rules_only",
+            )
+        if issue_reasons:
+            # Route 1: the LLM scorer vouched for this item's relevance, so the
+            # headline-shape gates (action vocabulary, anchor binding, translation
+            # prose) may not veto it. Only genuinely structural failures — a draft
+            # that does not reference its own source, or one whose quote cannot be
+            # found — still count, because those indicate fabrication, not style.
+            structural = {
+                reason
+                for reason in issue_reasons
+                if reason in {
+                    "invalid_builder_response",
+                    "missing_target_binding",
+                    "unexpected_target_binding",
+                    "quote_not_found",
+                    "source_url_mismatch",
+                    "builder_item_malformed",
+                }
+            }
+            if structural:
+                return self._issue_result(
+                    event.event_key,
+                    tuple(sorted(structural)),
+                    generation_attempt,
+                    validation_mode="rules_only",
+                )
+            logger.info(
+                "Scoring-deferred item %s bypasses advisory gates: %s",
+                event.event_key,
+                ",".join(issue_reasons),
             )
 
         normalized_draft, _removed_sentences = self._normalize_title_restatements(
