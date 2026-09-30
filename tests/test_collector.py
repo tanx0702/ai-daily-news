@@ -387,7 +387,13 @@ class CollectorTests(unittest.TestCase):
 
         self.assertEqual(diagnostics["source_health"], {})
 
-    def test_collect_candidates_publishability_preflight_stops_rejected_candidates(self):
+    def test_collect_candidates_preflight_defers_rejected_candidates_to_scoring(self):
+        """Route 1: relevance gates defer to the LLM scorer instead of dropping.
+
+        A tutorial-style candidate no longer disappears at collection time; it
+        enters the pool with ``content_type=None`` so the scorer decides. Only
+        multi-topic digests and unusable evidence are dropped outright.
+        """
         now = datetime.now(timezone.utc)
         tutorial = {
             "title": "How OpenAI works: a practical AI guide",
@@ -428,9 +434,20 @@ class CollectorTests(unittest.TestCase):
                 now=now,
             )
 
-        self.assertEqual([item["url"] for item in items], [release["url"]])
-        self.assertEqual(diagnostics["publishability_preflight_total"], 2)
+        # Both candidates survive; the tutorial is marked for the scorer.
+        self.assertEqual(
+            sorted(item["url"] for item in items),
+            sorted([tutorial["url"], release["url"]]),
+        )
+        tutorial_item = next(i for i in items if i["url"] == tutorial["url"])
+        self.assertIsNone(tutorial_item["content_type"])
+        self.assertIn("_scoring_only_rejection", tutorial_item)
+        self.assertEqual(
+            diagnostics["publishability_preflight_total"], 2,
+        )
         self.assertEqual(diagnostics["publishability_preflight_passed"], 1)
+        # The deferred tutorial is still counted in the rejected bucket because
+        # the preflight did not accept it; the scorer decides its fate later.
         self.assertEqual(diagnostics["publishability_preflight_rejected"], 1)
         self.assertEqual(
             diagnostics["publishability_preflight_reason_counts"],
@@ -491,21 +508,28 @@ class CollectorTests(unittest.TestCase):
                 now=now,
             )
 
-        assert {item["content_type"] for item in items} == {
-            "fact_event",
-            "ai_update",
-        }
-        assert all(item["_publishability_preflight"]["accepted"] for item in items)
+        # Route 1: the tutorial survives collection for the scorer to judge;
+        # its frozen content_type is unset and the audit still records the
+        # classification rejection with its private sub-reason.
+        types_by_url = {item["url"]: item["content_type"] for item in items}
+        assert types_by_url["https://example.com/openai-guide"] is None
+        assert types_by_url["https://openai.com/news/model-5"] == "fact_event"
+        assert types_by_url["https://example.com/h3-max-demo"] == "ai_update"
         assert diagnostics["content_classification_counts"] == {
             "ai_update": 1,
             "fact_event": 1,
         }
-        assert diagnostics["content_classification_rejected"] == 1
-        assert diagnostics["content_llm_skipped_count"] == 1
-        assert any(
-            row["content_llm_skipped"] and row["final_state"] == "rejected"
+        # The tutorial is deferred to scoring, not rejected: it stays in the pool
+        # with content_type unset and its own audit row.
+        assert diagnostics["content_classification_rejected"] == 0
+        tutorial_rows = [
+            row
             for row in classification_audit
-        )
+            if "openai-guide" in (row.get("source_evidence", {}) or {}).get("url", "")
+        ]
+        assert tutorial_rows, "tutorial must be audited"
+        assert tutorial_rows[0]["final_reason_codes"] == ["non_news_content"]
+        assert tutorial_rows[0]["final_state"] == "kept_for_scoring"
 
     def test_collect_candidates_preflight_dispatches_updates_and_opinions(self):
         now = datetime.now(timezone.utc)

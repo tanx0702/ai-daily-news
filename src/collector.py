@@ -1645,6 +1645,7 @@ def collect_candidates(
         preflight_accepted: bool,
         final_reason_codes: tuple[str, ...],
         content_llm_skipped: bool | None = None,
+        final_state: str | None = None,
     ) -> None:
         if candidate_audit is None:
             return
@@ -1676,7 +1677,9 @@ def collect_candidates(
             "content_llm_skipped": skipped,
             "attempts": [],
             "final_state": (
-                "eligible" if preflight_accepted
+                final_state
+                if final_state is not None
+                else "eligible" if preflight_accepted
                 else "rejected" if skipped
                 else "deferred"
             ),
@@ -1718,17 +1721,74 @@ def collect_candidates(
 
         classification = classify_source_content(source_evidence)
         if classification.content_type is None:
-            classification_rejected += 1
             reasons = classification.reason_codes or ("non_news_content",)
+            # Route 1 (scoring pipeline): deterministic relevance gates no longer
+            # decide whether a candidate lives or dies — the LLM scorer does.
+            # Only two hard rejections remain at collection time: multi-topic
+            # digests (早报) and unusable evidence. Everything else, including
+            # no_asserted_action and instructional_content, moves on to scoring;
+            # its content_type stays unset so downstream keeps its frozen type.
+            if "non_news_content" not in reasons:
+                classification_rejected += 1
+                item["_publishability_preflight"] = {
+                    "accepted": False,
+                    "reason_codes": list(reasons),
+                }
+                classification_rejected_items.append(item)
+                for reason in reasons:
+                    preflight_reason_counts[reason] = (
+                        preflight_reason_counts.get(reason, 0) + 1
+                    )
+                record_classification(
+                    item,
+                    position,
+                    source_evidence=source_evidence,
+                    original_content_type=original_content_type,
+                    content_type=None,
+                    classification_reason_codes=classification.reason_codes,
+                    subject_anchors=classification.subject_anchors,
+                    detail_anchors=classification.detail_anchors,
+                    rejection_detail=classification.rejection_detail,
+                    preflight_accepted=False,
+                    final_reason_codes=reasons,
+                )
+                continue
+            # non_news_content with a roundup/aggregate detail still dies here;
+            # other non_news_content candidates continue to the scorer.
+            item["content_type"] = original_content_type
+            item["_scoring_only_rejection"] = list(classification.reason_codes)
+            item["_scoring_rejection_detail"] = classification.rejection_detail
             item["_publishability_preflight"] = {
                 "accepted": False,
-                "reason_codes": list(reasons),
+                "reason_codes": list(classification.reason_codes),
             }
-            classification_rejected_items.append(item)
-            for reason in reasons:
+            if classification.rejection_detail == "roundup_content":
+                classification_rejected += 1
+                for reason in classification.reason_codes:
+                    preflight_reason_counts[reason] = (
+                        preflight_reason_counts.get(reason, 0) + 1
+                    )
+                record_classification(
+                    item,
+                    position,
+                    source_evidence=source_evidence,
+                    original_content_type=original_content_type,
+                    content_type=None,
+                    classification_reason_codes=classification.reason_codes,
+                    rejection_detail=classification.rejection_detail,
+                    preflight_accepted=False,
+                    final_reason_codes=classification.reason_codes,
+                )
+                continue
+            item["content_type"] = None
+            # Deferred to scoring, not accepted: it rides with the rejected
+            # bucket so ordering puts it behind clean candidates, and the
+            # preflight counters keep their original meaning.
+            for reason in classification.reason_codes:
                 preflight_reason_counts[reason] = (
                     preflight_reason_counts.get(reason, 0) + 1
                 )
+            preflight_rejected.append(item)
             record_classification(
                 item,
                 position,
@@ -1740,7 +1800,8 @@ def collect_candidates(
                 detail_anchors=classification.detail_anchors,
                 rejection_detail=classification.rejection_detail,
                 preflight_accepted=False,
-                final_reason_codes=reasons,
+                final_reason_codes=classification.reason_codes,
+                final_state="kept_for_scoring",
             )
             continue
 
@@ -1821,6 +1882,34 @@ def collect_candidates(
     preflight_rejected.sort(key=preflight_sort_key, reverse=True)
     prioritized = [*publishable, *preflight_rejected]
     result = prioritized if limit is None else prioritized[:max(int(limit), 0)]
+
+    # Route 1 scoring pass: an LLM ranks the pool 0-10 and low scorers are
+    # dropped. Failure degrades to keeping everything, so this can only widen
+    # the pool, never empty it. The pass is disabled under pytest: importing
+    # src.main loads .env via load_dotenv, so a test run that merely imported
+    # the pipeline would otherwise issue real LLM calls with real credentials.
+    scoring_stats: dict = {}
+    scoring_enabled = (
+        "PYTEST_CURRENT_TEST" not in os.environ
+        and _env_enabled("DAILY_ENABLE_SCORING", default=True)
+    )
+    if scoring_enabled:
+        try:
+            from src.briefing.scoring import score_candidates, scoring_diagnostics
+            from src.llm_config import resolve_text_llm_config
+
+            scored, dropped = score_candidates(
+                result,
+                resolve_text_llm_config(),
+                threshold=float(os.environ.get("DAILY_SCORE_THRESHOLD", "5")),
+                max_candidates=int(os.environ.get("DAILY_SCORING_MAX_CANDIDATES", "60")),
+                timeout=int(os.environ.get("DAILY_LLM_TIMEOUT", "90")),
+            )
+            result = [entry.candidate for entry in scored]
+            scoring_stats = scoring_diagnostics(scored, dropped=dropped)
+        except Exception:  # pragma: no cover - defensive: scoring must never break collection
+            logger.exception("Candidate scoring crashed; keeping unscored pool")
+
     if diagnostics is not None:
         diagnostics.update(
             {
@@ -1843,6 +1932,7 @@ def collect_candidates(
                 "content_llm_skipped_count": (
                     len(classification_rejected_items) + len(invalid_evidence)
                 ),
+                **scoring_stats,
                 "source_merge_removed": 0,
                 "topic_cluster_removed": 0,
                 "final_editorial_dedup_removed": 0,
@@ -1850,10 +1940,11 @@ def collect_candidates(
             }
         )
     logger.info(
-        "Candidate pool: fetched=%d filtered=%d returned=%d (cutoff=%dh)",
+        "Candidate pool: fetched=%d filtered=%d returned=%d scored=%s (cutoff=%dh)",
         len(all_candidates),
         len(filtered),
         len(result),
+        scoring_stats.get("scoring_judged"),
         hours,
     )
     return result
