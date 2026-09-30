@@ -139,6 +139,10 @@ DAILY_CANDIDATE_POOL_N >= DAILY_TOP_N
 
 路由是否可用看审计里的 `validation_mode`：正常是 `rules_and_llm`，退回 `rules_only` 说明核验调用未成功（可用 `docs/latest.json` 与 `docs/debug/<date>-briefing.json` 的 `quality_llm_*` 诊断计数确认）。
 
+`LLM_*`（内容生成）与 `QUALITY_LLM_*`（核验）可以指向同一路由，也可以只切其中一个。排查 block 时先看 `docs/debug/<date>-briefing.json` 的 `excluded_counts`：若 `content_llm_unavailable` 占多数，说明内容 LLM 本身不可用（配额耗尽或凭据失效），此时无论核验层是否正常都只能出极少数条目并最终 `block`。
+
+换模型会改变产出风格：`deepseek-v4.1-flash` 对双语标题约束的遵守度低于此前的 `glm-5.3-flash`，实测同一期会出现更多 `translation_failed` 与标题中英混杂（例如“rogue attack rate 较前代上升 fivefold”）。若混杂不可接受，改用 `cbcn/glm-5.3-flash`（代码已对其下发 `reasoning_effort=low`）并重跑一期对比，不要靠放宽绑定门禁来迁就。
+
 生成器 `python -m scripts.generate_sing_box_config` 仅接受单个 `VLESS WebSocket + TLS` 或 `VLESS TCP + Reality` 节点。Reality 节点必须提供 `sni`、`pbk` 和 `sid`，并使用 `headerType=none`。它拒绝跳过 TLS 证书验证、非 `none` 加密、无效端口和未支持的 TLS fingerprint。它只可在服务器写入 `/root/ai-news-proxy/config.json`；订阅 URL、节点 URL、生成配置和二进制均不是仓库资产。漏配私有配置时，仓库内阻断样例会使代理拒绝出网，不会静默直连。
 
 ## 安全规则
