@@ -1912,7 +1912,17 @@ def collect_candidates(
                 max_candidates=int(os.environ.get("DAILY_SCORING_MAX_CANDIDATES", "60")),
                 timeout=int(os.environ.get("DAILY_LLM_TIMEOUT", "90")),
             )
-            result = [entry.candidate for entry in scored]
+            # Every candidate the scorer kept has passed the relevance judgement,
+            # so the validator must not re-litigate relevance downstream with the
+            # headline-shape gates. Marking all survivors (not just the ones the
+            # classification gates deferred) is what makes the scorer the single
+            # authority on relevance.
+            result = []
+            for entry in scored:
+                candidate = entry.candidate
+                if candidate.get("_scoring_vouched") is not True:
+                    candidate["_scoring_vouched"] = True
+                result.append(candidate)
             scoring_stats = scoring_diagnostics(scored, dropped=dropped)
         except Exception:  # pragma: no cover - defensive: scoring must never break collection
             logger.exception("Candidate scoring crashed; keeping unscored pool")
