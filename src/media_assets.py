@@ -53,6 +53,7 @@ _BAD_IMAGE_HINTS = [
     "favicon", "icon-", "apple-touch-icon", "logo", "avatar", "profile",
     "sprite", "placeholder", "transparent", "tracking", "pixel", "badge",
     "default", "blank", "spacer", "loading", "spinner", "gravatar",
+    "qrcode", "qr-code", "qr_code",
 ]
 
 _GOOD_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".avif")
@@ -330,6 +331,26 @@ def validate_media_candidate(url: str, timeout: int, max_bytes: int = MAX_IMAGE_
             aspect_ratio = width / max(height, 1)
             if aspect_ratio < 0.45 or aspect_ratio > 3.6:
                 result["reason"] = f"logo_like_aspect_ratio:{aspect_ratio:.2f}"
+                return result
+
+            # Reject QR codes and text screenshots: both are near-monochrome,
+            # which a photo never is. Measured on real failures — a WeChat QR
+            # card was 430x430 with 38% dark pixels and 783 distinct colours, a
+            # tweet text-screenshot 1826x1628 with 95% light pixels and 3.7k
+            # colours, while real news photos have tens of thousands of colours.
+            sample = decoded.convert("RGB")
+            sample.thumbnail((256, 256))
+            colors = len(sample.getcolors(maxcolors=1 << 24) or [])
+            grayscale = sample.convert("L")
+            hist = grayscale.histogram()
+            total = sample.size[0] * sample.size[1]
+            dark = sum(hist[:60]) / max(total, 1)
+            light = sum(hist[200:]) / max(total, 1)
+            if colors < 1200 and 0.85 <= aspect_ratio <= 1.15 and dark > 0.12:
+                result["reason"] = f"qr_code_like:colors={colors},dark={dark:.2f}"
+                return result
+            if colors < 6000 and light > 0.85:
+                result["reason"] = f"text_screenshot_like:colors={colors},light={light:.2f}"
                 return result
 
             normalized = ImageOps.exif_transpose(decoded)
