@@ -28,6 +28,8 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 第二轮扩展按同一标准（两次探测稳定 + 36 小时新条目 + AI 相关）加入六个源，其中中文供给此前最薄弱，故以中文源为主：`InfoQ 中文 AI`（20 条/36h，14 条与 AI 相关）、`雷峰网`（10 条/36h，9 条 AI 相关）、`钛媒体`（18 条/36h，10 条 AI 相关）、`Simon Willison`（5 条/36h，4 条 AI 相关）、`Unite.AI`（3 条/36h）、`InfoQ AI`（2 条/36h）。第二轮同时拒绝两个**可达但不合格**的源：`Lobsters AI` 虽两次稳定返回条目，但 36 小时内容 AI 相关数为 0；`爱范儿` 全站 feed 与既有 `APPSO` 同一上游（`ifanr.com/feed`），AI 相关仅 2/7，重复且稀释，故不重复收录。
 
+第三轮扩展（2026-10，源总数 26 -> 32）针对 Exa 全网搜索对照发现的盲区——当日重大安全事件（OpenAI 沙箱逃逸，CNNBC 报道）出自白名单外媒体——按「VPS 容器内实测可达 + 3 天更新频率 + 媒体权威性」加入六个源：`CNBC Technology`（30 条/3d，通讯社，突发事件覆盖）、`SiliconANGLE AI`（30 条/3d，高频 AI 专业媒体）、`The Information AI`（20 条/3d，独家内幕多）、`Wired AI`（10 条/3d）、`Rundown AI`（3 条/3d，AI newsletter）、`FT AI`（18 条/3d）。后三者与 `FT`/`The Information`/`CNBC` 为付费墙媒体，RSS 多为标题+摘要，title-only 素材由打分提示词压至 ≤4 分，仅标题足够重磅才破格入选。同轮探测后拒绝：`Bloomberg Technology`（强反爬且付费墙最厚）、`Reuters Technology`（feed 404）、`Guardian AI`（SSL 错误）、`smol.ai`（404）、`Semafor AI`（超时）、以及多个周更 newsletter（更新频率不足）。
+
 以下实测源被拒绝，不得加入配置：`Anthropic News`、`Meta AI Blog`、`Mistral AI`、`Cohere Blog`、`Stability AI`、`Groq Blog`、`Perplexity Blog` 返回 404/400/403/307 且无有效 feed；`新智元` 返回 302 且无条目；`Reddit LocalLLaMA` 首次 200、复测 429，上游限流不稳定；`Reddit MachineLearning` 直接 429。`Hacker News Newest AI` 与既有 `Hacker News AI` 并存：前者按最新条目取数、后者按 frontpage 取数，两者都计入 `hnrss.org` 来源健康账本。
 
 每次 RSS 请求都会在 `SOURCE_STATE_DB_PATH` 指定的 SQLite 账本中记录最近尝试/成功时间、状态、连续失败次数、条目数、延迟、错误摘要和内容 hash。状态只用于诊断来源是否失效、空载或不稳定，不参与放宽发布门禁，也不能作为新闻证据。默认路径为 `runtime/source-state.db`，Docker 将 `runtime/` 持久化挂载到容器，账本不得提交到 Git。
