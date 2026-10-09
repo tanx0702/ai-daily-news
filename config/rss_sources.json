@@ -147,6 +147,42 @@
             "name": "量子位",
             "url": "https://www.qbitai.com/feed",
             "region": "china"
+        },
+        {
+            "name": "CNBC Technology",
+            "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "SiliconANGLE AI",
+            "url": "https://siliconangle.com/category/ai/feed/",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "The Information AI",
+            "url": "https://www.theinformation.com/feed",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "Wired AI",
+            "url": "https://www.wired.com/feed/tag/ai/latest/rss",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "Rundown AI",
+            "url": "https://www.therundown.ai/feed",
+            "region": "overseas",
+            "tier": "media"
+        },
+        {
+            "name": "FT AI",
+            "url": "https://www.ft.com/artificial-intelligence?format=rss",
+            "region": "overseas",
+            "tier": "media"
         }
     ]
 }
