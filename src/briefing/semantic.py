@@ -361,6 +361,19 @@ def deterministic_relationship(
         return "same_event"
     if shared_actions and (shared_organizations or shared_person_candidates):
         return "review"
+    # Cross-publisher coverage of one story often paraphrases so heavily that
+    # no action/organization/person token is shared and title similarity stays
+    # below threshold ("An Anthropic AI model sent a false homicide tip to
+    # Philadelphia police" vs "AI system submits false homicide tip to
+    # Philadelphia police" — the verbs sent/submits are not in the shared
+    # action vocabulary). Three or more shared low-frequency event nouns
+    # (philadelphia, homicide, police, false / annualized, revenue, billion)
+    # are still strong evidence of one story: send it to the bounded LLM
+    # reviewer instead of deciding "distinct" here. Generic AI-vocabulary
+    # tokens never qualify, so unrelated stories cannot reach the reviewer
+    # this way (measured: unrelated pairs share 0 such nouns).
+    if len(_shared_event_nouns(left_features.text_tokens, right_features.text_tokens)) >= 3:
+        return "review"
     return "distinct"
 
 
@@ -678,6 +691,37 @@ def _qualifiers_by_kind(values: frozenset[str]) -> dict[str, set[str]]:
         kind, _, detail = value.partition(":")
         grouped.setdefault(kind, set()).add(detail)
     return grouped
+
+
+_GENERIC_EVENT_NOUNS = frozenset({
+    # AI-industry vocabulary that appears in nearly every story: it can never
+    # serve as distinctive evidence that two reports describe the same event.
+    "ai", "model", "models", "openai", "anthropic", "google", "gemini",
+    "claude", "gpt", "llm", "llms", "chatgpt", "agent", "agents", "new",
+    "system", "systems", "artificial", "intelligence", "tech", "company",
+    "startup", "launch", "launches", "released", "release", "update",
+    "report", "reports", "said", "says", "ceo", "inc", "corp",
+    "人工智能", "模型", "公司", "发布", "推出", "系统", "智能", "报道",
+})
+
+
+def _shared_event_nouns(
+    left_tokens: frozenset[str],
+    right_tokens: frozenset[str],
+) -> frozenset[str]:
+    """Content-bearing nouns shared by two reports, for cross-publisher dedup.
+
+    Tokens of length >= 4 (or >= 2 for Chinese) that are not generic
+    AI-vocabulary. Two paraphrased reports of one story reliably share such
+    nouns ("philadelphia"+"homicide", "annualized"+"revenue"), while unrelated
+    stories rarely reach two of them.
+    """
+    return frozenset(
+        token
+        for token in (left_tokens & right_tokens)
+        if len(token) >= (2 if "\u4e00" <= token[0] <= "\u9fff" else 4)
+        and token not in _GENERIC_EVENT_NOUNS
+    )
 
 
 def _text_similarity(left: EventDocument, right: EventDocument) -> float:
