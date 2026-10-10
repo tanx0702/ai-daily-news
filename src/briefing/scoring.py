@@ -65,35 +65,14 @@ class ScoredCandidate:
         self.reason = reason
 
 
-def score_candidates(
-    candidates: list[dict],
+def _score_batch(
+    batch: list[dict],
     llm_config: LLMConfig,
     *,
-    threshold: float = DEFAULT_SCORE_THRESHOLD,
-    max_candidates: int = DEFAULT_MAX_CANDIDATES,
-    timeout: int = 90,
-    client_factory: Callable[..., Any] | None = None,
-) -> tuple[list[ScoredCandidate], int]:
-    """Return (kept candidates in input order, drop count).
-
-    Never raises: any LLM failure degrades to "keep everything" so a scoring
-    outage can only widen the pool, never empty it.
-    """
-    scored = [ScoredCandidate(c, None, "") for c in candidates]
-    if not candidates:
-        return scored, 0
-    if not llm_config.api_key:
-        logger.info("Scoring LLM not configured; keeping all %d candidates", len(candidates))
-        return scored, 0
-
-    limited = candidates[:max_candidates]
-    overflow = len(candidates) - len(limited)
-    if overflow > 0:
-        logger.warning(
-            "Candidate pool %d exceeds scoring cap %d; last %d kept unscored",
-            len(candidates), max_candidates, overflow,
-        )
-
+    timeout: int,
+    client_factory: Callable[..., Any] | None,
+) -> list[dict] | None:
+    """Score one batch; return the raw score rows or None on any failure."""
     payload = {
         "items": [
             {
@@ -101,10 +80,9 @@ def score_candidates(
                 "title": str(item.get("source_title") or item.get("title") or "")[:220],
                 "summary": str(item.get("source_summary") or item.get("summary") or "")[:400],
             }
-            for index, item in enumerate(limited, 1)
+            for index, item in enumerate(batch, 1)
         ]
     }
-
     try:
         if client_factory is None:
             from openai import OpenAI
@@ -140,21 +118,73 @@ def score_candidates(
         rows = decoded.get("scores") if isinstance(decoded, dict) else None
         if not isinstance(rows, list):
             raise ValueError("scoring LLM response has no scores list")
+        return rows
     except Exception as exc:
-        logger.warning("Candidate scoring failed; keeping all candidates: %s", exc)
+        logger.warning("Scoring batch of %d failed; keeping that batch unscored: %s",
+                       len(batch), exc)
+        return None
+
+
+def score_candidates(
+    candidates: list[dict],
+    llm_config: LLMConfig,
+    *,
+    threshold: float = DEFAULT_SCORE_THRESHOLD,
+    max_candidates: int = DEFAULT_MAX_CANDIDATES,
+    timeout: int = 90,
+    client_factory: Callable[..., Any] | None = None,
+) -> tuple[list[ScoredCandidate], int]:
+    """Return (kept candidates in input order, drop count).
+
+    Never raises: any LLM failure degrades to "keep everything" so a scoring
+    outage can only widen the pool, never empty it.
+    """
+    scored = [ScoredCandidate(c, None, "") for c in candidates]
+    if not candidates:
+        return scored, 0
+    if not llm_config.api_key:
+        logger.info("Scoring LLM not configured; keeping all %d candidates", len(candidates))
         return scored, 0
 
+    limited = candidates[:max_candidates]
+    overflow = len(candidates) - len(limited)
+    if overflow > 0:
+        logger.warning(
+            "Candidate pool %d exceeds scoring cap %d; last %d kept unscored",
+            len(candidates), max_candidates, overflow,
+        )
+
+    # Batch in chunks: 60 items in one request produces a scores JSON well past
+    # max_tokens=4000, the reply gets truncated mid-JSON and the whole batch
+    # fails (2026-10-10: "Expecting ',' delimiter" with 60 items). 25 per batch
+    # keeps the reply around ~1500 chars; any batch failure only unscores that
+    # batch, the other batches still filter.
+    batch_size = 25
+    batches = [limited[i: i + batch_size] for i in range(0, len(limited), batch_size)]
+
     by_index: dict[int, tuple[float, str]] = {}
-    for row in rows:
-        if not isinstance(row, dict):
+    parse_failures = 0
+    for batch in batches:
+        rows = _score_batch(batch, llm_config, timeout=timeout, client_factory=client_factory)
+        if rows is None:
+            parse_failures += 1
             continue
-        index = row.get("index")
-        score = row.get("score")
-        if not isinstance(index, int) or isinstance(index, bool):
-            continue
-        if not isinstance(score, (int, float)) or isinstance(score, bool):
-            continue
-        by_index[index] = (float(score), str(row.get("reason") or "")[:120])
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            index = row.get("index")
+            score = row.get("score")
+            if not isinstance(index, int) or isinstance(index, bool):
+                continue
+            if not isinstance(score, (int, float)) or isinstance(score, bool):
+                continue
+            # Batch-local index -> absolute position in the full pool.
+            offset = (limited.index(batch[0]) if batch else 0)
+            by_index[offset + index] = (float(score), str(row.get("reason") or "")[:120])
+    if parse_failures == len(batches):
+        # Every batch failed: treat as a scoring outage, keep everything.
+        logger.warning("Candidate scoring failed for all batches; keeping all candidates")
+        return scored, 0
 
     for position, entry in enumerate(scored[: len(limited)], 1):
         hit = by_index.get(position)
