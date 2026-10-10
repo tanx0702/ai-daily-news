@@ -314,10 +314,13 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
     builder.build_batch([item], attempts={})
 
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "跨语言" in system_prompt
-    assert "产品、模型或机构名称" in system_prompt
+    assert "source_quote_id 必须逐字选择" in system_prompt
+    assert "该事件 source_quotes 中存在的 quote_id" in system_prompt
     assert "允许 brief 为空字符串" in system_prompt
     assert "标题之外" in system_prompt
+    # Reader-first contract: quote facts must be rendered in Chinese with
+    # exact numbers/product names, so bindings stay verifiable.
+    assert "数字、产品名、模型名必须与引用的 quote 完全一致" in system_prompt
 
 
 def test_builder_limits_cross_language_titles_to_verifiable_anchors():
@@ -335,14 +338,15 @@ def test_builder_limits_cross_language_titles_to_verifiable_anchors():
     builder.build_batch([item], attempts={})
 
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "其余具体细节必须逐字照抄原文的英文单词" in system_prompt
-    assert "都必须能在同一条原文句子里找到" in system_prompt
-    assert "这些类型的标题宁可中英夹杂" in system_prompt
-    # The worked example pins both the accepted and rejected shape.
-    assert "成立 institute 以拓宽 AGI debate" in system_prompt
-    assert "研究院、辩论在原文中没有对应英文词" in system_prompt
-    # The strict rule must be scoped so opinion titles are not left half-English.
-    assert "content_type 为 fact_event 和 ai_update 时" in system_prompt
+    # Reader-first rewrite: the old verbatim-anchor rule is replaced by the
+    # term-translation contract. The prompt must pin the translation mapping
+    # (so titles stop carrying internal evals / sota etc.) and must forbid
+    # English fragments like place names inside Chinese sentences.
+    assert "术语必须翻译成读者语言" in system_prompt
+    assert "internal evals=内部安全测试" in system_prompt
+    assert "sota/SOTA=最先进水平" in system_prompt
+    assert "向费城警方发送虚假凶杀举报线索" in system_prompt
+    assert "严禁照搬英文原文句式" in system_prompt
 
 
 def test_builder_always_carries_the_frozen_content_type():
@@ -424,7 +428,7 @@ def test_builder_forces_attributed_opinion_to_title_only():
         result.draft.chinese_title
     }
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "content_type=attributed_opinion 时 brief 必须为空字符串" in system_prompt
+    assert "content_type=attributed_opinion 时：标题必须保留作者归因" in system_prompt
 
 
 def test_builder_prompt_lets_opinion_titles_read_as_natural_chinese():
@@ -443,11 +447,10 @@ def test_builder_prompt_lets_opinion_titles_read_as_natural_chinese():
     builder.build_batch([item], attempts={})
 
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
-    assert "content_type=attributed_opinion" in system_prompt
-    assert "完整翻译成中文" in system_prompt
-    assert "只保留作者名和产品/模型名" in system_prompt
-    # The strict anchor rule must be scoped to fact/update types.
-    assert "fact_event 和 ai_update" in system_prompt
+    assert "content_type=attributed_opinion 时" in system_prompt
+    assert "完整翻译成自然中文" in system_prompt
+    assert "只保留作者名和产品/模型名的英文写法" in system_prompt
+    assert "brief 必须为空字符串" in system_prompt
 
 
 def test_second_unbound_cross_language_rebuild_uses_safe_source_fallback():
