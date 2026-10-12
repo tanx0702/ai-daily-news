@@ -290,16 +290,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
             <div class="count">{{ news|length }} 条精选</div>
         </div>
 
-        {% for source_name, items in grouped_news.items() %}
+        {% for section_title, items in grouped_news.items() %}
         <div class="section">
             <div class="section-header">
-                {% if source_name == "overseas" %}
-                <span class="flag">🌍</span> 海外源
-                {% elif source_name == "china" %}
-                <span class="flag">🇨🇳</span> 国内源
-                {% else %}
-                <span class="flag">📡</span> {{ source_name }}
-                {% endif %}
+                <span class="flag">📰</span> {{ section_title }}
                 <span style="margin-left:auto; opacity:0.7;">{{ items|length }} 条</span>
             </div>
             <div class="news-list">
@@ -310,10 +304,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
                         <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.chinese_title or item.title }}</a>
                     </div>
                     <div class="news-meta">
-                        {% if item.content_type in ("ai_update", "attributed_opinion") %}
-                        <span class="news-source-tag">{{ item.content_label or ("AI 圈动态" if item.content_type == "ai_update" else "圈内观点") }}</span>
-                        {% endif %}
                         <span class="news-source-tag">{{ item.source }}</span>
+                        {% if item.related_count and item.related_count > 0 %}
+                        <span class="news-source-tag">另有 {{ item.related_count }} 家媒体报道</span>
+                        {% endif %}
                         {% if item.published_at %}
                         <span>{{ item.published_at }}</span>
                         {% endif %}
@@ -400,14 +394,16 @@ def render_daily_html(
             news_item["published_at"] = pub.strftime("%m/%d %H:%M")
         formatted_news.append(news_item)
 
-    # 按来源地区分组
+    # 按内容版面分组（与微信端一致：行业动态/AI 圈动态/圈内观点）
+    SECTION_TITLES = {
+        "fact_event": "行业动态",
+        "ai_update": "AI 圈动态",
+        "attributed_opinion": "圈内观点",
+    }
     grouped = {}
     for item in formatted_news:
-        source = item.get("source", "Unknown")
-        region = _guess_region(source)
-        if region not in grouped:
-            grouped[region] = []
-        grouped[region].append(item)
+        ctype = str(item.get("content_type", "fact_event"))
+        grouped.setdefault(SECTION_TITLES.get(ctype, ctype), []).append(item)
 
     env = Environment(loader=BaseLoader(), autoescape=True)
     template = env.from_string(HTML_TEMPLATE)
@@ -415,7 +411,8 @@ def render_daily_html(
         date=date_str,
         news=formatted_news,
         grouped_news=grouped,
-        archive_links=[safe_http_url(link) for link in archive_links[-7:] if safe_http_url(link)],
+        # archive_links arrives newest-first; the footer shows the 7 most recent.
+        archive_links=[safe_http_url(link) for link in archive_links[:7] if safe_http_url(link)],
         github_repo=github_repo,
     )
 
