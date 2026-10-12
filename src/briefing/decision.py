@@ -42,9 +42,15 @@ def decide_draft(
     opinion_count = len(opinion_items)
     opinion_authors = [item.opinion_author.strip().lower() for item in opinion_items]
 
-    if len(values) < config.min_items:
+    short_mode = getattr(config, "short_report_enabled", False)
+    short_floor = getattr(config, "short_report_min_items", 3)
+    if len(values) < config.min_items and not (
+        short_mode and len(values) >= short_floor and fact_count >= 1
+    ):
         reasons.append("insufficient_items")
-    if fact_count < config.min_fact_items:
+    if fact_count < config.min_fact_items and not (
+        short_mode and fact_count >= 1
+    ):
         reasons.append("insufficient_fact_items")
     if opinion_count > config.max_opinion_items:
         reasons.append("opinion_limit")

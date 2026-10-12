@@ -575,121 +575,155 @@ def render_wechat_article(
             )
         parts.append('</section>')
 
-    # ── 新闻列表 ──
+    # ── 新闻列表（按版面分组，AIHOT 风格）──
     ACCENT_BAR = "#3b82f6"  # 纯文字卡片左侧强调线颜色
     TEXT_ONLY_BG = "#f8fafc"  # 纯文字卡片微背景
 
+    SECTION_ORDER = [
+        ("fact_event", "行业动态"),
+        ("ai_update", "AI 圈动态"),
+        ("attributed_opinion", "圈内观点"),
+    ]
+    grouped: dict[str, list[tuple[int, dict]]] = {}
     for idx, item in enumerate(news_list):
-        title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
-        title = _fix_typos(title)
-        summary = (
-            ""
-            if item.get("brief_mode") == "title_only"
-            else clean_display_text(item.get("summary", ""))
-        )
-        summary = _fix_typos(summary)
-        source_name = clean_display_text(item.get("source", ""))
-        source_type = item.get("source_type", "")
-        url = safe_http_url(item.get("url", ""))
-        article_img = safe_http_url(item.get("article_image_url", ""))
-        image_type = item.get("image_type", "")
-        content_label = clean_display_text(
-            item.get("content_label")
-            or CONTENT_LABELS.get(str(item.get("content_type", "fact_event")), "事实简报")
+        grouped.setdefault(str(item.get("content_type", "fact_event")), []).append(
+            (idx, item)
         )
 
-        # 判断是否为图文卡片。
-        # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
-        # image_type="original" 但 article_image_url 不可用时，wechat.py 的
-        # _enrich_news_with_images() 会将其降级为 text_only，此处再次兜底。
-        has_image = bool(
-            article_img
-            and image_type == "original"
-            and article_img.strip() != ""
+    item_no = 0
+    for content_type, section_title in SECTION_ORDER:
+        entries = grouped.get(content_type)
+        if not entries:
+            continue
+        parts.append(
+            f'<section style="margin:24px 16px 12px;">'
+            f'<p style="margin:0 0 10px;color:{TEXT_MUTED};font-size:13px;'
+            f'font-weight:600;letter-spacing:2px;line-height:1.4;">'
+            f'{esc(section_title)}</p>'
+            f'</section>'
         )
+        for idx, item in entries:
+            item_no += 1
+            title = clean_display_text(item.get("chinese_title") or item.get("title", ""))
+            title = _fix_typos(title)
+            summary = (
+                ""
+                if item.get("brief_mode") == "title_only"
+                else clean_display_text(item.get("summary", ""))
+            )
+            summary = _fix_typos(summary)
+            source_name = clean_display_text(item.get("source", ""))
+            source_type = item.get("source_type", "")
+            url = safe_http_url(item.get("url", ""))
+            article_img = safe_http_url(item.get("article_image_url", ""))
+            image_type = item.get("image_type", "")
+            content_label = clean_display_text(
+                item.get("content_label")
+                or CONTENT_LABELS.get(str(item.get("content_type", "fact_event")), "事实简报")
+            )
+            # 信源佐证标签：被合并的跨媒体报道数是信任信号。
+            try:
+                related_count = int(item.get("related_count") or 0)
+            except (TypeError, ValueError):
+                related_count = 0
+            corroboration = (
+                f' · 另有 {related_count} 家媒体报道'
+                if related_count > 0
+                else ""
+            )
 
-        # 标准化来源名
-        clean_source, source_label = _normalize_source(source_name, source_type)
+            # 判断是否为图文卡片。
+            # 防御性逻辑：只要最终没有可用的微信素材图片，统一走纯文字卡片样式。
+            # image_type="original" 但 article_image_url 不可用时，wechat.py 的
+            # _enrich_news_with_images() 会将其降级为 text_only，此处再次兜底。
+            has_image = bool(
+                article_img
+                and image_type == "original"
+                and article_img.strip() != ""
+            )
 
-        # 卡片样式选择
-        if has_image:
-            # ── 图文卡片 ──
-            parts.append(
-                f'<section style="margin:0 16px 16px;padding:0 0 16px 0;'
-                f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};overflow:hidden;">'
-            )
-            # 顶部配图
-            parts.append(
-                f'<img src="{esc(article_img, collapse_whitespace=False)}" '
-                f'style="display:block;width:100%;max-height:240px;'
-                f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
-            )
-            # 编号（图片下方）
-            parts.append(
-                f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
-                f'font-weight:600;line-height:1.4;">NEWS {idx + 1:02d} · {esc(content_label)}</p>'
-            )
-            # 标题
-            parts.append(
-                f'<p style="margin:0 16px 10px;color:{TEXT_MAIN};font-size:18px;'
-                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
-            )
-            # 摘要
-            if summary:
-                parts.append(
-                    f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
-                    f'line-height:1.8;">{esc(summary)}</p>'
-                )
-            # 来源
-            parts.append(
-                f'<p style="margin:0 16px 14px;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-                f'{esc(source_label)}'
-            )
-            if url:
-                parts.append(
-                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
-                    f'阅读原文</a>'
-                )
-            parts.append('</p></section>')
+            # 标准化来源名
+            clean_source, source_label = _normalize_source(source_name, source_type)
 
-        else:
-            # ── 纯文字卡片（无配图，紧凑布局，左侧强调线） ──
-            parts.append(
-                f'<section style="margin:0 16px 16px;padding:14px 16px 14px 20px;'
-                f'border-left:3px solid {ACCENT_BAR};'
-                f'border-top:1px solid {BORDER};border-right:1px solid {BORDER};'
-                f'border-bottom:1px solid {BORDER};'
-                f'border-radius:6px;background:{TEXT_ONLY_BG};">'
-            )
-            # 标签行：编号 + "快讯"（所有无图卡片统一标签）
-            parts.append(
-                f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
-                f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
-                f'NEWS {idx + 1:02d} · {esc(content_label)}'
-                f'</p>'
-            )
-            # 标题（略小于图文卡片）
-            parts.append(
-                f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:17px;'
-                f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
-            )
-            # 摘要（紧凑）
-            if summary:
+            # 卡片样式选择
+            if has_image:
+                # ── 图文卡片 ──
                 parts.append(
-                    f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
-                    f'line-height:1.7;">{esc(summary)}</p>'
+                    f'<section style="margin:0 16px 16px;padding:0 0 16px 0;'
+                    f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};overflow:hidden;">'
                 )
-            # 来源
-            parts.append(
-                f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-                f'{esc(source_label)}'
-            )
-            if url:
+                # 顶部配图
                 parts.append(
-                    f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
-                    f'阅读原文</a>'
+                    f'<img src="{esc(article_img, collapse_whitespace=False)}" '
+                    f'style="display:block;width:100%;max-height:240px;'
+                    f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
                 )
-            parts.append('</p></section>')
+                # 编号（图片下方）
+                parts.append(
+                    f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
+                    f'font-weight:600;line-height:1.4;">NEWS {item_no:02d} · {esc(content_label)}</p>'
+                )
+                # 标题
+                parts.append(
+                    f'<p style="margin:0 16px 10px;color:{TEXT_MAIN};font-size:18px;'
+                    f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+                )
+                # 摘要
+                if summary:
+                    parts.append(
+                        f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
+                        f'line-height:1.8;">{esc(summary)}</p>'
+                    )
+                # 来源
+                parts.append(
+                    f'<p style="margin:0 16px 14px;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                    f'{esc(source_label)}{esc(corroboration)}'
+                )
+                if url:
+                    parts.append(
+                        f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
+                        f'阅读原文</a>'
+                    )
+                parts.append('</p></section>')
+
+            else:
+                # ── 纯文字卡片（无配图，紧凑布局，左侧强调线） ──
+                parts.append(
+                    f'<section style="margin:0 16px 16px;padding:14px 16px 14px 20px;'
+                    f'border-left:3px solid {ACCENT_BAR};'
+                    f'border-top:1px solid {BORDER};border-right:1px solid {BORDER};'
+                    f'border-bottom:1px solid {BORDER};'
+                    f'border-radius:6px;background:{TEXT_ONLY_BG};">'
+                )
+                # 标签行：编号 + "快讯"（所有无图卡片统一标签）
+                parts.append(
+                    f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
+                    f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
+                    f'NEWS {item_no:02d} · {esc(content_label)}'
+                    f'</p>'
+                )
+                # 标题（略小于图文卡片）
+                parts.append(
+                    f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:17px;'
+                    f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+                )
+                # 摘要（紧凑）
+                if summary:
+                    parts.append(
+                        f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
+                        f'line-height:1.7;">{esc(summary)}</p>'
+                    )
+                # 来源
+                parts.append(
+                    f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
+                    f'{esc(source_label)}{esc(corroboration)}'
+                )
+                if url:
+                    parts.append(
+                        f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
+                        f'阅读原文</a>'
+                    )
+                parts.append('</p></section>')
 
     # ── 尾部 ──
     parts.append(

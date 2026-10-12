@@ -18,6 +18,8 @@ CONTENT_LABELS = {
 
 def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
     """Project a validated item into the stable fields public renderers consume."""
+    related = list(item.related_sources)
+    related_names = [src.publisher_name for src in related if src.publisher_name]
     return {
         "id": item.event_key,
         "event_key": item.event_key,
@@ -35,6 +37,10 @@ def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
         "content_type": item.content_type,
         "content_label": CONTENT_LABELS.get(item.content_type, "事实简报"),
         "opinion_author": item.opinion_author,
+        # Cross-publisher corroboration: merged related sources turn duplicate
+        # coverage into a trust signal ("另有多家媒体报道").
+        "related_count": len(related),
+        "related_names": related_names,
     }
 
 

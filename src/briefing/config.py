@@ -59,6 +59,10 @@ class BriefingConfig:
     semantic_dedup_max_llm_calls: int = 20
     semantic_dedup_timeout: int = 45
     skip_wechat_draft: bool = False
+    # AIHOT-style short-report mode: publish sparse verified days instead of
+    # blocking. Off by default; enabled via DAILY_SHORT_REPORT=1.
+    short_report_enabled: bool = False
+    short_report_min_items: int = 1
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "BriefingConfig":
@@ -84,6 +88,13 @@ class BriefingConfig:
             ),
             candidate_pool_size=_integer(values, "DAILY_CANDIDATE_POOL_N", 60),
             max_x_items=max_x_items,
+            # Short-report mode (AIHOT-style "today was quiet"): a sparse but
+            # verified day publishes instead of blocking. Default off.
+            short_report_enabled=(
+                str(values.get("DAILY_SHORT_REPORT", "")).strip().lower()
+                in {"1", "true", "yes", "on"}
+            ),
+            short_report_min_items=1,
             target_x_items=_integer(
                 values,
                 "DAILY_X_TARGET_ITEMS",
