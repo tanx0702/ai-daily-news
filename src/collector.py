@@ -1890,6 +1890,30 @@ def collect_candidates(
     prioritized = [*publishable, *preflight_rejected]
     result = prioritized if limit is None else prioritized[:max(int(limit), 0)]
 
+    # Cross-day dedup: URLs published in the last N days are old news and must
+    # not take a slot again (real case: the Philadelphia fake-tip story ran
+    # three days in a row because each day's coverage came from a different
+    # outlet). The ledger is a plain file written by src.main after each
+    # successful create; a missing or unreadable ledger degrades to no-op.
+    seen_before = 0
+    ledger_path = os.environ.get("DAILY_PUBLISHED_URLS_PATH", "").strip()
+    if ledger_path:
+        try:
+            with open(ledger_path, encoding="utf-8") as fh:
+                published = {line.strip() for line in fh if line.strip()}
+            if published:
+                kept = []
+                for item in result:
+                    if str(item.get("url") or "").strip() in published:
+                        seen_before += 1
+                        continue
+                    kept.append(item)
+                if seen_before:
+                    logger.info("Cross-day dedup removed %d already-published URL(s)", seen_before)
+                result = kept
+        except OSError:
+            logger.info("Published-URL ledger unreadable at %s; skipping cross-day dedup", ledger_path)
+
     # Route 1 scoring pass: an LLM ranks the pool 0-10 and low scorers are
     # dropped. Failure degrades to keeping everything, so this can only widen
     # the pool, never empty it. The pass is disabled under pytest: importing
@@ -1933,6 +1957,7 @@ def collect_candidates(
                 **stats,
                 "filtered_total": len(filtered),
                 "returned_candidate_count": len(result),
+                "cross_day_duplicates_removed": seen_before,
                 "publishability_preflight_total": len(filtered),
                 "publishability_preflight_passed": len(publishable),
                 "publishability_preflight_rejected": (

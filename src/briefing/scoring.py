@@ -78,7 +78,7 @@ def _score_batch(
             {
                 "index": index,
                 "title": str(item.get("source_title") or item.get("title") or "")[:220],
-                "summary": str(item.get("source_summary") or item.get("summary") or "")[:400],
+                "summary": str(item.get("source_summary") or item.get("summary") or "")[:200],
             }
             for index, item in enumerate(batch, 1)
         ]
@@ -154,13 +154,26 @@ def score_candidates(
             len(candidates), max_candidates, overflow,
         )
 
-    # Batch in chunks: 60 items in one request produces a scores JSON well past
-    # max_tokens=4000, the reply gets truncated mid-JSON and the whole batch
-    # fails (2026-10-10: "Expecting ',' delimiter" with 60 items). 25 per batch
-    # keeps the reply around ~1500 chars; any batch failure only unscores that
-    # batch, the other batches still filter.
-    batch_size = 25
-    batches = [limited[i: i + batch_size] for i in range(0, len(limited), batch_size)]
+    # Batch by character budget, not item count: long summaries make 25-item
+    # batches exceed max_tokens=4000 in the reply (2026-10-13: fixed 25 still
+    # truncated, "Expecting ',' delimiter"). The reply is ~40 chars per item
+    # ({"index":N,"score":X,"reason":"..."}), the request items up to ~300
+    # chars each; a 9000-char request budget keeps every reply comfortably
+    # under the cap while adapting to item size.
+    BUDGET_CHARS = 9000
+    batches: list[list[dict]] = []
+    current: list[dict] = []
+    current_size = 0
+    for item in limited:
+        size = min(len(str(item.get("source_title") or item.get("title") or "")), 220) \
+            + min(len(str(item.get("source_summary") or item.get("summary") or "")), 200)
+        if current and current_size + size > BUDGET_CHARS:
+            batches.append(current)
+            current, current_size = [], 0
+        current.append(item)
+        current_size += size
+    if current:
+        batches.append(current)
 
     by_index: dict[int, tuple[float, str]] = {}
     parse_failures = 0

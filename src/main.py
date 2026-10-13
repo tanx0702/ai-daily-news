@@ -301,6 +301,9 @@ def _run_pipeline(
         )
         _persist_latest(items, decision, execution, diagnostics, output_dir)
 
+    if execution.status == "draft_created":
+        _append_published_urls(items, output_dir)
+
     _save_debug_report(
         date_str=date_str,
         docs_dir=output_dir,
@@ -437,6 +440,28 @@ def _create_wechat_draft(
         started_at,
         _aware_utc(now),
     )
+
+
+def _append_published_urls(items, docs_dir: str) -> None:
+    """Record the edition's URLs in the cross-day dedup ledger (best effort).
+
+    The collector reads this ledger to drop already-published URLs before
+    scoring, so a multi-day story cannot occupy a slot day after day. The file
+    grows unboundedly by design (a few hundred bytes per day); a truncated or
+    missing file only means dedup misses one cycle.
+    """
+    ledger = os.environ.get("DAILY_PUBLISHED_URLS_PATH", "").strip()
+    if not ledger:
+        return
+    try:
+        os.makedirs(os.path.dirname(ledger) or ".", exist_ok=True)
+        with open(ledger, "a", encoding="utf-8") as fh:
+            for item in items:
+                url = str(getattr(item, "canonical_source").url or "").strip()
+                if url:
+                    fh.write(url + "\n")
+    except OSError:
+        logger.warning("Could not append to published-URL ledger at %s", ledger)
 
 
 def _persist_latest(items, decision, execution, diagnostics, docs_dir: str) -> bool:
