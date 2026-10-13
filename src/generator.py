@@ -537,45 +537,119 @@ def render_wechat_article(
             f'alt="" />'
         )
 
-    # ── 头部 ──
+    # ── 报头（AIHOT 式刊物头）──
     parts.append(
-        f'<section style="text-align:center;padding:32px 20px 24px;">'
-        f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:22px;'
-        f'font-weight:700;line-height:1.4;">今日AI要闻</p>'
-        f'<p style="margin:0;color:{TEXT_MUTED};font-size:14px;line-height:1.6;">'
-        f'{esc(date_str)}  ·  {len(news_list)} 条精选</p>'
-        f'</section>'
+        f'<section style="background-color:#0f2540;">'
+        f'<section style="max-width:680px;margin:0 auto;padding:26px 22px 22px;'
+        f'background:linear-gradient(135deg,#0f2540,#1d4e6b);">'
+        f'<p style="margin:0 0 6px;color:#8fb3cc;font-size:11px;letter-spacing:4px;'
+        f'font-weight:600;">AI DAILY NEWS</p>'
+        f'<p style="margin:0 0 8px;color:#ffffff;font-size:22px;font-weight:700;">今日AI要闻</p>'
+        f'<p style="margin:0;color:#a8bfce;font-size:12px;">{esc(date_str)} · 每天 08:00 出刊</p>'
+        f'</section></section>'
     )
 
-    # ── 今日重点（前 3 条编辑摘要，跳过低置信度/质检排除项）──
-    highlight_candidates = [
-        item for item in news_list
-        if not item.get("_highlight_excluded")
-        and item.get("highlight_text")
-    ][:3]
-    if highlight_candidates:
-        parts.append(
-            f'<section style="margin:0 16px 20px;padding:16px 18px;'
-            f'background:{ACCENT_BG};border-radius:8px;">'
-            f'<p style="margin:0 0 10px;color:{ACCENT};font-size:13px;'
-            f'font-weight:600;line-height:1.4;">📌 今日重点</p>'
+    # ── 统计条（真实去重信源数）──
+    all_sources: set[str] = set()
+    for item in news_list:
+        n = clean_display_text(item.get("source", "")).split(" + ")[0].strip()
+        if n:
+            all_sources.add(n)
+        for r in item.get("related_sources") or []:
+            rn = clean_display_text(
+                (r.get("publisher_name") if isinstance(r, dict) else getattr(r, "publisher_name", ""))
+                or ""
+            ).strip()
+            if rn:
+                all_sources.add(rn)
+    n_sources = len(all_sources)
+    n_items = len(news_list)
+    read_minutes = max(1, n_items // 5)
+    stat_boxes = []
+    for n_val, t in ((n_items, "件大事"), (n_sources, "个信源"), (read_minutes, "分钟读完")):
+        stat_boxes.append(
+            f'<section style="flex:1;background-color:#ffffff;border-radius:10px;'
+            f'padding:10px 0;text-align:center;">'
+            f'<p style="margin:0;color:#0f2540;font-size:17px;font-weight:700;">{n_val}</p>'
+            f'<p style="margin:2px 0 0;color:#8a94a6;font-size:11px;">{t}</p></section>'
         )
-        for i, item in enumerate(highlight_candidates):
-            highlight_text = clean_display_text(item.get("highlight_text", ""))
-            if not highlight_text:
-                highlight_text = clean_display_text(
-                    item.get("chinese_title") or item.get("title", "")
-                )
-            parts.append(
-                f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
-                f'line-height:1.6;">{esc(str(i + 1))}. {esc(highlight_text)}</p>'
+    parts.append(
+        f'<section style="padding:12px 16px 0;background-color:{PAGE_BG};">'
+        f'<section style="display:flex;gap:8px;">{"".join(stat_boxes)}</section></section>'
+    )
+
+    # ── 头条卡（第一条带摘要的事实简报；无则第一条事实简报）──
+    def _item_source(it: dict) -> str:
+        return clean_display_text(it.get("source", "")).split(" + ")[0].strip()
+
+    def _item_related(it: dict) -> int:
+        try:
+            return int(it.get("related_count") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _item_url(it: dict) -> str:
+        return safe_http_url(it.get("url", ""))
+
+    def _source_line(it: dict, dark: bool = False) -> str:
+        """来源行；空来源不再产生孤立的间隔点。"""
+        name = _item_source(it)
+        rc = _item_related(it)
+        pieces: list[str] = []
+        if name:
+            bold = "#9cc3e8" if dark else "#5b8def"
+            pieces.append(f'<b style="color:{bold};font-weight:600;">{esc(name)}</b>')
+        if rc > 0:
+            bg = "#1d4e6b" if dark else "#eef4ff"
+            fg = "#9cc3e8" if dark else "#3a6ea8"
+            pieces.append(
+                f'<span style="display:inline-block;background-color:{bg};'
+                f'color:{fg};font-size:10.5px;border-radius:8px;padding:2px 8px;">'
+                f'另有 {rc} 家媒体报道</span>'
             )
-        parts.append('</section>')
+        url = _item_url(it)
+        if url:
+            link = "#9cc3e8" if dark else "#5b8def"
+            pieces.append(
+                f'<a href="{esc(url, collapse_whitespace=False)}" '
+                f'style="color:{link};text-decoration:none;">原文</a>'
+            )
+        if not pieces:
+            return ""
+        color = "#7fa3bd" if dark else "#97a3b5"
+        return (f'<p style="margin:0;color:{color};font-size:11.5px;line-height:1.6;">'
+                + ' · '.join(pieces) + '</p>')
+
+    headline_item = None
+    for it in news_list:
+        if str(it.get("content_type", "fact_event")) != "fact_event":
+            continue
+        if clean_display_text(it.get("summary", "")).strip():
+            headline_item = it
+            break
+    if headline_item is None and news_list:
+        headline_item = news_list[0]
+
+    if headline_item is not None:
+        lead_sum = clean_display_text(headline_item.get("summary", "")).strip()
+        parts.append(
+            f'<section style="padding:12px 16px 0;background-color:{PAGE_BG};">'
+            f'<section style="max-width:680px;border-radius:12px;padding:18px 18px 14px;'
+            f'background:linear-gradient(135deg,#12314f,#1d5a75);">'
+            f'<p style="margin:0 0 8px;color:#9cc3e8;font-size:11px;letter-spacing:2px;">'
+            f'头条 · 今日最重要</p>'
+            f'<p style="margin:0 0 10px;color:#ffffff;font-size:17px;font-weight:700;'
+            f'line-height:1.55;">{esc(clean_display_text(headline_item.get("chinese_title") or headline_item.get("title", "")))}</p>'
+        )
+        if lead_sum:
+            parts.append(
+                f'<p style="margin:0 0 10px;color:#d7e4ee;font-size:13px;'
+                f'line-height:1.8;">{esc(lead_sum)}</p>'
+            )
+        parts.append(_source_line(headline_item, dark=True))
+        parts.append('</section></section>')
 
     # ── 新闻列表（按版面分组，AIHOT 风格）──
-    ACCENT_BAR = "#3b82f6"  # 纯文字卡片左侧强调线颜色
-    TEXT_ONLY_BG = "#f8fafc"  # 纯文字卡片微背景
-
     SECTION_ORDER = [
         ("fact_event", "行业动态"),
         ("ai_update", "AI 圈动态"),
@@ -592,6 +666,20 @@ def render_wechat_article(
         entries = grouped.get(content_type)
         if not entries:
             continue
+        if headline_item is not None and content_type == "fact_event":
+            entries = [(i, it) for (i, it) in entries if it is not headline_item]
+            if not entries:
+                continue
+        parts.append(
+            f'<section style="padding:0 16px;background-color:{PAGE_BG};">'
+            f'<section style="max-width:680px;margin:20px auto 12px;display:flex;'
+            f'align-items:baseline;gap:8px;">'
+            f'<span style="font-size:13px;font-weight:800;color:#1d4e6b;">'
+            f'0{SECTION_ORDER.index((content_type, section_title)) + 1}</span>'
+            f'<span style="font-size:15px;font-weight:700;color:#0f2540;">{esc(section_title)}</span>'
+            f'<span style="flex:1;height:1px;background-color:#dde3ec;display:inline-block;"></span>'
+            f'</section></section>'
+        )
         parts.append(
             f'<section style="margin:24px 16px 12px;">'
             f'<p style="margin:0 0 10px;color:{TEXT_MUTED};font-size:13px;'
@@ -642,92 +730,71 @@ def render_wechat_article(
             # 标准化来源名
             clean_source, source_label = _normalize_source(source_name, source_type)
 
-            # 卡片样式选择
+            # 卡片样式选择（v2：白底圆角卡，配图卡顶部带图）
             if has_image:
                 # ── 图文卡片 ──
                 parts.append(
-                    f'<section style="margin:0 16px 16px;padding:0 0 16px 0;'
-                    f'border:1px solid {BORDER};border-radius:8px;background:{CARD_BG};overflow:hidden;">'
+                    f'<section style="max-width:680px;margin:0 auto 14px;'
+                    f'border-radius:12px;background:{CARD_BG};overflow:hidden;">'
                 )
                 # 顶部配图
                 parts.append(
                     f'<img src="{esc(article_img, collapse_whitespace=False)}" '
                     f'style="display:block;width:100%;max-height:240px;'
-                    f'object-fit:cover;margin:0;border-radius:8px 8px 0 0;" alt="" />'
+                    f'object-fit:cover;margin:0;" alt="" />'
                 )
+                parts.append('<section style="padding:14px 18px 12px;">')
                 # 编号（图片下方）
                 parts.append(
-                    f'<p style="margin:14px 16px 6px;color:{ACCENT};font-size:13px;'
-                    f'font-weight:600;line-height:1.4;">NEWS {item_no:02d} · {esc(content_label)}</p>'
+                    f'<p style="margin:0 0 6px;color:#5b8def;font-size:11px;'
+                    f'font-weight:600;">NEWS {item_no:02d} · {esc(content_label)}</p>'
                 )
                 # 标题
                 parts.append(
-                    f'<p style="margin:0 16px 10px;color:{TEXT_MAIN};font-size:18px;'
-                    f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
+                    f'<p style="margin:0 0 8px;color:#182230;font-size:16px;'
+                    f'font-weight:700;line-height:1.5;">{esc(title)}</p>'
                 )
                 # 摘要
                 if summary:
                     parts.append(
-                        f'<p style="margin:0 16px 8px;color:{TEXT_BODY};font-size:15px;'
-                        f'line-height:1.8;">{esc(summary)}</p>'
-                    )
-                # 来源
-                parts.append(
-                    f'<p style="margin:0 16px 14px;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-                    f'{esc(source_label)}{esc(corroboration)}'
-                )
-                if url:
-                    parts.append(
-                        f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
-                        f'阅读原文</a>'
-                    )
-                parts.append('</p></section>')
-
-            else:
-                # ── 纯文字卡片（无配图，紧凑布局，左侧强调线） ──
-                parts.append(
-                    f'<section style="margin:0 16px 16px;padding:14px 16px 14px 20px;'
-                    f'border-left:3px solid {ACCENT_BAR};'
-                    f'border-top:1px solid {BORDER};border-right:1px solid {BORDER};'
-                    f'border-bottom:1px solid {BORDER};'
-                    f'border-radius:6px;background:{TEXT_ONLY_BG};">'
-                )
-                # 标签行：编号 + "快讯"（所有无图卡片统一标签）
-                parts.append(
-                    f'<p style="margin:0 0 8px;color:{TEXT_MUTED};font-size:12px;'
-                    f'font-weight:500;line-height:1.4;letter-spacing:0.5px;">'
-                    f'NEWS {item_no:02d} · {esc(content_label)}'
-                    f'</p>'
-                )
-                # 标题（略小于图文卡片）
-                parts.append(
-                    f'<p style="margin:0 0 8px;color:{TEXT_MAIN};font-size:17px;'
-                    f'font-weight:700;line-height:1.45;">{esc(title)}</p>'
-                )
-                # 摘要（紧凑）
-                if summary:
-                    parts.append(
-                        f'<p style="margin:0 0 6px;color:{TEXT_BODY};font-size:14px;'
+                        f'<p style="margin:0 0 10px;color:#4a5568;font-size:13px;'
                         f'line-height:1.7;">{esc(summary)}</p>'
                     )
-                # 来源
+                # 来源（统一走 _source_line，含佐证标签）
+                src_line = _source_line(item)
+                if src_line:
+                    parts.append(f'<div style="margin:0 0 2px;">{src_line}</div>')
+                parts.append('</section></section>')
+
+            else:
+                # ── 纯文字卡片（v2：白底圆角）──
                 parts.append(
-                    f'<p style="margin:0;color:{TEXT_MUTED};font-size:13px;line-height:1.6;">'
-                    f'{esc(source_label)}{esc(corroboration)}'
+                    f'<section style="max-width:680px;margin:0 auto 14px;'
+                    f'border-radius:12px;background:{CARD_BG};padding:16px 18px;">'
                 )
-                if url:
+                parts.append(
+                    f'<p style="margin:0 0 7px;color:#5b8def;font-size:11px;'
+                    f'font-weight:600;">NEWS {item_no:02d} · {esc(content_label)}</p>'
+                )
+                parts.append(
+                    f'<p style="margin:0 0 8px;color:#182230;font-size:15.5px;'
+                    f'font-weight:700;line-height:1.5;">{esc(title)}</p>'
+                )
+                if summary:
                     parts.append(
-                        f' · <a href="{esc(url, collapse_whitespace=False)}" style="color:{ACCENT};text-decoration:none;">'
-                        f'阅读原文</a>'
+                        f'<p style="margin:0 0 10px;color:#4a5568;font-size:13px;'
+                        f'line-height:1.7;">{esc(summary)}</p>'
                     )
-                parts.append('</p></section>')
+                src_line = _source_line(item)
+                if src_line:
+                    parts.append(f'<div style="margin:0 0 2px;">{src_line}</div>')
+                parts.append('</section>')
 
     # ── 尾部 ──
     parts.append(
-        f'<section style="margin:8px 16px 24px;padding:20px 0 0;'
-        f'text-align:center;border-top:1px solid {DIVIDER};">'
-        f'<p style="margin:0;color:{TEXT_MUTED};font-size:12px;line-height:1.6;">'
-        f'每日AI资讯整理</p>'
+        f'<section style="background-color:{PAGE_BG};padding:8px 16px 30px;">'
+        f'<p style="max-width:680px;margin:12px auto 0;color:#97a3b5;font-size:11px;'
+        f'text-align:center;">由编辑系统根据公开来源自动编辑 · 每条均附原文</p>'
         f'</section>'
     )
 

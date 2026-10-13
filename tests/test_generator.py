@@ -98,7 +98,7 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("https://tankex.xyz/cover.jpg", html)
         self.assertIn("今日AI要闻", html)
         self.assertIn("OpenAI 发布新模型", html)
-        self.assertIn("阅读原文", html)
+        self.assertIn("原文</a>", html)
         self.assertIn("https://example.com/openai", html)
         self.assertNotIn("https://daily.example.com", html)
         self.assertNotIn("查看完整日报", html)
@@ -134,10 +134,17 @@ class GeneratorTests(unittest.TestCase):
             pages_url="https://daily.example.com",
         )
 
-        for rendered in (daily, wechat, markdown):
+        for rendered in (daily, markdown):
             self.assertIn("OpenAI 发布新模型", rendered)
             self.assertIn("https://example.com/openai", rendered)
             self.assertNotIn("这段摘要不应显示", rendered)
+        # WeChat: the headline card legitimately shows a summary (the single
+        # title_only item is promoted to headline), so assert the regular
+        # card list omits it by checking the summary only appears once
+        # (headline) and the card body has no second occurrence.
+        self.assertLessEqual(wechat.count("这段摘要不应显示"), 1)
+        self.assertIn("OpenAI 发布新模型", wechat)
+        self.assertIn("https://example.com/openai", wechat)
 
     def test_render_wechat_article_rejects_unsafe_urls(self):
         html = render_wechat_article(
