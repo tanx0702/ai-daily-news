@@ -1,9 +1,9 @@
 {
   "schema_version": "x-feed-v1",
-  "generated_at": "2026-10-15T00:34:31.865501Z",
-  "source_count": 64,
+  "generated_at": "2026-10-15T07:26:35.406525Z",
+  "source_count": 63,
   "successful_source_count": 0,
-  "failed_source_count": 64,
+  "failed_source_count": 63,
   "failures": [
     {
       "handle": "OpenAI",
@@ -187,10 +187,6 @@
     },
     {
       "handle": "etzioni",
-      "reason": "no_public_tweets"
-    },
-    {
-      "handle": "dongxi_nlp",
       "reason": "no_public_tweets"
     },
     {
