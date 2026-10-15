@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -145,6 +146,106 @@ class GeneratorTests(unittest.TestCase):
         self.assertLessEqual(wechat.count("这段摘要不应显示"), 1)
         self.assertIn("OpenAI 发布新模型", wechat)
         self.assertIn("https://example.com/openai", wechat)
+
+    def test_wechat_headline_prefers_corroborated_item_not_first_with_summary(self):
+        # 头条按公共重要性选取：多源交叉报道的事实简报优先于「第一条恰好带
+        # 摘要」的常规条目，避免摘要覆盖率反过来决定选题。
+        items = [
+            {
+                "event_key": "e-meta",
+                "content_type": "fact_event",
+                "chinese_title": "Meta 发布 Muse Wonder 系列模型",
+                "summary": "Meta 发布两款模型。",
+                "brief_mode": "expanded",
+                "source": "Siliconangle",
+                "url": "https://example.com/meta",
+                "source_authority": "professional_media",
+                "related_count": 0,
+            },
+            {
+                "event_key": "e-scoop",
+                "content_type": "fact_event",
+                "chinese_title": "某工程师因安装窃听设备被捕",
+                "brief_mode": "title_only",
+                "source": "The Standard",
+                "url": "https://example.com/scoop",
+                "source_authority": "professional_media",
+                "related_count": 2,
+            },
+        ]
+
+        html = render_wechat_article(items, date_str="2026-07-11")
+
+        headline = re.search(
+            r'line-height:1\.55;">(.*?)</p>', html
+        ).group(1)
+        self.assertEqual(headline, "某工程师因安装窃听设备被捕")
+
+    def test_wechat_headline_event_does_not_repeat_in_body(self):
+        # 同一 event_key 只能占一个名额：头条事件不再出现在正文列表里，
+        # 统计卡只数最终展示的条目。
+        items = [
+            {
+                "event_key": "E1",
+                "content_type": "fact_event",
+                "chinese_title": "头条事件",
+                "source": "A",
+                "url": "https://example.com/1",
+                "brief_mode": "title_only",
+                "source_authority": "official",
+                "related_count": 3,
+            },
+            {
+                "event_key": "E1",
+                "content_type": "fact_event",
+                "chinese_title": "头条事件的重复来源",
+                "source": "B",
+                "url": "https://example.com/2",
+                "brief_mode": "title_only",
+                "source_authority": "community",
+            },
+            {
+                "event_key": "E2",
+                "content_type": "fact_event",
+                "chinese_title": "其它事件",
+                "source": "C",
+                "url": "https://example.com/3",
+                "brief_mode": "title_only",
+                "source_authority": "official",
+            },
+        ]
+
+        html = render_wechat_article(items, date_str="2026-07-11")
+
+        self.assertIn("头条事件", html)
+        self.assertNotIn("头条事件的重复来源", html)
+        self.assertIn("其它事件", html)
+        # 展示 1 条头条 + 1 条正文 = 2 件大事。
+        stat = re.search(
+            r'font-weight:700;">(\d+)</p><p[^>]*>件大事', html
+        ).group(1)
+        self.assertEqual(stat, "2")
+
+    def test_wechat_without_fact_events_keeps_items_in_body(self):
+        # 整期没有 fact_event 时，动态/观点不升格为头条，仍留在正文里。
+        items = [
+            {
+                "event_key": "u1",
+                "content_type": "ai_update",
+                "chinese_title": "某工具更新",
+                "content_label": "AI 圈动态",
+                "source": "Infoq",
+                "url": "https://example.com/u1",
+                "brief_mode": "title_only",
+            }
+        ]
+
+        html = render_wechat_article(items, date_str="2026-07-11")
+
+        self.assertNotIn("头条 · 今日最重要", html)
+        self.assertIn("AI 圈动态", html)
+        self.assertIn("某工具更新", html)
+        self.assertIn("https://example.com/u1", html)
 
     def test_render_wechat_article_rejects_unsafe_urls(self):
         html = render_wechat_article(

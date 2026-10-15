@@ -207,6 +207,50 @@ def test_click_to_read_original_stub_is_removed():
     )
 
 
+def test_hash_joined_promo_footer_is_removed_without_space():
+    """A ``#``-joined footer must strip even with no whitespace before it.
+
+    Regression from the 2026-10-14 draft: ifanr joined the teaser and the footer
+    as ``...Scion#欢迎关注爱范儿官方微信公众号…`` with no space. The old guard only
+    accepted a boundary of whitespace/sentence punctuation, so the strip was
+    rejected and the whole line was published verbatim as a brief.
+    """
+    candidate = {
+        "title": "刚刚，Anthropic 宣布弃用Git，统治编程20年的工具顶不住AI了",
+        "source_summary": (
+            "以 AI 发展速度，一年后我们又该弃用 Scion#欢迎关注爱范儿官方微信公众号："
+            "爱范儿（微信号：ifanr），更多精彩内容第一时间为您奉上。"
+        ),
+        "url": "https://www.ifanr.com/1684269",
+        "source": "Ifanr",
+        "source_type": "rss",
+        "published_at": "2026-10-14T02:00:00+00:00",
+    }
+
+    normalized = normalize_candidate_source(candidate)
+
+    assert "欢迎关注" not in normalized.evidence_text
+    assert "微信号" not in normalized.evidence_text
+    assert "Scion" in normalized.evidence_text
+
+
+def test_hash_then_promo_stub_is_removed():
+    """``内容#点击查看原文`` keeps the body and drops the stub."""
+    candidate = {
+        "title": "OpenAI 推出分级处理框架及案例研究",
+        "source_summary": "内容#点击查看原文",
+        "url": "https://www.infoq.cn/article/abc",
+        "source": "InfoQ 中文",
+        "source_type": "rss",
+        "published_at": "2026-10-14T02:00:00+00:00",
+    }
+
+    normalized = normalize_candidate_source(candidate)
+
+    assert "点击查看原文" not in normalized.evidence_text
+    assert "内容" in normalized.evidence_text
+
+
 def test_promo_words_inside_prose_are_preserved():
     """A footer marker inside ordinary prose must not be truncated."""
     candidate = {

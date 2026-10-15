@@ -10,10 +10,10 @@ def test_production_x_sources_keep_expanded_tier_distribution():
 
     assert len(sources) >= 51
     assert Counter(item["tier"] for item in sources) == Counter(
-        {"primary": 20, "research": 28, "media": 16}
+        {"primary": 20, "research": 27, "media": 16}
     )
     assert all(item["url"].startswith("https://x.com/") for item in sources)
-    assert len({item["handle"].lower() for item in sources}) == 64
+    assert len({item["handle"].lower() for item in sources}) == 63
     added_handles = {
         "lilianweng",
         "jeffdean",

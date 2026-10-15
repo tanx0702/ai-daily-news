@@ -47,7 +47,6 @@
     {"name": "John Carmack", "handle": "ID_AA_Carmack", "tier": "research", "official": false, "opinion_eligible": true},
     {"name": "Rodney Brooks", "handle": "rodneyabrooks", "tier": "research", "official": false, "opinion_eligible": true},
     {"name": "Oren Etzioni", "handle": "etzioni", "tier": "research", "official": false, "opinion_eligible": true},
-    {"name": "马东锡", "handle": "dongxi_nlp", "tier": "research", "official": false, "opinion_eligible": true},
     {"name": "Kai-Fu Lee", "handle": "kaifulee", "tier": "research", "official": false, "opinion_eligible": true},
     {"name": "Artificial Analysis", "handle": "ArtificialAnlys", "tier": "media", "official": false},
     {"name": "The Rundown AI", "handle": "TheRundownAI", "tier": "media", "official": false},

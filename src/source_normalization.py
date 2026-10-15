@@ -196,10 +196,18 @@ def _strip_promo_footer(value: str) -> str:
     # sentence punctuation, a ``#`` list separator and/or whitespace -- several
     # RSS summaries join the body and the footer with a plain space.
     prefix = value[: match.start()]
-    if prefix and not re.search(r"(?:[。！？；\n]\s*|#\s*|\s+)$", prefix):
+    matched = match.group(0)
+    # A ``#`` is the list separator several RSS summaries use to join the body and
+    # the footer. It sits either inside the match (``...Scion#欢迎关注…``, consumed
+    # by the alternation) or at the end of the retained prefix (``内容#点击查看原文``).
+    # Both are valid segment boundaries, so neither may be rejected by the generic
+    # "marker must start a segment" guard -- otherwise the footer is published
+    # verbatim as a summary.
+    separated_by_hash = matched.lstrip().startswith("#") or prefix.rstrip().endswith("#")
+    if prefix and not separated_by_hash and not re.search(r"(?:[。！？；\n]\s*|\s+)$", prefix):
         return value
-    # Trim only structural noise (a dangling ``#`` and whitespace); real
-    # sentence punctuation belongs to the retained text.
+    # Trim only structural noise (a dangling ``#`` and whitespace); real sentence
+    # punctuation belongs to the retained text.
     return re.sub(r"[#\s]+$", "", prefix).strip()
 
 

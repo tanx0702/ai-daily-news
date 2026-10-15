@@ -316,7 +316,12 @@ def test_builder_requests_entity_anchored_quotes_for_cross_language_targets():
     system_prompt = client.chat.completions.calls[0]["messages"][0]["content"]
     assert "source_quote_id 必须逐字选择" in system_prompt
     assert "该事件 source_quotes 中存在的 quote_id" in system_prompt
-    assert "允许 brief 为空字符串" in system_prompt
+    # Summary coverage contract: an empty brief is the exception, reserved for
+    # titles that carry no checkable extra detail. The prompt must ask for a
+    # summary whenever such detail exists, otherwise most items ship as bare
+    # headlines.
+    assert "才允许 brief 为空字符串" in system_prompt
+    assert "必须写成一至两句摘要" in system_prompt
     assert "标题之外" in system_prompt
     # Reader-first contract: quote facts must be rendered in Chinese with
     # exact numbers/product names, so bindings stay verifiable.

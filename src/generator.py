@@ -550,8 +550,70 @@ def render_wechat_article(
     )
 
     # ── 统计条（真实去重信源数）──
+    # ── 头条选取：先定头条，再定正文，统计卡只数最终展示的条目 ──
+    # 同一事件只能占一个名额：头条事件不再进入正文，正文内部重复的
+    # event_key/URL 也只保留第一次出现。
+    _AUTHORITY_RANK = {
+        "official": 0,
+        "research": 1,
+        "professional_media": 2,
+        "community": 3,
+    }
+
+    def _news_identity(it: dict) -> str:
+        """Stable identity for one display item: event_key, else canonical URL."""
+        key = str(it.get("event_key") or "").strip()
+        if key:
+            return f"key:{key}"
+        url = safe_http_url(it.get("url", ""))
+        if url:
+            return f"url:{url}"
+        return f"title:{clean_display_text(it.get('chinese_title') or it.get('title', ''))}"
+
+    def _item_related_count(it: dict) -> int:
+        try:
+            return int(it.get("related_count") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _headline_rank(it: dict) -> tuple:
+        authority = str(it.get("source_authority") or it.get("authority") or "")
+        return (
+            -_item_related_count(it),
+            _AUTHORITY_RANK.get(authority, 9),
+            news_list.index(it),
+        )
+
+    fact_items = [
+        it for it in news_list
+        if str(it.get("content_type", "fact_event")) == "fact_event"
+    ]
+    # 头条优先选事实简报；整期没有 fact_event 时，动态/观点仍留在正文里，
+    # 由第一条兼作头条卡（与旧行为一致），但不从正文中移除。
+    fact_headline = min(fact_items, key=_headline_rank) if fact_items else None
+    headline_item = fact_headline if fact_headline is not None else (
+        news_list[0] if news_list else None
+    )
+    headline_owns_body_slot = fact_headline is not None
+
+    # 正文条目 = 全部条目去掉头条（仅当头条是事实简报）、去掉同事件重复项。
+    body_entries: list[tuple[int, dict]] = []
+    seen_identities: set[str] = set()
+    if headline_owns_body_slot and headline_item is not None:
+        seen_identities.add(_news_identity(headline_item))
+    for idx, item in enumerate(news_list):
+        identity = _news_identity(item)
+        if identity in seen_identities:
+            continue
+        seen_identities.add(identity)
+        body_entries.append((idx, item))
+
+    displayed_items = [it for _, it in body_entries]
+    if headline_owns_body_slot and headline_item is not None:
+        displayed_items = [headline_item] + displayed_items
+
     all_sources: set[str] = set()
-    for item in news_list:
+    for item in displayed_items:
         n = clean_display_text(item.get("source", "")).split(" + ")[0].strip()
         if n:
             all_sources.add(n)
@@ -563,7 +625,7 @@ def render_wechat_article(
             if rn:
                 all_sources.add(rn)
     n_sources = len(all_sources)
-    n_items = len(news_list)
+    n_items = len(displayed_items)
     read_minutes = max(1, n_items // 5)
     stat_boxes = []
     for n_val, t in ((n_items, "件大事"), (n_sources, "个信源"), (read_minutes, "分钟读完")):
@@ -578,15 +640,12 @@ def render_wechat_article(
         f'<section style="display:flex;gap:8px;">{"".join(stat_boxes)}</section></section>'
     )
 
-    # ── 头条卡（第一条带摘要的事实简报；无则第一条事实简报）──
+    # ── 头条卡 ──
     def _item_source(it: dict) -> str:
         return clean_display_text(it.get("source", "")).split(" + ")[0].strip()
 
     def _item_related(it: dict) -> int:
-        try:
-            return int(it.get("related_count") or 0)
-        except (TypeError, ValueError):
-            return 0
+        return _item_related_count(it)
 
     def _item_url(it: dict) -> str:
         return safe_http_url(it.get("url", ""))
@@ -620,17 +679,7 @@ def render_wechat_article(
         return (f'<p style="margin:0;color:{color};font-size:11.5px;line-height:1.6;">'
                 + ' · '.join(pieces) + '</p>')
 
-    headline_item = None
-    for it in news_list:
-        if str(it.get("content_type", "fact_event")) != "fact_event":
-            continue
-        if clean_display_text(it.get("summary", "")).strip():
-            headline_item = it
-            break
-    if headline_item is None and news_list:
-        headline_item = news_list[0]
-
-    if headline_item is not None:
+    if headline_item is not None and headline_owns_body_slot:
         lead_sum = clean_display_text(headline_item.get("summary", "")).strip()
         parts.append(
             f'<section style="padding:12px 16px 0;background-color:{PAGE_BG};">'
@@ -656,7 +705,7 @@ def render_wechat_article(
         ("attributed_opinion", "圈内观点"),
     ]
     grouped: dict[str, list[tuple[int, dict]]] = {}
-    for idx, item in enumerate(news_list):
+    for idx, item in body_entries:
         grouped.setdefault(str(item.get("content_type", "fact_event")), []).append(
             (idx, item)
         )
@@ -666,10 +715,6 @@ def render_wechat_article(
         entries = grouped.get(content_type)
         if not entries:
             continue
-        if headline_item is not None and content_type == "fact_event":
-            entries = [(i, it) for (i, it) in entries if it is not headline_item]
-            if not entries:
-                continue
         parts.append(
             f'<section style="padding:0 16px;background-color:{PAGE_BG};">'
             f'<section style="max-width:680px;margin:20px auto 12px;display:flex;'
