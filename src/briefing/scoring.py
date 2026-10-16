@@ -65,6 +65,37 @@ class ScoredCandidate:
         self.reason = reason
 
 
+class ScoringOutcome:
+    """Scoring result: the survivors plus the whole-pool counters.
+
+    ``kept`` is what the pipeline continues with. ``pool`` is every candidate the
+    scorer saw (kept + dropped); diagnostics must be computed from it so
+    ``scoring_total`` stays comparable with ``scoring_dropped`` instead of only
+    counting survivors. Unpacks as ``(kept, dropped)`` for callers that only need
+    the survivors.
+    """
+
+    __slots__ = ("kept", "dropped", "pool")
+
+    def __init__(
+        self,
+        *,
+        kept: list["ScoredCandidate"],
+        dropped: int,
+        pool: list["ScoredCandidate"],
+    ) -> None:
+        self.kept = kept
+        self.dropped = dropped
+        self.pool = pool
+
+    def __iter__(self):
+        yield self.kept
+        yield self.dropped
+
+    def diagnostics(self) -> dict[str, Any]:
+        return scoring_diagnostics(self.pool, dropped=self.dropped)
+
+
 def _score_batch(
     batch: list[dict],
     llm_config: LLMConfig,
@@ -133,18 +164,21 @@ def score_candidates(
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
     timeout: int = 90,
     client_factory: Callable[..., Any] | None = None,
-) -> tuple[list[ScoredCandidate], int]:
-    """Return (kept candidates in input order, drop count).
+) -> ScoringOutcome:
+    """Score the pool and return a :class:`ScoringOutcome`.
+
+    The result unpacks as ``(kept, dropped)`` for callers that only need the
+    survivors; ``outcome.diagnostics()`` reports counters over the whole pool.
 
     Never raises: any LLM failure degrades to "keep everything" so a scoring
     outage can only widen the pool, never empty it.
     """
     scored = [ScoredCandidate(c, None, "") for c in candidates]
     if not candidates:
-        return scored, 0
+        return ScoringOutcome(kept=scored, dropped=0, pool=scored)
     if not llm_config.api_key:
         logger.info("Scoring LLM not configured; keeping all %d candidates", len(candidates))
-        return scored, 0
+        return ScoringOutcome(kept=scored, dropped=0, pool=scored)
 
     limited = candidates[:max_candidates]
     overflow = len(candidates) - len(limited)
@@ -202,7 +236,7 @@ def score_candidates(
         for entry in scored:
             entry.score = None
             entry.reason = "unscored_kept"
-        return scored, 0
+        return ScoringOutcome(kept=scored, dropped=0, pool=scored)
 
     for position, entry in enumerate(scored[: len(limited)], 1):
         hit = by_index.get(position)
@@ -225,7 +259,11 @@ def score_candidates(
             "Scoring dropped %d candidate(s) below threshold %.1f (kept %d)",
             dropped, threshold, len(kept),
         )
-    return kept, dropped
+    # ``scored`` is the whole pool and ``kept`` is the survivor subset. Diagnostics
+    # must describe the whole pool, otherwise ``scoring_total`` would only count
+    # survivors and look inconsistent with the larger ``scoring_dropped``. Expose
+    # the pool on the outcome so the caller never has to guess.
+    return ScoringOutcome(kept=kept, dropped=dropped, pool=scored)
 
 
 def scoring_diagnostics(

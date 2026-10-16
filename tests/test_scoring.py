@@ -125,6 +125,38 @@ def test_diagnostics_report_the_true_drop_count():
     assert diag["scoring_avg_score"] == 9
 
 
+def test_diagnostics_count_the_whole_pool_not_just_survivors():
+    """``scoring_total`` must count every scored candidate, not only survivors.
+
+    Regression from the real 2026-10-16 run: the collector fed the *kept* list to
+    ``scoring_diagnostics``, so the audit read ``scoring_total=16`` alongside
+    ``scoring_dropped=19`` — survivors counted against a larger drop count, which
+    made the funnel look impossible to reconcile.
+    """
+    cands = [
+        {"source_title": "A", "source_summary": "s"},
+        {"source_title": "B", "source_summary": "s"},
+        {"source_title": "C", "source_summary": "s"},
+    ]
+    content = _payload([
+        {"index": 1, "score": 9, "reason": "ok"},
+        {"index": 2, "score": 1, "reason": "noise"},
+        {"index": 3, "score": 1, "reason": "noise"},
+    ])
+
+    outcome = score_candidates(cands, CFG, threshold=5, client_factory=_factory(content))
+    diag = outcome.diagnostics()
+
+    assert len(outcome.kept) == 1
+    assert outcome.dropped == 2
+    # The pool is all three: kept + dropped.
+    assert diag["scoring_total"] == 1 + diag["scoring_dropped"] + diag["scoring_unscored_kept"]
+    assert diag["scoring_judged"] == 3
+    # Still unpacks as (kept, dropped) for callers that predate the outcome object.
+    kept, dropped = outcome
+    assert len(kept) == 1 and dropped == 2
+
+
 def test_unjudged_candidates_are_kept_but_marked_unscored():
     """A failed batch keeps its items, but they carry no relevance judgement.
 

@@ -1926,10 +1926,10 @@ def collect_candidates(
     )
     if scoring_enabled:
         try:
-            from src.briefing.scoring import score_candidates, scoring_diagnostics
+            from src.briefing.scoring import score_candidates
             from src.llm_config import resolve_text_llm_config
 
-            scored, dropped = score_candidates(
+            outcome = score_candidates(
                 result,
                 resolve_text_llm_config(),
                 threshold=float(os.environ.get("DAILY_SCORE_THRESHOLD", "5")),
@@ -1944,14 +1944,14 @@ def collect_candidates(
             # promo posts straight into the brief. Only judged survivors get the
             # voucher; unscored ones keep the normal deterministic gates.
             result = []
-            for entry in scored:
+            for entry in outcome.kept:
                 candidate = entry.candidate
                 if entry.score is not None:
                     candidate["_scoring_vouched"] = True
                 else:
                     candidate.pop("_scoring_vouched", None)
                 result.append(candidate)
-            scoring_stats = scoring_diagnostics(scored, dropped=dropped)
+            scoring_stats = outcome.diagnostics()
         except Exception:  # pragma: no cover - defensive: scoring must never break collection
             logger.exception("Candidate scoring crashed; keeping unscored pool")
 
