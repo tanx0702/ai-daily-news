@@ -12,6 +12,49 @@ from src.source_normalization import (
 )
 
 
+def test_hn_discovered_publisher_keeps_configured_tier():
+    """An HN-discovered Reuters/CNBC story must not be labelled `community`.
+
+    Regression from the real 2026-10-16 draft: six of twenty items arrived via
+    Hacker News, and the code trusted only the URL registry for their authority.
+    Reuters, CNBC, FT, ZDNet and medRxiv were absent from that registry, so every
+    one of them fell through to `community` — which then sank them in the headline
+    ranking and made cover selection reject them as untrusted.
+    """
+    candidate = {
+        "title": "亚洲芯片股因 AI 融资担忧而下跌",
+        "url": "https://www.cnbc.com/2026/10/14/asia-chip-stocks.html",
+        "source": "CNBC",
+        "source_type": "rss",
+        "source_tier": "media",
+        "published_at": "2026-10-14T10:00:00+00:00",
+        "summary": "Asian chip stocks fell on AI financing worries.",
+    }
+
+    evidence = source_evidence_from_candidate(candidate)
+
+    assert evidence is not None
+    assert evidence.authority == "professional_media"
+    assert evidence.publisher_name == "CNBC"
+
+
+def test_hn_discovered_research_feed_is_research():
+    candidate = {
+        "title": "Conversational AI may sway clinician judgement",
+        "url": "https://www.medrxiv.org/content/10.1101/2026.10.14.1",
+        "source": "medRxiv",
+        "source_type": "rss",
+        "source_tier": "research",
+        "published_at": "2026-10-14T10:00:00+00:00",
+        "summary": "A preprint on conversational AI and clinician judgement.",
+    }
+
+    evidence = source_evidence_from_candidate(candidate)
+
+    assert evidence is not None
+    assert evidence.authority == "research"
+
+
 def test_hn_metadata_is_removed_and_external_publisher_wins():
     candidate = {
         "title": "How text watermarking works",
@@ -24,7 +67,7 @@ def test_hn_metadata_is_removed_and_external_publisher_wins():
         "url": "https://news.ycombinator.com/item?id=42",
         "source": "Hacker News AI",
         "source_type": "rss",
-        "source_tier": "primary",
+        "source_tier": "community",
         "published_at": "2026-08-14T00:00:00+00:00",
     }
 

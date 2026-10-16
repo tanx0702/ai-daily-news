@@ -15,9 +15,9 @@
    -> 日期窗口、AI 相关性、来源级规则、URL/标题去重、热度和新鲜度评分
    -> **X 标题不得按字符数硬截断**：`x_feed._snapshot_title` 保留完整推文文本。原实现截到 180 字符，长推文标题会停在断词（`... and (the more o`），下游翻译只看残破标题而静默丢掉尾句（真实案例：Ethan Mollick 那条漏掉 `They also greatly underestimated AI Lab revenue.`）。完整的长标题比整齐的残片更有用，快照文本长度在上游已由 summary 上限约束
    -> **剥离发布方推广页脚**：`source_normalization._strip_promo_footer` 在推广标记另起一段时删除其后的内容，并只在页脚前的正文保留完整句末标点。回归案例：ifanr 的 `#欢迎关注爱范儿官方微信公众号…更多精彩内容第一时间为您奉上。` 与 InfoQ 的 `点击查看原文>` 原本进入 evidence_text，使摘要选择器把文章自带导语（`最卷一夜！`）当成正文取用。正文里正常提到公众号/点击查看原文的句子不受影响
-   -> **汇总稿在采集期硬拒**：`publishability.is_roundup_title` 识别 `早报/日报/晚报/周报` 标记或多段分隔的多主题罗列（URL 字符不计入分隔符统计），以 `non_news_content` + 私有子原因 `roundup_content` 拒绝。回归案例：ifanr 早报捆绑 iPhone 维修/汽车上市等非 AI 话题被当成单条快讯发布，且同一 URL 连发两天。正文正常提及这些词句不受影响
+   -> **汇总稿在采集期硬拒**：`publishability.is_roundup_title` 识别 `早报/日报/晚报/周报` 标记、多段分隔的多主题罗列（URL 字符不计入分隔符统计），以及**无标记但用逗号罗列两个以上互不相关财经主题**的标题，以 `non_news_content` + 私有子原因 `roundup_content` 拒绝。标记可以带发布方前缀和日期（`Edge AI Daily 10月16日早报：…`），模式必须在标题开头的有界窗口内搜索而非锚定 `^`；旧锚定写法让带品牌前缀的早报漏过。回归案例：ifanr 早报捆绑 iPhone 维修/汽车上市等非 AI 话题被当成单条快讯发布且同一 URL 连发两天；2026-10-16 的「Edge AI Daily 10月16日早报：四大云厂商…资本开支…，Anthropic…营收…拟…启动 IPO 路演」同样漏过。正文正常提及这些词句不受影响
    -> **LLM 打分过滤（路线 1）**：候选池截断后由 `scoring.score_candidates` 单次批量调用为每条候选打 0-10 分（相关性/信息量/AI 圈属性），低于 `DAILY_SCORE_THRESHOLD`（默认 5）的丢弃；只有标题无正文细节的素材 ≤4 分。任何打分失败（未配置/超时/垃圾响应/```json 围栏）降级为全部保留——打分故障只会放大候选池，不可能清空并导致 block。打分在 pytest 下自动关闭（防 load_dotenv 泄露真实凭据发起外部调用），生产可用 `DAILY_ENABLE_SCORING=0` 关闭
-   -> **打分是相关性的唯一裁判**：通过打分的候选带 `scoring_deferred` 标记（collector 置 `_scoring_vouched`，main 重建 evidence 时补回），validator 对其跳过来源发布性与 headline-shape 门禁（动作词表、锚点绑定、翻译散文检测）；仅保留结构性检查（quote 不存在、URL 不匹配、缺目标绑定等编造信号）。未通过分类门禁但非汇总稿的候选（`no_asserted_action`/`instructional_content`）不再直接丢弃，而是 `content_type` 置空进入打分队列，审计记 `kept_for_scoring` 状态与原始原因码。同一作者的 thread 拆分推文（不同 thread_id）是独立陈述，不合并；同一 thread 的续篇在采集期已按 thread_id 归并
+   -> **打分是相关性的唯一裁判**：通过打分的候选带 `scoring_deferred` 标记（collector 置 `_scoring_vouched`，main 重建 evidence 时补回），validator 对其跳过来源发布性与 headline-shape 门禁（动作词表、锚点绑定、翻译散文检测）；仅保留结构性检查（quote 不存在、URL 不匹配、缺目标绑定等编造信号）。**通行证只发给真正被打过分的候选**（`entry.score is not None`）：批次失败时条目以 `score=None`/`reason=unscored_kept` 保留，但不得发 `_scoring_vouched`，否则打分故障会把来源门禁全部打开。回归案例：2026-10-15 真实运行中全部批次失败（`scoring_judged=0`），旧代码仍给 39 条候选发了通行证，`non_news_content` 门禁被跳过，「大型软件公司会联手遏制 AI 吗？」这类标题与「早报」汇总稿直接进日报。未通过分类门禁但非汇总稿的候选（`no_asserted_action`/`instructional_content`）不再直接丢弃，而是 `content_type` 置空进入打分队列，审计记 `kept_for_scoring` 状态与原始原因码。同一作者的 thread 拆分推文（不同 thread_id）是独立陈述，不合并；同一 thread 的续篇在采集期已按 thread_id 归并
 
 1.25 规范来源证据与事件聚类
    -> 保留规范来源 URL、原始证据文本、带时区发布时间和 X 线程关系
@@ -76,7 +76,7 @@
 
 3. 日报页面
    -> docs/index.html、docs/archive/<date>.html、docs/wechat.html
-   -> **头条选取与去重**（`render_wechat_article`）：头条从 `fact_event` 中按公共重要性选取，排序键为 `(-related_count, authority_rank, 版面顺序)`——多源交叉报道（`related_count`）是最强信号，权威级别（official < research < professional_media < community）与版面顺序依次兜底。摘要有无**不得**参与选题：旧逻辑取“第一条恰好带摘要”的条目，导致摘要覆盖率反过来决定头条，弱证据或常规发布抢占头条，而当天最有新闻价值的独家沉在正文。同一事件只能占一个名额：头条事件不再出现在正文列表，正文内部按 `event_key`（缺失时退回规范 URL）判等去重，不得依赖对象身份（`_display_news` 会重建字典）。整期没有 `fact_event` 时，动态/观点不升格为头条，仍留在正文并由第一条兼作头条卡。统计卡（件大事/个信源/分钟读完）只数最终展示的条目
+   -> **头条选取与去重**（`render_wechat_article`）：头条从 `fact_event` 中按公共重要性选取，排序键为 `(-事件显著性, -related_count, authority_rank, 版面顺序)`。事件显著性由可机械判定的信号加权：具名人物/掌舵者（Linus、Altman、黄仁勋、孙正义等）+3，法律/监管/安全/并购/人事后果（起诉、裁定、逮捕、泄露、收购、离职等）+2，例行上架类措辞（上线、可用、新增、更新、预告等）−2。单纯依赖交叉报道计数会把「某模型上线某平台」的例行通知推上头条，把真正有传播力的新闻埋在中间。摘要有无**不得**参与选题：旧逻辑取“第一条恰好带摘要”的条目，导致摘要覆盖率反过来决定头条，弱证据或常规发布抢占头条，而当天最有新闻价值的独家沉在正文。同一事件只能占一个名额：头条事件不再出现在正文列表，正文内部按 `event_key`（缺失时退回规范 URL）判等去重，不得依赖对象身份（`_display_news` 会重建字典）。整期没有 `fact_event` 时，动态/观点不升格为头条，仍留在正文并由第一条兼作头条卡。统计卡（件大事/个信源/分钟读完）只数最终展示的条目
 
 4. 封面
    -> COVER_RENDER_MODE=legacy：原文图 -> AI 图 -> Pillow 本地降级

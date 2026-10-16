@@ -1936,16 +1936,20 @@ def collect_candidates(
                 max_candidates=int(os.environ.get("DAILY_SCORING_MAX_CANDIDATES", "60")),
                 timeout=int(os.environ.get("DAILY_LLM_TIMEOUT", "90")),
             )
-            # Every candidate the scorer kept has passed the relevance judgement,
-            # so the validator must not re-litigate relevance downstream with the
-            # headline-shape gates. Marking all survivors (not just the ones the
-            # classification gates deferred) is what makes the scorer the single
-            # authority on relevance.
+            # The scorer is the single authority on relevance, so a candidate it
+            # actually judged must not be re-litigated downstream by the
+            # headline-shape gates. But a candidate the scorer never reached
+            # (batch failure, over budget) carries no relevance judgement at all:
+            # vouching for it would open every source gate and let digests and
+            # promo posts straight into the brief. Only judged survivors get the
+            # voucher; unscored ones keep the normal deterministic gates.
             result = []
             for entry in scored:
                 candidate = entry.candidate
-                if candidate.get("_scoring_vouched") is not True:
+                if entry.score is not None:
                     candidate["_scoring_vouched"] = True
+                else:
+                    candidate.pop("_scoring_vouched", None)
                 result.append(candidate)
             scoring_stats = scoring_diagnostics(scored, dropped=dropped)
         except Exception:  # pragma: no cover - defensive: scoring must never break collection

@@ -119,9 +119,23 @@ def source_evidence_from_candidate(
             publisher_trust_from_url(url)
         )
         if normalized.discovered_via == "hacker_news":
-            authority = registered_authority
-            is_official = registered_official
-            official_identity_source = registered_identity
+            # Prefer the configured tier: HN only supplies the discovery channel,
+            # and the article's own publisher is what carries authority. Trusting
+            # the URL registry alone marked every HN-discovered Reuters/CNBC/FT
+            # story as `community`, which then sank them in the headline ranking.
+            # `primary` is deliberately excluded: HN sources are configured as
+            # community/media, and a URL the registry already knows (venturebeat,
+            # arstechnica, …) is more precise than the upstream feed's tier.
+            if source_tier in {"research", "media", "professional_media"}:
+                authority = (
+                    "research" if source_tier == "research" else "professional_media"
+                )
+            elif registered_authority != "community":
+                authority = registered_authority
+                is_official = registered_official
+                official_identity_source = registered_identity
+            else:
+                authority = "community"
         elif channel == "arxiv" or source_tier == "research":
             authority = "research"
         elif source_tier == "primary":

@@ -195,8 +195,13 @@ def score_candidates(
             offset = (limited.index(batch[0]) if batch else 0)
             by_index[offset + index] = (float(score), str(row.get("reason") or "")[:120])
     if parse_failures == len(batches):
-        # Every batch failed: treat as a scoring outage, keep everything.
+        # Every batch failed: treat as a scoring outage, keep everything. Mark the
+        # items explicitly so callers can tell "never judged" from "judged"; the
+        # collector must not vouch for an unjudged candidate.
         logger.warning("Candidate scoring failed for all batches; keeping all candidates")
+        for entry in scored:
+            entry.score = None
+            entry.reason = "unscored_kept"
         return scored, 0
 
     for position, entry in enumerate(scored[: len(limited)], 1):

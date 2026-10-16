@@ -576,9 +576,49 @@ def render_wechat_article(
         except (TypeError, ValueError):
             return 0
 
+    # 头条打分：单纯的交叉报道计数会把「某模型上线某平台」这类例行上架通知
+    # 排到最前，而把 Linus Torvalds 开始用 AI 写内核这种真正有传播力的新闻
+    # 埋在中间。这里给可机械判定的强信号加权，再以交叉报道、权威级别和版面
+    # 顺序兜底。
+    _HEADLINE_STRONG_SUBJECTS = (
+        # 具名人物/机构掌舵者开口，比产品上架重要得多。
+        "linus", "torvalds", "altman", "musk", "zuckerberg", "nadella",
+        "hassabis", "karpathy", "hinton", "lecun", "chollet", "黄仁勋",
+        "jensen", "库克", "cook", "孙正义", "李飞飞",
+    )
+    _HEADLINE_STRONG_EVENTS = (
+        # 法律、监管、安全、并购、人事与重大事故：真实世界后果。
+        "起诉", "诉讼", "裁定", "判决", "罚款", "监管", "调查", "传唤",
+        "逮捕", "被捕", "窃听", "间谍", "泄露", "漏洞", "攻击", "封禁",
+        "收购", "并购", "合并", "裁员", "离职", "辞职", "辞职",
+        "起诉", "禁令", "违法", "处罚",
+        "lawsuit", "sue", "court", "regulat", "investigat", "arrest",
+        "acquisit", "merger", "antitrust",
+    )
+    _HEADLINE_WEAK_EVENTS = (
+        # 例行上架/可用/预告类，信息量低，不该抢头条。
+        "上线", "可用", "开放注册", "开放使用", "支持", "新增", "更新",
+        "预告", "即将", "开始测试", "灰度",
+    )
+
+    def _headline_score(it: dict) -> int:
+        title = clean_display_text(
+            it.get("chinese_title") or it.get("title", "")
+        )
+        lowered = title.casefold()
+        score = 0
+        if any(marker in lowered for marker in _HEADLINE_STRONG_SUBJECTS):
+            score += 3
+        if any(marker in lowered for marker in _HEADLINE_STRONG_EVENTS):
+            score += 2
+        if any(marker in lowered for marker in _HEADLINE_WEAK_EVENTS):
+            score -= 2
+        return score
+
     def _headline_rank(it: dict) -> tuple:
         authority = str(it.get("source_authority") or it.get("authority") or "")
         return (
+            -_headline_score(it),
             -_item_related_count(it),
             _AUTHORITY_RANK.get(authority, 9),
             news_list.index(it),

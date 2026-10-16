@@ -942,6 +942,42 @@ def test_roundup_digest_titles_are_rejected_as_non_news_content():
         assert result.rejection_detail == "roundup_content", title
 
 
+def test_publisher_prefixed_roundup_is_rejected():
+    """A brand prefix before 早报 must not hide the digest.
+
+    Regression from the real 2026-10-16 draft: "Edge AI Daily 10月16日早报：四
+    大云厂商2026年资本开支冲向7250亿美元，Anthropic三季度营收168亿美元拟11月9日
+    启动 IPO 路演" shipped as one news item. The old pattern anchored 早报 at the
+    very start (allowing at most four Latin characters before it), so a real
+    publisher prefix pushed the marker out of reach.
+    """
+    digests = (
+        "Edge AI Daily 10月16日早报：四大云厂商2026年资本开支冲向7250亿美元，"
+        "Anthropic三季度营收168亿美元拟11月9日启动 IPO 路演",
+        "机器之心 早报：今日要闻速览",
+        "量子位 日报｜模型、芯片与融资",
+    )
+    for title in digests:
+        result = validate_source_publishability(source(title))
+        assert result.accepted is False, title
+        assert result.rejection_detail == "roundup_content", title
+
+
+def test_multi_topic_tail_without_marker_is_rejected():
+    """A digest with no 早报 marker but several unrelated figures is still one.
+
+    The 2026-10-16 digest carried two independent stories (cloud capex and an
+    Anthropic revenue/IPO item); neither a marker nor a slash appears when the
+    title is read as one clause, so the enumeration has to be counted.
+    """
+    title = (
+        "四大云厂商2026年资本开支冲向7250亿美元，"
+        "Anthropic三季度营收168亿美元拟11月9日启动 IPO 路演"
+    )
+    result = validate_source_publishability(source(title))
+    assert result.rejection_detail == "roundup_content", title
+
+
 def test_ordinary_headlines_are_not_mistaken_for_roundups():
     """A single-topic headline must still pass, including one with a slash."""
     titles = (

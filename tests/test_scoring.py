@@ -123,3 +123,30 @@ def test_diagnostics_report_the_true_drop_count():
     assert diag["scoring_dropped"] == 1
     assert diag["scoring_judged"] == 1
     assert diag["scoring_avg_score"] == 9
+
+
+def test_unjudged_candidates_are_kept_but_marked_unscored():
+    """A failed batch keeps its items, but they carry no relevance judgement.
+
+    Regression from the real 2026-10-15 run: every batch failed, ``scoring_judged``
+    was 0, yet collection vouched for all 39 candidates. The voucher opens the
+    validator's source gates, so digests and promo posts shipped straight into the
+    brief. Unjudged items must stay ``score is None`` so the caller can tell them
+    apart from items the scorer actually ranked.
+    """
+    cands = [
+        {"source_title": "A", "source_summary": "s"},
+        {"source_title": "B", "source_summary": "s"},
+    ]
+
+    def failing_factory(**kwargs):
+        raise RuntimeError("router down")
+
+    kept, dropped = score_candidates(cands, CFG, client_factory=failing_factory)
+    diag = scoring_diagnostics(kept, dropped=dropped)
+
+    assert len(kept) == 2 and dropped == 0
+    assert diag["scoring_judged"] == 0
+    assert diag["scoring_unscored_kept"] == 2
+    assert all(entry.score is None for entry in kept)
+    assert all(entry.reason == "unscored_kept" for entry in kept)

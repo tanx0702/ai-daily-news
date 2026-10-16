@@ -196,11 +196,26 @@ _METADATA_PATTERNS = (
 # headline misrepresents the content, and picking a single topic out of it
 # detaches the claim from its context. Reject the whole item at the source.
 _ROUNDUP_TITLE = re.compile(
-    r"^\s*(?:[A-Za-z]{0,4}\s*)?(?:早报|日报|晚报|周报)\b"
-    r"|^\s*(?:早报|日报|晚报|周报)[｜|：:]"
+    # A 早报/日报/周报 marker anywhere near the head of the title marks a digest.
+    # Real feeds write it with a publisher/brand prefix and a date before or after
+    # ("Edge AI Daily 10月16日早报：…", "机器之心 早报：…"), so the marker may not
+    # sit at the very start. Search a bounded prefix window instead of anchoring:
+    # an earlier `^…(?:早报|日报)` anchor let "Edge AI Daily 10月16日早报" through
+    # as an ordinary headline, and the digest then shipped as one news item.
+    r"^[^。！？\n]{0,30}?(?:早报|日报|晚报|周报)(?=[\s:：|｜·]|$)"
     r"|(?:今日|一周|本周|每日|科技|AI)[^。！？\n]{0,8}(?:要闻|速览|汇总|盘点|early\s+brief)",
     re.I,
 )
+# A title whose tail enumerates several comma-separated topics is a multi-topic
+# digest even without a 早报/日报 marker: "四大云厂商…资本开支…，Anthropic…
+# 营收…拟…启动 IPO 路演" bundles two unrelated stories. Count the distinct
+# business/finance topics that sit in comma-separated clauses; a single clause is
+# an ordinary headline, two or more clauses are a digest.
+_ROUNDUP_TOPIC_WORDS = (
+    r"(?:资本开支|资本支出|营收|利润|市值|融资|估值|收购|并购|裁员|定价|降价|"
+    r"涨价|股价|芯片股|债券|收益率|上市|IPO|路演|发布会|新品|销量|出货)"
+)
+_ROUNDUP_TOPIC_HINTS = re.compile(_ROUNDUP_TOPIC_WORDS)
 # A title with three or more slash/pipe-separated segments is a digest: no single
 # news headline lists that many topics.
 _ROUNDUP_SEPARATORS = re.compile(r"[/｜|、]")
@@ -1339,12 +1354,13 @@ def validate_update_display_publishability(
 def is_roundup_title(title: str) -> bool:
     """Whether a title is a multi-topic digest rather than one news event.
 
-    Two signals, either sufficient: a 早报/日报/周报 style marker, or three or
-    more slash/pipe separated segments (a real headline does not enumerate that
-    many topics). URL characters do not count — every X headline carries a
-    ``https://t.co/...`` link whose three slashes would otherwise flag it as a
-    digest. Separators also need at least three so an ordinary title containing
-    one ``/`` still passes.
+    Three signals, any sufficient: a 早报/日报/周报 style marker (with an optional
+    publisher prefix), three or more slash/pipe separated segments, or a tail that
+    enumerates several comma-separated topics each carrying its own figure. A real
+    headline does not bundle that many distinct stories.
+
+    URL characters do not count — every X headline carries a ``https://t.co/...``
+    link whose three slashes would otherwise flag it as a digest.
     """
     text = _normalize(title)
     if not text:
@@ -1354,7 +1370,15 @@ def is_roundup_title(title: str) -> bool:
     # Strip URLs before counting separators: ``https://`` alone contributes three
     # slashes and no headline is a digest because it links somewhere.
     without_urls = re.sub(r"https?://\S+", " ", text, flags=re.I)
-    return len(_ROUNDUP_SEPARATORS.findall(without_urls)) >= 3
+    if len(_ROUNDUP_SEPARATORS.findall(without_urls)) >= 3:
+        return True
+    # A digest often has no marker and no slash at all: "四大云厂商2026年资本开支
+    # 冲向7250亿美元，Anthropic三季度营收168亿美元拟11月9日启动IPO路演" reads as
+    # one clause but bundles two unrelated stories. Require both at least two
+    # distinct topics AND a comma separating clauses, so an ordinary single-topic
+    # headline that merely mentions a figure is untouched.
+    topics = set(_ROUNDUP_TOPIC_HINTS.findall(without_urls))
+    return len(topics) >= 2 and bool(re.search(r"[，,]", without_urls))
 
 
 def validate_source_publishability(source: SourceEvidence) -> PublishabilityResult:

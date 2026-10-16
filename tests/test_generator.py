@@ -147,6 +147,66 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("OpenAI 发布新模型", wechat)
         self.assertIn("https://example.com/openai", wechat)
 
+    def test_wechat_headline_weights_event_significance_over_corroboration(self):
+        # 交叉报道计数单独会把「某模型上线某平台」的例行上架通知推上头条，
+        # 把真正有传播力的新闻（具名人物、法律/安全后果）埋在中间。
+        items = [
+            {
+                "event_key": "e-listing",
+                "content_type": "fact_event",
+                "chinese_title": "NVIDIA 的 Nemotron 3.5 Super VL 模型上线 Perplexity，可通过 Agent API 调用",
+                "source": "Perplexity",
+                "url": "https://example.com/listing",
+                "brief_mode": "title_only",
+                "source_authority": "official",
+                "related_count": 5,
+            },
+            {
+                "event_key": "e-linus",
+                "content_type": "fact_event",
+                "chinese_title": "Linus Torvalds 开始用 AI 协助开发 Linux 内核代码",
+                "source": "Zdnet",
+                "url": "https://example.com/linus",
+                "brief_mode": "title_only",
+                "source_authority": "professional_media",
+                "related_count": 0,
+            },
+        ]
+
+        html = render_wechat_article(items, date_str="2026-07-11")
+
+        headline = re.search(r'line-height:1\.55;">(.*?)</p>', html).group(1)
+        self.assertIn("Linus", headline)
+
+    def test_wechat_headline_prefers_legal_consequence_over_routine_update(self):
+        items = [
+            {
+                "event_key": "e-update",
+                "content_type": "fact_event",
+                "chinese_title": "Claude 平台推出 Agent 可观测性功能",
+                "source": "Claude",
+                "url": "https://example.com/update",
+                "brief_mode": "title_only",
+                "source_authority": "official",
+                "related_count": 3,
+            },
+            {
+                "event_key": "e-lawsuit",
+                "content_type": "fact_event",
+                "chinese_title": "美国八个州起诉 OpenAI，指 ChatGPT 对儿童不安全",
+                "source": "The Verge",
+                "url": "https://example.com/suit",
+                "brief_mode": "title_only",
+                "source_authority": "professional_media",
+                "related_count": 1,
+            },
+        ]
+
+        html = render_wechat_article(items, date_str="2026-07-11")
+
+        headline = re.search(r'line-height:1\.55;">(.*?)</p>', html).group(1)
+        self.assertIn("起诉", headline)
+
     def test_wechat_headline_prefers_corroborated_item_not_first_with_summary(self):
         # 头条按公共重要性选取：多源交叉报道的事实简报优先于「第一条恰好带
         # 摘要」的常规条目，避免摘要覆盖率反过来决定选题。

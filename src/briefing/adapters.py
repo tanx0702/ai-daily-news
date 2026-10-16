@@ -31,6 +31,9 @@ def brief_item_to_display_dict(item: BriefItem) -> dict[str, str]:
         "source_url": item.canonical_source.url,
         "source": item.canonical_source.publisher_name,
         "source_type": item.canonical_source.channel,
+        # Renderers rank by source strength; expose the canonical authority so the
+        # headline tiebreak sees it instead of always falling back to the default.
+        "source_authority": item.canonical_source.authority,
         "published_at": item.published_at,
         "brief_mode": item.brief_mode,
         "brief_reason": item.brief_reason,
