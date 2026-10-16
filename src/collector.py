@@ -1789,6 +1789,36 @@ def collect_candidates(
                 preflight_reason_counts[reason] = (
                     preflight_reason_counts.get(reason, 0) + 1
                 )
+            # ``no_asserted_action`` means only that the *source title* carried no
+            # action verb we recognise — the content LLM often renders the event
+            # correctly from the body. Deferring the item to the scorer alone took
+            # it out of the classified path, so a scorer outage or a low score
+            # removed real news entirely (2026-10-16: 104 items, including
+            # "Anthropic's Q3 revenue hits $16.8B" and "Linus 用 Claude Code 改
+            # Linux 内核"). Keep the frozen type instead so the item stays eligible
+            # for the normal gates, and let a *judged* score still vouch for it.
+            if classification.rejection_detail == "no_asserted_action":
+                item["content_type"] = original_content_type
+                item["_publishability_preflight"] = {
+                    "accepted": False,
+                    "reason_codes": list(classification.reason_codes),
+                }
+                preflight_rejected.append(item)
+                record_classification(
+                    item,
+                    position,
+                    source_evidence=source_evidence,
+                    original_content_type=original_content_type,
+                    content_type=original_content_type,
+                    classification_reason_codes=classification.reason_codes,
+                    subject_anchors=classification.subject_anchors,
+                    detail_anchors=classification.detail_anchors,
+                    rejection_detail=classification.rejection_detail,
+                    preflight_accepted=False,
+                    final_reason_codes=classification.reason_codes,
+                    final_state="kept_for_scoring",
+                )
+                continue
             # Carry the deferral into the immutable evidence so the validator
             # knows the scorer — not the rules — vouched for this item.
             try:

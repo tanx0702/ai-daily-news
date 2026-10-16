@@ -52,6 +52,24 @@ EVENT_ACTION_MARKERS = {
         # English beats/beat group. Planned or conditional framing ("或将击败",
         # "可能击败") is already blocked by _PLANNED_ACTION before this table.
         "击败", "战胜", "胜过", "赢得", "夺得", "登顶", "斩获",
+        # Reported results and measurements. These assert a concrete outcome
+        # ("revenue hits $16.8B", "solves 49 of 50 problems", "frozen kidneys
+        # brought back to life") and were previously dropped as no_asserted_action,
+        # which pushed real news out of the classified path and left it to the
+        # scorer alone. Deliberately excludes:
+        #   * bare "says"/"uses" — reporting speech or routine usage is not an event;
+        #   * benchmark-score verbs ("scores", "tops", bare "reaches") — a bare
+        #     measurement or ranking is an ai_update, not the hard-news action
+        #     `fact_event` requires, so listing them here would let a capability
+        #     demo claim the fact path ("Model 2.0 reaches #6 on the benchmark").
+        "hits", "hit", "soars", "soared", "surges", "surged",
+        "climbs", "climbed", "falls", "fell", "slips", "slipped",
+        "solves", "solved", "solving",
+        "restores", "restored", "revives", "revived", "resurrects", "resurrected",
+        "brought back to life", "brought back", "comes back to life",
+        "outscores", "outscored", "outperforms", "outperformed",
+        "probes", "probed", "probing", "investigates", "investigated",
+        "达成", "升至", "跌至", "攀升", "下滑", "回升", "摘得", "拿下", "攻克",
     ),
     "research": (
         "研究发现", "论文提出", "实验显示", "发表论文", "发表",

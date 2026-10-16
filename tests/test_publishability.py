@@ -963,6 +963,48 @@ def test_publisher_prefixed_roundup_is_rejected():
         assert result.rejection_detail == "roundup_content", title
 
 
+def test_reported_results_frame_as_asserted_actions():
+    """Real result verbs must frame, so the item keeps its classified path.
+
+    Regression from the real 2026-10-16 run: 104 candidates were flagged
+    ``no_asserted_action``, including genuinely reportable news such as
+    "Anthropic's Q3 revenue hits $16.8B" and "Pig kidneys that were frozen for a
+    year have been brought back to life". The vocabulary lacked those result
+    verbs, so the items fell out of the classified path and survived only on the
+    scorer's mercy.
+    """
+    titles = (
+        "Anthropic's Q3 revenue hits $16.8B but growth slows ahead of planned November IPO",
+        "GPT-6-Astra solves 49 of 50 physics research problems at $2.40 apiece",
+        'Pig kidneys that were "frozen" for a year have been brought back to life',
+        'Report: FTC probes Anthropic, OpenAI after Trump dismissed AI fears as "hoax"',
+        "Grok Voice 3.0 from SpaceXSI outscores OpenAI and Google on speech-to-speech index",
+    )
+    for title in titles:
+        result = validate_source_publishability(source(title))
+        assert result.rejection_detail != "no_asserted_action", title
+
+
+def test_measurement_and_non_news_titles_still_do_not_frame():
+    """Widening the vocabulary must not make every measurement a fact event.
+
+    A bare benchmark ranking is an ``ai_update`` capability demo, not the
+    hard-news action ``fact_event`` requires; and ordinary non-news must stay out
+    entirely. Listing ``scores``/``tops``/bare ``reaches`` as result verbs broke
+    exactly this boundary.
+    """
+    for title in (
+        "Model 2.0 reaches #6 on the benchmark",
+        "Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark",
+        "Tree Appreciator",
+        "Who gets to have 'good debt'?",
+        "KFC to switch to Coca-Cola beverages in U.S. restaurants",
+        "Amazon devices chief Panos Panay on the importance of failure",
+    ):
+        result = validate_source_publishability(source(title))
+        assert result.rejection_detail == "no_asserted_action", title
+
+
 def test_multi_topic_tail_without_marker_is_rejected():
     """A digest with no 早报 marker but several unrelated figures is still one.
 

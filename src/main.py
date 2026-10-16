@@ -143,14 +143,11 @@ def _run_pipeline(
         if source is None:
             invalid_evidence_count += 1
             continue
-        if (
-            candidate.get("_scoring_only_rejection")
-            or candidate.get("_scoring_vouched")
-        ):
-            # Route 1: the collector either deferred this item to the LLM scorer
-            # or the scorer kept it after judging. The evidence is rebuilt from
-            # the raw candidate here, so the deferral flag must be re-applied for
-            # the validator to honour it.
+        if candidate.get("_scoring_vouched"):
+            # Route 1: the scorer judged this item and kept it. Only a *judged*
+            # voucher opens the gates; an item merely deferred to scoring
+            # (``_scoring_only_rejection``) but never ranked must still pass the
+            # deterministic gates, so it is not marked deferred here.
             source = replace(source, scoring_deferred=True)
         evidence.append(source)
         scores_by_url[source.url] = max(
