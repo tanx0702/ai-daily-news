@@ -55,6 +55,40 @@ def test_hn_discovered_research_feed_is_research():
     assert evidence.authority == "research"
 
 
+def test_configured_publishers_are_registered_with_their_tier():
+    """Every configured feed must resolve to its declared authority.
+
+    A registry gap silently falls back to ``community``, which then mis-ranks the
+    headline and makes cover selection treat the source as untrusted. The 2026-10-16
+    run shipped ``Bbc`` and ``Businessinsider`` items labelled ``community``
+    because only the UK BBC domain was registered and Business Insider never was.
+    """
+    import json
+    import pathlib
+
+    from src.source_normalization import publisher_trust_from_url
+
+    config = json.loads(
+        pathlib.Path("config/rss_sources.json").read_text(encoding="utf-8")
+    )
+    # Hugging Face is deliberately community: model likes/downloads are activity,
+    # not news, so its feed must not promote it to professional_media.
+    expected_community = {"Hugging Face Blog"}  # noqa: F841
+
+    gaps = []
+    for source in config["sources"]:
+        tier = source.get("tier")
+        if tier not in {"media", "primary", "research"}:
+            continue
+        if source["name"] in expected_community:
+            continue
+        authority, _, _ = publisher_trust_from_url(source["url"])
+        if authority == "community":
+            gaps.append((source["name"], source["url"]))
+
+    assert gaps == [], f"unregistered configured publishers: {gaps}"
+
+
 def test_hn_metadata_is_removed_and_external_publisher_wins():
     candidate = {
         "title": "How text watermarking works",

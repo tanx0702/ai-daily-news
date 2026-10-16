@@ -51,6 +51,19 @@ _PUBLISHER_REGISTRY = {
     "tmtpost.com": ("钛媒体", "professional_media", False, ""),
     "huxiu.com": ("虎嗅", "professional_media", False, ""),
     "cnbc.com": ("CNBC", "professional_media", False, ""),
+    # bbc.co.uk is the UK edition; the international site (and the /future and
+    # /news article paths seen in feeds) uses bbc.com. Registering only the
+    # former left the latter at `community`.
+    "bbc.com": ("BBC", "professional_media", False, ""),
+    "businessinsider.com": ("Business Insider", "professional_media", False, ""),
+    "404media.co": ("404 Media", "professional_media", False, ""),
+    "gizmodo.com": ("Gizmodo", "professional_media", False, ""),
+    "semafor.com": ("Semafor", "professional_media", False, ""),
+    "simonsfoundation.org": ("Simons Foundation", "research", False, ""),
+    "arstechnica.net": ("Ars Technica", "professional_media", False, ""),
+    "simonwillison.net": ("Simon Willison", "professional_media", False, ""),
+    "unite.ai": ("Unite.AI", "professional_media", False, ""),
+    "therundown.ai": ("The Rundown AI", "professional_media", False, ""),
     "reuters.com": ("Reuters", "professional_media", False, ""),
     "ft.com": ("Financial Times", "professional_media", False, ""),
     "bloomberg.com": ("Bloomberg", "professional_media", False, ""),
