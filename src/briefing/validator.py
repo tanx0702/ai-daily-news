@@ -116,7 +116,53 @@ _ALLOWED_QUALITY_REASONS = {
     # for "Ethan Mollick"). The quality review flags it so the item is rebuilt
     # rather than published with a misspelled attribution.
     "title_truncated_name",
+    # A title converts a cumulative commitment into a one-off investment.
+    "claim_scope_overstated",
 }
+
+# ── Commitment-scope guard ────────────────────────────────────────────────
+# "Anthropic 成立公益基金，将约 20% 的公司股份投入公益事业" compressed
+# "roughly 20% of Anthropic shares [in total] are committed to the public good"
+# (cumulative: this 5% + co-founders' pledge + employee match) into "the new fund
+# takes 20%", overstating the announcement fourfold. The quote is verbatim and
+# carries a number, so every existing gate passes.
+_SCOPE_INVEST_VERB = re.compile(r"成立|设立|投入|注资|捐出|拿出|拨出|划出")
+_SCOPE_PERCENT = re.compile(r"\d+(?:\.\d+)?\s*(?:%|％|个百分点)")
+# Wording that marks the figure as the commitment being made *now*.
+_SCOPE_ONCE_ZH = re.compile(r"本次|首期|初期|此次投入|新投入|新捐|首批")
+_SCOPE_ONCE_EN = re.compile(
+    r"\b(?:today|initially|initial|will\s+be\s+committed|is\s+committed|"
+    r"newly)\b"
+    r"|\bthis\s+(?:commitment|announcement|round)\b",
+    re.I,
+)
+# Wording that marks the figure as an accumulated total.
+_SCOPE_CUMULATIVE = re.compile(
+    r"\b(?:in\s+total|combined|to\s+date|cumulative|altogether|overall)\b"
+    r"|累计|合计|总计|加起来|合计",
+    re.I,
+)
+
+
+def _claim_overstates_commitment_scope(title: str, quotes: Sequence[str]) -> bool:
+    """Whether a one-off investment claim rests only on a cumulative figure.
+
+    A title that uses an invest verb with a percentage asserts "this action moved
+    X%". If no bound quote describes a present commitment and at least one marks
+    the number as a running total, the percentage was almost certainly lifted from
+    a cumulative sentence and the claim overstates the announcement.
+    """
+    claim = _normalized_text(title)
+    if not claim or not _SCOPE_INVEST_VERB.search(claim):
+        return False
+    if not _SCOPE_PERCENT.search(claim):
+        return False
+    joined = " ".join(_normalized_text(q) for q in quotes if q)
+    if not joined:
+        return False
+    if _SCOPE_ONCE_ZH.search(joined) or _SCOPE_ONCE_EN.search(joined):
+        return False
+    return bool(_SCOPE_CUMULATIVE.search(joined))
 
 
 def _default_client_factory(**kwargs):
@@ -551,6 +597,19 @@ class BriefValidator:
         )
         draft = normalized_draft
 
+        # Commitment-scope guard. Runs for EVERY item, including scoring-deferred
+        # ones: the scorer judges relevance, never whether a percentage was lifted
+        # from a cumulative sentence. Verbatim quote + a number satisfies the
+        # structural gates, so this needs its own deterministic check.
+        if self._scope_overstated(event, draft):
+            return self._issue_result(
+                event.event_key,
+                ("claim_scope_overstated",),
+                generation_attempt,
+                validation_mode="rules_only",
+                audited_draft=draft,
+            )
+
         if not self.quality_llm_config or not self.quality_llm_config.api_key:
             self.diagnostics["quality_llm_unavailable_count"] += 1
             return self._rules_only_result(
@@ -849,6 +908,16 @@ class BriefValidator:
         if draft.opinion_author.strip().lower() != author.lower():
             return ("opinion_attribution_missing",)
         return ()
+
+    def _scope_overstated(self, event: MergedEvent, draft: BuiltBrief) -> bool:
+        """Whether the title claims a one-off investment from a cumulative figure."""
+        title = draft.chinese_title
+        quotes = [
+            binding.source_quote
+            for binding in draft.evidence_bindings
+            if _binding_covers(title, binding.claim)
+        ] or [binding.source_quote for binding in draft.evidence_bindings]
+        return _claim_overstates_commitment_scope(title, quotes)
 
     def _normalize_title_restatements(
         self,
