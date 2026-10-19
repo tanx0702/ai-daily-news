@@ -905,6 +905,50 @@ def test_review_of_one_model_release_goes_to_review_not_a_second_slot():
     assert deterministic_relationship(release, review, window_hours=48) == "review"
 
 
+def test_version_detached_from_brand_still_shares_a_model_anchor():
+    """A version written apart from its brand must still name the same model.
+
+    Regression from the real 2026-10-19 run: "DeepSeek releases updated
+    V4.1-Flash model ..." and "DeepSeek v4.1 Flash 1017 beats larger models ..."
+    both shipped, taking two slots for one launch. Two causes:
+
+    * ``DeepSeek`` never matched the brand pattern (it is camel-case, and the
+      generated spellings were only ``DEEP``/``Deep``);
+    * the version was detached from the brand, so it produced no model anchor at
+      all and the pair fell through to "distinct".
+    """
+    from src.briefing.semantic import _extract_models
+
+    release_models = _extract_models(
+        "DeepSeek releases updated V4.1-Flash model it says completes tasks faster"
+    )
+    bench_models = _extract_models(
+        "DeepSeek v4.1 Flash 1017 beats larger models in agentic tasks"
+    )
+    assert release_models & bench_models, (release_models, bench_models)
+
+    release = EventDocument.from_evidence(
+        evidence(
+            publisher_id="siliconangle-com",
+            publisher_name="SiliconANGLE",
+            source_title="DeepSeek releases updated V4.1-Flash model it says completes tasks faster",
+            evidence_text="DeepSeek releases updated V4.1-Flash model it says completes tasks faster",
+            url="https://siliconangle.com/2026/10/18/deepseek-v4-1-flash/",
+        )
+    )
+    bench = EventDocument.from_evidence(
+        evidence(
+            publisher_id="the-decoder-com",
+            publisher_name="The Decoder",
+            source_title="DeepSeek v4.1 Flash 1017 beats larger models in agentic tasks while cutting cost",
+            evidence_text="DeepSeek v4.1 Flash 1017 beats larger models in agentic tasks while cutting cost",
+            url="https://the-decoder.com/deepseek-v4-1-flash-1017/",
+        )
+    )
+
+    assert deterministic_relationship(release, bench, window_hours=48) == "review"
+
+
 def test_two_unrelated_brand_models_stay_distinct():
     """Sharing only a publisher and an action must not merge different models."""
     left = EventDocument.from_evidence(

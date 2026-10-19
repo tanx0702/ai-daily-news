@@ -165,10 +165,37 @@ _MODEL_BRAND_WORDS = (
     "step", "kimi", "glm", "ernie", "hunyuan", "doubao", "minimax",
     "grok", "mistral",
 )
+def _brand_spellings(word: str) -> tuple[str, ...]:
+    """Spellings a model-family word appears as in real headlines.
+
+    ``GLM``/``Glm`` covers all-caps and title-case families. Camel-case brands
+    such as ``DeepSeek`` also need the camel form, which neither ``upper()`` nor
+    ``capitalize()`` produces from the lowercase registry entry — that omission
+    left ``DeepSeek`` releases with no model anchor at all.
+
+    The all-lowercase form is deliberately NOT emitted. Registry words include
+    plain English nouns (``step``, ``model``, ``command``); matching them in
+    lowercase makes "The step 2 of our plan" look like a ``step-2`` model and can
+    merge unrelated events.
+    """
+    camel = _CAMEL_BRANDS.get(word, "")
+    forms = {word.upper(), word.capitalize()}
+    if camel:
+        forms.add(camel)
+    return tuple(sorted(forms, key=len, reverse=True))
+
+
+# Registry entries whose real styling is neither all-caps nor title-case.
+_CAMEL_BRANDS = {"deepseek": "DeepSeek", "openai": "OpenAI"}
+
 _MODEL_BRANDS_PATTERN = "|".join(
-    f"{word[0].upper()}(?:{word[1:].upper()}|{word[1:]})"
+    re.escape(form)
     for word in _MODEL_BRAND_WORDS
+    for form in _brand_spellings(word)
 )
+# Same alternatives, grouped so a leading brand can be stripped from a matched
+# ``base`` to recover the bare version anchor.
+_MODEL_BRANDS_ALT = f"(?:{_MODEL_BRANDS_PATTERN})"
 _JOB_TITLE_HEADS = {
     "chair",
     "chairman",
@@ -299,6 +326,21 @@ def deterministic_relationship(
         left_features.asserted_actions & right_features.asserted_actions
     )
     shared_people = _shared_people(left, right)
+    # A shared strong subject (a named model/entity and its maker) outranks a
+    # mismatched action verb. One launch can be written up twice: the release
+    # report says "releases ... V4.1-Flash" while the benchmark piece only says it
+    # "beats larger models". Treating those as distinct let a single launch take
+    # two briefing slots. Keep it out of automatic merging and hand it to the
+    # bounded reviewer instead.
+    shared_strong_pre = shared_strong_subjects(left, right)
+    if (
+        left_features.actions
+        and right_features.actions
+        and not shared_actions
+        and shared_strong_pre
+        and (left_features.asserted_actions or right_features.asserted_actions)
+    ):
+        return "review"
     if left_features.actions and right_features.actions and not shared_actions:
         return "distinct"
     shared_person_candidates = _shared_person_candidates(left, right)
@@ -493,6 +535,21 @@ def _extract_models(value: str) -> frozenset[str]:
         rf"[- ]?[a-z]*\d[\w.+-]*)"
         rf"(?:\s*(?:\(\s*)?(?P<suffix>(?i:{suffixes}))\b(?:\s*\))?)?",
     )
+    # A bare version that follows its brand by a few words ("DeepSeek releases
+    # updated V4.1-Flash", "DeepSeek v4.1 Flash 1017") is the same model subject,
+    # but the brand-attached pattern above misses it because the version is not
+    # glued to the family word. Recognising it is what stops one launch from
+    # taking two slots: the release report and the benchmark write-up then share
+    # a `model:` anchor and cluster together.
+    bare_pattern = re.compile(
+        rf"(?<![A-Za-z0-9])(?:{_MODEL_BRANDS_PATTERN})(?![A-Za-z0-9])"
+        rf"[^.;!?\n]{{0,40}}?"
+        rf"(?<![A-Za-z0-9])(?P<version>[vV]?\d+(?:\.\d+)+(?![\d.]))"
+        # The variant may be glued with a hyphen (``V4.1-Flash``) or spaced
+        # (``v4.1 Flash``); both must fold to the same anchor so the release
+        # report and the benchmark write-up share a model subject.
+        rf"(?:[- ]?(?P<suffix2>(?i:{suffixes}))\b)?",
+    )
     models: set[str] = set()
     for match in pattern.finditer(model_text):
         base = re.sub(r"[\s-]+", "-", match.group("base").casefold())
@@ -500,6 +557,30 @@ def _extract_models(value: str) -> frozenset[str]:
         if suffix:
             base = f"{base}-{re.sub(r'\s+', '-', suffix.casefold())}"
         models.add(base)
+        # Also publish the version+variant anchor without the brand. Feeds split
+        # one launch across "DeepSeek releases V4.1-Flash" and "DeepSeek v4.1
+        # Flash 1017 beats ...", where only one form glues brand to version. The
+        # shared ``v4.1-flash`` is what makes those two reports cluster, while
+        # genuinely different variants (``gpt-5`` vs ``gpt-5-mini``,
+        # ``claude-4.5-opus`` vs ``claude-4.5-sonnet``) keep distinct anchors.
+        head, _, rest = base.partition("-")
+        if rest and re.search(r"\d", rest):
+            models.add(rest)
+    for match in bare_pattern.finditer(model_text):
+        version = re.sub(r"\s+", "-", match.group("version").casefold())
+        suffix = match.group("suffix2")
+        if suffix:
+            version = f"{version}-{re.sub(r'\s+', '-', suffix.casefold())}"
+        # Publish the version/variant anchor on its own, but never when a
+        # brand-attached anchor already covers this exact version: "Claude-4.5
+        # (Opus)" and "Claude-4.5 (Sonnet)" share the bare ``4.5`` and would
+        # otherwise collapse two genuinely different variants into one event.
+        if any(
+            version in existing or f"-{version}" in existing
+            for existing in models
+        ):
+            continue
+        models.add(version)
     return frozenset(models)
 
 
