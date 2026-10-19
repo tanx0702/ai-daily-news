@@ -987,7 +987,10 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         # ``vm0-ai/vm0 发布 v0.178.5``, not the internal package id. The package
         # name embeds the same version, so preferring it only adds noise.
         bare_version = re.search(
-            r"(?<![A-Za-z0-9])v?\d+(?:\.\d+)+(?![A-Za-z0-9])", after, flags=re.I
+            r"(?<![A-Za-z0-9])[A-Za-z]?\d+(?:\.\d+)+(?:[-.][A-Za-z][A-Za-z0-9]*)*"
+            r"(?![A-Za-z0-9])",
+            after,
+            flags=re.I,
         )
         if bare_version and re.search(
             r"[A-Za-z]", anchor.rstrip("0123456789.")
@@ -1006,7 +1009,10 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         # truncate it to ``@8`` and publish "nexus-agents 发布 @8". A handle is
         # only a handle when it stands alone, not when glued to a preceding word.
         safe_detail = re.search(
-            r"(?<![A-Za-z0-9])v?\d+(?:\.\d+)+(?![A-Za-z0-9])|"
+            # A variant suffix belongs to the version: ``V4.1-Flash`` must not be
+            # truncated to ``V4.1``, which names a different model.
+            r"(?<![A-Za-z0-9])[A-Za-z]?\d+(?:\.\d+)+(?:[-.][A-Za-z][A-Za-z0-9]*)*"
+            r"(?![A-Za-z0-9])|"
             r"(?<![A-Za-z0-9_])@[A-Za-z0-9_]+|"
             r"(?:\$\s*)?\d+(?:[.,]\d+)?\s*(?:%|x|ms|s|tok/s|tokens/s|billion|million)\b",
             after,

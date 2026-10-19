@@ -669,6 +669,27 @@ def test_bare_discovery_verb_is_not_a_security_action():
         assert "security" in publishability.asserted_action_types(disclosure), disclosure
 
 
+def test_version_variant_suffix_is_not_truncated():
+    """``V4.1-Flash`` and ``V4.1`` are different models; keep the suffix.
+
+    Regression from the real 2026-10-19 run: "DeepSeek releases updated
+    V4.1-Flash model ..." fell back to "DeepSeek 发布 V4.1". The version regex used
+    ``(?![A-Za-z0-9])``, which treats the hyphen in ``-Flash`` as a clean end and
+    drops the variant, making the title name a different product. The validator
+    correctly rejected it as ``title_truncated_name``; the fallback is what needed
+    fixing.
+    """
+    cases = (
+        (
+            "DeepSeek releases updated V4.1-Flash model it says completes tasks faster",
+            "DeepSeek 发布 V4.1-Flash",
+        ),
+        ("xAI launches Grok 4.7 at bargain prices", "xAI 发布 Grok 4.7"),
+    )
+    for source_title, expected in cases:
+        assert source_anchored_title(source(source_title)) == expected
+
+
 def test_trailing_prose_clause_is_not_the_release_object():
     """The verb's object is the name right after it, not a later English clause.
 

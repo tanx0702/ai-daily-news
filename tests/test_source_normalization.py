@@ -89,6 +89,35 @@ def test_configured_publishers_are_registered_with_their_tier():
     assert gaps == [], f"unregistered configured publishers: {gaps}"
 
 
+def test_hn_news_publishers_seen_in_production_are_registered():
+    """Publishers that actually reached the brief must not resolve to community.
+
+    The 2026-10-19 run labelled a Politico item ``community``; the same gap hit
+    The Economist, Tom's Hardware, Quanta and several others that arrive through
+    Hacker News rather than a configured feed.
+    """
+    from src.source_normalization import publisher_trust_from_url
+
+    expected = {
+        "https://www.politico.com/news/2026/10/19/anthropic-ai-bill": "professional_media",
+        "https://www.economist.com/science-and-technology/2026/10/19/x": "professional_media",
+        "https://www.tomshardware.com/pc-components/x": "professional_media",
+        "https://www.techpolicy.press/x": "professional_media",
+        "https://news.cgtn.com/news/x.html": "professional_media",
+        "https://www.thebignewsletter.com/p/x": "professional_media",
+        "https://news.gallup.com/poll/x.aspx": "professional_media",
+        "https://www.vals.ai/benchmarks/x": "professional_media",
+        "https://www.quantamagazine.org/x": "research",
+        "https://engineering.fb.com/2026/10/19/x": "official",
+        # Unregistered personal/indie sites must stay community.
+        "https://paretoops.dev/x": "community",
+        "https://jrdsgl.com/x": "community",
+    }
+    for url, authority in expected.items():
+        got, _, _ = publisher_trust_from_url(url)
+        assert got == authority, f"{url} -> {got}, expected {authority}"
+
+
 def test_hn_metadata_is_removed_and_external_publisher_wins():
     candidate = {
         "title": "How text watermarking works",

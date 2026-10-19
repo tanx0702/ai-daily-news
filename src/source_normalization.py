@@ -89,6 +89,20 @@ _PUBLISHER_REGISTRY = {
     "nature.com": ("Nature", "research", False, ""),
     "science.org": ("Science", "research", False, ""),
     "openreview.net": ("OpenReview", "research", False, ""),
+    "quantamagazine.org": ("Quanta Magazine", "research", False, ""),
+    # Further news publishers seen arriving via Hacker News. Each was reported as
+    # `community` before registration, which mis-ranked the headline.
+    "politico.com": ("Politico", "professional_media", False, ""),
+    "economist.com": ("The Economist", "professional_media", False, ""),
+    "tomshardware.com": ("Tom's Hardware", "professional_media", False, ""),
+    "techpolicy.press": ("Tech Policy Press", "professional_media", False, ""),
+    "cgtn.com": ("CGTN", "professional_media", False, ""),
+    "thebignewsletter.com": ("The Big Newsletter", "professional_media", False, ""),
+    "gallup.com": ("Gallup", "professional_media", False, ""),
+    "vals.ai": ("Vals AI", "professional_media", False, ""),
+    # Company engineering blogs are first-party announcements.
+    "engineering.fb.com": ("Meta Engineering", "official", True, "canonical_domain_allowlist"),
+    "engineering.upenn.edu": ("Penn Engineering", "research", False, ""),
     "amd.com": ("AMD", "official", True, "canonical_domain_allowlist"),
     "apple.com": ("Apple", "official", True, "canonical_domain_allowlist"),
     "amazon.com": ("Amazon", "official", True, "canonical_domain_allowlist"),
