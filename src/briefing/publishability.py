@@ -731,13 +731,48 @@ def _organization_anchors(value: str) -> set[str]:
     }
 
 
+_MODEL_FAMILIES = (
+    "gpt|claude|gemini|llama|qwen|deepseek|mistral|grok|kimi|glm|"
+    "ernie|hunyuan|doubao|minimax|step|phi|command"
+)
+# Trailing qualifiers that are part of the published name (``Flash``, ``GGUF``,
+# ``Instruct``). Dropping them made a display title stop binding to its own
+# source: the anchor ``Qwen3.8-27B GGUF`` degraded to ``Qwen3.8-27B``.
+_MODEL_QUALIFIERS = (
+    "gguf|fp8|fp16|int4|int8|awq|gptq|bnb|mlx|onnx|flash|mini|pro|ultra|"
+    "ultrafast|preview|turbo|max|nano|opus|haiku|sonnet|instruct|chat|base|"
+    "thinking|reasoning|vision|omni"
+)
 _MODEL_PATTERN = re.compile(
-    r"(?<![a-z0-9])(?:chatgpt(?![a-z0-9])|"
-    r"(?:gpt|claude|gemini|llama|qwen|deepseek|model|mistral|grok|kimi|glm|"
-    r"ernie|hunyuan|doubao|minimax|step|phi|command)"
-    r"(?:[- ]?[a-z]+){0,2}[- ]?\d[\w.+-]*)"
-    r"(?:\s+(?:flash|mini|pro|ultra|ultrafast|preview|turbo|max|nano|opus|haiku|sonnet))?",
+    r"(?<![a-z0-9])(?:"
+    # Known family plus an optional version, e.g. ``Grok 4.7``, ``Gemini Omni 1.1``.
+    rf"(?:{_MODEL_FAMILIES})(?:[- ]?[a-z]+){{0,2}}[- ]?\d[\w.+-]*"
+    r"|chatgpt(?![a-z0-9])"
+    # Letter/digit product name such as ``LFM2.5-24B-A2B`` or ``MAI-Image-2.6``.
+    #
+    # Performance note: every run below must stay linear. An earlier form used
+    # ``(?:[- ]?[A-Za-z0-9.]+){1,}\d`` whose inner class overlaps ``\d``, giving
+    # nested quantifiers with overlapping alternation; on a 200-character title
+    # the engine backtracked for minutes and hung the whole test suite.
+    r"|[A-Z]{2,}[A-Za-z0-9]*(?:[.\-][A-Za-z0-9]+)*\d[A-Za-z0-9.\-]*"
+    r")"
+    rf"(?:\s+(?:{_MODEL_QUALIFIERS}))*",
     re.I,
+)
+# ``Model That Scores 65`` is prose, not a product name. The generic ``model``
+# keyword is matched only when the rest of the token is name-shaped (no plain
+# English words), so a sentence fragment cannot masquerade as the release object.
+_GENERIC_MODEL_WORDS = re.compile(r"\bmodel\b", re.I)
+# Benchmark/leaderboard identifiers. They look name-shaped (``Div-300``,
+# ``HLE-1000``) but label a measurement, not a model, and downstream frames treat
+# them as ``named:``/``metric:`` anchors rather than ``model:``.
+_BENCHMARK_NAMES = frozenset(
+    {
+        "div-300", "hle", "hle-1000", "arc-agi", "arc-agi-1", "arc-agi-2",
+        "arc-agi-3", "swe-bench", "swe-bench-verified", "terminal-bench",
+        "gpqa", "mmlu", "humaneval", "math-500", "aime", "livecodebench",
+        "aa-agentperf", "divbench", "ifbench", "proofbench",
+    }
 )
 
 
@@ -747,7 +782,48 @@ def _model_anchors(value: str) -> set[str]:
             r"\s+", "-", match.group(0).casefold().rstrip(".,;:!?，。；：！？")
         )
         for match in _MODEL_PATTERN.finditer(_normalize(value))
+        if _is_name_shaped_model(match.group(0))
     }
+
+
+def _is_name_shaped_model(token: str) -> bool:
+    """Whether a matched span is a product name rather than a prose fragment.
+
+    ``Releases LFM2.5-24B-A2B, a Model That Scores 65 on IFBench`` must anchor on
+    ``LFM2.5-24B-A2B``, not on the clause ``Model That Scores 65``.
+
+    A real name carries a version number (``Grok 4.7``, ``Gemini Omni 1.1 Flash``,
+    ``LFM2.5-24B-A2B``) and at most one ordinary English word between the family
+    and that version. Prose puts several plain words before the number
+    (``Model That Scores 65``), which is what this rejects.
+
+    Benchmark names are explicitly excluded: ``Div-300`` and ``HLE-1000`` are
+    identifiers too, but they label a *measurement*, not a model. Treating them as
+    ``model:`` anchors made a display claim request ``model:div-300`` that the
+    English quote carried only as ``named:``/``metric:``, so a correct Chinese
+    title failed to bind to its own source.
+    """
+    text = token.strip()
+    if not text:
+        return False
+    if text.casefold().rstrip(".") in _BENCHMARK_NAMES:
+        return False
+    if _GENERIC_MODEL_WORDS.search(text):
+        # ``model`` as a bare head is generic: accept only when what follows is a
+        # version/identifier, e.g. ``Model 3.5``, never an English clause.
+        head = _GENERIC_MODEL_WORDS.search(text)
+        tail = text[head.end():].strip(" -")
+        return bool(tail) and not re.search(r"[A-Za-z]", tail)
+    if not re.search(r"\d", text):
+        return False
+    words = text.split()
+    version_index = next(
+        (index for index, word in enumerate(words) if re.search(r"\d", word)),
+        None,
+    )
+    if version_index is None:
+        return False
+    return version_index <= 2
 
 
 def _surface_anchor_matches(value: str) -> tuple[str, ...]:
@@ -772,6 +848,7 @@ def _surface_anchor_matches(value: str) -> tuple[str, ...]:
     matches.extend(
         (match.start(), match.group(0))
         for match in _MODEL_PATTERN.finditer(normalized)
+        if _is_name_shaped_model(match.group(0))
     )
     return tuple(value for _, value in sorted(matches, key=lambda item: item[0]))
 
@@ -866,9 +943,19 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         return None
     start, end, action = min(action_matches, key=lambda item: item[0])
     after = title[end:]
-    subjects = _surface_anchor_matches(title[:start])
+    before = title[:start]
+    subjects = _surface_anchor_matches(before)
     details = _surface_anchor_matches(after)
-    subject = subjects[0] if subjects else _literal_subject_surface(title[:start])
+    # A repo path (``owner/name``) is one subject, not two tokens. The generic
+    # product-name alternative now matches ``vm0-ai`` inside ``vm0-ai/vm0``, which
+    # would publish only the owner half. Prefer the literal path when the text
+    # before the verb looks like one.
+    repo_path = re.search(r"([A-Za-z0-9][\w.\-]*/[\w.\-]+)\s*$", before)
+    subject = (
+        repo_path.group(1)
+        if repo_path
+        else (subjects[0] if subjects else _literal_subject_surface(before))
+    )
     if not subject:
         return None
     # A detail anchor must be the verb's object, not a partnership/list companion.
@@ -895,6 +982,22 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
             flags=re.I,
         ):
             continue
+        # A bare version right after the verb outranks a packaged artefact name:
+        # ``vm0-ai/vm0 releases runner-rs-v0.178.5`` publishes
+        # ``vm0-ai/vm0 发布 v0.178.5``, not the internal package id. The package
+        # name embeds the same version, so preferring it only adds noise.
+        bare_version = re.search(
+            r"(?<![A-Za-z0-9])v?\d+(?:\.\d+)+(?![A-Za-z0-9])", after, flags=re.I
+        )
+        if bare_version and re.search(
+            r"[A-Za-z]", anchor.rstrip("0123456789.")
+        ):
+            packaged = re.search(
+                r"[-_][A-Za-z0-9]+-v?\d+(?:\.\d+)", anchor, flags=re.I
+            )
+            if packaged:
+                detail = bare_version.group(0)
+                break
         detail = anchor
         break
     if detail is None:

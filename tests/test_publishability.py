@@ -669,6 +669,46 @@ def test_bare_discovery_verb_is_not_a_security_action():
         assert "security" in publishability.asserted_action_types(disclosure), disclosure
 
 
+def test_trailing_prose_clause_is_not_the_release_object():
+    """The verb's object is the name right after it, not a later English clause.
+
+    Regression from the real 2026-10-16 draft: "Liquid AI Releases
+    LFM2.5-24B-A2B, a Model That Scores 65 on IFBench" was published as
+    "Liquid AI 发布 Model That Scores 65" — the generic word ``model`` plus a
+    number made the trailing clause look like a product name, while the real
+    product name ``LFM2.5-24B-A2B`` was not recognised at all.
+    """
+    cases = (
+        (
+            "Liquid AI Releases LFM2.5-24B-A2B, a Model That Scores 65 on IFBench",
+            "Liquid AI 发布 LFM2.5-24B-A2B",
+        ),
+        (
+            "Liquid AI releases LFM2.5-24B-A2B",
+            "Liquid AI 发布 LFM2.5-24B-A2B",
+        ),
+    )
+    for source_title, expected in cases:
+        assert source_anchored_title(source(source_title)) == expected
+
+
+def test_benchmark_names_are_not_model_anchors():
+    """``Div-300`` labels a measurement, not a model.
+
+    Treating it as ``model:`` made a correct Chinese display claim request an
+    anchor the English quote only carried as ``named:``/``metric:``, so the claim
+    stopped binding to its own source and the ai_update was rejected.
+    """
+    from src.briefing.publishability import _surface_anchor_matches
+
+    anchors = _surface_anchor_matches(
+        " Qwen3.8-27B GGUF scores 10% higher on Div-300 benchmark"
+    )
+    folded = {anchor.casefold() for anchor in anchors}
+    assert "qwen3.8-27b gguf" in folded
+    assert "div-300" not in folded
+
+
 def test_source_anchored_title_supports_concrete_ai_news_actions():
     cases = (
         (
