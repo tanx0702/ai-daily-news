@@ -143,6 +143,8 @@ cron 的 `flock` 与应用内 `DAILY_RUN_LOCK_PATH` 是双层保护：前者防�
 
 HTML/JSON/诊断通常会在草稿被阻止时继续生成。查看 `latest.json.draft_decision`、`latest.json.draft_execution` 和 `diagnostics`，不得手动绕过决策。旧 publication、质量状态、来源占比阻断、9 分目标和人工复核不是生产控制。
 
+`brief_items` 只投影 `BriefItem` 的字段，**不含媒体状态**（`image_type`/`media_state`/`article_image_url` 只存在于渲染用的 display dict）。要确认某条最终有没有配图，读 `diagnostics.media.by_index[<序号>]`——键是草稿里的 NEWS 序号（1 起），与 `items_report` 同序；`diagnostics.media.items` 按标题对应，标题不唯一且与 `brief_items` 无法直接对齐，排查时优先用 `by_index`。
+
 ## 排查顺序
 
 1. `git status --short`，确认没有 `.env`、日志或产物准备提交。

@@ -663,6 +663,19 @@ def resolve_article_media(
         "total": len(display_news),
         "with_original_image": with_original,
         "text_only": text_only,
+        # Index-aligned view of the same rows. ``items`` keys on the display title,
+        # which is not unique and not present in ``latest.json``'s brief_items, so
+        # an operator could not tell from the persisted artifact whether a given
+        # item shipped with an image. ``by_index`` is 1-based to match the brief
+        # numbering shown in the draft.
+        "by_index": {
+            str(position): {
+                "image_type": report["image_type"],
+                "media_state": report["media_state"],
+                "reason": report["reason"],
+            }
+            for position, report in enumerate(items_report, 1)
+        },
         "items": items_report,
     }
 

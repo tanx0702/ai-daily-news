@@ -45,7 +45,7 @@ RSS 候选在 `src.collector.py` 中做两级 AI 关键词过滤、发布时间�
 
 ### Hacker News
 
-`HackerNewsCollector` 先取得 AI 相关条目，再补抓 Hacker News 详情和原文链接。score、comments 和是否有跨源确认只用于热度/可信度评分，绝不能作为新闻摘要或正式发布证据。若 HN 条目有可验证的外链，事实简报使用外链作为规范 URL 和发布者，HN 只记录为发现渠道；只有标题、积分或评论元数据的条目不得进入日报。
+`HackerNewsCollector` 先取得 AI 相关条目，再补抓 Hacker News 详情和原文链接。score、comments 和是否有跨源确认只用于热度/可信度评分，绝不能作为新闻摘要或正式发布证据。若 HN 条目有可验证的外链，事实简报使用外链作为规范 URL 和发布者，HN 只记录为发现渠道；只有标题、积分或评论元数据的条目不得进入日报。`publishability._is_hn_item_url` 直接判定「规范 URL 就是 HN 帖子本身」（`news.ycombinator.com/item?id=…`）并以 `non_news_content` + 私有子原因 `discussion_thread` 拒绝——只靠 `Points: N`/`# Comments: N` 文本模式会漏掉证据为帖子标题加讨论内容、不含这些字样的条目。回归案例：2026-10-20「Hacker News 热议：开发者上线自己看不懂的 AI 生成代码该怎么办」以 `fact_event` 进入草稿。
 
 ### GitHub
 

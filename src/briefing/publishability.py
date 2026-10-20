@@ -208,6 +208,14 @@ _METADATA_PATTERNS = (
     re.compile(r"#\s*Comments:\s*\d+", re.I),
     re.compile(r"\bComments:\s*\d+", re.I),
 )
+_HN_ITEM_URL = re.compile(
+    r"^https?://news\.ycombinator\.com/item\?id=\d+", re.I
+)
+
+
+def _is_hn_item_url(url: str) -> bool:
+    """Whether the canonical URL is a Hacker News discussion thread itself."""
+    return bool(_HN_ITEM_URL.match(str(url or "").strip()))
 # Roundup/aggregate posts (早报/日报/周报, multi-topic digests) are not a single
 # AI news event: one title bundles several unrelated stories, most of them
 # non-AI (phone repairs, car launches, satellite payloads). Publishing one as a
@@ -1525,6 +1533,17 @@ def validate_source_publishability(source: SourceEvidence) -> PublishabilityResu
             marker in lowered for marker in publication_markers
         ):
             return PublishabilityResult(False, ("github_activity_only",))
+    # An HN discussion thread is not a news event. When the canonical URL is the
+    # item page itself there is no external article, so the only evidence is a
+    # forum post. Regression: "Hacker News 热议：开发者上线自己看不懂的 AI 生成代码
+    # 该怎么办" shipped as a fact_event; the metadata patterns below did not fire
+    # because the evidence was the thread title plus discussion, not "Points: N".
+    if source.discovered_via == "hacker_news" and _is_hn_item_url(source.url):
+        return PublishabilityResult(
+            False,
+            ("non_news_content",),
+            rejection_detail="discussion_thread",
+        )
     if source.discovered_via == "hacker_news" and any(
         pattern.search(evidence) for pattern in _METADATA_PATTERNS
     ):

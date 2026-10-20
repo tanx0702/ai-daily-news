@@ -72,6 +72,19 @@ _UNTRANSLATED_TITLE_WORDS = {
     "data", "market", "markets", "industry", "safety", "security", "price",
     "prices", "cost", "costs", "growth", "report", "reports", "study",
 }
+# Country/region/adjective forms that Chinese news translates rather than keeps in
+# English. Capitalised, so they survive `_source_anchor_phrases` as "names"; the
+# lowercase-only check in `_has_untranslated_title_prose` never inspects them.
+# `US` is matched case-sensitively to avoid the pronoun "us".
+_UNTRANSLATED_PLACE = re.compile(
+    r"(?<![A-Za-z0-9])(?:US|U\.S\.|USA|America|American"
+    r"|China|Chinese|Russia|Russian|Ukraine|Ukrainian"
+    r"|Japan|Japanese|Korea|Korean|India|Indian"
+    r"|Britain|British|UK|England|English"
+    r"|France|French|Germany|German"
+    r"|Europe|European|Taiwan|Israel|Israeli|Iran|Iranian)"
+    r"(?![A-Za-z0-9])"
+)
 _ACTION_GROUPS = EVENT_ACTION_MARKERS
 _CROSS_LANGUAGE_ANCHOR_STOPWORDS = {
     "acquire", "acquisition", "agentic", "and", "company", "for", "from",
@@ -309,7 +322,14 @@ def _has_untranslated_title_prose(
             flags=re.I,
         )
     words = re.findall(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z-]*(?![A-Za-z0-9])", protected)
-    return any(word == word.lower() and word in _UNTRANSLATED_TITLE_WORDS for word in words)
+    if any(word == word.lower() and word in _UNTRANSLATED_TITLE_WORDS for word in words):
+        return True
+    # Country/region names are common nouns in Chinese news and MUST be translated
+    # ("US" -> 美国, "China" -> 中国). They are capitalised, so the anchor-span
+    # filter above prefers to keep them, and the lowercase-only check never sees
+    # them. Regression: "US 禁止政府机构使用 DeepSeek AI，与 China 的科技紧张局势
+    # 持续" published with both words untranslated.
+    return bool(_UNTRANSLATED_PLACE.search(protected))
 
 
 def _display_claims(draft: BuiltBrief) -> list[str]:
