@@ -70,3 +70,38 @@ def test_chinese_company_name_maps_to_the_latin_entity():
         )
         is False
     )
+
+
+def test_comparison_against_rivals_is_not_another_company_story():
+    """Naming a rival as a yardstick belongs to this item, not to a rival's news.
+
+    Regression from the real 2026-10-21 run: the first version of this guard
+    removed the Inception summary because it named ``GPT-6 Luna`` and ``Claude
+    Haiku 5.5``. Those are the models Mercury 3 is measured against, so the
+    sentence is about Inception. Only a sentence where the other company acts
+    ("同期 OpenAI 只推出一个 6.1 Terra") is a separate story.
+    """
+    sentence = "Inception 称 Mercury 3 在速度上最多比 GPT-6 Luna 和 Claude Haiku 5.5 快 8 倍"
+    assert (
+        _summary_off_subject(
+            sentence,
+            source_title=(
+                "Inception says Mercury 3 beats GPT-6 Luna and Claude Haiku 5.5 "
+                "at up to 8x the speed"
+            ),
+            title_claim="Inception 发布新旗舰模型 Mercury 3，自称速度最高达竞品 8 倍",
+        )
+        is False
+    )
+
+
+def test_restating_a_rival_release_stays_off_subject():
+    """The exemption must not reopen the case it was introduced to close."""
+    assert (
+        _summary_off_subject(
+            "同期 OpenAI 只推出一个 6.1 Terra 相关内容",
+            source_title="Claude新模型曝光！能跳出思维定势，修Bug治标又治本",
+            title_claim="Claude 新模型曝光：能跳出思维定势，修 Bug 治标又治本",
+        )
+        is True
+    )

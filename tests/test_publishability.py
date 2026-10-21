@@ -1275,3 +1275,23 @@ def test_adverb_between_subject_and_verb_is_not_part_of_the_publisher():
     )
     assert anchored is not None
     assert "Just" not in anchored
+
+
+def test_known_voice_model_family_keeps_its_version():
+    """``Voxtral 3`` must not degrade to ``Voxtral``.
+
+    Regression from the real 2026-10-21 run: the content LLM failed with
+    ``binding_target_unknown``, the anchored fallback published "Mistral AI 发布
+    Voxtral" (dropping the version), and the quality review correctly rejected it
+    as ``title_truncated_name``. ``voxtral`` was missing from the family list, so
+    ``3`` was never recognised as part of the name.
+    """
+    assert (
+        source_anchored_title(
+            source(
+                "Mistral AI launches Voxtral 3, a full voice agent stack that "
+                "listens, thinks, and talks in real time"
+            )
+        )
+        == "Mistral AI \u53d1\u5e03 Voxtral 3"
+    )

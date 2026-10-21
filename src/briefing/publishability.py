@@ -767,7 +767,7 @@ def _organization_anchors(value: str) -> set[str]:
 
 _MODEL_FAMILIES = (
     "gpt|claude|gemini|llama|qwen|deepseek|mistral|grok|kimi|glm|"
-    "ernie|hunyuan|doubao|minimax|step|phi|command|mercury"
+    "ernie|hunyuan|doubao|minimax|step|phi|command|mercury|voxtral"
 )
 # Trailing qualifiers that are part of the published name (``Flash``, ``GGUF``,
 # ``Instruct``). Dropping them made a display title stop binding to its own

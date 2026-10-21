@@ -200,6 +200,13 @@ def _summary_off_subject(
     only signal used: model names are deliberately excluded, because a summary
     legitimately names benchmarks and rival models when comparing ("在 IFBench
     上超过 GPT-5.6"), and the source title usually carries that context.
+
+    A comparison sentence is exempt. "Inception 发布 Mercury 3，速度达竞品 8 倍"
+    is *about* Inception even though its summary names ``GPT-6 Luna`` and
+    ``Claude Haiku 5.5``: those are the yardsticks it is measured against, not a
+    second story. Only a sentence that *reports an act by the other company*
+    ("同期 OpenAI 只推出一个 6.1 Terra") is off-subject. Requiring the other
+    company to be the subject of its own clause is what separates the two.
     """
     headline = _normalized_text(title_claim)
     body = _normalized_text(sentence)
@@ -209,9 +216,35 @@ def _summary_off_subject(
     body_orgs = _org_anchors(body)
     if not body_orgs:
         return False
-    # The summary names a company the headline never mentions, and the headline
-    # does name companies of its own: the two sentences are about different news.
-    return not (body_orgs & headline_orgs)
+    if body_orgs & headline_orgs:
+        return False
+    # No shared company. If the sentence merely measures the headline's subject
+    # against these companies, it still belongs to this item.
+    if _MEASUREMENT_CONTEXT.search(body):
+        return False
+    # The other company must be doing something in its own clause, not just being
+    # named. "同期 OpenAI 只推出一个…" qualifies; a bare mention does not.
+    return bool(_ORG_ACTION_CLAUSE.search(body))
+
+
+# Comparison/benchmark wording that makes a company name a yardstick rather than
+# the story: "达竞品 8 倍", "beats GPT-6 Luna", "compared with Nvidia".
+_MEASUREMENT_CONTEXT = re.compile(
+    r"竞品|对手|相比|对标|超越|超过|领先|落后|"
+    r"\b(?:beats?|outperforms?|outscores?|surpasses?|versus|vs\.?|compared|"
+    r"faster than|slower than|than)\b",
+    re.I,
+)
+# A clause where the subject acts: reporting order, release, funding, legal
+# outcome and similar news verbs.
+_ORG_ACTION_CLAUSE = re.compile(
+    r"推出|发布|宣布|上线|开源|融资|收购|起诉|被诉|召回|裁员|只推出|只发布|"
+    r"\b(?:launch(?:es|ed)?|release[sd]?|announce[sd]?|unveil(?:s|ed)?|"
+    r"roll(?:s|ed)?\s+out|rais(?:es|ed)|acqui(?:re[sd]?|red)|sue[sd]?|"
+    r"lay(?:s|ed)?\s+off|recall(?:s|ed)?)\b",
+    re.I,
+)
+
 
 
 def _org_anchors(value: str) -> set[str]:
