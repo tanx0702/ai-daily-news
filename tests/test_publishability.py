@@ -1228,3 +1228,50 @@ def test_no_action_sub_reason_covers_topic_style_headlines():
 
         assert result.accepted is False, title
         assert result.rejection_detail == "no_asserted_action", title
+
+
+def test_released_object_is_never_the_comparison_target():
+    """``... That Outperforms Google's TimesFM-3`` releases Timestral, not Google.
+
+    Regression from the real 2026-10-20 run: three MarkTechPost titles fell back
+    to ``source_anchored_title`` and each published a wrong product name, so the
+    quality review rejected them as ``title_truncated_name``. The fallback is what
+    was broken, not the review.
+    """
+    cases = (
+        (
+            "Mistral AI Releases Timestral: A 209M Forecasting Model Family "
+            "That Outperforms Google\u2019s TimesFM-3",
+            "Mistral AI \u53d1\u5e03 Timestral",
+        ),
+        (
+            "Inception Releases Mercury 3 Diffusion LLM at 1,068 Tokens per Second",
+            "Inception \u53d1\u5e03 Mercury 3",
+        ),
+    )
+    for source_title, expected in cases:
+        assert source_anchored_title(source(source_title)) == expected
+
+
+def test_separated_model_qualifier_is_not_truncated():
+    """``M3.1 Flash`` is a different product from ``M3.1``; keep the qualifier.
+
+    Regression from the real 2026-10-20 run: the anchored fallback published
+    "MiniMax \u53d1\u5e03 M3.1", dropping ``Flash``. A hyphenated suffix was already
+    protected (``V4.1-Flash``) but a space-separated qualifier was not.
+    """
+    assert (
+        source_anchored_title(
+            source("MiniMax Just Launched M3.1 Flash: 428B MoE Agentic Model at $0.15/M Input")
+        )
+        == "MiniMax \u53d1\u5e03 M3.1 Flash"
+    )
+
+
+def test_adverb_between_subject_and_verb_is_not_part_of_the_publisher():
+    """``MiniMax Just Launched`` names MiniMax, not "MiniMax Just"."""
+    anchored = source_anchored_title(
+        source("MiniMax Just Launched M3.1 Flash: 428B MoE Agentic Model at $0.15/M Input")
+    )
+    assert anchored is not None
+    assert "Just" not in anchored

@@ -25,6 +25,7 @@ from src.briefing.publishability import (
     CROSS_LANGUAGE_RULE_ONLY_MARKERS as _CROSS_LANGUAGE_RULE_ONLY_MARKERS,
     EVENT_ACTION_MARKERS,
     _ATTRIBUTION_MARKERS,
+    _ORGANIZATION_ALIASES,
     _is_promotional_or_vague,
     asserted_action_types,
     claim_supported_by_quote,
@@ -176,6 +177,59 @@ def _claim_overstates_commitment_scope(title: str, quotes: Sequence[str]) -> boo
     if _SCOPE_ONCE_ZH.search(joined) or _SCOPE_ONCE_EN.search(joined):
         return False
     return bool(_SCOPE_CUMULATIVE.search(joined))
+
+
+def _summary_off_subject(
+    sentence: str,
+    *,
+    source_title: str,
+    title_claim: str,
+) -> bool:
+    """Whether a summary sentence is about a company the title never mentions.
+
+    Regression from the real 2026-10-20 draft: the display title said "Claude
+    新模型曝光：能跳出思维定势，修 Bug 治标又治本" while the summary read "同期 OpenAI
+    只推出一个 6.1 Terra 相关内容". Both come from one 量子位 roundup whose evidence
+    text is title + teaser, so the quote was verbatim and carried a number, and
+    every gate passed. But the sentence reports a *rival's* upcoming release: it
+    is a separate story, and attaching it to the Claude headline misstates the
+    news.
+
+    A sentence is off-subject when its registered organisation anchors share no
+    entity with the headline's own organisation anchors. Company names are the
+    only signal used: model names are deliberately excluded, because a summary
+    legitimately names benchmarks and rival models when comparing ("在 IFBench
+    上超过 GPT-5.6"), and the source title usually carries that context.
+    """
+    headline = _normalized_text(title_claim)
+    body = _normalized_text(sentence)
+    if not headline or not body:
+        return False
+    headline_orgs = _org_anchors(f"{headline} {source_title}")
+    body_orgs = _org_anchors(body)
+    if not body_orgs:
+        return False
+    # The summary names a company the headline never mentions, and the headline
+    # does name companies of its own: the two sentences are about different news.
+    return not (body_orgs & headline_orgs)
+
+
+def _org_anchors(value: str) -> set[str]:
+    """Canonical organisation entities present in the text.
+
+    Reuses ``publishability._ORGANIZATION_ALIASES`` rather than a second table:
+    a drifted copy would silently stop recognising ``OpenAI``/``谷歌`` and the
+    off-subject check would quietly pass everything.
+    """
+    folded = value.casefold()
+    found: set[str] = set()
+    for alias, canonical in _ORGANIZATION_ALIASES.items():
+        if len(alias) < 3:
+            continue
+        if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded):
+            found.add(canonical)
+    return found
+
 
 
 def _default_client_factory(**kwargs):
@@ -966,6 +1020,7 @@ class BriefValidator:
         kept_bindings = list(title_bindings)
         removed: list[str] = []
         removed_without_detail = False
+        removed_off_subject = False
         for sentence in sentences:
             sentence_bindings = [
                 binding
@@ -981,6 +1036,17 @@ class BriefValidator:
             )
             if restates_generated_title or supported_only_by_source_title:
                 removed.append(sentence)
+                continue
+            # A verbatim, number-carrying sentence can still be a different story:
+            # "Claude 新模型曝光" summarised as "同期 OpenAI 只推出一个 6.1 Terra"
+            # reports a rival's release and misstates the news.
+            if _summary_off_subject(
+                sentence,
+                source_title=source_title,
+                title_claim=title_claim,
+            ):
+                removed.append(sentence)
+                removed_off_subject = True
                 continue
             # A bound sentence can still be a publisher teaser with no content of
             # its own ("最卷一夜！"): it is faithfully quoted but says nothing
@@ -1008,7 +1074,11 @@ class BriefValidator:
             brief_reason=(
                 "brief_without_verifiable_detail"
                 if removed_without_detail and not kept
-                else "brief_restates_title"
+                else (
+                    "brief_off_subject"
+                    if removed_off_subject and not kept
+                    else "brief_restates_title"
+                )
             ),
         )
         return normalized, tuple(removed)

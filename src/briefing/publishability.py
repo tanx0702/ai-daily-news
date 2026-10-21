@@ -174,6 +174,32 @@ _ORGANIZATION_ALIASES = {
     "谷歌": "google",
     "微软": "microsoft",
     "英伟达": "nvidia",
+    # Chinese corporate names, needed by the off-subject summary guard: a
+    # Chinese-language source names Anthropic as 安思罗匹克/人类学 only rarely, so
+    # the press convention is the bare Latin name, but 字节/阿里/百度/腾讯 are the
+    # normal renderings of ByteDance/Alibaba/Baidu/Tencent and must resolve to the
+    # same entity as their Latin form.
+    "安思罗匹克": "anthropic",
+    "字节": "bytedance",
+    "字节跳动": "bytedance",
+    "bytedance": "bytedance",
+    "阿里": "alibaba",
+    "阿里巴巴": "alibaba",
+    "alibaba": "alibaba",
+    "百度": "baidu",
+    "baidu": "baidu",
+    "腾讯": "tencent",
+    "tencent": "tencent",
+    "苹果": "apple",
+    "apple": "apple",
+    "亚马逊": "amazon",
+    "amazon": "amazon",
+    "三星": "samsung",
+    "samsung": "samsung",
+    "商汤": "sensetime",
+    "智谱": "zhipu",
+    "月之暗面": "moonshot",
+    "深度求索": "deepseek",
 }
 _KNOWN_SURFACE_ENTITIES = (
     "claude",
@@ -741,7 +767,7 @@ def _organization_anchors(value: str) -> set[str]:
 
 _MODEL_FAMILIES = (
     "gpt|claude|gemini|llama|qwen|deepseek|mistral|grok|kimi|glm|"
-    "ernie|hunyuan|doubao|minimax|step|phi|command"
+    "ernie|hunyuan|doubao|minimax|step|phi|command|mercury"
 )
 # Trailing qualifiers that are part of the published name (``Flash``, ``GGUF``,
 # ``Instruct``). Dropping them made a display title stop binding to its own
@@ -921,6 +947,39 @@ def _single_protected_product_token(value: str) -> str | None:
     return token if value[: match.start()].strip() == "" else None
 
 
+_EVENT_ACTION_ADVERBS = re.compile(
+    r"\b(?:just|now|finally|also|already|still|then|today|newly|again|"
+    r"officially|publicly|quietly|reportedly)\b\s*$",
+    re.I,
+)
+
+
+def _detail_anchor_matches(value: str) -> tuple[str, ...]:
+    """Anchors that can be the verb's object, comparison targets excluded.
+
+    ``Mistral AI Releases Timestral: A 209M ... That Outperforms Google's
+    TimesFM-3`` published ``Mistral AI 发布 Google``: the only registered surface
+    in the tail was the *comparison target* ``Google``, which the per-anchor
+    connector check below never saw because ``details[0]`` was ``Google`` itself.
+    The tail is truncated at the first comparison scope marker, so only anchors
+    stated as the released object remain candidates.
+    """
+    scope = _COMPARISON_SCOPE.search(value)
+    head = value[: scope.start()] if scope else value
+    return _surface_anchor_matches(head)
+
+
+# Introduces a comparison/benchmark scope. Anything after it describes how the
+# released object performs against a rival, never a second released object.
+_COMPARISON_SCOPE = re.compile(
+    r"\b(?:that|which|who)\s+(?:outperforms?|beats?|surpasses?|leads?|"
+    r"outscores?|tops?|scores?|wins?)\b"
+    r"|\b(?:outperforms?|surpasses?|outscores?|compared\s+(?:to|with))\b"
+    r"|(?:优于|超过|超越|胜过|相比)",
+    re.I,
+)
+
+
 def source_anchored_title(source: SourceEvidence) -> str | None:
     """Build a minimal cross-language title solely from known source anchors."""
     title = _normalize(source.source_title)
@@ -953,7 +1012,7 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
     after = title[end:]
     before = title[:start]
     subjects = _surface_anchor_matches(before)
-    details = _surface_anchor_matches(after)
+    details = _detail_anchor_matches(after)
     # A repo path (``owner/name``) is one subject, not two tokens. The generic
     # product-name alternative now matches ``vm0-ai`` inside ``vm0-ai/vm0``, which
     # would publish only the owner half. Prefer the literal path when the text
@@ -964,6 +1023,12 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         if repo_path
         else (subjects[0] if subjects else _literal_subject_surface(before))
     )
+    if subject:
+        # "MiniMax Just Launched M3.1 Flash" put the adverb ``Just`` inside the
+        # subject because it sits between the company and the verb. An adverb is
+        # never part of a publisher name.
+        trimmed = _EVENT_ACTION_ADVERBS.sub("", subject).strip(" ,，:：")
+        subject = trimmed or subject
     if not subject:
         return None
     # A detail anchor must be the verb's object, not a partnership/list companion.
@@ -1018,8 +1083,12 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         # only a handle when it stands alone, not when glued to a preceding word.
         safe_detail = re.search(
             # A variant suffix belongs to the version: ``V4.1-Flash`` must not be
-            # truncated to ``V4.1``, which names a different model.
+            # truncated to ``V4.1``, which names a different model. The same holds
+            # for a separated qualifier: ``M3.1 Flash`` degraded to ``M3.1``, a
+            # different product, and the quality review then rejected the title as
+            # ``title_truncated_name``.
             r"(?<![A-Za-z0-9])[A-Za-z]?\d+(?:\.\d+)+(?:[-.][A-Za-z][A-Za-z0-9]*)*"
+            rf"(?:\s+(?:{_MODEL_QUALIFIERS}))*"
             r"(?![A-Za-z0-9])|"
             r"(?<![A-Za-z0-9_])@[A-Za-z0-9_]+|"
             r"(?:\$\s*)?\d+(?:[.,]\d+)?\s*(?:%|x|ms|s|tok/s|tokens/s|billion|million)\b",
