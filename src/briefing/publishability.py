@@ -174,11 +174,16 @@ _ORGANIZATION_ALIASES = {
     "谷歌": "google",
     "微软": "microsoft",
     "英伟达": "nvidia",
-    # Chinese corporate names, needed by the off-subject summary guard: a
-    # Chinese-language source names Anthropic as 安思罗匹克/人类学 only rarely, so
-    # the press convention is the bare Latin name, but 字节/阿里/百度/腾讯 are the
-    # normal renderings of ByteDance/Alibaba/Baidu/Tencent and must resolve to the
-    # same entity as their Latin form.
+}
+# Chinese corporate renderings, used ONLY by the off-subject summary guard.
+#
+# These deliberately do NOT live in ``_ORGANIZATION_ALIASES``: that table also
+# feeds ``_surface_anchor_matches``, which decides what a headline may name as the
+# released object. Adding ``apple`` there made "supported Apple silicon Macs" the
+# object of "Available now", and a real 2026-10-21 Perplexity post published as
+# "Perplexity 可用 Apple". The guard needs to recognise companies mentioned in a
+# summary; the title builder must keep its narrower, curated surface-entity list.
+_SUMMARY_ORG_ALIASES = {
     "安思罗匹克": "anthropic",
     "字节": "bytedance",
     "字节跳动": "bytedance",
@@ -201,6 +206,7 @@ _ORGANIZATION_ALIASES = {
     "月之暗面": "moonshot",
     "深度求索": "deepseek",
 }
+_SUMMARY_ORG_ENTITY = {**_ORGANIZATION_ALIASES, **_SUMMARY_ORG_ALIASES}
 _KNOWN_SURFACE_ENTITIES = (
     "claude",
     "opencode go",

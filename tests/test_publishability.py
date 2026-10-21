@@ -1295,3 +1295,21 @@ def test_known_voice_model_family_keeps_its_version():
         )
         == "Mistral AI \u53d1\u5e03 Voxtral 3"
     )
+
+
+def test_hardware_noun_is_not_the_released_object():
+    """``supported Apple silicon Macs`` is a platform note, not a release object.
+
+    Regression from the real 2026-10-21 run, and self-inflicted: adding ``apple``
+    to the organisation alias table (for the off-subject summary guard) also fed
+    the title builder, which published "Perplexity 可用 Apple" for a post reading
+    "Available now to Pro, Max ... on supported Apple silicon Macs". The summary
+    guard now uses its own table; this one must stay out of the builder.
+    """
+    anchored = source_anchored_title(
+        source(
+            "Perplexity: Available now to Pro, Max, and Enterprise subscribers on "
+            "supported Apple silicon Macs. 36 GB of unified memory is recommended."
+        )
+    )
+    assert anchored is None

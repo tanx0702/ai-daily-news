@@ -105,3 +105,20 @@ def test_restating_a_rival_release_stays_off_subject():
         )
         is True
     )
+
+
+def test_two_character_chinese_company_name_is_recognised():
+    """``苹果``/``阿里``/``腾讯`` are two characters; a length-3 floor skips them.
+
+    The alias floor exists to stop short Latin aliases matching inside words.
+    Applying it to Chinese silently disabled every two-character company, so the
+    guard saw no company at all and passed the sentence.
+    """
+    assert (
+        _summary_off_subject(
+            "苹果同期宣布了新的 M5 芯片",
+            source_title="Google releases Gemini 4 Carbon to employees",
+            title_claim="Google 内部开放 Gemini 4 Carbon 测试",
+        )
+        is True
+    )

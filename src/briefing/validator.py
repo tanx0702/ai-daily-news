@@ -25,7 +25,7 @@ from src.briefing.publishability import (
     CROSS_LANGUAGE_RULE_ONLY_MARKERS as _CROSS_LANGUAGE_RULE_ONLY_MARKERS,
     EVENT_ACTION_MARKERS,
     _ATTRIBUTION_MARKERS,
-    _ORGANIZATION_ALIASES,
+    _SUMMARY_ORG_ENTITY,
     _is_promotional_or_vague,
     asserted_action_types,
     claim_supported_by_quote,
@@ -236,9 +236,10 @@ _MEASUREMENT_CONTEXT = re.compile(
     re.I,
 )
 # A clause where the subject acts: reporting order, release, funding, legal
-# outcome and similar news verbs.
+# outcome and similar news verbs. Chinese verbs are matched as stems so aspect
+# and tense particles (宣布了, 发布了, 推出了) still count.
 _ORG_ACTION_CLAUSE = re.compile(
-    r"推出|发布|宣布|上线|开源|融资|收购|起诉|被诉|召回|裁员|只推出|只发布|"
+    r"推出|发布|宣布|上线|开源|融资|收购|起诉|被诉|召回|裁员|"
     r"\b(?:launch(?:es|ed)?|release[sd]?|announce[sd]?|unveil(?:s|ed)?|"
     r"roll(?:s|ed)?\s+out|rais(?:es|ed)|acqui(?:re[sd]?|red)|sue[sd]?|"
     r"lay(?:s|ed)?\s+off|recall(?:s|ed)?)\b",
@@ -250,14 +251,19 @@ _ORG_ACTION_CLAUSE = re.compile(
 def _org_anchors(value: str) -> set[str]:
     """Canonical organisation entities present in the text.
 
-    Reuses ``publishability._ORGANIZATION_ALIASES`` rather than a second table:
-    a drifted copy would silently stop recognising ``OpenAI``/``谷歌`` and the
-    off-subject check would quietly pass everything.
+    Uses ``publishability._SUMMARY_ORG_ENTITY`` (the title-builder table plus the
+    Chinese renderings), not ``_ORGANIZATION_ALIASES`` alone and not a separate
+    copy: a drifted table would silently stop recognising ``OpenAI``/``谷歌`` and
+    the off-subject check would quietly pass everything.
     """
     folded = value.casefold()
     found: set[str] = set()
-    for alias, canonical in _ORGANIZATION_ALIASES.items():
-        if len(alias) < 3:
+    for alias, canonical in _SUMMARY_ORG_ENTITY.items():
+        # The two-character floor exists to stop short Latin aliases (``x``,
+        # ``ai``) matching inside words. Chinese names are often two characters
+        # (``苹果``, ``阿里``, ``百度``, ``腾讯``), and Chinese has no word
+        # boundaries, so they must be allowed through.
+        if len(alias) < 2 or (len(alias) < 3 and alias.isascii()):
             continue
         if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded):
             found.add(canonical)
