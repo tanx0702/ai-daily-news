@@ -249,6 +249,11 @@ def _parse_published_multi(entry: dict, url: str = "") -> tuple[Optional[datetim
     import calendar
     import re
 
+    # An article URL usually carries the true publication date. Aggregator
+    # feeds (HN RSS and similar) stamp pubDate with the discovery time instead,
+    # which let an eight-day-old TechCrunch story enter the daily brief.
+    url_date = _url_date(url)
+
     # 策略 1: feedparser 预解析的 struct_time（最可靠）
     for key, label in [("published_parsed", "published_parsed"),
                        ("updated_parsed", "updated_parsed"),
@@ -257,7 +262,8 @@ def _parse_published_multi(entry: dict, url: str = "") -> tuple[Optional[datetim
         if parsed is not None:
             try:
                 epoch = calendar.timegm(parsed[:9])
-                return datetime.fromtimestamp(epoch, tz=timezone.utc), label
+                parsed_at = datetime.fromtimestamp(epoch, tz=timezone.utc)
+                return _prefer_earlier_url_date(parsed_at, label, url_date)
             except Exception:
                 continue
 
@@ -271,29 +277,51 @@ def _parse_published_multi(entry: dict, url: str = "") -> tuple[Optional[datetim
                 struct = feedparser._parse_date(raw)
                 if struct is not None:
                     epoch = calendar.timegm(struct[:9])
-                    return datetime.fromtimestamp(epoch, tz=timezone.utc), label
+                    parsed_at = datetime.fromtimestamp(epoch, tz=timezone.utc)
+                    return _prefer_earlier_url_date(parsed_at, label, url_date)
             except Exception:
                 continue
 
     # 策略 3: URL 日期兜底，例如 /2026/07/08/ 或 ?date=2026-07-08
-    if url:
-        m = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", url)
-        if not m:
-            m = re.search(r"[?&]date=(\d{4}-\d{2}-\d{2})", url)
-            if m:
-                try:
-                    return (datetime.strptime(m.group(1), "%Y-%m-%d")
-                            .replace(tzinfo=timezone.utc)), "url_date"
-                except ValueError:
-                    pass
-        else:
-            try:
-                return (datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
-                                 tzinfo=timezone.utc), "url_date")
-            except ValueError:
-                pass
+    if url_date is not None:
+        return url_date, "url_date"
 
     return None, "missing"
+
+
+def _url_date(url: str) -> Optional[datetime]:
+    """Parse a publication date embedded in an article URL."""
+    if not url:
+        return None
+    match = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", url)
+    if match is None:
+        match = re.search(r"[?&]date=(\d{4})-(\d{2})-(\d{2})", url)
+    if match is None:
+        return None
+    try:
+        return datetime(
+            int(match.group(1)), int(match.group(2)), int(match.group(3)),
+            tzinfo=timezone.utc,
+        )
+    except ValueError:
+        return None
+
+
+def _prefer_earlier_url_date(
+    feed_time: datetime,
+    feed_label: str,
+    url_date: Optional[datetime],
+) -> tuple[datetime, str]:
+    """Use the URL date when the feed only carries a discovery timestamp.
+
+    A one-day tolerance keeps same-day timezone differences from overriding the
+    feed, and a URL date later than the feed is ignored as malformed.
+    """
+    if url_date is None or url_date > feed_time:
+        return feed_time, feed_label
+    if feed_time - url_date <= timedelta(hours=24):
+        return feed_time, feed_label
+    return url_date, "url_date"
 
 
 def _strip_html(text: str) -> str:

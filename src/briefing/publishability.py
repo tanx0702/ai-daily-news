@@ -931,8 +931,16 @@ def _single_protected_product_token(value: str) -> str | None:
     otherwise a real name: registered org alias, recognised model family, or a
     version/product-shaped token (``GPT-5.6``, ``M3.1``).
     """
+    # URL shortcodes (``https://t.co/L3tGJNtiAC``) look like product tokens
+    # because they start with a capital letter and contain digits. They are
+    # never the verb's object, so drop every URL span before matching.
+    value = _URL_SPAN.sub(" ", value)
     match = re.search(r"(?<![A-Za-z0-9])[A-Z][A-Za-z0-9.+-]{2,}", value)
     if match is None:
+        return None
+    # A token in a later clause is a detail of the story, not the object of the
+    # verb ("releases FlashMap, a 6.14x faster ...").
+    if re.search(r"[,;]", value[: match.start()]):
         return None
     token = match.group(0)
     folded = token.casefold()
@@ -952,6 +960,8 @@ def _single_protected_product_token(value: str) -> str | None:
     # Plan``) it is prose and must not become the released object.
     return token if value[: match.start()].strip() == "" else None
 
+
+_URL_SPAN = re.compile(r"(?:https?://|www\.)\S+", re.I)
 
 _EVENT_ACTION_ADVERBS = re.compile(
     r"\b(?:just|now|finally|also|already|still|then|today|newly|again|"
@@ -1012,10 +1022,22 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
         ]
         if match
     ]
+    # ``leaves a loophole`` / ``left a gap`` is a defect report, not a
+    # resignation. The departure mapping is only valid when the verb is followed
+    # by a destination ("leaves for OpenAI"), so drop matches whose object is an
+    # indefinite noun phrase.
+    action_matches = [
+        item
+        for item in action_matches
+        if not (
+            item[2] == "离职"
+            and re.match(r"\s+(?:a|an|the)\b", title[item[1]:], flags=re.I)
+        )
+    ]
     if not action_matches:
         return None
     start, end, action = min(action_matches, key=lambda item: item[0])
-    after = title[end:]
+    after = _URL_SPAN.sub(" ", title[end:])
     before = title[:start]
     subjects = _surface_anchor_matches(before)
     details = _detail_anchor_matches(after)
@@ -1101,6 +1123,11 @@ def source_anchored_title(source: SourceEvidence) -> str | None:
             after,
             flags=re.I,
         )
+        # A benchmark multiplier or version mentioned in a later clause describes
+        # the story, not the released object. "release FlashMap, a 6.14x faster
+        # speculative decoding method" must not become "发布 6.14x".
+        if safe_detail and re.search(r"[,;]", after[: safe_detail.start()]):
+            safe_detail = None
         detail = safe_detail.group(0) if safe_detail else None
     if detail is None:
         # Fall back to a single protected product token only when it is the verb's

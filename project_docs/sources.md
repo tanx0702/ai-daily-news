@@ -15,6 +15,12 @@
 
 ## RSS 配置
 
+文章的 `published_at` 优先取 feed 精确时间；若 URL 自带日期（`/YYYY/MM/DD/` 或
+`?date=YYYY-MM-DD`）且比 feed 时间早超过 24 小时，则以 URL 日期为准并标记
+`url_date`。聚合器（HN RSS 等）的 pubDate 是发现时间，不是文章发布时间；
+2026-11-02 头条曾因此把 TechCrunch 10-25 的稿子晚了 8 天带进日报。
+
+
 `config/rss_sources.json` 维护新闻源名称、RSS URL、区域和可选来源等级。新增 RSS 源必须：
 
 1. 提供稳定的 RSS/Atom URL 和可追溯来源名称。

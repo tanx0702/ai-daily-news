@@ -520,6 +520,66 @@ def test_source_anchored_title_rejects_bare_place_name_as_released_object():
     ) is None
 
 
+def test_source_anchored_title_rejects_url_shortcode_as_released_object():
+    """A tweet's ``t.co`` shortcode is a link, never the released product.
+
+    Regression from the real 2026-11-01 run: the content LLM failed, the
+    anchored fallback ran on a Google DeepMind post full of prose, picked the
+    weak verb ``available`` and published
+    "Google DeepMind 可用 L3tGJNtiAC" as the headline. The same mapping produced
+    "Cohere 融资 TZSugXi2ZE" and "NVIDIA 提升 fs0nAEdTtX" in earlier runs.
+    """
+    assert source_anchored_title(
+        source(
+            "Google DeepMind: We built PlanAssist to help UK Government planning "
+            "officers speed up building and renovations across the country. Built "
+            "with Gemini, it has shown it can cut the time planning officers spend "
+            "assessing householder applications by up to 58%. It is now being made "
+            "available to 12 more councils to help them to make faster decisions. "
+            "\U0001f3e1 \u2192 https://t.co/L3tGJNtiAC We built PlanAssist to help ..."
+        )
+    ) is None
+    assert source_anchored_title(
+        source(
+            "Cohere: We're excited to announce our new funding round. "
+            "Read more: https://t.co/TZSugXi2ZE"
+        )
+    ) is None
+
+
+def test_source_anchored_title_rejects_later_clause_as_released_object():
+    """Only the verb's object may be published, never a later clause detail.
+
+    Regression from the real 2026-10-29 run:
+    "Polymathic AI and Princeton Researchers release FlashMap, a 6.14x faster
+    speculative decoding method" fell back to "发布 6.14x".
+    """
+    title = source_anchored_title(
+        source(
+            "Polymathic AI and Princeton Researchers release FlashMap, "
+            "a 6.14x faster speculative decoding method"
+        )
+    )
+
+    assert title is None or "6.14x" not in title, title
+
+
+def test_departure_verb_with_indefinite_object_is_not_a_resignation():
+    """``leaves a loophole`` reports a defect, not someone leaving a company.
+
+    Regression from the real 2026-11-01 run:
+    "Anthropic's watermark rollout leaves a loophole on two older Claude models"
+    published "Anthropic 离职 Claude" \u2014 the opposite of the story.
+    """
+    assert source_anchored_title(
+        source("Anthropic's watermark rollout leaves a loophole on two older Claude models")
+    ) is None
+    # Real departures keep working, including the destination form.
+    assert source_anchored_title(
+        source("Meta executive leaves for OpenAI as the social media giant faces scrutiny")
+    ) == "Meta \u79bb\u804c OpenAI"
+
+
 def test_source_anchored_title_prefers_version_tag_over_truncated_handle():
     """A version tag glued to a name is a version, not an X handle.
 

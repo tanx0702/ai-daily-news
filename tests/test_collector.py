@@ -116,6 +116,31 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(parsed.month, 7)
         self.assertEqual(parsed.day, 11)
 
+    def test_parse_published_multi_uses_earlier_url_date(self):
+        """A feed pubDate can be the discovery time, not the publication time.
+
+        Regression from the real 2026-11-02 run: a TechCrunch story published
+        2026-10-25 arrived via an aggregator stamped 2026-11-01 and became the
+        headline eight days late.
+        """
+        parsed, source = collector._parse_published_multi(
+            {"published_parsed": datetime(2026, 11, 1, 22, 10, tzinfo=timezone.utc).timetuple()},
+            "https://techcrunch.com/2026/10/25/ai-delivers-zero-financial-payoff/",
+        )
+
+        self.assertEqual(source, "url_date")
+        self.assertEqual(parsed.date().isoformat(), "2026-10-25")
+
+    def test_parse_published_multi_keeps_feed_time_for_same_day_url(self):
+        """Same-day timezone offsets must not replace the precise feed time."""
+        parsed, source = collector._parse_published_multi(
+            {"published_parsed": datetime(2026, 11, 1, 22, 10, tzinfo=timezone.utc).timetuple()},
+            "https://example.com/2026/11/01/story",
+        )
+
+        self.assertEqual(source, "published_parsed")
+        self.assertEqual(parsed.hour, 22)
+
     def test_parse_rss_item_strips_html_and_extracts_images(self):
         item = collector._parse_rss_item(
             {
